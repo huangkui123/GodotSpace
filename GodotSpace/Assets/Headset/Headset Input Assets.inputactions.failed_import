@@ -1,0 +1,54 @@
+{
+    "name": "Headset Input Assets",
+    "maps": [
+        {
+            "name": "Headset",
+            "id": "42fd4dac-a763-44e0-a2e7-410089778528",
+            "actions": [
+                {
+                    "name": "isOkButton",
+                    "type": "Button",
+                    "id": "862123ce-ca06-41d4-b02e-f854145fdd67",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "MouseScroll",
+                    "type": "Value",
+                    "id": "05e36b61-e28f-4090-b8de-68ebc687a116",
+                    "expectedControlType": "Vector2",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "d842b50f-1cbc-44fd-b0b3-eecb68930b11",
+                    "path": "<CameraPoint>/isOkButton",
+                    "interactions": "Press(behavior=2)",
+                    "processors": "",
+                    "groups": "",
+                    "action": "isOkButton",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "6fa77493-603a-43c3-ade5-960a06ccb76b",
+                    "path": "<CameraPoint>/MouseScroll",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "MouseScroll",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
+        }
+    ],
+    "controlSchemes": []
+}
