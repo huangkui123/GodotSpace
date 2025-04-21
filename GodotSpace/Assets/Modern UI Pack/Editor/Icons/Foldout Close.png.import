@@ -1,0 +1,34 @@
+[remap]
+
+importer="texture"
+type="CompressedTexture2D"
+uid="uid://xil0ukgibydq"
+path="res://.godot/imported/Foldout Close.png-91cdb049d8ef856c488cba81d6cdfbdf.ctex"
+metadata={
+"vram_texture": false
+}
+
+[deps]
+
+source_file="res://Assets/Modern UI Pack/Editor/Icons/Foldout Close.png"
+dest_files=["res://.godot/imported/Foldout Close.png-91cdb049d8ef856c488cba81d6cdfbdf.ctex"]
+
+[params]
+
+compress/mode=0
+compress/high_quality=false
+compress/lossy_quality=0.5
+compress/hdr_compression=1
+compress/normal_map=2
+compress/channel_pack=0
+mipmaps/generate=false
+mipmaps/limit=-1
+roughness/mode=1
+roughness/src_normal=""
+process/fix_alpha_border=true
+process/premult_alpha=0
+process/normal_map_invert_y=false
+process/hdr_as_srgb=false
+process/hdr_clamp_exposure=false
+process/size_limit=32
+detect_3d/compress_to=0
