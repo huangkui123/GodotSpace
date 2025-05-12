@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://d04dmgac1b1c7"
 path.s3tc="res://.godot/imported/Document.png-5537c11b61f81f72a2713d9c267fdcd9.s3tc.ctex"
+path.etc2="res://.godot/imported/Document.png-5537c11b61f81f72a2713d9c267fdcd9.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://Assets/Modern UI Pack/Textures/Icon/Document/Document.png"
-dest_files=["res://.godot/imported/Document.png-5537c11b61f81f72a2713d9c267fdcd9.s3tc.ctex"]
+dest_files=["res://.godot/imported/Document.png-5537c11b61f81f72a2713d9c267fdcd9.s3tc.ctex", "res://.godot/imported/Document.png-5537c11b61f81f72a2713d9c267fdcd9.etc2.ctex"]
 
 [params]
 

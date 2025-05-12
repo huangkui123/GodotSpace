@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://bdam0bwmcahje"
 path.s3tc="res://.godot/imported/Radial Outline 1024px - 6x.png-215bf9a81a30721b2d9316b2cd7c2eff.s3tc.ctex"
+path.etc2="res://.godot/imported/Radial Outline 1024px - 6x.png-215bf9a81a30721b2d9316b2cd7c2eff.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://Assets/Modern UI Pack/Textures/Border/Radial/1024px/Radial Outline 1024px - 6x.png"
-dest_files=["res://.godot/imported/Radial Outline 1024px - 6x.png-215bf9a81a30721b2d9316b2cd7c2eff.s3tc.ctex"]
+dest_files=["res://.godot/imported/Radial Outline 1024px - 6x.png-215bf9a81a30721b2d9316b2cd7c2eff.s3tc.ctex", "res://.godot/imported/Radial Outline 1024px - 6x.png-215bf9a81a30721b2d9316b2cd7c2eff.etc2.ctex"]
 
 [params]
 

@@ -1,0 +1,23 @@
+[gd_scene load_steps=4 format=3 uid="uid://c162x4w45fcue"]
+
+[ext_resource type="PackedScene" uid="uid://bnqnnnet4dw12" path="res://addons/godot-xr-tools/staging/staging.tscn" id="1"]
+[ext_resource type="Script" path="res://demo_staging.gd" id="2"]
+[ext_resource type="Script" path="res://right_hand_controller.gd" id="3_jqu5r"]
+
+[node name="DemoStaging" instance=ExtResource("1")]
+script = ExtResource("2")
+main_scene = "res://scenes/main_menu/main_menu_level.tscn"
+
+[node name="LeftHandController" parent="XROrigin3D" index="1"]
+show_when_tracked = true
+
+[node name="RightHandController" parent="XROrigin3D" index="2"]
+show_when_tracked = true
+script = ExtResource("3_jqu5r")
+
+[connection signal="scene_exiting" from="." to="." method="_on_Staging_scene_exiting"]
+[connection signal="scene_loaded" from="." to="." method="_on_Staging_scene_loaded"]
+[connection signal="xr_ended" from="." to="." method="_on_Staging_xr_ended"]
+[connection signal="xr_started" from="." to="." method="_on_Staging_xr_started"]
+[connection signal="button_pressed" from="XROrigin3D/RightHandController" to="XROrigin3D/RightHandController" method="_on_button_pressed"]
+[connection signal="button_released" from="XROrigin3D/RightHandController" to="XROrigin3D/RightHandController" method="_on_button_released"]

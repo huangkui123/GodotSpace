@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://c4h2khecg2jff"
 path.s3tc="res://.godot/imported/Radial Filled 64px.png-0bced559f6ae190eceedefbed6b1436e.s3tc.ctex"
+path.etc2="res://.godot/imported/Radial Filled 64px.png-0bced559f6ae190eceedefbed6b1436e.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://Assets/Modern UI Pack/Textures/Border/Radial/64px/Radial Filled 64px.png"
-dest_files=["res://.godot/imported/Radial Filled 64px.png-0bced559f6ae190eceedefbed6b1436e.s3tc.ctex"]
+dest_files=["res://.godot/imported/Radial Filled 64px.png-0bced559f6ae190eceedefbed6b1436e.s3tc.ctex", "res://.godot/imported/Radial Filled 64px.png-0bced559f6ae190eceedefbed6b1436e.etc2.ctex"]
 
 [params]
 

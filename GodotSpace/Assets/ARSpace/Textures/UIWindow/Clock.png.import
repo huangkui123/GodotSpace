@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://bucuc68ug3yaj"
 path.s3tc="res://.godot/imported/Clock.png-e35319f72354a9a9dadf27cbb39055fc.s3tc.ctex"
+path.etc2="res://.godot/imported/Clock.png-e35319f72354a9a9dadf27cbb39055fc.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://Assets/ARSpace/Textures/UIWindow/Clock.png"
-dest_files=["res://.godot/imported/Clock.png-e35319f72354a9a9dadf27cbb39055fc.s3tc.ctex"]
+dest_files=["res://.godot/imported/Clock.png-e35319f72354a9a9dadf27cbb39055fc.s3tc.ctex", "res://.godot/imported/Clock.png-e35319f72354a9a9dadf27cbb39055fc.etc2.ctex"]
 
 [params]
 

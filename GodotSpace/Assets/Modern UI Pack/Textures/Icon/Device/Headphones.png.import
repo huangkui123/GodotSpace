@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://ckchogkk0edbc"
 path.s3tc="res://.godot/imported/Headphones.png-18899a841efaeebf0833fe0c21bd06f0.s3tc.ctex"
+path.etc2="res://.godot/imported/Headphones.png-18899a841efaeebf0833fe0c21bd06f0.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://Assets/Modern UI Pack/Textures/Icon/Device/Headphones.png"
-dest_files=["res://.godot/imported/Headphones.png-18899a841efaeebf0833fe0c21bd06f0.s3tc.ctex"]
+dest_files=["res://.godot/imported/Headphones.png-18899a841efaeebf0833fe0c21bd06f0.s3tc.ctex", "res://.godot/imported/Headphones.png-18899a841efaeebf0833fe0c21bd06f0.etc2.ctex"]
 
 [params]
 
