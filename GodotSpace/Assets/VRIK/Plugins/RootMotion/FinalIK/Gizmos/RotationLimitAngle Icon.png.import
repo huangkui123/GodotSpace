@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://dp687xtuel01v"
 path.s3tc="res://.godot/imported/RotationLimitAngle Icon.png-902ec5a376e89741d2b6d65e4e7b5ecf.s3tc.ctex"
+path.etc2="res://.godot/imported/RotationLimitAngle Icon.png-902ec5a376e89741d2b6d65e4e7b5ecf.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://Assets/VRIK/Plugins/RootMotion/FinalIK/Gizmos/RotationLimitAngle Icon.png"
-dest_files=["res://.godot/imported/RotationLimitAngle Icon.png-902ec5a376e89741d2b6d65e4e7b5ecf.s3tc.ctex"]
+dest_files=["res://.godot/imported/RotationLimitAngle Icon.png-902ec5a376e89741d2b6d65e4e7b5ecf.s3tc.ctex", "res://.godot/imported/RotationLimitAngle Icon.png-902ec5a376e89741d2b6d65e4e7b5ecf.etc2.ctex"]
 
 [params]
 

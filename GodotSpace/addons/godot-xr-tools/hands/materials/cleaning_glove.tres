@@ -6,7 +6,11 @@
 
 [resource]
 albedo_texture = ExtResource("1_k2x02")
+albedo_texture_force_srgb = true
 orm_texture = ExtResource("3_8ux4v")
+emission_enabled = true
+emission = Color(3.56168e-06, 0.561678, 0.743675, 1)
+emission_energy_multiplier = 2.0
 normal_enabled = true
 normal_scale = 0.1
 normal_texture = ExtResource("2_uiqlw")

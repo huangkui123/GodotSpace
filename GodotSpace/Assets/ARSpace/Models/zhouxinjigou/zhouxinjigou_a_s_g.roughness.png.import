@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://cvb4iyagdy02v"
 path.s3tc="res://.godot/imported/zhouxinjigou_a_s_g.roughness.png-34eadb4f5696a30a5ad5bc881245b531.s3tc.ctex"
+path.etc2="res://.godot/imported/zhouxinjigou_a_s_g.roughness.png-34eadb4f5696a30a5ad5bc881245b531.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://Assets/ARSpace/Models/zhouxinjigou/zhouxinjigou_a_s_g.roughness.png"
-dest_files=["res://.godot/imported/zhouxinjigou_a_s_g.roughness.png-34eadb4f5696a30a5ad5bc881245b531.s3tc.ctex"]
+dest_files=["res://.godot/imported/zhouxinjigou_a_s_g.roughness.png-34eadb4f5696a30a5ad5bc881245b531.s3tc.ctex", "res://.godot/imported/zhouxinjigou_a_s_g.roughness.png-34eadb4f5696a30a5ad5bc881245b531.etc2.ctex"]
 
 [params]
 

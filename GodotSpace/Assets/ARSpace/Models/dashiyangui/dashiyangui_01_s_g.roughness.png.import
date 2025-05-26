@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://vot8ntoqacht"
 path.s3tc="res://.godot/imported/dashiyangui_01_s_g.roughness.png-9a87d283807436125a43fbd62dd5186d.s3tc.ctex"
+path.etc2="res://.godot/imported/dashiyangui_01_s_g.roughness.png-9a87d283807436125a43fbd62dd5186d.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://Assets/ARSpace/Models/dashiyangui/dashiyangui_01_s_g.roughness.png"
-dest_files=["res://.godot/imported/dashiyangui_01_s_g.roughness.png-9a87d283807436125a43fbd62dd5186d.s3tc.ctex"]
+dest_files=["res://.godot/imported/dashiyangui_01_s_g.roughness.png-9a87d283807436125a43fbd62dd5186d.s3tc.ctex", "res://.godot/imported/dashiyangui_01_s_g.roughness.png-9a87d283807436125a43fbd62dd5186d.etc2.ctex"]
 
 [params]
 

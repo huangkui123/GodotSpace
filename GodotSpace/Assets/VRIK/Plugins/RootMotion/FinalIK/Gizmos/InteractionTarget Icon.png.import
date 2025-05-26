@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://3t0qw2ai8r3p"
 path.s3tc="res://.godot/imported/InteractionTarget Icon.png-a197b3eb2d31e1aa41b331fd46563298.s3tc.ctex"
+path.etc2="res://.godot/imported/InteractionTarget Icon.png-a197b3eb2d31e1aa41b331fd46563298.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://Assets/VRIK/Plugins/RootMotion/FinalIK/Gizmos/InteractionTarget Icon.png"
-dest_files=["res://.godot/imported/InteractionTarget Icon.png-a197b3eb2d31e1aa41b331fd46563298.s3tc.ctex"]
+dest_files=["res://.godot/imported/InteractionTarget Icon.png-a197b3eb2d31e1aa41b331fd46563298.s3tc.ctex", "res://.godot/imported/InteractionTarget Icon.png-a197b3eb2d31e1aa41b331fd46563298.etc2.ctex"]
 
 [params]
 

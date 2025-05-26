@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://d01e8u1u7jwdr"
 path.s3tc="res://.godot/imported/Share.png-8d4646de7363bab0607b2613772ad917.s3tc.ctex"
+path.etc2="res://.godot/imported/Share.png-8d4646de7363bab0607b2613772ad917.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://Assets/Modern UI Pack/Textures/Icon/Communication & Social/Share.png"
-dest_files=["res://.godot/imported/Share.png-8d4646de7363bab0607b2613772ad917.s3tc.ctex"]
+dest_files=["res://.godot/imported/Share.png-8d4646de7363bab0607b2613772ad917.s3tc.ctex", "res://.godot/imported/Share.png-8d4646de7363bab0607b2613772ad917.etc2.ctex"]
 
 [params]
 

@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://dr7y3pi3l4njr"
 path.s3tc="res://.godot/imported/Rectangle 1385.png-a590b0a5484092b5aa49c000a5c9ba64.s3tc.ctex"
+path.etc2="res://.godot/imported/Rectangle 1385.png-a590b0a5484092b5aa49c000a5c9ba64.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://Assets/ARSpace/Textures/UIWindow/Rectangle 1385.png"
-dest_files=["res://.godot/imported/Rectangle 1385.png-a590b0a5484092b5aa49c000a5c9ba64.s3tc.ctex"]
+dest_files=["res://.godot/imported/Rectangle 1385.png-a590b0a5484092b5aa49c000a5c9ba64.s3tc.ctex", "res://.godot/imported/Rectangle 1385.png-a590b0a5484092b5aa49c000a5c9ba64.etc2.ctex"]
 
 [params]
 

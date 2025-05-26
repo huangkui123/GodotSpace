@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://b3pmho6mev3c5"
 path.s3tc="res://.godot/imported/FABRIK Icon.png-6e2742c0b1876fd8cabd0efdd6cc6824.s3tc.ctex"
+path.etc2="res://.godot/imported/FABRIK Icon.png-6e2742c0b1876fd8cabd0efdd6cc6824.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://Assets/VRIK/Plugins/RootMotion/FinalIK/Gizmos/FABRIK Icon.png"
-dest_files=["res://.godot/imported/FABRIK Icon.png-6e2742c0b1876fd8cabd0efdd6cc6824.s3tc.ctex"]
+dest_files=["res://.godot/imported/FABRIK Icon.png-6e2742c0b1876fd8cabd0efdd6cc6824.s3tc.ctex", "res://.godot/imported/FABRIK Icon.png-6e2742c0b1876fd8cabd0efdd6cc6824.etc2.ctex"]
 
 [params]
 

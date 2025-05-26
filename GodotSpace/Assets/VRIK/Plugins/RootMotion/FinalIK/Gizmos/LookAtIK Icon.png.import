@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://gqlf5v7wpifl"
 path.s3tc="res://.godot/imported/LookAtIK Icon.png-9a4184e7e38a85149e53bab4b229b744.s3tc.ctex"
+path.etc2="res://.godot/imported/LookAtIK Icon.png-9a4184e7e38a85149e53bab4b229b744.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://Assets/VRIK/Plugins/RootMotion/FinalIK/Gizmos/LookAtIK Icon.png"
-dest_files=["res://.godot/imported/LookAtIK Icon.png-9a4184e7e38a85149e53bab4b229b744.s3tc.ctex"]
+dest_files=["res://.godot/imported/LookAtIK Icon.png-9a4184e7e38a85149e53bab4b229b744.s3tc.ctex", "res://.godot/imported/LookAtIK Icon.png-9a4184e7e38a85149e53bab4b229b744.etc2.ctex"]
 
 [params]
 

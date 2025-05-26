@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://cr16l8v1rgx3y"
 path.s3tc="res://.godot/imported/FullBodyBipedIK Icon.png-01cbc4dfb33a652b1425c88c4de3bf05.s3tc.ctex"
+path.etc2="res://.godot/imported/FullBodyBipedIK Icon.png-01cbc4dfb33a652b1425c88c4de3bf05.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://Assets/VRIK/Plugins/RootMotion/FinalIK/Gizmos/FullBodyBipedIK Icon.png"
-dest_files=["res://.godot/imported/FullBodyBipedIK Icon.png-01cbc4dfb33a652b1425c88c4de3bf05.s3tc.ctex"]
+dest_files=["res://.godot/imported/FullBodyBipedIK Icon.png-01cbc4dfb33a652b1425c88c4de3bf05.s3tc.ctex", "res://.godot/imported/FullBodyBipedIK Icon.png-01cbc4dfb33a652b1425c88c4de3bf05.etc2.ctex"]
 
 [params]
 
