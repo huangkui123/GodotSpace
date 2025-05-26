@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://ckogkkuycktwj"
 path.s3tc="res://.godot/imported/Microphone Filled.png-689d442bcf1d58ab9d8725c4a841836b.s3tc.ctex"
+path.etc2="res://.godot/imported/Microphone Filled.png-689d442bcf1d58ab9d8725c4a841836b.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://Assets/Modern UI Pack/Textures/Icon/Media/Microphone Filled.png"
-dest_files=["res://.godot/imported/Microphone Filled.png-689d442bcf1d58ab9d8725c4a841836b.s3tc.ctex"]
+dest_files=["res://.godot/imported/Microphone Filled.png-689d442bcf1d58ab9d8725c4a841836b.s3tc.ctex", "res://.godot/imported/Microphone Filled.png-689d442bcf1d58ab9d8725c4a841836b.etc2.ctex"]
 
 [params]
 

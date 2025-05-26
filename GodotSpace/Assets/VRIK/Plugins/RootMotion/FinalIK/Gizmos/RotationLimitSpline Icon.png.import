@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://bfgnch1g33bkv"
 path.s3tc="res://.godot/imported/RotationLimitSpline Icon.png-ed734830e70a829f184f56a593b3372a.s3tc.ctex"
+path.etc2="res://.godot/imported/RotationLimitSpline Icon.png-ed734830e70a829f184f56a593b3372a.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://Assets/VRIK/Plugins/RootMotion/FinalIK/Gizmos/RotationLimitSpline Icon.png"
-dest_files=["res://.godot/imported/RotationLimitSpline Icon.png-ed734830e70a829f184f56a593b3372a.s3tc.ctex"]
+dest_files=["res://.godot/imported/RotationLimitSpline Icon.png-ed734830e70a829f184f56a593b3372a.s3tc.ctex", "res://.godot/imported/RotationLimitSpline Icon.png-ed734830e70a829f184f56a593b3372a.etc2.ctex"]
 
 [params]
 

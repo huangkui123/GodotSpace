@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://b0851t2wr0f6k"
 path.s3tc="res://.godot/imported/Group 155628.png-5437321f029a596b989d2a7421c3ce23.s3tc.ctex"
+path.etc2="res://.godot/imported/Group 155628.png-5437321f029a596b989d2a7421c3ce23.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155628.png"
-dest_files=["res://.godot/imported/Group 155628.png-5437321f029a596b989d2a7421c3ce23.s3tc.ctex"]
+dest_files=["res://.godot/imported/Group 155628.png-5437321f029a596b989d2a7421c3ce23.s3tc.ctex", "res://.godot/imported/Group 155628.png-5437321f029a596b989d2a7421c3ce23.etc2.ctex"]
 
 [params]
 
