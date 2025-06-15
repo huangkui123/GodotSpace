@@ -38,3 +38,4 @@ strafe = true
 [node name="FunctionPointer" parent="RightHand" instance=ExtResource("4_roir7")]
 
 [node name="PlayerBody" parent="." instance=ExtResource("6_2xy6d")]
+player_head_height = 0.7
