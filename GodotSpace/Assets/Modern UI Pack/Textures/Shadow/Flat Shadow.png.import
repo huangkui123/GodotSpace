@@ -1,0 +1,36 @@
+[remap]
+
+importer="texture"
+type="CompressedTexture2D"
+uid="uid://bae7kenx7d2tl"
+path.s3tc="res://.godot/imported/Flat Shadow.png-983036b2b41c1243fb7b1529add29a2f.s3tc.ctex"
+path.etc2="res://.godot/imported/Flat Shadow.png-983036b2b41c1243fb7b1529add29a2f.etc2.ctex"
+metadata={
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
+}
+
+[deps]
+
+source_file="res://Assets/Modern UI Pack/Textures/Shadow/Flat Shadow.png"
+dest_files=["res://.godot/imported/Flat Shadow.png-983036b2b41c1243fb7b1529add29a2f.s3tc.ctex", "res://.godot/imported/Flat Shadow.png-983036b2b41c1243fb7b1529add29a2f.etc2.ctex"]
+
+[params]
+
+compress/mode=2
+compress/high_quality=false
+compress/lossy_quality=0.5
+compress/hdr_compression=1
+compress/normal_map=2
+compress/channel_pack=0
+mipmaps/generate=false
+mipmaps/limit=-1
+roughness/mode=1
+roughness/src_normal=""
+process/fix_alpha_border=true
+process/premult_alpha=0
+process/normal_map_invert_y=false
+process/hdr_as_srgb=false
+process/hdr_clamp_exposure=false
+process/size_limit=2048
+detect_3d/compress_to=0

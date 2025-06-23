@@ -1,0 +1,75 @@
+[gd_scene load_steps=14 format=3 uid="uid://b2t034s75alea"]
+
+[ext_resource type="PackedScene" uid="uid://b4kad2kuba1yn" path="res://addons/godot-xr-tools/hands/scenes/lowpoly/left_hand_low.tscn" id="1_726yw"]
+[ext_resource type="PackedScene" uid="uid://bl2nuu3qhlb5k" path="res://addons/godot-xr-tools/functions/movement_direct.tscn" id="2_3mavx"]
+[ext_resource type="PackedScene" uid="uid://l2n30mpbkdyw" path="res://addons/godot-xr-tools/hands/scenes/lowpoly/right_hand_low.tscn" id="2_krsmg"]
+[ext_resource type="PackedScene" uid="uid://b4ysuy43poobf" path="res://addons/godot-xr-tools/functions/function_pickup.tscn" id="3_7r1xv"]
+[ext_resource type="PackedScene" uid="uid://diyu06cw06syv" path="res://addons/godot-xr-tools/player/player_body.tscn" id="3_rdu16"]
+[ext_resource type="PackedScene" uid="uid://b6bk2pj8vbj28" path="res://addons/godot-xr-tools/functions/movement_turn.tscn" id="4_6tx0i"]
+[ext_resource type="Texture2D" uid="uid://cp8b5iw7c6psx" path="res://icon.svg" id="7_c2po1"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_kj4ls"]
+albedo_texture = ExtResource("7_c2po1")
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_g30e6"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_m1x3m"]
+albedo_color = Color(0, 1, 1, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_gd184"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_62xng"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_eg0bj"]
+albedo_color = Color(1, 1, 0, 1)
+
+[node name="XROrigin3D" type="XROrigin3D"]
+
+[node name="XRCamera3D" type="XRCamera3D" parent="."]
+
+[node name="ControllerLeft" type="XRController3D" parent="."]
+tracker = &"left_hand"
+
+[node name="LeftHand" parent="ControllerLeft" instance=ExtResource("1_726yw")]
+
+[node name="MovementDirect" parent="ControllerLeft" instance=ExtResource("2_3mavx")]
+strafe = true
+
+[node name="FunctionPickup" parent="ControllerLeft" instance=ExtResource("3_7r1xv")]
+
+[node name="ControllerRight" type="XRController3D" parent="."]
+tracker = &"right_hand"
+
+[node name="RightHand" parent="ControllerRight" instance=ExtResource("2_krsmg")]
+
+[node name="MovementTurn" parent="ControllerRight" instance=ExtResource("4_6tx0i")]
+turn_mode = 2
+
+[node name="FunctionPickup" parent="ControllerRight" instance=ExtResource("3_7r1xv")]
+
+[node name="PlayerBody" parent="." instance=ExtResource("3_rdu16")]
+
+[node name="Ground2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1000, 0, 0, 0, 0.198068, -980.188, 0, 0.980188, 198.068, 0, -3.68261, -590.551)
+material_override = SubResource("StandardMaterial3D_kj4ls")
+mesh = SubResource("PlaneMesh_g30e6")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.668425, -0.740574, -0.0689747, 0.688875, 0.581447, 0.432865, -0.280463, -0.336853, 0.898816, 0, 0.926654, 0)
+
+[node name="Models" type="Node3D" parent="DirectionalLight3D"]
+transform = Transform3D(0.733944, 0.659114, 0.163999, -0.604551, 0.743996, -0.284585, -0.309589, 0.109724, 0.944519, 6.91833, -7.66509, -0.713907)
+
+[node name="Cube" type="MeshInstance3D" parent="DirectionalLight3D/Models"]
+transform = Transform3D(1, 0, 0, 0, 12.391, 0, 0, 0, 41.536, -32.9041, 0.797475, -25.5354)
+material_override = SubResource("StandardMaterial3D_m1x3m")
+mesh = SubResource("BoxMesh_gd184")
+skeleton = NodePath("../..")
+surface_material_override/0 = SubResource("StandardMaterial3D_62xng")
+
+[node name="Cube2" type="MeshInstance3D" parent="DirectionalLight3D/Models"]
+transform = Transform3D(0.240171, -19.5822, 6.53327, 0.178216, 28.2665, 4.17078, -0.277526, 1.20523, 8.33219, 13.084, 0.827, -18.793)
+material_override = SubResource("StandardMaterial3D_eg0bj")
+mesh = SubResource("BoxMesh_gd184")
+skeleton = NodePath("../..")
+surface_material_override/0 = SubResource("StandardMaterial3D_62xng")

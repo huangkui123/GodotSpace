@@ -1,0 +1,18 @@
+[gd_resource type="ORMMaterial3D" load_steps=4 format=3 uid="uid://cdb40djkihelq"]
+
+[ext_resource type="Texture2D" uid="uid://dv711ytktesj2" path="res://addons/godot-xr-tools/hands/textures/cleaning_glove_baseColor.png" id="1_k2x02"]
+[ext_resource type="Texture2D" uid="uid://dt6k4nuvpo38o" path="res://addons/godot-xr-tools/hands/textures/glove_normal.png" id="2_uiqlw"]
+[ext_resource type="Texture2D" uid="uid://yslwgnpbpeen" path="res://addons/godot-xr-tools/hands/textures/glove_occlusionRoughnessMetallic.png" id="3_8ux4v"]
+
+[resource]
+albedo_texture = ExtResource("1_k2x02")
+albedo_texture_force_srgb = true
+orm_texture = ExtResource("3_8ux4v")
+emission_enabled = true
+emission = Color(3.56168e-06, 0.561678, 0.743675, 1)
+emission_energy_multiplier = 2.0
+normal_enabled = true
+normal_scale = 0.1
+normal_texture = ExtResource("2_uiqlw")
+clearcoat_enabled = true
+ao_light_affect = 1.0

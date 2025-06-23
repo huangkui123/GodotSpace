@@ -1,0 +1,36 @@
+[remap]
+
+importer="texture"
+type="CompressedTexture2D"
+uid="uid://g2mnnvu5nd2t"
+path.s3tc="res://.godot/imported/Rounded Filled 256px.png-af6ecd7093241a2c927a57efc63ded6e.s3tc.ctex"
+path.etc2="res://.godot/imported/Rounded Filled 256px.png-af6ecd7093241a2c927a57efc63ded6e.etc2.ctex"
+metadata={
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
+}
+
+[deps]
+
+source_file="res://Assets/Modern UI Pack/Textures/Border/Rounded/256px/Rounded Filled 256px.png"
+dest_files=["res://.godot/imported/Rounded Filled 256px.png-af6ecd7093241a2c927a57efc63ded6e.s3tc.ctex", "res://.godot/imported/Rounded Filled 256px.png-af6ecd7093241a2c927a57efc63ded6e.etc2.ctex"]
+
+[params]
+
+compress/mode=2
+compress/high_quality=false
+compress/lossy_quality=0.5
+compress/hdr_compression=1
+compress/normal_map=2
+compress/channel_pack=0
+mipmaps/generate=false
+mipmaps/limit=-1
+roughness/mode=1
+roughness/src_normal=""
+process/fix_alpha_border=true
+process/premult_alpha=0
+process/normal_map_invert_y=false
+process/hdr_as_srgb=false
+process/hdr_clamp_exposure=false
+process/size_limit=256
+detect_3d/compress_to=0
