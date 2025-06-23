@@ -1,8 +1,9 @@
 extends Button
 
+
 func _ready():
 	pressed.connect(_on_button_pressed)
 
 func _on_button_pressed():
 	add_theme_color_override("icon_normal_color", Color.GREEN)
-	print("按钮按下事件已触发！") 
+	print("photo 按钮按下事件已触发！") 
