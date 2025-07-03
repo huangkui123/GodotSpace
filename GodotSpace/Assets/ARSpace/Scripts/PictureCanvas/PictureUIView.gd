@@ -2,8 +2,6 @@ extends Control
 
 class_name PictureUIView
 
-var instance: PictureUIView = null
-@export var p_info: Node = null
 var info_save_list: Array = []
 @export var info_: Array[PictureListItem] = []
 
@@ -18,9 +16,8 @@ var can_max: bool = true
 
 func _ready():
 	print("PictureUIView _ready")
-	self.visible = false
+	# self.visible = false
 	Global.picture_canvas = self
-	instance = self
 	info_save_list = []
 #	scale = self.transform.basis.get_scale()
 	init_view()
@@ -38,7 +35,7 @@ func init_view():
 	print("InitView")
 	# 你可以连接信号或绑定数据模型刷新接口
 
-func refresh_data_change_view(result: PictureListDataResult) -> void:
+func refresh_data_change_view(result: PictureListDataResult):
 	print("->PictureListDataResult")
 	refresh_list(result)
 
@@ -61,7 +58,7 @@ func refresh_info():
 
 func bind_page(index: int):
 	if page_count == 1:
-		for i in range(item_count):
+		for i in range(page_item_count):
 			if i < item_count:
 				bind_item(info_[i], info_save_list[i])
 				info_[i].visible = true

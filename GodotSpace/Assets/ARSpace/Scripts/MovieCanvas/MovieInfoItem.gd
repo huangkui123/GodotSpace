@@ -1,14 +1,38 @@
 extends Control
 class_name MovieInfoItem
 
-# 节点绑定（请确保场景中名称一致）
-@onready var banner_video: TextureRect = $BannerVideo
+# @onready var banner_video: TextureRect = $BannerVideo
+@onready var texture_button: TextureButton = $PlayPauseButton
+@export var banner_video: VideoStreamPlayer
 
-func set_image(name: String):
+var icons: Array[Texture2D] = [
+	preload("res://Assets/Icons/play.png"), # PLAY
+	preload("res://Assets/Icons/pause.png"), # PLAY
+]
+var is_playing: bool = true
+
+func set_video(name: String):
 	var file_path = get_media_path("Videos", name)
 
 	if file_path != "":
-		banner_video.stream = load(file_path)
+		var stream = ClassDB.instantiate("FFmpegVideoStream")
+		if stream:
+			print("✅ 成功创建 FFmpegVideoStream 实例")
+			stream.set_file(file_path)
+			is_playing = true
+			banner_video.stream = stream
+			banner_video.play()
+			texture_button.texture_normal = icons[1] # 设置为暂停图标
+			# await get_tree().create_timer(0.5).timeout
+			# banner_video.paused = true
+		else:
+			push_error("❌ 无法创建 FFmpegVideoStream，说明插件没有正确加载")
+
+func destory():
+	if banner_video:
+		banner_video.stream = null
+		is_playing = false
+		print("Video stream stopped and cleared.")
 
 # 获取图片路径
 func get_media_path(root_directory_name: String, file_name: String):
@@ -26,10 +50,19 @@ func get_media_path(root_directory_name: String, file_name: String):
 	var dir = DirAccess.open(base_path)
 	if dir and FileAccess.file_exists(full_path):
 		return full_path
-	
-	# if dir:
-	# 	print("Directory exists, but file does not: ", full_path)
-	# else:
-	# 	print("Directory does not exist: ", base_path)
 
 	return ""
+
+func _on_texture_button_pressed():
+	if is_playing:
+		# 停止视频播放
+		texture_button.texture_normal = icons[0] # 设置为播放图标
+		is_playing = false
+		banner_video.paused = true
+		print("Video paused")
+	else:
+		# 开始视频播放
+		texture_button.texture_normal = icons[1] # 设置为暂停图标
+		is_playing = true
+		banner_video.paused = false
+		print("Video playing")

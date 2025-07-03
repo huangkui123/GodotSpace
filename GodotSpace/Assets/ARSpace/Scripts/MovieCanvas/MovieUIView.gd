@@ -2,8 +2,6 @@ extends Control
 
 class_name MovieUIView
 
-var instance: MovieUIView = null
-@export var p_info: Node = null
 var info_save_list: Array = []
 @export var info_: Array[MovieListItem] = []
 
@@ -18,13 +16,14 @@ var can_max: bool = true
 
 func _ready():
 	print("MovieUIView _ready")
-	instance = self
+	self.visible = false
+	Global.movie_canvas = self
 	info_save_list = []
 #	scale = self.transform.basis.get_scale()
 	init_view()
 
 	var movie_list_data_result = MovieListDataResult.new()
-	movie_list_data_result.refresh_image_list()
+	movie_list_data_result.refresh_video_list()
 	refresh_data_change_view(movie_list_data_result)
 
 func _enter_tree():
@@ -36,7 +35,7 @@ func init_view():
 	print("InitView")
 	# 你可以连接信号或绑定数据模型刷新接口
 
-func refresh_data_change_view(result: MovieListDataResult) -> void:
+func refresh_data_change_view(result: MovieListDataResult):
 	print("->MovieListDataResult")
 	refresh_list(result)
 
@@ -59,7 +58,7 @@ func refresh_info():
 
 func bind_page(index: int):
 	if page_count == 1:
-		for i in range(item_count):
+		for i in range(page_item_count):
 			if i < item_count:
 				bind_item(info_[i], info_save_list[i])
 				info_[i].visible = true
