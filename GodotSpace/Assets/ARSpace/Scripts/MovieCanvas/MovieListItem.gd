@@ -5,17 +5,15 @@ class_name MovieListItem
 var item_data: MovieListData
 
 # 节点绑定（请确保场景中名称一致）
-@onready var banner_video: TextureRect = $BannerVideo
+@onready var banner_video: VideoStreamPlayer  = $BannerVideo
 @onready var title_label: Label = $Title
-
-@export var movie_info_canvas: Node = null
 
 func _ready():
 	self.pressed.connect(_on_click_btn)
 
 func _on_click_btn():
 	# print(self, " ClickBtn")
-	movie_info_canvas.set_image_name(item_data.banner_path.get_file())
+	Global.movie_info_canvas.set_video_name(item_data.banner_path.get_file())
 
 # 刷新显示内容
 func refresh_info(data: MovieListData):
@@ -27,12 +25,17 @@ func refresh_info(data: MovieListData):
 	var file_path = get_media_path("Videos", file_name)
 
 	if file_path != "":
-		banner_video.stream = load(file_path)
+		var stream = ClassDB.instantiate("FFmpegVideoStream")
+		if stream:
+			stream.set_file(file_path)
+			banner_video.stream = stream
+			banner_video.play()
+			await get_tree().create_timer(0.5).timeout
+			banner_video.paused = true
 
 	print("data.tile = " + data.title)
 	title_label.text = data.title
 
-# 获取图片路径
 func get_media_path(root_directory_name: String, file_name: String):
 	var base_path := ""
 

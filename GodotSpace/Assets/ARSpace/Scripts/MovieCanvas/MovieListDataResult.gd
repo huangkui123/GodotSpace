@@ -3,10 +3,10 @@ class_name MovieListDataResult
 
 @export var list: Array[MovieListData] = []
 
-func refresh_image_list():
+func refresh_video_list():
 	list.clear()
-	var image_files = get_image_file_names()
-	for file_name in image_files:
+	var video_files = get_video_file_names()
+	for file_name in video_files:
 		var data = MovieListData.new()
 		data.index = list.size() + 1
 		data.banner_path = "res://Assets/StreamingAssets/Videos/" + file_name
@@ -17,7 +17,7 @@ func refresh_image_list():
 	for item in list:
 		print("Item: %s" % [item.title])
 
-func get_image_file_names():
+func get_video_file_names():
 	var dir_path = "res://Assets/StreamingAssets/Videos"
 	var file_names := []
 
@@ -30,7 +30,7 @@ func get_image_file_names():
 				break
 			if dir.current_is_dir():
 				continue
-			if file_name.ends_with(".ogv"):
+			if file_name.ends_with(".mp4"):
 				file_names.append(file_name)
 		dir.list_dir_end()
 	else:
