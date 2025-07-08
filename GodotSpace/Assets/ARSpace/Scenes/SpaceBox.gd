@@ -20,3 +20,10 @@ func play_dashiyangui_animation():
 		dashiyangui.play_from_ui()
 	else:
 		printerr("❌ dashiyangui 上找不到 play_from_ui 方法")
+		
+# ✅ 新增：让 Global.spacebox_controller.play_step(x) 成立
+func play_step(step_index: int):
+	if dashiyangui and dashiyangui.has_method("play_step"):
+		dashiyangui.play_step(step_index)
+	else:
+		printerr("❌ dashiyangui 上找不到 play_step 方法")
