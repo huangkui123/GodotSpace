@@ -83,6 +83,12 @@ func bind_page(index: int):
 
 func bind_item(item: WorkListInfoItem, infos: WorkListInfoData):
 	print(self.name, ": WorkListInfoStep = ", infos.step)
+		# ✅ 每次翻页时播放对应动画	
+	print("🟦 [DEBUG] 尝试播放动画 Step", infos.step)
+	if Global.spacebox_controller:
+		Global.spacebox_controller.play_step(infos.step)
+	else:
+		print("❌ [DEBUG] Global.spacebox_controller 为空")
 	item.refresh_info(infos)
 
 func pre_click():
