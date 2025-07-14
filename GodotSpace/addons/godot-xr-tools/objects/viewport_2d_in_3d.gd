@@ -138,6 +138,9 @@ var _drag_start_window_transform : Transform3D = Transform3D.IDENTITY
 var _drag_offset_transform : Transform3D = Transform3D.IDENTITY
 var _drag_pointer : Node3D = null
 
+# Child visibility tracking
+var _child_visible : bool = true
+
 
 # Add support for is_xr_class on XRTools classes
 func is_xr_class(p_name : String) -> bool:
@@ -161,6 +164,9 @@ func _ready():
 
 	# Update the render objects
 	_update_render()
+	
+	# Initialize child visibility tracking
+	_update_child_visibility_tracking()
 
 
 # Provide custom property information
@@ -388,6 +394,49 @@ func _on_visibility_changed() -> void:
 	_update_render()
 
 
+# Update child visibility tracking
+func _update_child_visibility_tracking() -> void:
+	# Disconnect previous signal if connected
+	if scene_node and scene_node.has_signal("visibility_changed"):
+		if scene_node.visibility_changed.is_connected(_on_child_visibility_changed):
+			scene_node.visibility_changed.disconnect(_on_child_visibility_changed)
+	
+	# Try to get the target child node
+	var target_child = _get_target_child_node()
+	if target_child and target_child.has_signal("visibility_changed"):
+		# Connect to the visibility changed signal
+		target_child.visibility_changed.connect(_on_child_visibility_changed)
+		# Update current visibility state
+		_child_visible = target_child.visible
+	else:
+		# If no target child, assume visible
+		_child_visible = true
+	
+	# Update collision state
+	if is_ready:
+		_update_enabled()
+
+
+# Get the target child node (Viewport.get_child(0).get_child(0))
+func _get_target_child_node() -> Node:
+	if not $Viewport or $Viewport.get_child_count() == 0:
+		return null
+	
+	var first_child = $Viewport.get_child(0)
+	if not first_child or first_child.get_child_count() == 0:
+		return null
+	
+	return first_child.get_child(0)
+
+
+# Handle child visibility changes
+func _on_child_visibility_changed() -> void:
+	var target_child = _get_target_child_node()
+	if target_child:
+		_child_visible = target_child.visible
+		_update_enabled()
+
+
 ## Set screen size property
 func set_screen_size(new_size: Vector2) -> void:
 	screen_size = new_size
@@ -490,7 +539,7 @@ func _update_enabled() -> void:
 	if Engine.is_editor_hint():
 		return
 
-	$StaticBody3D/CollisionShape3D.disabled = !enabled or not is_visible_in_tree()
+	$StaticBody3D/CollisionShape3D.disabled = !enabled or not is_visible_in_tree() or not _child_visible
 
 
 # Collision layer update handler
@@ -555,9 +604,15 @@ func _update_render() -> void:
 
 			# Finally add it to the scene, so values are available in _ready
 			$Viewport.add_child(scene_node)
+			
+			# Update child visibility tracking after scene is added
+			_update_child_visibility_tracking()
 		elif $Viewport.get_child_count() == 1:
 			# Use already-provided scene
 			scene_node = $Viewport.get_child(0)
+			
+			# Update child visibility tracking for existing scene
+			_update_child_visibility_tracking()
 
 		# Ensure the new scene is rendered at least once
 		_dirty |= _DIRTY_REDRAW
