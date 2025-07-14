@@ -761,7 +761,7 @@ func _handle_drag_input(event : XRToolsPointerEvent) -> void:
 
 
 # Get controller from pointer node
-func _get_controller_from_pointer(pointer : Node3D) -> XRController3D:
+func _get_controller_from_pointer(pointer : Node3D):
 	# Try to find controller in the pointer's hierarchy
 	var current = pointer
 	while current:
@@ -774,7 +774,7 @@ func _get_controller_from_pointer(pointer : Node3D) -> XRController3D:
 
 
 # Start dragging the window
-func _start_dragging(controller : XRController3D, pointer : Node3D, position : Vector3) -> void:
+func _start_dragging(controller : XRController3D, pointer : Node3D, position : Vector3):
 	_is_dragging = true
 	_drag_controller = controller
 	_drag_pointer = pointer
@@ -793,7 +793,7 @@ func _start_dragging(controller : XRController3D, pointer : Node3D, position : V
 
 
 # Update window position during drag
-func _update_drag_position(current_position : Vector3) -> void:
+func _update_drag_position(current_position : Vector3):
 	if not _is_dragging:
 		return
 	
@@ -806,7 +806,7 @@ func _update_drag_position(current_position : Vector3) -> void:
 
 
 # Stop dragging the window
-func _stop_dragging() -> void:
+func _stop_dragging():
 	if not _is_dragging:
 		return
 		
