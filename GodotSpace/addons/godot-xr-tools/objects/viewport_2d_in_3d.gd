@@ -90,6 +90,15 @@ const DEFAULT_LAYER := 0b0000_0000_0101_0000_0000_0000_0000_0001
 ## Allow gamepad input to viewport
 @export var input_gamepad : bool = false
 
+## Allow dragging window with grip button
+@export var allow_window_drag : bool = true
+
+## Grip action name for dragging
+@export var grip_action : String = "grip"
+
+## Minimum grip pressure to start dragging
+@export var grip_threshold : float = 0.7
+
 # Rendering property group
 @export_group("Rendering")
 
@@ -120,6 +129,14 @@ var viewport_texture : ViewportTexture
 var time_since_last_update : float = 0.0
 var _screen_material : StandardMaterial3D
 var _dirty := _DIRTY_ALL
+
+# Dragging state variables
+var _is_dragging : bool = false
+var _drag_controller : XRController3D = null
+var _drag_start_controller_transform : Transform3D = Transform3D.IDENTITY
+var _drag_start_window_transform : Transform3D = Transform3D.IDENTITY
+var _drag_offset_transform : Transform3D = Transform3D.IDENTITY
+var _drag_pointer : Node3D = null
 
 
 # Add support for is_xr_class on XRTools classes
@@ -302,6 +319,10 @@ func connect_scene_signal(which : String, callback : Callable, flags : int = 0):
 
 # Handle pointer event from screen-body
 func _on_pointer_event(event : XRToolsPointerEvent) -> void:
+	# Handle dragging functionality if enabled
+	if allow_window_drag:
+		_handle_drag_input(event)
+	
 	pointer_event.emit(event)
 
 
@@ -320,6 +341,17 @@ func _input(event):
 
 # Process event
 func _process(delta):
+	# Update dragging if active
+	if _is_dragging and _drag_controller:
+		# Continuously check grip state during dragging
+		var grip_value = _drag_controller.get_float(grip_action)
+		if grip_value < grip_threshold:
+			_stop_dragging()
+		else:
+			# Update window transform to follow controller
+			var current_controller_transform = _drag_controller.global_transform
+			global_transform = current_controller_transform * _drag_offset_transform
+	
 	# Process screen refreshing
 	if Engine.is_editor_hint():
 		# Perform periodic material refreshes to handle the user modifying the
@@ -338,8 +370,8 @@ func _process(delta):
 			time_since_last_update = 0.0
 			# Trigger update
 			$Viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
-	else:
-		# This is no longer needed
+	elif not _is_dragging and not allow_window_drag:
+		# Only disable process if we're not dragging and drag is disabled
 		set_process(false)
 
 
@@ -559,13 +591,13 @@ func _update_render() -> void:
 			$Viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
 			set_process(true)
 		elif update_mode == UpdateMode.UPDATE_ONCE or not is_visible_in_tree():
-			# Update once. Process function not used
+			# Update once. Process function may be needed for dragging
 			$Viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
-			set_process(false)
+			set_process(allow_window_drag)
 		elif update_mode == UpdateMode.UPDATE_ALWAYS:
-			# Update always. Process function not used
+			# Update always. Process function may be needed for dragging
 			$Viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-			set_process(false)
+			set_process(allow_window_drag)
 		elif update_mode == UpdateMode.UPDATE_THROTTLED:
 			# Update once. Process function triggers periodic refresh
 			$Viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
@@ -634,3 +666,104 @@ func _update_render() -> void:
 		# Force a redraw of the viewport
 		if Engine.is_editor_hint() or update_mode == UpdateMode.UPDATE_ONCE:
 			$Viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
+
+
+# Handle dragging input
+func _handle_drag_input(event : XRToolsPointerEvent) -> void:
+	# Get the controller from the pointer
+	var controller = _get_controller_from_pointer(event.pointer)
+	if not controller:
+		return
+	
+	# Get current grip value
+	var grip_value = controller.get_float(grip_action)
+	var is_grip_pressed = grip_value >= grip_threshold
+	
+	match event.event_type:
+		XRToolsPointerEvent.Type.ENTERED:
+			# Pointer entered, but don't start dragging yet
+			pass
+			
+		XRToolsPointerEvent.Type.MOVED:
+			# If we're dragging, update the window position
+			if _is_dragging and _drag_controller == controller:
+				_update_drag_position(event.position)
+		
+		XRToolsPointerEvent.Type.EXITED:
+			# If this was our dragging pointer, stop dragging
+			if _is_dragging and _drag_controller == controller:
+				_stop_dragging()
+	
+	# Check grip state changes regardless of event type
+	if is_grip_pressed and not _is_dragging and (
+		event.event_type == XRToolsPointerEvent.Type.ENTERED or
+		event.event_type == XRToolsPointerEvent.Type.MOVED):
+		# Start dragging
+		_start_dragging(controller, event.pointer, event.position)
+	elif not is_grip_pressed and _is_dragging and _drag_controller == controller:
+		# Stop dragging
+		_stop_dragging()
+
+
+# Get controller from pointer node
+func _get_controller_from_pointer(pointer : Node3D) -> XRController3D:
+	# Try to find controller in the pointer's hierarchy
+	var current = pointer
+	while current:
+		if current is XRController3D:
+			return current as XRController3D
+		current = current.get_parent()
+	
+	# If not found directly, try using XRHelpers
+	return XRHelpers.get_xr_controller(pointer)
+
+
+# Start dragging the window
+func _start_dragging(controller : XRController3D, pointer : Node3D, position : Vector3) -> void:
+	_is_dragging = true
+	_drag_controller = controller
+	_drag_pointer = pointer
+	
+	# Record the initial transforms
+	_drag_start_controller_transform = controller.global_transform
+	_drag_start_window_transform = global_transform
+	
+	# Calculate the offset transform from controller to window
+	# This represents how the window is positioned relative to the controller when grabbing starts
+	_drag_offset_transform = _drag_start_controller_transform.affine_inverse() * _drag_start_window_transform
+	
+	# Optionally provide haptic feedback
+	if controller.has_method("pulse"):
+		controller.pulse(0.3, 0.1)
+
+
+# Update window position during drag
+func _update_drag_position(current_position : Vector3) -> void:
+	if not _is_dragging:
+		return
+	
+	# Get the current controller transform
+	var current_controller_transform = _drag_controller.global_transform
+	
+	# Apply the window's offset relative to the controller's current transform
+	# This makes the window follow both the position and rotation of the controller
+	global_transform = current_controller_transform * _drag_offset_transform
+
+
+# Stop dragging the window
+func _stop_dragging() -> void:
+	if not _is_dragging:
+		return
+		
+	_is_dragging = false
+	
+	# Optionally provide haptic feedback
+	if _drag_controller and _drag_controller.has_method("pulse"):
+		_drag_controller.pulse(0.2, 0.05)
+	
+	# Clear dragging state
+	_drag_controller = null
+	_drag_pointer = null
+	_drag_start_controller_transform = Transform3D.IDENTITY
+	_drag_start_window_transform = Transform3D.IDENTITY
+	_drag_offset_transform = Transform3D.IDENTITY
