@@ -139,7 +139,10 @@ var _drag_offset_transform : Transform3D = Transform3D.IDENTITY
 var _drag_pointer : Node3D = null
 
 # Child visibility tracking
-var _child_visible : bool = true
+var _child_visible : bool = false
+
+# Window positioning tracking
+var _was_visible_last_frame : bool = false
 
 
 # Add support for is_xr_class on XRTools classes
@@ -167,6 +170,9 @@ func _ready():
 	
 	# Initialize child visibility tracking
 	_update_child_visibility_tracking()
+	
+	# Initialize visibility state tracking
+	_was_visible_last_frame = is_visible_in_tree() and _child_visible
 
 
 # Provide custom property information
@@ -313,7 +319,7 @@ func _update_scene_property_list():
 
 
 ## Get the 2D scene instance
-func get_scene_instance() -> Node:
+func get_scene_instance():
 	return scene_node
 
 
@@ -324,7 +330,13 @@ func connect_scene_signal(which : String, callback : Callable, flags : int = 0):
 
 
 # Handle pointer event from screen-body
-func _on_pointer_event(event : XRToolsPointerEvent) -> void:
+func _on_pointer_event(event : XRToolsPointerEvent):
+	# 记录窗口被点击的位置（当按下时）
+	if event.event_type == XRToolsPointerEvent.Type.PRESSED:
+		# 使用 Global 单例记录当前窗口的位置
+		if Global and Global.has_method("set_last_clicked_window"):
+			Global.set_last_clicked_window(self)
+	
 	# Handle dragging functionality if enabled
 	if allow_window_drag:
 		_handle_drag_input(event)
@@ -348,15 +360,6 @@ func _input(event):
 # Process event
 func _process(delta):
 	# Update dragging if active
-	if _is_dragging and _drag_controller:
-		# Continuously check grip state during dragging
-		var grip_value = _drag_controller.get_float(grip_action)
-		if grip_value < grip_threshold:
-			_stop_dragging()
-		else:
-			# Update window transform to follow controller
-			var current_controller_transform = _drag_controller.global_transform
-			global_transform = current_controller_transform * _drag_offset_transform
 	
 	# Process screen refreshing
 	if Engine.is_editor_hint():
@@ -382,11 +385,12 @@ func _process(delta):
 
 
 # Handle visibility changed
-func _on_visibility_changed() -> void:
+func _on_visibility_changed():
 	# Fire visibility changed in scene
 	if scene_node:
 		scene_node.propagate_notification(
 			CanvasItem.NOTIFICATION_VISIBILITY_CHANGED)
+
 
 	# Update collision and rendering based on visibility
 	_update_enabled()
@@ -394,8 +398,18 @@ func _on_visibility_changed() -> void:
 	_update_render()
 
 
+# 将窗口定位到上一个被点击的窗口的右侧
+func _position_window_relative_to_last_clicked():
+	if Global and Global.has_method("get_new_window_transform"):
+		var new_transform = Global.get_new_window_transform()
+		# 只在有有效的上一个窗口位置时才应用新位置
+		if Global.last_clicked_window_position != Vector3.ZERO:
+			global_transform = new_transform
+			print("✅ 窗口已定位到上一个被点击窗口的右侧: ", global_position)
+
+
 # Update child visibility tracking
-func _update_child_visibility_tracking() -> void:
+func _update_child_visibility_tracking():
 	# Disconnect previous signal if connected
 	if scene_node and scene_node.has_signal("visibility_changed"):
 		if scene_node.visibility_changed.is_connected(_on_child_visibility_changed):
@@ -408,6 +422,7 @@ func _update_child_visibility_tracking() -> void:
 		target_child.visibility_changed.connect(_on_child_visibility_changed)
 		# Update current visibility state
 		_child_visible = target_child.visible
+
 	else:
 		# If no target child, assume visible
 		_child_visible = true
@@ -418,7 +433,7 @@ func _update_child_visibility_tracking() -> void:
 
 
 # Get the target child node (Viewport.get_child(0).get_child(0))
-func _get_target_child_node() -> Node:
+func _get_target_child_node():
 	if not $Viewport or $Viewport.get_child_count() == 0:
 		return null
 	
@@ -430,7 +445,7 @@ func _get_target_child_node() -> Node:
 
 
 # Handle child visibility changes
-func _on_child_visibility_changed() -> void:
+func _on_child_visibility_changed():
 	var target_child = _get_target_child_node()
 	if target_child:
 		_child_visible = target_child.visible
@@ -438,28 +453,28 @@ func _on_child_visibility_changed() -> void:
 
 
 ## Set screen size property
-func set_screen_size(new_size: Vector2) -> void:
+func set_screen_size(new_size: Vector2):
 	screen_size = new_size
 	if is_ready:
 		_update_screen_size()
 
 
 ## Set enabled property
-func set_enabled(is_enabled: bool) -> void:
+func set_enabled(is_enabled: bool):
 	enabled = is_enabled
 	if is_ready:
 		_update_enabled()
 
 
 ## Set collision layer property
-func set_collision_layer(new_layer: int) -> void:
+func set_collision_layer(new_layer: int):
 	collision_layer = new_layer
 	if is_ready:
 		_update_collision_layer()
 
 
 ## Set scene property
-func set_scene(new_scene: PackedScene) -> void:
+func set_scene(new_scene: PackedScene):
 	scene = new_scene
 	_dirty |= _DIRTY_SCENE
 	if is_ready:
@@ -467,7 +482,7 @@ func set_scene(new_scene: PackedScene) -> void:
 
 
 ## Set viewport size property
-func set_viewport_size(new_size: Vector2) -> void:
+func set_viewport_size(new_size: Vector2):
 	viewport_size = new_size
 	_dirty |= _DIRTY_SIZE
 	if is_ready:
@@ -475,7 +490,7 @@ func set_viewport_size(new_size: Vector2) -> void:
 
 
 ## Set update mode property
-func set_update_mode(new_update_mode: UpdateMode) -> void:
+func set_update_mode(new_update_mode: UpdateMode):
 	update_mode = new_update_mode
 	_dirty |= _DIRTY_UPDATE
 	if is_ready:
@@ -483,7 +498,7 @@ func set_update_mode(new_update_mode: UpdateMode) -> void:
 
 
 ## Set material property
-func set_material(new_material: StandardMaterial3D) -> void:
+func set_material(new_material: StandardMaterial3D):
 	material = new_material
 	notify_property_list_changed()
 	_dirty |= _DIRTY_MATERIAL
@@ -492,7 +507,7 @@ func set_material(new_material: StandardMaterial3D) -> void:
 
 
 ## Set transparent property
-func set_transparent(new_transparent: TransparancyMode) -> void:
+func set_transparent(new_transparent: TransparancyMode):
 	transparent = new_transparent
 	notify_property_list_changed()
 	_dirty |= _DIRTY_TRANSPARENCY
@@ -501,7 +516,7 @@ func set_transparent(new_transparent: TransparancyMode) -> void:
 
 
 ## Set the alpha scisser threshold
-func set_alpha_scissor_threshold(new_threshold: float) -> void:
+func set_alpha_scissor_threshold(new_threshold: float):
 	alpha_scissor_threshold = new_threshold
 	_dirty |= _DIRTY_ALPHA_SCISSOR
 	if is_ready:
@@ -509,7 +524,7 @@ func set_alpha_scissor_threshold(new_threshold: float) -> void:
 
 
 ## Set the unshaded property
-func set_unshaded(new_unshaded : bool) -> void:
+func set_unshaded(new_unshaded : bool):
 	unshaded = new_unshaded
 	_dirty |= _DIRTY_UNSHADED
 	if is_ready:
@@ -517,7 +532,7 @@ func set_unshaded(new_unshaded : bool) -> void:
 
 
 ## Set filter property
-func set_filter(new_filter: bool) -> void:
+func set_filter(new_filter: bool):
 	filter = new_filter
 	_dirty |= _DIRTY_FILTERED
 	if is_ready:
@@ -525,7 +540,7 @@ func set_filter(new_filter: bool) -> void:
 
 
 # Screen size update handler
-func _update_screen_size() -> void:
+func _update_screen_size():
 	$Screen.mesh.size = screen_size
 	$StaticBody3D.screen_size = screen_size
 	$StaticBody3D/CollisionShape3D.shape.size = Vector3(
@@ -535,21 +550,30 @@ func _update_screen_size() -> void:
 
 
 # Enabled update handler
-func _update_enabled() -> void:
+func _update_enabled():
 	if Engine.is_editor_hint():
 		return
+
+	# 如果窗口从隐藏变为可见，设置新的位置
+	var is_currently_visible = _child_visible
+	print("窗口可见性状态: ", is_currently_visible, _was_visible_last_frame)
+	if is_currently_visible and not _was_visible_last_frame:
+		_position_window_relative_to_last_clicked()
+	
+	# 更新可见性状态
+	_was_visible_last_frame = is_currently_visible
 
 	$StaticBody3D/CollisionShape3D.disabled = !enabled or not is_visible_in_tree() or not _child_visible
 
 
 # Collision layer update handler
-func _update_collision_layer() -> void:
+func _update_collision_layer():
 	$StaticBody3D.collision_layer = collision_layer
 
 
 # This complex function processes the render dirty flags and performs the
 # minimal number of updates to get the render objects into the correct state.
-func _update_render() -> void:
+func _update_render():
 	# Handle material change
 	if _dirty & _DIRTY_MATERIAL:
 		_dirty &= ~_DIRTY_MATERIAL
@@ -724,7 +748,7 @@ func _update_render() -> void:
 
 
 # Handle dragging input
-func _handle_drag_input(event : XRToolsPointerEvent) -> void:
+func _handle_drag_input(event : XRToolsPointerEvent):
 	# Get the controller from the pointer
 	var controller = _get_controller_from_pointer(event.pointer)
 	if not controller:
@@ -791,18 +815,40 @@ func _start_dragging(controller : XRController3D, pointer : Node3D, position : V
 	if controller.has_method("pulse"):
 		controller.pulse(0.3, 0.1)
 
+var _last_drag_position : Vector3 = Vector3.ZERO
 
 # Update window position during drag
 func _update_drag_position(current_position : Vector3):
 	if not _is_dragging:
 		return
-	
-	# Get the current controller transform
+
 	var current_controller_transform = _drag_controller.global_transform
-	
-	# Apply the window's offset relative to the controller's current transform
-	# This makes the window follow both the position and rotation of the controller
-	global_transform = current_controller_transform * _drag_offset_transform
+	var new_transform = global_transform
+	new_transform.origin = (current_controller_transform * _drag_offset_transform).origin
+
+	# 使用线性插值平滑位置变化
+	if _last_drag_position != Vector3.ZERO:
+		new_transform.origin = _last_drag_position.lerp(new_transform.origin, 0.3) # 调整插值因子以控制平滑程度
+
+	# 让窗口朝向摄像机
+	var camera = get_viewport().get_camera_3d()
+	if camera:
+		var to_camera = (camera.global_transform.origin - new_transform.origin).normalized()
+		var up = Vector3.UP
+		# 让Z轴朝向摄像机
+		var new_basis = Basis()
+		new_basis.z = to_camera
+		new_basis.x = up.cross(to_camera).normalized()
+		new_basis.y = to_camera.cross(new_basis.x).normalized()
+		# 保留原来的缩放
+		var scale = new_transform.basis.get_scale()
+		new_basis = new_basis.scaled(scale)
+		new_transform.basis = new_basis
+
+	global_transform = new_transform
+
+	# 更新上一次的位置
+	_last_drag_position = new_transform.origin
 
 
 # Stop dragging the window

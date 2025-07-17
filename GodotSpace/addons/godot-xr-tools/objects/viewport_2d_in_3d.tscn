@@ -7,13 +7,13 @@
 resource_local_to_scene = true
 size = Vector2(3, 2)
 
-[sub_resource type="ViewportTexture" id="ViewportTexture_1mlno"]
+[sub_resource type="ViewportTexture" id="ViewportTexture_gvc48"]
 viewport_path = NodePath("Viewport")
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_gvc48"]
 transparency = 1
 cull_mode = 2
-albedo_texture = SubResource("ViewportTexture_1mlno")
+albedo_texture = SubResource("ViewportTexture_gvc48")
 texture_filter = 1
 
 [sub_resource type="BoxShape3D" id="4"]
@@ -22,9 +22,6 @@ size = Vector3(3, 2, 0.02)
 
 [node name="Viewport2Din3D" type="Node3D"]
 script = ExtResource("1")
-allow_window_drag = null
-grip_action = null
-grip_threshold = null
 alpha_scissor_threshold = 0.25
 unshaded = false
 filter = true
