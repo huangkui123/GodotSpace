@@ -16,7 +16,7 @@ var can_max: bool = true
 
 func _ready():
 	print("PictureUIView _ready")
-	# self.visible = false
+	self.visible = false
 	Global.picture_canvas = self
 	info_save_list = []
 #	scale = self.transform.basis.get_scale()
