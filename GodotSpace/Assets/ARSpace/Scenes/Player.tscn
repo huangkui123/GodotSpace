@@ -1,0 +1,43 @@
+[gd_scene load_steps=4 format=3 uid="uid://c0oao8sfhry88"]
+
+[ext_resource type="Script" uid="uid://wnij2dalp1lv" path="res://Assets/ARSpace/Scenes/player.gd" id="1_71hh1"]
+[ext_resource type="PackedScene" uid="uid://xxvflxhi3tku" path="res://Assets/ARSpace/Scenes/Player_XR.tscn" id="1_j61gx"]
+
+[sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_j61gx"]
+properties/0/path = NodePath("XROrigin3D/XRCamera3D:position")
+properties/0/spawn = true
+properties/0/replication_mode = 1
+properties/1/path = NodePath("XROrigin3D/XRCamera3D:rotation")
+properties/1/spawn = true
+properties/1/replication_mode = 1
+properties/2/path = NodePath("XROrigin3D:position")
+properties/2/spawn = true
+properties/2/replication_mode = 1
+properties/3/path = NodePath("XROrigin3D:rotation")
+properties/3/spawn = true
+properties/3/replication_mode = 1
+properties/4/path = NodePath("XROrigin3D/LeftHand:position")
+properties/4/spawn = true
+properties/4/replication_mode = 1
+properties/5/path = NodePath("XROrigin3D/LeftHand:rotation")
+properties/5/spawn = true
+properties/5/replication_mode = 1
+properties/6/path = NodePath("XROrigin3D/RightHand:position")
+properties/6/spawn = true
+properties/6/replication_mode = 1
+properties/7/path = NodePath("XROrigin3D/RightHand:rotation")
+properties/7/spawn = true
+properties/7/replication_mode = 1
+
+[node name="Player" type="Node3D"]
+script = ExtResource("1_71hh1")
+
+[node name="XROrigin3D" parent="." instance=ExtResource("1_j61gx")]
+
+[node name="Head" parent="XROrigin3D/XRCamera3D" index="0"]
+transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, 0, -0.01, 0.1)
+
+[node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="."]
+replication_config = SubResource("SceneReplicationConfig_j61gx")
+
+[editable path="XROrigin3D"]
