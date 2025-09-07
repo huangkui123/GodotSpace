@@ -3,6 +3,7 @@ extends Node3D
 var xr_interface: XRInterface
 
 @onready var spectator_camera = $SpectatorCamera
+@export var subUI: Camera3D
 
 func _ready():
 	if multiplayer.is_server():
@@ -20,3 +21,10 @@ func _ready():
 			get_viewport().use_xr = true
 		else:
 			print("OpenXR not initialized, please check if your headset is connected")
+
+func _process(delta: float):
+	if multiplayer.is_server():
+		# 找到叫做XRCamera3D的节点。注意它并不一是主相机，因为主相机在13行被覆盖了
+		var xr_camera = find_child("XRCamera3D", true, false)
+		if xr_camera:
+			subUI.transform = xr_camera.global_transform

@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://c2y8ujsirie4e" path="res://Assets/ARSpace/Scenes/startmenu_ui.gd" id="1_vmui7"]
 
 [node name="StartMenu" type="Node2D"]
+position = Vector2(-1, 0)
 
 [node name="UI" type="Control" parent="."]
 layout_mode = 3
