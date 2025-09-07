@@ -4,9 +4,28 @@ extends Node3D
 @onready var environment_node := $SpaceBox/Environment_Life
 @onready var dashiyangui := $SpaceBox/dashiyangui
 
+@onready var worklist1 := $SpaceBox/WorkEffect/WorkList1
+
 func _ready():
 	Global.spacebox_controller = self
+	worklist1.visible = false  # 默认隐藏
 	print("✅ SpaceBox 控制器已注册到 Global 单例")
+
+func set_worklist1_visible(visible: bool):
+	if worklist1 and is_instance_valid(worklist1):
+		worklist1.visible = visible
+		print("✅ 设置 WorkList1 可见性为: ", visible)
+	else:
+		printerr("❌ WorkList1 无法访问")
+
+func show_only_work_info(step_index: int):
+	var work_info_root := $SpaceBox/WorkEffect/WorkList1
+	for i in range(1, 21):
+		var info_node := work_info_root.get_node_or_null("WorkInfo%d" % i)
+		if info_node:
+			info_node.visible = (i == step_index)
+		else:
+			printerr("❌ 未找到 WorkInfo%d 节点" % i)
 
 func set_environment_visible(visible: bool) -> void:
 	if environment_node and is_instance_valid(environment_node):
