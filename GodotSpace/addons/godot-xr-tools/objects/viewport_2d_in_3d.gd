@@ -330,7 +330,59 @@ func connect_scene_signal(which : String, callback : Callable, flags : int = 0):
 
 
 # Handle pointer event from screen-body
-func _on_pointer_event(event : XRToolsPointerEvent):
+func _on_pointer_event(event: XRToolsPointerEvent):
+	if multiplayer.is_server():
+		# 如果自己就是服务器，直接处理事件
+		pass
+		# _handle_pointer_event(multiplayer.get_unique_id(), event)
+	else:
+		# 如果是客户端，把事件信息发给服务器
+		var controller = _get_controller_from_pointer(event.pointer)
+		var grip_value : float = 0
+		if controller:
+			grip_value = controller.get_float(grip_action)
+		var data = {
+			"event_type": event.event_type,
+			"pointer_name": event.pointer.get_path(),
+			"target_name": event.target.get_path(),
+			"position": event.position,
+			"last_position": event.last_position,
+			"grip_value": grip_value
+		}
+		# print("客户端发送点击事件到服务器: ", data)
+		rpc_id(1, "server_receive_pointer_event", data)
+		_handle_pointer_event(multiplayer.get_unique_id(), event, grip_value)
+
+
+@rpc("any_peer")
+func server_receive_pointer_event(data: Dictionary):
+	# 这里一定只会在服务器跑
+	var sender_id = multiplayer.get_remote_sender_id()
+
+	var pointer_node : Node3D = null
+	if data.has("pointer_name") and data.pointer_name != NodePath(""):
+		pointer_node = get_node_or_null(data.pointer_name)
+	var target_node : Node3D = null
+	if data.has("target_name") and data.target_name != NodePath(""):
+		target_node = get_node_or_null(data.target_name)
+
+	# 如果想在服务器端复现事件，可以构造一个假的 XRToolsPointerEvent
+	var fake_event = XRToolsPointerEvent.new(
+		data.get("event_type", XRToolsPointerEvent.Type.PRESSED),
+		pointer_node,
+		target_node,
+		data.get("position", Vector3.ZERO),
+		data.get("last_position", Vector3.ZERO),
+	)
+
+	if data.get("event_type") == 2:
+		print("服务器收到来自 %s 的点击事件: %s" % [sender_id, data.get("event_type", "unknown")])
+		print("pointer_node: ", pointer_node) 
+		print("target_node: ", target_node)
+
+	_handle_pointer_event(sender_id, fake_event, data.get("grip_value", 0.0))
+
+func _handle_pointer_event(player_id: int, event: XRToolsPointerEvent, grip_value: float):
 	# 记录窗口被点击的位置（当按下时）
 	if event.event_type == XRToolsPointerEvent.Type.PRESSED:
 		# 使用 Global 单例记录当前窗口的位置
@@ -339,7 +391,7 @@ func _on_pointer_event(event : XRToolsPointerEvent):
 	
 	# Handle dragging functionality if enabled
 	if allow_window_drag:
-		_handle_drag_input(event)
+		_handle_drag_input(event, grip_value)
 	
 	pointer_event.emit(event)
 
@@ -748,15 +800,16 @@ func _update_render():
 
 
 # Handle dragging input
-func _handle_drag_input(event : XRToolsPointerEvent):
+func _handle_drag_input(event : XRToolsPointerEvent, grip_value: float):
 	# Get the controller from the pointer
 	var controller = _get_controller_from_pointer(event.pointer)
 	if not controller:
 		return
 	
 	# Get current grip value
-	var grip_value = controller.get_float(grip_action)
 	var is_grip_pressed = grip_value >= grip_threshold
+	# if multiplayer.is_server():
+	# 	print("grip_value: ", grip_value)
 	
 	match event.event_type:
 		XRToolsPointerEvent.Type.ENTERED:

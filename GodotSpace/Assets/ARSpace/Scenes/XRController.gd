@@ -48,8 +48,8 @@ func _find_xr_origin(root: Node) -> Node:
 			return found
 	return null
 
-func _on_button_pressed(button_name: String, controller: XRController3D) -> void:
-	#print("🎮 按钮按下：", button_name, " 来自控制器：", controller.name)
+func _on_button_pressed(button_name: String, controller: XRController3D):
+	# print("🎮 按钮按下：", button_name, " 来自控制器：", controller.name)
 	if button_name == "ax_button":
 		_toggle_viewport()
 
