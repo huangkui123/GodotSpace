@@ -51,7 +51,53 @@ func global_to_viewport(p_at : Vector3) -> Vector2:
 
 
 # Pointer event handler
-func _on_pointer_event(event : XRToolsPointerEvent) -> void:
+func _on_pointer_event(event: XRToolsPointerEvent):
+	if multiplayer.is_server():
+		pass
+	else:
+		# 如果是客户端，把事件信息发给服务器
+		var data = {
+			"event_type": event.event_type,
+			"pointer_name": event.pointer.get_path(),
+			"target_name": event.target.get_path(),
+			"position": event.position,
+			"last_position": event.last_position
+		}
+		# print("客户端发送点击事件到服务器: ", data)
+		rpc_id(1, "server_receive_pointer_event", data)
+		_handle_pointer_event(multiplayer.get_unique_id(), event)
+
+
+@rpc("any_peer")
+func server_receive_pointer_event(data: Dictionary):
+	# 这里一定只会在服务器跑
+	var sender_id = multiplayer.get_remote_sender_id()
+
+	var pointer_node : Node3D = null
+	if data.has("pointer_name") and data.pointer_name != NodePath(""):
+		pointer_node = get_node_or_null(data.pointer_name)
+	var target_node : Node3D = null
+	if data.has("target_name") and data.target_name != NodePath(""):
+		target_node = get_node_or_null(data.target_name)
+
+	# 如果想在服务器端复现事件，可以构造一个假的 XRToolsPointerEvent
+	var fake_event = XRToolsPointerEvent.new(
+		data.get("event_type", XRToolsPointerEvent.Type.PRESSED),
+		pointer_node,
+		target_node,
+		data.get("position", Vector3.ZERO),
+		data.get("last_position", Vector3.ZERO),
+	)
+
+	if data.get("event_type") == 2:
+		print("服务器收到来自 %s 的点击事件: %s" % [sender_id, data.get("event_type", "unknown")])
+		print("pointer_node: ", pointer_node) 
+		print("target_node: ", target_node)
+
+	_handle_pointer_event(sender_id, fake_event)
+
+
+func _handle_pointer_event(player_id: int, event: XRToolsPointerEvent):
 	# Ignore if we have no viewport
 	if not is_instance_valid(_viewport):
 		return
