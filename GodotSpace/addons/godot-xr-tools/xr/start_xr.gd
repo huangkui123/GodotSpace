@@ -60,6 +60,8 @@ var _webxr_session_query : bool = false
 
 # Handle auto-initialization when ready
 func _ready() -> void:
+	if multiplayer.is_server():
+		return 
 	if !Engine.is_editor_hint():
 		_initialize()
 

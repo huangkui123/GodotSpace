@@ -1,5 +1,6 @@
-[gd_scene load_steps=8 format=3 uid="uid://xxvflxhi3tku"]
+[gd_scene load_steps=9 format=3 uid="uid://xxvflxhi3tku"]
 
+[ext_resource type="ArrayMesh" uid="uid://d0brnbp1j6ao0" path="res://Assets/VRIK/Editor/CoreRes/Char/PlayerM/extracted/PlayerM.PlayerM_Head.mesh" id="1_lar5o"]
 [ext_resource type="PackedScene" uid="uid://bpdj5njb8nhot" path="res://addons/godot-xr-tools/hands/scenes/highpoly/left_fullglove_hand.tscn" id="2_afngy"]
 [ext_resource type="PackedScene" uid="uid://b4ysuy43poobf" path="res://addons/godot-xr-tools/functions/function_pickup.tscn" id="2_ua15y"]
 [ext_resource type="PackedScene" uid="uid://b6bk2pj8vbj28" path="res://addons/godot-xr-tools/functions/movement_turn.tscn" id="3_roir7"]
@@ -11,6 +12,17 @@
 [node name="XROrigin3D" type="XROrigin3D"]
 
 [node name="XRCamera3D" type="XRCamera3D" parent="."]
+
+[node name="Head" type="MeshInstance3D" parent="XRCamera3D"]
+mesh = ExtResource("1_lar5o")
+blend_shapes/C_eye = 0.0
+blend_shapes/SMILE = 0.0
+blend_shapes/A = 0.0
+blend_shapes/E = 0.0
+blend_shapes/I = 0.0
+blend_shapes/O = 0.0
+blend_shapes/U = 0.0
+blend_shapes/V = 0.0
 
 [node name="LeftHand" type="XRController3D" parent="."]
 tracker = &"left_hand"
