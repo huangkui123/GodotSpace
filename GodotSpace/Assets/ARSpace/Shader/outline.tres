@@ -1,0 +1,9 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3 uid="uid://b653f0f21birk"]
+
+[ext_resource type="Shader" uid="uid://ct4qhyky775t0" path="res://Assets/ARSpace/Shader/outline.gdshader" id="1_hp5ld"]
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_hp5ld")
+shader_parameter/outline_color = Color(1, 0.244934, 0.190684, 1)
+shader_parameter/outline_width = 0.01

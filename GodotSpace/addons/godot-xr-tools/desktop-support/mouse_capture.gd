@@ -15,7 +15,7 @@ extends XRToolsMovementProvider
 @export var escape_action : String = "ui_cancel"
 
 #Last mouse capture status and should it be auto captured
-@export var capture : bool = true
+@export var capture : bool = false
 
 
 # XRStart node

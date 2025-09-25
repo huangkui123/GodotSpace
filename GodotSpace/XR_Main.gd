@@ -24,7 +24,6 @@ func _ready():
 
 func _process(delta: float):
 	if multiplayer.is_server():
-		# 找到叫做XRCamera3D的节点。注意它并不一是主相机，因为主相机在13行被覆盖了
 		var xr_camera = find_child("XRCamera3D", true, false)
 		if xr_camera:
 			subUI.transform = xr_camera.global_transform

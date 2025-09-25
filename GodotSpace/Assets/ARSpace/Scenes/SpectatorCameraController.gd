@@ -10,14 +10,23 @@ extends Camera3D
 var pitch_degrees: float = 0.0
 
 func _ready():
-	# 游戏开始时，捕获鼠标光标，使其隐藏并锁定在窗口中央
-	# 这样转动鼠标时就不会移出窗口
-	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+	# 游戏开始时，让鼠标可见并可以在屏幕上自由移动
+	# 只有按住右键时才控制摄像机视角
+	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 
 func _unhandled_input(event: InputEvent):
-	# 处理鼠标移动事件，用来旋转视角
+	# 处理鼠标按钮事件
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT:
+		if event.is_pressed():
+			# 按下右键时，捕获鼠标进行视角控制
+			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+		else:
+			# 释放右键时，恢复鼠标显示
+			Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+	
+	# 处理鼠标移动事件，只有在按住右键时才旋转视角
 	if event is InputEventMouseMotion:
-		# 按 Esc 键可以释放鼠标光标
+		# 只有在鼠标被捕获时（按住右键时）才控制视角
 		if Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
 			# 围绕Y轴旋转（左右看）
 			self.rotate_y(deg_to_rad(-event.relative.x * mouse_sensitivity))
@@ -28,14 +37,10 @@ func _unhandled_input(event: InputEvent):
 			self.rotation_degrees.x = 0
 			# 再围绕自己的X轴旋转
 			self.rotate_object_local(Vector3.RIGHT, deg_to_rad(pitch_degrees))
-			
+	
 	# 按下 Escape 键释放鼠标
 	if event.is_action_pressed("ui_cancel"): # "ui_cancel" 默认是 Escape 键
 		Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
-		
-	# 鼠标左键点击时，重新捕获鼠标
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.is_pressed():
-		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
 func _process(delta: float):
 	# 只有当这个相机是当前活动相机时，才处理移动逻辑

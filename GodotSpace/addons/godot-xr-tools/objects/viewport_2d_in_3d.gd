@@ -884,7 +884,7 @@ func _update_drag_position(current_position : Vector3):
 		new_transform.origin = _last_drag_position.lerp(new_transform.origin, 0.3) # 调整插值因子以控制平滑程度
 
 	# 让窗口朝向XRCamera3D
-	var camera = find_child("XRCamera3D", true, false)
+	var camera = get_tree().root.find_child("XRCamera3D", true, false)
 	if camera:
 		var to_camera = (camera.global_transform.origin - new_transform.origin).normalized()
 		var up = Vector3.UP
