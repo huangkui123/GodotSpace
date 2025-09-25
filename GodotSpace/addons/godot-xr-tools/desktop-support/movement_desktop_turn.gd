@@ -65,7 +65,9 @@ func is_xr_class(name : String) -> bool:
 func _unhandled_input(event):
 	if !enabled:
 		return
-	if event is InputEventMouseMotion:
+	
+	# 只有在按住鼠标右键时才响应鼠标移动
+	if event is InputEventMouseMotion and Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
 		event.relative*=.1
 		if invert_y:
 			event.relative.y *= -1
