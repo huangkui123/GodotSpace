@@ -8,6 +8,9 @@ extends Camera3D
 
 # 用于存储摄像机的俯仰角度
 var pitch_degrees: float = 0.0
+# 鼠标点击射线长度
+@export var ray_length = 1000.0
+@export var marker_scene = preload("res://Assets/ARSpace/Prefabs/Marker.prefab.scn")
 
 func _ready():
 	# 游戏开始时，让鼠标可见并可以在屏幕上自由移动
@@ -41,6 +44,47 @@ func _unhandled_input(event: InputEvent):
 	# 按下 Escape 键释放鼠标
 	if event.is_action_pressed("ui_cancel"): # "ui_cancel" 默认是 Escape 键
 		Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+		
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.is_pressed():
+		#Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+		
+		# 计算点击的3D位置
+		var mouse_pos = get_viewport().get_mouse_position()
+		var ray_origin = project_ray_origin(mouse_pos)
+		var ray_direction = project_ray_normal(mouse_pos)
+		var ray_end = ray_origin + ray_direction * ray_length
+
+		var space_state = get_world_3d().direct_space_state
+		var query = PhysicsRayQueryParameters3D.create(ray_origin, ray_end)
+		var collision = space_state.intersect_ray(query)
+
+		if collision:
+			var hit_position = collision.position
+			
+			# 1. 在服务器端本地创建标记（红色球体）
+			var marker = marker_scene.instantiate()
+			get_parent().add_child(marker)  # 添加到场景树
+			marker.setup(hit_position)
+			
+			# 2. 发送点击位置到所有客户端
+			var network_handler = get_node("/root/NetworkHandler")
+			if network_handler:
+				print("服务器调用NetworkHandler的RPC create_marker_at_position")
+				
+				# 检查网络状态
+				print("服务器网络状态:", multiplayer.multiplayer_peer.get_connection_status())
+				
+				# 获取所有连接的客户端
+				var peer_ids = multiplayer.get_peers()
+				print("连接的客户端ID:", peer_ids)
+				
+				# 尝试直接发送给所有客户端
+				for peer_id in peer_ids:
+					print("发送给客户端:", peer_id)
+					network_handler.rpc_id(peer_id, "create_marker_at_position", hit_position)
+			else:
+				print("错误：未找到NetworkHandler节点")
+
 
 func _process(delta: float):
 	# 只有当这个相机是当前活动相机时，才处理移动逻辑
