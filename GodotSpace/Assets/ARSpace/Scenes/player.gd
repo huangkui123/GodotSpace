@@ -6,7 +6,7 @@ func _enter_tree():
 	set_multiplayer_authority(name.to_int())
 
 func _ready():
-	if not multiplayer.is_server():
+	if not multiplayer.is_server() and not OS.get_cmdline_args().has("--testmode"):
 		xr_camera.make_current()
 
 func _process(delta: float):
