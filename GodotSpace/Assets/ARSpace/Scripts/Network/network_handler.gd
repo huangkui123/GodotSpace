@@ -12,6 +12,7 @@ var peer: ENetMultiplayerPeer
 
 func _ready():
 	multiplayer.connected_to_server.connect(_on_connected_to_server)
+	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
 
 func start_server():
 	peer = ENetMultiplayerPeer.new()
@@ -30,6 +31,10 @@ func start_client():
 func _on_connected_to_server():
 	print("已成功连接到服务器！")
 	network_ready.emit()
+
+# 处理玩家断开连接
+func _on_peer_disconnected(peer_id: int):
+	print("玩家 %d 已断开连接" % peer_id)
 
 # 接收服务器发送的标记创建请求
 @rpc("authority", "call_local", "reliable")

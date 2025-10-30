@@ -29,6 +29,7 @@ func refresh_info(data: MovieListData):
 		if stream:
 			stream.set_file(file_path)
 			banner_video.stream = stream
+			banner_video.volume_db = -80  # 静音视频
 			banner_video.play()
 			await get_tree().create_timer(0.5).timeout
 			banner_video.paused = true

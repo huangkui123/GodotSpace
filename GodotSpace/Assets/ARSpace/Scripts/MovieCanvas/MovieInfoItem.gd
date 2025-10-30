@@ -21,6 +21,7 @@ func set_video(name: String):
 			stream.set_file(file_path)
 			is_playing = true
 			banner_video.stream = stream
+			banner_video.volume_db = -80  # 静音视频
 			banner_video.play()
 			texture_button.texture_normal = icons[1] # 设置为暂停图标
 			# await get_tree().create_timer(0.5).timeout

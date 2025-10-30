@@ -49,6 +49,7 @@ func refresh_info(data: WorkListInfoData):
 				if stream:
 					stream.set_file(file_path)
 					banner_video.stream = stream
+					banner_video.volume_db = -80  # 静音视频
 					banner_video.play()
 
 		3: # Animation

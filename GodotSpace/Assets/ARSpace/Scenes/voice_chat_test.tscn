@@ -1,0 +1,66 @@
+[gd_scene load_steps=5 format=3 uid="uid://cqw8k3h5j7n2m"]
+
+[ext_resource type="Script" uid="uid://di3ehav56y1qd" path="res://Assets/ARSpace/Scripts/Network/voice_chat_example.gd" id="1"]
+[ext_resource type="PackedScene" uid="uid://bv8x3yq7hfn1k" path="res://Assets/ARSpace/Scenes/voice_chat_ui.tscn" id="2"]
+[ext_resource type="Script" uid="uid://bbnbncf7ffrja" path="res://Assets/ARSpace/Scripts/Network/voice_chat_debug.gd" id="3"]
+[ext_resource type="Script" path="res://Assets/ARSpace/Scripts/Network/voice_chat_simulator.gd" id="4"]
+
+[node name="VoiceChatTest" type="Node3D"]
+script = ExtResource("1")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 3)
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.707107, 0.707107, 0, -0.707107, 0.707107, 0, 5, 0)
+
+[node name="VoiceChatUI" parent="." instance=ExtResource("2")]
+
+[node name="VoiceChatDebug" type="Node" parent="."]
+script = ExtResource("3")
+
+[node name="VoiceChatSimulator" type="Node" parent="."]
+script = ExtResource("4")
+
+[node name="NetworkPanel" type="Panel" parent="."]
+offset_left = 20.0
+offset_top = 20.0
+offset_right = 220.0
+offset_bottom = 266.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="NetworkPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Label" type="Label" parent="NetworkPanel/VBoxContainer"]
+layout_mode = 2
+text = "网络控制"
+horizontal_alignment = 1
+
+[node name="ServerButton" type="Button" parent="NetworkPanel/VBoxContainer"]
+layout_mode = 2
+text = "启动服务器"
+
+[node name="ClientButton" type="Button" parent="NetworkPanel/VBoxContainer"]
+layout_mode = 2
+text = "连接服务器"
+
+[node name="InfoLabel" type="Label" parent="NetworkPanel/VBoxContainer"]
+layout_mode = 2
+text = "按 V 切换语音
+按住 M 说话
+按 T 测试麦克风
+按 F 播放测试音频
+按 G 生成音调"
+horizontal_alignment = 1
+
+[connection signal="pressed" from="NetworkPanel/VBoxContainer/ServerButton" to="." method="_on_server_button_pressed"]
+[connection signal="pressed" from="NetworkPanel/VBoxContainer/ClientButton" to="." method="_on_client_button_pressed"]
