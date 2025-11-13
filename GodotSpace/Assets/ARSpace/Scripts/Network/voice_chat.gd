@@ -2,9 +2,8 @@
 extends Node
 
 # 语音设置
-const SAMPLE_RATE = 44100  # 采样率 (Hz) - 改为标准采样率以匹配麦克风
+const SAMPLE_RATE = 48000  # 采样率 (Hz) - 改为标准采样率以匹配麦克风
 const BUFFER_SIZE = 512   # 缓冲区大小
-const MIX_RATE = 44100     # Godot混音速率
 
 # 语音状态
 var is_recording: bool = false
@@ -42,6 +41,7 @@ func _setup_audio_capture():
 	
 	# 添加捕获效果
 	audio_effect_capture = AudioEffectCapture.new()
+	audio_effect_capture.buffer_length = 0.1  # 100ms缓冲
 	AudioServer.add_bus_effect(bus_index, audio_effect_capture)
 	AudioServer.set_bus_mute(bus_index, true)  # 静音以避免回声
 	

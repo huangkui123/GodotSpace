@@ -1,9 +1,8 @@
-[gd_scene load_steps=5 format=3 uid="uid://cqw8k3h5j7n2m"]
+[gd_scene load_steps=4 format=3 uid="uid://cqw8k3h5j7n2m"]
 
 [ext_resource type="Script" uid="uid://di3ehav56y1qd" path="res://Assets/ARSpace/Scripts/Network/voice_chat_example.gd" id="1"]
 [ext_resource type="PackedScene" uid="uid://bv8x3yq7hfn1k" path="res://Assets/ARSpace/Scenes/voice_chat_ui.tscn" id="2"]
 [ext_resource type="Script" uid="uid://bbnbncf7ffrja" path="res://Assets/ARSpace/Scripts/Network/voice_chat_debug.gd" id="3"]
-[ext_resource type="Script" path="res://Assets/ARSpace/Scripts/Network/voice_chat_simulator.gd" id="4"]
 
 [node name="VoiceChatTest" type="Node3D"]
 script = ExtResource("1")
@@ -18,9 +17,6 @@ transform = Transform3D(1, 0, 0, 0, 0.707107, 0.707107, 0, -0.707107, 0.707107, 
 
 [node name="VoiceChatDebug" type="Node" parent="."]
 script = ExtResource("3")
-
-[node name="VoiceChatSimulator" type="Node" parent="."]
-script = ExtResource("4")
 
 [node name="NetworkPanel" type="Panel" parent="."]
 offset_left = 20.0

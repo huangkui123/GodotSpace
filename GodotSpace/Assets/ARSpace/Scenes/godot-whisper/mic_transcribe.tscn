@@ -1,0 +1,61 @@
+[gd_scene load_steps=6 format=3 uid="uid://dibqfutwftm8j"]
+
+[ext_resource type="Script" uid="uid://dgcbpe0esq73i" path="res://Assets/ARSpace/Scenes/godot-whisper/sample_setup.gd" id="1_3o758"]
+[ext_resource type="Script" uid="uid://bn1xnc62hv225" path="res://addons/godot_whisper/label_transcribe.gd" id="3_u1cns"]
+[ext_resource type="WhisperResource" uid="uid://yhwtdgf3v6xd" path="res://addons/godot_whisper/models/ggml-base.bin" id="5_3o758"]
+[ext_resource type="Script" uid="uid://c5plctmo0htue" path="res://addons/godot_whisper/capture_stream_to_text.gd" id="5_c8lup"]
+
+[sub_resource type="AudioStreamMicrophone" id="AudioStreamMicrophone_rhq81"]
+
+[node name="CaptureStreamToText" type="VBoxContainer"]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -219.5
+offset_right = 200.0
+offset_bottom = 219.5
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_3o758")
+
+[node name="MicPlayer" type="AudioStreamPlayer" parent="."]
+stream = SubResource("AudioStreamMicrophone_rhq81")
+
+[node name="AudioPlayer" type="AudioStreamPlayer" parent="."]
+
+[node name="Panel" type="Panel" parent="."]
+custom_minimum_size = Vector2(400, 400)
+layout_mode = 2
+
+[node name="Label" type="RichTextLabel" parent="Panel"]
+custom_minimum_size = Vector2(400, 400)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 4
+bbcode_enabled = true
+text = "Time: 0s
+Time to process: 0s
+..."
+script = ExtResource("3_u1cns")
+
+[node name="Label" type="RichTextLabel" parent="."]
+layout_mode = 2
+text = "Add a language model or download one. Then, set it as language_model.
+Takes sample every 5s and transcribes below."
+
+[node name="CaptureStreamToText" type="SpeechToText" parent="."]
+language = 2
+language_model = ExtResource("5_3o758")
+script = ExtResource("5_c8lup")
+initial_prompt = "以下是普通话句子。"
+maximum_sentence_time = 10
+
+[connection signal="transcribed_msg" from="CaptureStreamToText" to="Panel/Label" method="_on_capture_stream_to_text_transcribed_msg"]
+[connection signal="transcribed_msg" from="CaptureStreamToText" to="Panel/Label" method="_on_speech_to_text_transcribed_msg"]
