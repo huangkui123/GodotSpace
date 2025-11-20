@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://dgcbpe0esq73i" path="res://Assets/ARSpace/Scenes/godot-whisper/sample_setup.gd" id="1_3o758"]
 [ext_resource type="Script" uid="uid://bn1xnc62hv225" path="res://addons/godot_whisper/label_transcribe.gd" id="3_u1cns"]
-[ext_resource type="WhisperResource" uid="uid://yhwtdgf3v6xd" path="res://addons/godot_whisper/models/ggml-base.bin" id="5_3o758"]
+[ext_resource type="WhisperResource" path="res://addons/godot_whisper/models/ggml-base.bin" id="5_3o758"]
 [ext_resource type="Script" uid="uid://c5plctmo0htue" path="res://addons/godot_whisper/capture_stream_to_text.gd" id="5_c8lup"]
 
 [sub_resource type="AudioStreamMicrophone" id="AudioStreamMicrophone_rhq81"]
