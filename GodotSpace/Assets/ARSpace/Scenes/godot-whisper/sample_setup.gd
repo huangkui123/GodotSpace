@@ -13,5 +13,5 @@ func _ready():
 	# if "--testmode" in args:
 	# 	return
 
-	mic_player.bus = "Record"
+	mic_player.bus = "Mic"
 	audio_to_text.transcribed_msg.connect(transcribe_label._on_capture_stream_to_text_transcribed_msg)
