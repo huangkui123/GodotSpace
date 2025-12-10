@@ -1,7 +1,7 @@
 extends Node
 
 const IP_ADDRESS: String = "127.0.0.1"
-# const IP_ADDRESS: String = "183.173.92.187"
+# const IP_ADDRESS: String = "172.25.80.1"
 const PORT: int = 42069
 
 signal network_ready

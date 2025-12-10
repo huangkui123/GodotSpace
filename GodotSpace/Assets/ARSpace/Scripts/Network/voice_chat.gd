@@ -15,7 +15,13 @@ var recording_player: AudioStreamPlayer
 var packets_received: int = 0
 var packets_sent: int = 0
 
+# VR模式标志
+var is_vr_mode: bool = false
+
 func _ready():
+	# 检测是否为VR模式
+	_detect_vr_mode()
+	
 	# 连接多人游戏信号
 	multiplayer.peer_connected.connect(_on_peer_connected)
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
@@ -30,10 +36,123 @@ func _ready():
 	# 设置音频捕获
 	_setup_audio_capture()
 	
-	print("🎤 语音聊天系统已初始化 (使用 two-voip)")
+	print("🎤 语音聊天系统已初始化 (使用 two-voip) - 模式: %s" % ("VR" if is_vr_mode else "PC"))
+
+# 检测是否为VR模式
+func _detect_vr_mode():
+	# 优先检查命令行参数
+	var args = OS.get_cmdline_args()
+	
+	# 如果有明确的 --vr 或 --pc 参数，使用该参数
+	if "--vr" in args:
+		is_vr_mode = true
+		print("✅ 通过命令行参数检测到VR模式 (--vr)")
+		return
+	elif "--pc" in args:
+		is_vr_mode = false
+		print("✅ 通过命令行参数检测到PC模式 (--pc)")
+		return
+	
+	# 如果没有命令行参数，检查是否有活跃的XR接口
+	var xr_interface = XRServer.primary_interface
+	if xr_interface and xr_interface.is_initialized():
+		is_vr_mode = true
+		print("✅ 通过XR接口检测到VR模式 - 接口: %s" % xr_interface.get_name())
+	else:
+		is_vr_mode = false
+		print("✅ 默认PC模式")
+
+# 设置音频设备
+func _setup_audio_devices():
+	var input_devices = AudioServer.get_input_device_list()
+	var output_devices = AudioServer.get_output_device_list()
+	
+	print("🔊 可用音频输入设备: %s" % str(input_devices))
+	print("🔊 可用音频输出设备: %s" % str(output_devices))
+	
+	if is_vr_mode:
+		# VR模式: 尝试查找并使用VR头显的音频设备
+		var vr_input_device = _find_vr_audio_device(input_devices)
+		var vr_output_device = _find_vr_audio_device(output_devices)
+		
+		if vr_input_device:
+			AudioServer.set_input_device(vr_input_device)
+			print("✅ VR模式: 使用音频输入设备 - %s" % vr_input_device)
+		else:
+			# 如果没有找到VR设备，使用默认设备（通常是第一个）
+			if input_devices.size() > 0:
+				AudioServer.set_input_device(input_devices[0])
+				print("⚠️ VR模式: 未找到VR音频输入设备,使用默认设备 - %s" % input_devices[0])
+		
+		if vr_output_device:
+			AudioServer.set_output_device(vr_output_device)
+			print("✅ VR模式: 使用音频输出设备 - %s" % vr_output_device)
+		else:
+			# 如果没有找到VR设备，使用默认设备
+			if output_devices.size() > 0:
+				AudioServer.set_output_device(output_devices[0])
+				print("⚠️ VR模式: 未找到VR音频输出设备,使用默认设备 - %s" % output_devices[0])
+	else:
+		# PC模式: 使用非VR设备（排除VR设备）
+		var pc_input_device = _find_non_vr_audio_device(input_devices)
+		var pc_output_device = _find_non_vr_audio_device(output_devices)
+		
+		if pc_input_device:
+			AudioServer.set_input_device(pc_input_device)
+			print("✅ PC模式: 使用音频输入设备 - %s" % pc_input_device)
+		else:
+			# 如果所有设备都是VR设备或没有设备，使用第一个
+			if input_devices.size() > 0:
+				AudioServer.set_input_device(input_devices[0])
+				print("✅ PC模式: 使用默认音频输入设备 - %s" % input_devices[0])
+		
+		if pc_output_device:
+			AudioServer.set_output_device(pc_output_device)
+			print("✅ PC模式: 使用音频输出设备 - %s" % pc_output_device)
+		else:
+			# 如果所有设备都是VR设备或没有设备，使用第一个
+			if output_devices.size() > 0:
+				AudioServer.set_output_device(output_devices[0])
+				print("✅ PC模式: 使用默认音频输出设备 - %s" % output_devices[0])
+	
+	print("🎧 当前使用的输入设备: %s" % AudioServer.get_input_device())
+	print("🎧 当前使用的输出设备: %s" % AudioServer.get_output_device())
+
+# 查找VR音频设备
+func _find_vr_audio_device(devices: PackedStringArray) -> String:
+	# 常见的VR头显音频设备关键词
+	var vr_keywords = ["Quest", "Oculus", "Meta", "Rift", "HTC", "Vive", "Index", "Valve", "Headset"]
+	
+	for device in devices:
+		for keyword in vr_keywords:
+			if keyword.to_lower() in device.to_lower():
+				return device
+	
+	return ""
+
+# 查找非VR音频设备（用于PC模式，排除VR设备）
+func _find_non_vr_audio_device(devices: PackedStringArray) -> String:
+	# 常见的VR头显音频设备关键词
+	var vr_keywords = ["Quest", "Oculus", "Meta", "Rift", "HTC", "Vive", "Index", "Valve", "Headset"]
+	
+	# 查找第一个不包含VR关键词的设备
+	for device in devices:
+		var is_vr_device = false
+		for keyword in vr_keywords:
+			if keyword.to_lower() in device.to_lower():
+				is_vr_device = true
+				break
+		
+		# 如果不是VR设备，返回这个设备
+		if not is_vr_device:
+			return device
+	
+	return ""
 
 # 设置音频捕获
 func _setup_audio_capture():
+	# 首先设置音频设备
+	_setup_audio_devices()
 	# 获取或创建 Mic 音频总线
 	var bus_index = AudioServer.get_bus_index("Mic")
 	if bus_index == -1:

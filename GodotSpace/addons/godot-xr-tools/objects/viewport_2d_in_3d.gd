@@ -384,10 +384,14 @@ func server_receive_pointer_event(data: Dictionary):
 
 func _handle_pointer_event(player_id: int, event: XRToolsPointerEvent, grip_value: float):
 	# 记录窗口被点击的位置（当按下时）
+	# 只有在没有窗口正在被拖动时才设置焦点，避免拖动时切换焦点
 	if event.event_type == XRToolsPointerEvent.Type.PRESSED:
 		# 使用 Global 单例记录当前窗口的位置
 		if Global and Global.has_method("set_last_clicked_window"):
-			Global.set_last_clicked_window(self)
+			# 检查是否有窗口正在被拖动
+			var has_dragging_window = Global.dragging_window != null
+			if not has_dragging_window:
+				Global.set_last_clicked_window(self)
 	
 	# Handle dragging functionality if enabled
 	if allow_window_drag:
@@ -856,6 +860,14 @@ func _start_dragging(controller : XRController3D, pointer : Node3D, position : V
 	_drag_controller = controller
 	_drag_pointer = pointer
 	
+	# 在Global中记录当前正在被拖动的窗口
+	if Global:
+		Global.dragging_window = self
+	
+	# 锁定pointer的target到当前窗口，防止射线切换到其他窗口
+	if pointer and pointer.has_method("set"):
+		pointer.target = $StaticBody3D
+	
 	# Record the initial transforms
 	_drag_start_controller_transform = controller.global_transform
 	_drag_start_window_transform = global_transform
@@ -910,6 +922,14 @@ func _stop_dragging():
 		return
 		
 	_is_dragging = false
+	
+	# 解锁pointer的target
+	if _drag_pointer and _drag_pointer.has_method("set"):
+		_drag_pointer.target = null
+	
+	# 在Global中清除正在被拖动的窗口记录
+	if Global and Global.dragging_window == self:
+		Global.dragging_window = null
 	
 	# Optionally provide haptic feedback
 	if _drag_controller and _drag_controller.has_method("pulse"):
