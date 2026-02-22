@@ -1,0 +1,85 @@
+[gd_scene load_steps=11 format=3 uid="uid://cqx8cv3jvl4jh"]
+
+[ext_resource type="Script" uid="uid://dcgctsod7nggw" path="res://addons/orbital_tools/orbital_object_3d.gd" id="1_0i6je"]
+[ext_resource type="Script" uid="uid://ca4jo2eui6k2t" path="res://addons/orbital_tools/orbit_render_3d.gd" id="2_hbh2s"]
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_hbh2s"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_0i6je"]
+emission_enabled = true
+emission = Color(1, 0.429186, 0.250836, 1)
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_lgk2e"]
+radius = 0.1
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_hbh2s"]
+albedo_color = Color(0.685302, 0.37055, 0.303618, 1)
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_y1m35"]
+radius = 0.1
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_s6cqi"]
+albedo_color = Color(0.427451, 0.427451, 0.690196, 1)
+
+[sub_resource type="ImmediateMesh" id="ImmediateMesh_lgk2e"]
+
+[sub_resource type="ImmediateMesh" id="ImmediateMesh_y1m35"]
+
+[node name="OrbitalSimulation" type="Node3D"]
+
+[node name="Sun" type="Area3D" parent="."]
+script = ExtResource("1_0i6je")
+mass = 1e+15
+metadata/_custom_type_script = "uid://dcgctsod7nggw"
+
+[node name="InfluenceZone" type="CollisionShape3D" parent="Sun"]
+shape = SubResource("SphereShape3D_hbh2s")
+
+[node name="CSGSphere3D" type="CSGSphere3D" parent="Sun"]
+radius = 12.0
+material = SubResource("StandardMaterial3D_0i6je")
+
+[node name="Planet1" type="Area3D" parent="Sun"]
+transform = Transform3D(-1, 0, 0, 0, -1, 0, 0, 0, 1, 150, 0, 0)
+script = ExtResource("1_0i6je")
+_initial_position = Vector3(150, 0, 0)
+_initial_velocity = Vector3(0, 20, 0)
+metadata/_custom_type_script = "uid://dcgctsod7nggw"
+
+[node name="InfluenceZone" type="CollisionShape3D" parent="Sun/Planet1"]
+shape = SubResource("SphereShape3D_lgk2e")
+
+[node name="CSGSphere3D" type="CSGSphere3D" parent="Sun/Planet1"]
+radius = 4.0
+material = SubResource("StandardMaterial3D_hbh2s")
+
+[node name="Planet2" type="Area3D" parent="Sun"]
+transform = Transform3D(-1, 0, 0, 0, -0.961524, -0.274721, 0, -0.274721, 0.961524, 300, 0, 0)
+script = ExtResource("1_0i6je")
+_initial_position = Vector3(300, 0, 0)
+_initial_velocity = Vector3(0, 14, 4)
+metadata/_custom_type_script = "uid://dcgctsod7nggw"
+
+[node name="InfluenceZone" type="CollisionShape3D" parent="Sun/Planet2"]
+shape = SubResource("SphereShape3D_y1m35")
+
+[node name="CSGSphere3D" type="CSGSphere3D" parent="Sun/Planet2"]
+radius = 6.0
+material = SubResource("StandardMaterial3D_s6cqi")
+
+[node name="Planet1Orbit" type="MeshInstance3D" parent="Sun" node_paths=PackedStringArray("orbiter")]
+extra_cull_margin = 100.0
+mesh = SubResource("ImmediateMesh_lgk2e")
+script = ExtResource("2_hbh2s")
+orbiter = NodePath("../Planet1")
+metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
+
+[node name="Planet2Orbit" type="MeshInstance3D" parent="Sun" node_paths=PackedStringArray("orbiter")]
+extra_cull_margin = 100.0
+mesh = SubResource("ImmediateMesh_y1m35")
+script = ExtResource("2_hbh2s")
+orbiter = NodePath("../Planet2")
+metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 479.626)

@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://c8no0xuh56xvh"]
+
+[ext_resource type="Script" uid="uid://dot3vg201kpng" path="res://addons/orbital_tools/orbit_render_3d.gd" id="1_puji2"]
+
+[node name="OrbitRender3D" type="MeshInstance3D"]
+script = ExtResource("1_puji2")
