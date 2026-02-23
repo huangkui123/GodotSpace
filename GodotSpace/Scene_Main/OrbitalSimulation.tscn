@@ -1,10 +1,11 @@
-[gd_scene load_steps=21 format=3 uid="uid://cqx8cv3jvl4jh"]
+[gd_scene load_steps=23 format=3 uid="uid://cqx8cv3jvl4jh"]
 
 [ext_resource type="Script" uid="uid://dcgctsod7nggw" path="res://addons/orbital_tools/orbital_object_3d.gd" id="1_0i6je"]
 [ext_resource type="PackedScene" uid="uid://cwy238cxfbs2q" path="res://demo/demo.tscn" id="1_lgk2e"]
 [ext_resource type="Script" uid="uid://ca4jo2eui6k2t" path="res://addons/orbital_tools/orbit_render_3d.gd" id="2_hbh2s"]
 [ext_resource type="Script" uid="uid://dts35ch6cey5q" path="res://Scene_Main/main_control.gd" id="2_s6cqi"]
 [ext_resource type="Script" uid="uid://cs8336dsnr7jx" path="res://demo/Camera3D.gd" id="4_y1m35"]
+[ext_resource type="Script" uid="uid://djv6n03prokp2" path="res://Scene_Main/PlanetName_3d.gd" id="5_xj46c"]
 [ext_resource type="Script" uid="uid://h04avu46175p" path="res://demo/HelpText.gd" id="6_8fbr4"]
 
 [sub_resource type="SphereShape3D" id="SphereShape3D_hbh2s"]
@@ -19,6 +20,8 @@ radius = 0.1
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_hbh2s"]
 albedo_color = Color(0.685302, 0.37055, 0.303618, 1)
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_xj46c"]
 
 [sub_resource type="ImmediateMesh" id="ImmediateMesh_s6cqi"]
 
@@ -47,8 +50,10 @@ albedo_color = Color(0.427451, 0.427451, 0.690196, 1)
 [node name="Stars" parent="." instance=ExtResource("1_lgk2e")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.122)
 
-[node name="MainControl" type="Node3D" parent="." node_paths=PackedStringArray("time_slider")]
+[node name="MainControl" type="Node3D" parent="." node_paths=PackedStringArray("camera", "planets", "time_slider")]
 script = ExtResource("2_s6cqi")
+camera = NodePath("../Camera3D")
+planets = [NodePath("Sun/Mercury"), NodePath("Sun/Venus"), NodePath("Sun/Earth"), NodePath("Sun/Mars"), NodePath("Sun/Jupiter"), NodePath("Sun/Saturn"), NodePath("Sun/Uranus"), NodePath("Sun/Neptune")]
 time_slider = NodePath("../Control/HBoxContainer/SpeedSlider")
 
 [node name="Sun" type="Area3D" parent="MainControl"]
@@ -72,11 +77,11 @@ rings = 20
 material = SubResource("StandardMaterial3D_0i6je")
 
 [node name="Mercury" type="Area3D" parent="MainControl/Sun"]
-transform = Transform3D(0, -1, 0, 0, 0, 1, -1, 0, 0, 0, 0, 58)
+transform = Transform3D(0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 58)
 script = ExtResource("1_0i6je")
 mass = 0.165
 _initial_position = Vector3(0, 0, 58)
-_initial_velocity = Vector3(830, 0, 0)
+_initial_velocity = Vector3(912.36, 0, 0)
 metadata/_custom_type_script = "uid://dcgctsod7nggw"
 
 [node name="InfluenceZone" type="CollisionShape3D" parent="MainControl/Sun/Mercury"]
@@ -88,6 +93,21 @@ radial_segments = 20
 rings = 20
 material = SubResource("StandardMaterial3D_hbh2s")
 
+[node name="Label3D" type="Label3D" parent="MainControl/Sun/Mercury" node_paths=PackedStringArray("camera")]
+pixel_size = 0.001
+billboard = 1
+no_depth_test = true
+fixed_size = true
+text = "水星"
+script = ExtResource("5_xj46c")
+camera = NodePath("../../../../Camera3D")
+
+[node name="Area3D" type="Area3D" parent="MainControl/Sun/Mercury/Label3D"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="MainControl/Sun/Mercury/Label3D/Area3D"]
+transform = Transform3D(12.045, 0, 0, 0, 12.045, 0, 0, 0, 12.045, 0, 0, 0)
+shape = SubResource("SphereShape3D_xj46c")
+
 [node name="MercuryOrbit" type="MeshInstance3D" parent="MainControl/Sun" node_paths=PackedStringArray("orbiter")]
 extra_cull_margin = 100.0
 mesh = SubResource("ImmediateMesh_s6cqi")
@@ -96,12 +116,12 @@ orbiter = NodePath("../Mercury")
 metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
 
 [node name="Venus" type="Area3D" parent="MainControl/Sun"]
-transform = Transform3D(-0.906823, -0.421512, 0, 0, 0, 1, -0.421512, 0.906823, 0, 0, 0, 108)
+transform = Transform3D(-0.967334, -0.253506, 0, 0, 0, 1, -0.253506, 0.967334, 0, 0, 0, 108)
 script = ExtResource("1_0i6je")
 mass = 2.45
 radius = 1.2
 _initial_position = Vector3(0, 0, 108)
-_initial_velocity = Vector3(608, 0, 4)
+_initial_velocity = Vector3(608.405, 0, 4)
 metadata/_custom_type_script = "uid://dcgctsod7nggw"
 
 [node name="InfluenceZone" type="CollisionShape3D" parent="MainControl/Sun/Venus"]
@@ -113,6 +133,21 @@ radial_segments = 20
 rings = 20
 material = SubResource("StandardMaterial3D_s6cqi")
 
+[node name="Label3D" type="Label3D" parent="MainControl/Sun/Venus" node_paths=PackedStringArray("camera")]
+pixel_size = 0.001
+billboard = 1
+no_depth_test = true
+fixed_size = true
+text = "金星"
+script = ExtResource("5_xj46c")
+camera = NodePath("../../../../Camera3D")
+
+[node name="Area3D" type="Area3D" parent="MainControl/Sun/Venus/Label3D"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="MainControl/Sun/Venus/Label3D/Area3D"]
+transform = Transform3D(12.045, 0, 0, 0, 12.045, 0, 0, 0, 12.045, 0, 0, 0)
+shape = SubResource("SphereShape3D_xj46c")
+
 [node name="VenusOrbit" type="MeshInstance3D" parent="MainControl/Sun" node_paths=PackedStringArray("orbiter")]
 extra_cull_margin = 100.0
 mesh = SubResource("ImmediateMesh_y1m35")
@@ -121,12 +156,12 @@ orbiter = NodePath("../Venus")
 metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
 
 [node name="Earth" type="Area3D" parent="MainControl/Sun"]
-transform = Transform3D(-0.944769, -0.327737, 0, 0, 0, 1, -0.327737, 0.944769, 0, 0, 0, 150)
+transform = Transform3D(-0.458846, -0.888516, 0, 0, 0, 1, -0.888516, 0.458846, 0, 0, 0, 150)
 script = ExtResource("1_0i6je")
 mass = 3.0
 radius = 1.3
 _initial_position = Vector3(0, 0, 150)
-_initial_velocity = Vector3(516, 0, 4)
+_initial_velocity = Vector3(512.835, 0, 4)
 metadata/_custom_type_script = "uid://dcgctsod7nggw"
 
 [node name="InfluenceZone" type="CollisionShape3D" parent="MainControl/Sun/Earth"]
@@ -138,6 +173,21 @@ radial_segments = 20
 rings = 20
 material = SubResource("StandardMaterial3D_s6cqi")
 
+[node name="Label3D" type="Label3D" parent="MainControl/Sun/Earth" node_paths=PackedStringArray("camera")]
+pixel_size = 0.001
+billboard = 1
+no_depth_test = true
+fixed_size = true
+text = "地球"
+script = ExtResource("5_xj46c")
+camera = NodePath("../../../../Camera3D")
+
+[node name="Area3D" type="Area3D" parent="MainControl/Sun/Earth/Label3D"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="MainControl/Sun/Earth/Label3D/Area3D"]
+transform = Transform3D(12.045, 0, 0, 0, 12.045, 0, 0, 0, 12.045, 0, 0, 0)
+shape = SubResource("SphereShape3D_xj46c")
+
 [node name="EarthOrbit" type="MeshInstance3D" parent="MainControl/Sun" node_paths=PackedStringArray("orbiter")]
 extra_cull_margin = 100.0
 mesh = SubResource("ImmediateMesh_8fbr4")
@@ -146,12 +196,12 @@ orbiter = NodePath("../Earth")
 metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
 
 [node name="Mars" type="Area3D" parent="MainControl/Sun"]
-transform = Transform3D(-0.998906, -0.0467716, 0, 0, 0, 1, -0.0467716, 0.998906, 0, 0, 0, 228)
+transform = Transform3D(-0.106808, 0.99428, 0, 0, 0, 1, 0.99428, 0.106808, 0, 0, 0, 228)
 script = ExtResource("1_0i6je")
 mass = 0.32
 radius = 0.9
 _initial_position = Vector3(0, 0, 228)
-_initial_velocity = Vector3(419, 0, 4)
+_initial_velocity = Vector3(438.125, 0, 4)
 metadata/_custom_type_script = "uid://dcgctsod7nggw"
 
 [node name="InfluenceZone" type="CollisionShape3D" parent="MainControl/Sun/Mars"]
@@ -163,6 +213,21 @@ radial_segments = 20
 rings = 20
 material = SubResource("StandardMaterial3D_s6cqi")
 
+[node name="Label3D" type="Label3D" parent="MainControl/Sun/Mars" node_paths=PackedStringArray("camera")]
+pixel_size = 0.001
+billboard = 1
+no_depth_test = true
+fixed_size = true
+text = "火星"
+script = ExtResource("5_xj46c")
+camera = NodePath("../../../../Camera3D")
+
+[node name="Area3D" type="Area3D" parent="MainControl/Sun/Mars/Label3D"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="MainControl/Sun/Mars/Label3D/Area3D"]
+transform = Transform3D(12.045, 0, 0, 0, 12.045, 0, 0, 0, 12.045, 0, 0, 0)
+shape = SubResource("SphereShape3D_xj46c")
+
 [node name="MarsOrbit" type="MeshInstance3D" parent="MainControl/Sun" node_paths=PackedStringArray("orbiter")]
 extra_cull_margin = 100.0
 mesh = SubResource("ImmediateMesh_xj46c")
@@ -171,12 +236,12 @@ orbiter = NodePath("../Mars")
 metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
 
 [node name="Jupiter" type="Area3D" parent="MainControl/Sun"]
-transform = Transform3D(-0.959684, -0.281079, 0, 0, 0, 1, -0.281079, 0.959684, 0, 0, 0, 780)
+transform = Transform3D(-0.352046, -0.935983, 0, 0, 0, 1, -0.935983, 0.352046, 0, 0, 0, 780)
 script = ExtResource("1_0i6je")
 mass = 951.0
 radius = 4.0
 _initial_position = Vector3(0, 0, 780)
-_initial_velocity = Vector3(226, 0, 4)
+_initial_velocity = Vector3(221.33, 0, 4)
 metadata/_custom_type_script = "uid://dcgctsod7nggw"
 
 [node name="InfluenceZone" type="CollisionShape3D" parent="MainControl/Sun/Jupiter"]
@@ -188,20 +253,35 @@ radial_segments = 20
 rings = 20
 material = SubResource("StandardMaterial3D_s6cqi")
 
+[node name="Label3D" type="Label3D" parent="MainControl/Sun/Jupiter" node_paths=PackedStringArray("camera")]
+pixel_size = 0.001
+billboard = 1
+no_depth_test = true
+fixed_size = true
+text = "木星"
+script = ExtResource("5_xj46c")
+camera = NodePath("../../../../Camera3D")
+
+[node name="Area3D" type="Area3D" parent="MainControl/Sun/Jupiter/Label3D"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="MainControl/Sun/Jupiter/Label3D/Area3D"]
+transform = Transform3D(12.045, 0, 0, 0, 12.045, 0, 0, 0, 12.045, 0, 0, 0)
+shape = SubResource("SphereShape3D_xj46c")
+
 [node name="JupiterOrbit" type="MeshInstance3D" parent="MainControl/Sun" node_paths=PackedStringArray("orbiter")]
-extra_cull_margin = 158.096
+extra_cull_margin = 156.514
 mesh = SubResource("ImmediateMesh_j5tfa")
 script = ExtResource("2_hbh2s")
 orbiter = NodePath("../Jupiter")
 metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
 
 [node name="Saturn" type="Area3D" parent="MainControl/Sun"]
-transform = Transform3D(-0.985489, -0.169738, 0, 0, 0, 1, -0.169738, 0.985489, 0, 0, 0, 1430)
+transform = Transform3D(-0.433362, 0.90122, 0, 0, 0, 1, 0.90122, 0.433362, 0, 0, 0, 1430)
 script = ExtResource("1_0i6je")
 mass = 285.0
 radius = 3.5
 _initial_position = Vector3(0, 0, 1430)
-_initial_velocity = Vector3(167, 0, 4)
+_initial_velocity = Vector3(171.555, 0, 4)
 metadata/_custom_type_script = "uid://dcgctsod7nggw"
 
 [node name="InfluenceZone" type="CollisionShape3D" parent="MainControl/Sun/Saturn"]
@@ -213,20 +293,35 @@ radial_segments = 20
 rings = 20
 material = SubResource("StandardMaterial3D_s6cqi")
 
+[node name="Label3D" type="Label3D" parent="MainControl/Sun/Saturn" node_paths=PackedStringArray("camera")]
+pixel_size = 0.001
+billboard = 1
+no_depth_test = true
+fixed_size = true
+text = "土星"
+script = ExtResource("5_xj46c")
+camera = NodePath("../../../../Camera3D")
+
+[node name="Area3D" type="Area3D" parent="MainControl/Sun/Saturn/Label3D"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="MainControl/Sun/Saturn/Label3D/Area3D"]
+transform = Transform3D(12.045, 0, 0, 0, 12.045, 0, 0, 0, 12.045, 0, 0, 0)
+shape = SubResource("SphereShape3D_xj46c")
+
 [node name="SaturnOrbit" type="MeshInstance3D" parent="MainControl/Sun" node_paths=PackedStringArray("orbiter")]
-extra_cull_margin = 291.89
+extra_cull_margin = 318.589
 mesh = SubResource("ImmediateMesh_eta8j")
 script = ExtResource("2_hbh2s")
 orbiter = NodePath("../Saturn")
 metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
 
 [node name="Uranus" type="Area3D" parent="MainControl/Sun"]
-transform = Transform3D(-0.999796, 0.0202205, 0, 0, 0, 1, 0.0202205, 0.999796, 0, 0, 0, 2878)
+transform = Transform3D(-0.752122, 0.659024, 0, 0, 0, 1, 0.659024, 0.752122, 0, 0, 0, 2878)
 script = ExtResource("1_0i6je")
 mass = 43.0
 radius = 2.5
 _initial_position = Vector3(0, 0, 2878)
-_initial_velocity = Vector3(118, 0, 4)
+_initial_velocity = Vector3(119.725, 0, 4)
 metadata/_custom_type_script = "uid://dcgctsod7nggw"
 
 [node name="InfluenceZone" type="CollisionShape3D" parent="MainControl/Sun/Uranus"]
@@ -238,8 +333,23 @@ radial_segments = 20
 rings = 20
 material = SubResource("StandardMaterial3D_s6cqi")
 
+[node name="Label3D" type="Label3D" parent="MainControl/Sun/Uranus" node_paths=PackedStringArray("camera")]
+pixel_size = 0.001
+billboard = 1
+no_depth_test = true
+fixed_size = true
+text = "天王星"
+script = ExtResource("5_xj46c")
+camera = NodePath("../../../../Camera3D")
+
+[node name="Area3D" type="Area3D" parent="MainControl/Sun/Uranus/Label3D"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="MainControl/Sun/Uranus/Label3D/Area3D"]
+transform = Transform3D(12.045, 0, 0, 0, 12.045, 0, 0, 0, 12.045, 0, 0, 0)
+shape = SubResource("SphereShape3D_xj46c")
+
 [node name="UranusOrbit" type="MeshInstance3D" parent="MainControl/Sun" node_paths=PackedStringArray("orbiter")]
-extra_cull_margin = 596.224
+extra_cull_margin = 621.394
 mesh = SubResource("ImmediateMesh_mklbq")
 script = ExtResource("2_hbh2s")
 orbiter = NodePath("../Uranus")
@@ -262,6 +372,21 @@ radius = 6.0
 radial_segments = 20
 rings = 20
 material = SubResource("StandardMaterial3D_s6cqi")
+
+[node name="Label3D" type="Label3D" parent="MainControl/Sun/Neptune" node_paths=PackedStringArray("camera")]
+pixel_size = 0.001
+billboard = 1
+no_depth_test = true
+fixed_size = true
+text = "海王星"
+script = ExtResource("5_xj46c")
+camera = NodePath("../../../../Camera3D")
+
+[node name="Area3D" type="Area3D" parent="MainControl/Sun/Neptune/Label3D"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="MainControl/Sun/Neptune/Label3D/Area3D"]
+transform = Transform3D(12.045, 0, 0, 0, 12.045, 0, 0, 0, 12.045, 0, 0, 0)
+shape = SubResource("SphereShape3D_xj46c")
 
 [node name="NeptuneOrbit" type="MeshInstance3D" parent="MainControl/Sun" node_paths=PackedStringArray("orbiter")]
 extra_cull_margin = 937.562
@@ -302,9 +427,10 @@ text = "行星速度"
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
-max_value = 2.0
-step = 0.01
-value = 0.5
+min_value = 0.001
+max_value = 1.0
+step = 0.001
+value = 0.05
 
 [node name="VBoxContainer" type="VBoxContainer" parent="Control"]
 layout_mode = 1
