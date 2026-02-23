@@ -66,10 +66,11 @@ rings = 20
 material = SubResource("StandardMaterial3D_0i6je")
 
 [node name="Mercury" type="Area3D" parent="Sun"]
-transform = Transform3D(0, -1, 0, 0, 0, 1, -1, 0, 0, 0, 0, 46.6)
+transform = Transform3D(0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 58)
 script = ExtResource("1_0i6je")
-_initial_position = Vector3(0, 0, 46.6)
-_initial_velocity = Vector3(29.7, 0, 0)
+mass = 0.05
+_initial_position = Vector3(0, 0, 58)
+_initial_velocity = Vector3(28.9, 0, 0)
 metadata/_custom_type_script = "uid://dcgctsod7nggw"
 
 [node name="InfluenceZone" type="CollisionShape3D" parent="Sun/Mercury"]
@@ -82,10 +83,12 @@ rings = 20
 material = SubResource("StandardMaterial3D_hbh2s")
 
 [node name="Venus" type="Area3D" parent="Sun"]
-transform = Transform3D(-0.373002, -0.92783, 0, 0, 0, 1, -0.92783, 0.373002, 0, 0, 0, 107.8)
+transform = Transform3D(-0.185654, 0.982615, 0, 0, 0, 1, 0.982615, 0.185654, 0, 0, 0, 108)
 script = ExtResource("1_0i6je")
-_initial_position = Vector3(0, 0, 107.8)
-_initial_velocity = Vector3(20.4, 0, 4)
+mass = 0.4
+radius = 1.2
+_initial_position = Vector3(0, 0, 108)
+_initial_velocity = Vector3(21.2, 0, 4)
 metadata/_custom_type_script = "uid://dcgctsod7nggw"
 
 [node name="InfluenceZone" type="CollisionShape3D" parent="Sun/Venus"]
@@ -97,25 +100,27 @@ radial_segments = 20
 rings = 20
 material = SubResource("StandardMaterial3D_s6cqi")
 
-[node name="Planet1Orbit" type="MeshInstance3D" parent="Sun" node_paths=PackedStringArray("orbiter")]
-extra_cull_margin = 100.0
+[node name="MercuryOrbit" type="MeshInstance3D" parent="Sun" node_paths=PackedStringArray("orbiter")]
+extra_cull_margin = 738.872
 mesh = SubResource("ImmediateMesh_s6cqi")
 script = ExtResource("2_hbh2s")
 orbiter = NodePath("../Mercury")
 metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
 
-[node name="Planet2Orbit" type="MeshInstance3D" parent="Sun" node_paths=PackedStringArray("orbiter")]
-extra_cull_margin = 100.0
+[node name="VenusOrbit" type="MeshInstance3D" parent="Sun" node_paths=PackedStringArray("orbiter")]
+extra_cull_margin = 1351.93
 mesh = SubResource("ImmediateMesh_y1m35")
 script = ExtResource("2_hbh2s")
 orbiter = NodePath("../Venus")
 metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
 
 [node name="Earth" type="Area3D" parent="Sun"]
-transform = Transform3D(-0.85634, -0.516412, 0, 0, 0, 1, -0.516412, 0.85634, 0, 0, 0, 147.5)
+transform = Transform3D(-0.217215, 0.976124, 0, 0, 0, 1, 0.976124, 0.217215, 0, 0, 0, 150)
 script = ExtResource("1_0i6je")
-_initial_position = Vector3(0, 0, 147.5)
-_initial_velocity = Vector3(20.1, 0, 4)
+mass = 0.5
+radius = 1.3
+_initial_position = Vector3(0, 0, 150)
+_initial_velocity = Vector3(18, 0, 4)
 metadata/_custom_type_script = "uid://dcgctsod7nggw"
 
 [node name="InfluenceZone" type="CollisionShape3D" parent="Sun/Earth"]
@@ -128,10 +133,12 @@ rings = 20
 material = SubResource("StandardMaterial3D_s6cqi")
 
 [node name="Mars" type="Area3D" parent="Sun"]
-transform = Transform3D(-0.818776, -0.574114, 0, 0, 0, 1, -0.574114, 0.818776, 0, 0, 0, 207.2)
+transform = Transform3D(-0.264573, 0.964366, 0, 0, 0, 1, 0.964366, 0.264573, 0, 0, 0, 228)
 script = ExtResource("1_0i6je")
-_initial_position = Vector3(0, 0, 207.2)
-_initial_velocity = Vector3(16.6, 0, 4)
+mass = 0.1
+radius = 0.9
+_initial_position = Vector3(0, 0, 228)
+_initial_velocity = Vector3(14.6, 0, 4)
 metadata/_custom_type_script = "uid://dcgctsod7nggw"
 
 [node name="InfluenceZone" type="CollisionShape3D" parent="Sun/Mars"]
@@ -144,10 +151,12 @@ rings = 20
 material = SubResource("StandardMaterial3D_s6cqi")
 
 [node name="Jupiter" type="Area3D" parent="Sun"]
-transform = Transform3D(-0.970915, -0.239424, 0, 0, 0, 1, -0.239424, 0.970915, 0, 0, 0, 742.6)
+transform = Transform3D(-0.452219, 0.891907, 0, 0, 0, 1, 0.891907, 0.452219, 0, 0, 0, 780)
 script = ExtResource("1_0i6je")
-_initial_position = Vector3(0, 0, 742.6)
-_initial_velocity = Vector3(9, 0, 4)
+mass = 50.0
+radius = 4.0
+_initial_position = Vector3(0, 0, 780)
+_initial_velocity = Vector3(7.9, 0, 4)
 metadata/_custom_type_script = "uid://dcgctsod7nggw"
 
 [node name="InfluenceZone" type="CollisionShape3D" parent="Sun/Jupiter"]
@@ -160,10 +169,12 @@ rings = 20
 material = SubResource("StandardMaterial3D_s6cqi")
 
 [node name="Saturn" type="Area3D" parent="Sun"]
-transform = Transform3D(-0.976546, -0.215311, 0, 0, 0, 1, -0.215311, 0.976546, 0, 0, 0, 1351.6)
+transform = Transform3D(-0.566277, 0.824215, 0, 0, 0, 1, 0.824215, 0.566277, 0, 0, 0, 1430)
 script = ExtResource("1_0i6je")
-_initial_position = Vector3(0, 0, 1351.6)
-_initial_velocity = Vector3(6.6, 0, 4)
+mass = 30.0
+radius = 3.5
+_initial_position = Vector3(0, 0, 1430)
+_initial_velocity = Vector3(5.83, 0, 4)
 metadata/_custom_type_script = "uid://dcgctsod7nggw"
 
 [node name="InfluenceZone" type="CollisionShape3D" parent="Sun/Saturn"]
@@ -176,10 +187,12 @@ rings = 20
 material = SubResource("StandardMaterial3D_s6cqi")
 
 [node name="Uranus" type="Area3D" parent="Sun"]
-transform = Transform3D(-0.993214, -0.1163, 0, 0, 0, 1, -0.1163, 0.993214, 0, 0, 0, 2747.6)
+transform = Transform3D(-0.697944, 0.716153, 0, 0, 0, 1, 0.716153, 0.697944, 0, 0, 0, 2878)
 script = ExtResource("1_0i6je")
-_initial_position = Vector3(0, 0, 2747.6)
-_initial_velocity = Vector3(4.7, 0, 4)
+mass = 10.0
+radius = 2.5
+_initial_position = Vector3(0, 0, 2878)
+_initial_velocity = Vector3(4.11, 0, 4)
 metadata/_custom_type_script = "uid://dcgctsod7nggw"
 
 [node name="InfluenceZone" type="CollisionShape3D" parent="Sun/Uranus"]
@@ -192,10 +205,12 @@ rings = 20
 material = SubResource("StandardMaterial3D_s6cqi")
 
 [node name="Neptune" type="Area3D" parent="Sun"]
-transform = Transform3D(-0.999493, -0.0318243, 0, 0, 0, 1, -0.0318243, 0.999493, 0, 0, 0, 4472.2)
+transform = Transform3D(-0.773695, 0.633558, 0, 0, 0, 1, 0.633558, 0.773695, 0, 0, 0, 4510)
 script = ExtResource("1_0i6je")
-_initial_position = Vector3(0, 0, 4472.2)
-_initial_velocity = Vector3(3.8, 0, 4)
+mass = 10.0
+radius = 2.5
+_initial_position = Vector3(0, 0, 4510)
+_initial_velocity = Vector3(3.28, 0, 4)
 metadata/_custom_type_script = "uid://dcgctsod7nggw"
 
 [node name="InfluenceZone" type="CollisionShape3D" parent="Sun/Neptune"]
@@ -208,42 +223,42 @@ rings = 20
 material = SubResource("StandardMaterial3D_s6cqi")
 
 [node name="EarthOrbit" type="MeshInstance3D" parent="Sun" node_paths=PackedStringArray("orbiter")]
-extra_cull_margin = 100.0
+extra_cull_margin = 1865.29
 mesh = SubResource("ImmediateMesh_8fbr4")
 script = ExtResource("2_hbh2s")
 orbiter = NodePath("../Earth")
 metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
 
 [node name="MarsOrbit" type="MeshInstance3D" parent="Sun" node_paths=PackedStringArray("orbiter")]
-extra_cull_margin = 100.0
+extra_cull_margin = 2801.11
 mesh = SubResource("ImmediateMesh_xj46c")
 script = ExtResource("2_hbh2s")
 orbiter = NodePath("../Mars")
 metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
 
 [node name="JupiterOrbit" type="MeshInstance3D" parent="Sun" node_paths=PackedStringArray("orbiter")]
-extra_cull_margin = 227.847
+extra_cull_margin = 8863.31
 mesh = SubResource("ImmediateMesh_j5tfa")
 script = ExtResource("2_hbh2s")
 orbiter = NodePath("../Jupiter")
 metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
 
 [node name="SaturnOrbit" type="MeshInstance3D" parent="Sun" node_paths=PackedStringArray("orbiter")]
-extra_cull_margin = 526.931
+extra_cull_margin = 15017.0
 mesh = SubResource("ImmediateMesh_eta8j")
 script = ExtResource("2_hbh2s")
 orbiter = NodePath("../Saturn")
 metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
 
 [node name="UranusOrbit" type="MeshInstance3D" parent="Sun" node_paths=PackedStringArray("orbiter")]
-extra_cull_margin = 2263.48
+extra_cull_margin = 26263.1
 mesh = SubResource("ImmediateMesh_mklbq")
 script = ExtResource("2_hbh2s")
 orbiter = NodePath("../Uranus")
 metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
 
 [node name="NeptuneOrbit" type="MeshInstance3D" parent="Sun" node_paths=PackedStringArray("orbiter")]
-extra_cull_margin = 139369.0
+extra_cull_margin = 36412.0
 mesh = SubResource("ImmediateMesh_qijos")
 script = ExtResource("2_hbh2s")
 orbiter = NodePath("../Neptune")
