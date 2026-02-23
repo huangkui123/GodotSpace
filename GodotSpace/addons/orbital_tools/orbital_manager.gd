@@ -6,4 +6,4 @@ extends Node
 # Usaremos una unidad más conveniente para juegos (ej: la Tierra tiene masa 5.972e24 kg)
 # 真实的G值
 const G: float = 0.000000000066743
-#const G: float = 0.1
+var time_scale: float = 0.1

@@ -117,7 +117,7 @@ func _process(_delta: float) -> void:
 	if not orbit_type:
 		orbit_type = calcule_orbit(_initial_position, _initial_velocity)
 	if orbit_type != ORBITS_TYPES.INDETERMINATE and orbit_type != ORBITS_TYPES.CENTRAL_OBJECT:
-		var current_time = Time.get_ticks_msec() / 1000.0 - _initial_time
+		var current_time = (Time.get_ticks_msec() / 1000.0 - _initial_time) * OrbitalManager.time_scale
 		# Obtener posición
 		position = _get_position_at_time(current_time)
 
@@ -577,7 +577,7 @@ func _is_eliptic() -> bool:
 
 ## Returns the body's current orbital velocity, calculated as a Vector3
 func get_velocity() -> Vector3:
-	var current_time = Time.get_ticks_msec() / 1000.0 - _initial_time
+	var current_time = (Time.get_ticks_msec() / 1000.0 - _initial_time) * OrbitalManager.time_scale
 	return _get_velocity_at_time(current_time)
 
 ## Returns the eccentricity e of the current orbit as a float. This value determines the shape of the conic section (e.g., e < 1.0 for elliptic, e = 1.0 for parabolic).

@@ -1,10 +1,9 @@
-[gd_scene load_steps=8 format=3 uid="uid://cwy238cxfbs2q"]
+[gd_scene load_steps=7 format=3 uid="uid://cwy238cxfbs2q"]
 
 [ext_resource type="PackedScene" uid="uid://b0nt4n13a6448" path="res://addons/starlight/Stars.tscn" id="1_xvs24"]
 [ext_resource type="Script" uid="uid://26aidr4wrr72" path="res://addons/starlight/StarGenerator.gd" id="2_6mf2e"]
 [ext_resource type="Texture2D" uid="uid://cwgi2fpms5fll" path="res://addons/starlight/psf-textures/airy_disk.png" id="3_onu7k"]
 [ext_resource type="Script" uid="uid://fndnrhe3mt2s" path="res://demo/FPSCounter.gd" id="4_vr3pp"]
-[ext_resource type="Script" uid="uid://h04avu46175p" path="res://demo/HelpText.gd" id="5_dkbb2"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_l5rbr"]
 
@@ -39,28 +38,6 @@ offset_right = 56.0
 offset_bottom = 31.0
 text = "fps: 60"
 script = ExtResource("4_vr3pp")
-
-[node name="BoxContainer" type="BoxContainer" parent="."]
-anchors_preset = 2
-anchor_top = 1.0
-anchor_bottom = 1.0
-offset_left = 5.0
-offset_top = -115.0
-offset_right = 298.0
-offset_bottom = -5.0
-grow_vertical = 0
-vertical = true
-
-[node name="HelpText" type="Label" parent="BoxContainer"]
-layout_mode = 2
-text = "移动：WASD
-上/下：Q/E
-加速/减速：鼠标滚轮"
-
-[node name="HelpTextButton" type="Button" parent="BoxContainer"]
-layout_mode = 2
-text = "隐藏"
-script = ExtResource("5_dkbb2")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 environment = SubResource("Environment_ah14t")
