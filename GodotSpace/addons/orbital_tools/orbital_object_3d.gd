@@ -26,6 +26,9 @@ signal has_new_attractor()
 @export var radius: float = 0.5
 @export var _initial_position: Vector3= Vector3.ZERO: set = _set_initial_position
 @export var _initial_velocity: Vector3 = Vector3.ZERO: set = _set_initial_velocity
+@export var spin_axis: Vector3 = Vector3.UP
+@export var spin_rate: float = 0.0  # 弧度/秒
+@export var visual: Node3D
 ## The classification of the current trajectory determined by the calculated eccentricity ($e$) and specific energy. This is an enum value (ORBITS_TYPES) indicating whether the orbit is radial, elliptic, parabolic, or hyperbolic.
 var orbit_type: ORBITS_TYPES = ORBITS_TYPES.INDETERMINATE
 var _initial_time:float
@@ -120,6 +123,8 @@ func _process(_delta: float) -> void:
 		var current_time = (Time.get_ticks_msec() / 1000.0 - _initial_time) * OrbitalManager.time_scale
 		# Obtener posición
 		position = _get_position_at_time(current_time)
+	if spin_rate != 0.0:
+		visual.rotate(spin_axis.normalized(), spin_rate * _delta * OrbitalManager.time_scale)
 
 func _get_position_at_time(t: float) -> Vector3:
 	if not orbit_type:
