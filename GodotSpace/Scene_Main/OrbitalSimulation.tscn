@@ -1,4 +1,4 @@
-[gd_scene load_steps=41 format=3 uid="uid://cqx8cv3jvl4jh"]
+[gd_scene load_steps=32 format=3 uid="uid://cqx8cv3jvl4jh"]
 
 [ext_resource type="Script" uid="uid://dcgctsod7nggw" path="res://addons/orbital_tools/orbital_object_3d.gd" id="1_0i6je"]
 [ext_resource type="PackedScene" uid="uid://cwy238cxfbs2q" path="res://demo/demo.tscn" id="1_lgk2e"]
@@ -34,47 +34,29 @@ albedo_texture = ExtResource("4_eta8j")
 
 [sub_resource type="SphereShape3D" id="SphereShape3D_xj46c"]
 
-[sub_resource type="ImmediateMesh" id="ImmediateMesh_l7jty"]
-
 [sub_resource type="SphereShape3D" id="SphereShape3D_y1m35"]
 radius = 0.1
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_300ft"]
 albedo_texture = ExtResource("7_ks1u5")
 
-[sub_resource type="ImmediateMesh" id="ImmediateMesh_y1m35"]
-
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_s6cqi"]
 albedo_texture = ExtResource("6_j5tfa")
-
-[sub_resource type="CapsuleMesh" id="CapsuleMesh_xj46c"]
-
-[sub_resource type="ImmediateMesh" id="ImmediateMesh_8fbr4"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_w5acp"]
 albedo_texture = ExtResource("9_85aj0")
 
-[sub_resource type="ImmediateMesh" id="ImmediateMesh_xj46c"]
-
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ev1gt"]
 albedo_texture = ExtResource("10_o5cvo")
-
-[sub_resource type="ImmediateMesh" id="ImmediateMesh_j5tfa"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_vavlq"]
 albedo_texture = ExtResource("11_fdkqh")
 
-[sub_resource type="ImmediateMesh" id="ImmediateMesh_eta8j"]
-
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_vwpro"]
 albedo_texture = ExtResource("12_optyn")
 
-[sub_resource type="ImmediateMesh" id="ImmediateMesh_mklbq"]
-
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_4qaqc"]
 albedo_texture = ExtResource("13_oh6u1")
-
-[sub_resource type="ImmediateMesh" id="ImmediateMesh_qijos"]
 
 [node name="OrbitalSimulation" type="Node3D"]
 
@@ -146,7 +128,6 @@ shape = SubResource("SphereShape3D_xj46c")
 
 [node name="MercuryOrbit" type="MeshInstance3D" parent="MainControl/Sun" node_paths=PackedStringArray("orbiter")]
 extra_cull_margin = 100.0
-mesh = SubResource("ImmediateMesh_l7jty")
 script = ExtResource("2_hbh2s")
 orbiter = NodePath("../Mercury")
 metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
@@ -190,7 +171,6 @@ shape = SubResource("SphereShape3D_xj46c")
 
 [node name="VenusOrbit" type="MeshInstance3D" parent="MainControl/Sun" node_paths=PackedStringArray("orbiter")]
 extra_cull_margin = 100.0
-mesh = SubResource("ImmediateMesh_y1m35")
 script = ExtResource("2_hbh2s")
 orbiter = NodePath("../Venus")
 metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
@@ -217,11 +197,6 @@ radial_segments = 40
 rings = 40
 material = SubResource("StandardMaterial3D_s6cqi")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="MainControl/Sun/Earth/CSGSphere3D"]
-transform = Transform3D(3.35626, 1.33901, -5.85299e-08, -1.33901, 3.35625, 1.12446e-08, 5.853e-08, 1.12446e-08, 3.6135, 0.537979, 7.50895, 0.375061)
-mesh = SubResource("CapsuleMesh_xj46c")
-skeleton = NodePath("../../Label3D/Area3D/CollisionShape3D")
-
 [node name="Label3D" type="Label3D" parent="MainControl/Sun/Earth" node_paths=PackedStringArray("camera")]
 pixel_size = 0.001
 billboard = 1
@@ -239,7 +214,6 @@ shape = SubResource("SphereShape3D_xj46c")
 
 [node name="EarthOrbit" type="MeshInstance3D" parent="MainControl/Sun" node_paths=PackedStringArray("orbiter")]
 extra_cull_margin = 100.0
-mesh = SubResource("ImmediateMesh_8fbr4")
 script = ExtResource("2_hbh2s")
 orbiter = NodePath("../Earth")
 metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
@@ -283,7 +257,6 @@ shape = SubResource("SphereShape3D_xj46c")
 
 [node name="MarsOrbit" type="MeshInstance3D" parent="MainControl/Sun" node_paths=PackedStringArray("orbiter")]
 extra_cull_margin = 100.0
-mesh = SubResource("ImmediateMesh_xj46c")
 script = ExtResource("2_hbh2s")
 orbiter = NodePath("../Mars")
 metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
@@ -327,7 +300,6 @@ shape = SubResource("SphereShape3D_xj46c")
 
 [node name="JupiterOrbit" type="MeshInstance3D" parent="MainControl/Sun" node_paths=PackedStringArray("orbiter")]
 extra_cull_margin = 156.0
-mesh = SubResource("ImmediateMesh_j5tfa")
 script = ExtResource("2_hbh2s")
 orbiter = NodePath("../Jupiter")
 metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
@@ -371,7 +343,6 @@ shape = SubResource("SphereShape3D_xj46c")
 
 [node name="SaturnOrbit" type="MeshInstance3D" parent="MainControl/Sun" node_paths=PackedStringArray("orbiter")]
 extra_cull_margin = 316.714
-mesh = SubResource("ImmediateMesh_eta8j")
 script = ExtResource("2_hbh2s")
 orbiter = NodePath("../Saturn")
 metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
@@ -415,7 +386,6 @@ shape = SubResource("SphereShape3D_xj46c")
 
 [node name="UranusOrbit" type="MeshInstance3D" parent="MainControl/Sun" node_paths=PackedStringArray("orbiter")]
 extra_cull_margin = 611.396
-mesh = SubResource("ImmediateMesh_mklbq")
 script = ExtResource("2_hbh2s")
 orbiter = NodePath("../Uranus")
 metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
@@ -459,7 +429,6 @@ shape = SubResource("SphereShape3D_xj46c")
 
 [node name="NeptuneOrbit" type="MeshInstance3D" parent="MainControl/Sun" node_paths=PackedStringArray("orbiter")]
 extra_cull_margin = 902.0
-mesh = SubResource("ImmediateMesh_qijos")
 script = ExtResource("2_hbh2s")
 orbiter = NodePath("../Neptune")
 metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
