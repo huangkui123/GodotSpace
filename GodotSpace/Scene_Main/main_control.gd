@@ -29,4 +29,4 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		if _hovered_planet:
 			print("点击了：", _hovered_planet.name)
-			# 这里写点击逻辑
+			camera.focus_on(_hovered_planet)
