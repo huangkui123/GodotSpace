@@ -1,4 +1,4 @@
-[gd_scene load_steps=38 format=3 uid="uid://cqx8cv3jvl4jh"]
+[gd_scene load_steps=41 format=3 uid="uid://cqx8cv3jvl4jh"]
 
 [ext_resource type="Script" uid="uid://dcgctsod7nggw" path="res://addons/orbital_tools/orbital_object_3d.gd" id="1_0i6je"]
 [ext_resource type="PackedScene" uid="uid://cwy238cxfbs2q" path="res://demo/demo.tscn" id="1_lgk2e"]
@@ -15,6 +15,9 @@
 [ext_resource type="Texture2D" uid="uid://chckionlkf2bm" path="res://Assets/ivoyager_assets/maps/Saturn.albedo.noaa.2048.jpg" id="11_fdkqh"]
 [ext_resource type="Texture2D" uid="uid://8xna5noe03ux" path="res://Assets/ivoyager_assets/maps/Uranus.albedo.2024recolor.jpg" id="12_optyn"]
 [ext_resource type="Texture2D" uid="uid://bjf17slbnnnvr" path="res://Assets/ivoyager_assets/maps/Neptune.albedo.2024recolor.4096.jpg" id="13_oh6u1"]
+[ext_resource type="Texture2D" uid="uid://p5b061wtxedr" path="res://Assets/Icons/pause.png" id="15_o5cvo"]
+[ext_resource type="Script" uid="uid://m4e6h224463j" path="res://Scene_Main/button.gd" id="16_fdkqh"]
+[ext_resource type="Texture2D" uid="uid://cdk0au457065w" path="res://Assets/Icons/play.png" id="17_fdkqh"]
 
 [sub_resource type="SphereShape3D" id="SphereShape3D_hbh2s"]
 
@@ -78,11 +81,12 @@ albedo_texture = ExtResource("13_oh6u1")
 [node name="Stars" parent="." instance=ExtResource("1_lgk2e")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.122)
 
-[node name="MainControl" type="Node3D" parent="." node_paths=PackedStringArray("camera", "planets", "time_slider")]
+[node name="MainControl" type="Node3D" parent="." node_paths=PackedStringArray("camera", "planets", "time_slider", "pause_button")]
 script = ExtResource("2_s6cqi")
 camera = NodePath("../Camera3D")
 planets = [NodePath("Sun/Mercury"), NodePath("Sun/Venus"), NodePath("Sun/Earth"), NodePath("Sun/Mars"), NodePath("Sun/Jupiter"), NodePath("Sun/Saturn"), NodePath("Sun/Uranus"), NodePath("Sun/Neptune")]
 time_slider = NodePath("../Control/HBoxContainer/SpeedSlider")
+pause_button = NodePath("../Control/HBoxContainer/Button")
 
 [node name="Sun" type="Area3D" parent="MainControl"]
 script = ExtResource("1_0i6je")
@@ -104,12 +108,15 @@ radial_segments = 20
 rings = 20
 material = SubResource("StandardMaterial3D_0i6je")
 
-[node name="Mercury" type="Area3D" parent="MainControl/Sun"]
+[node name="Mercury" type="Area3D" parent="MainControl/Sun" node_paths=PackedStringArray("visual")]
 transform = Transform3D(0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 58)
 script = ExtResource("1_0i6je")
 mass = 0.165
 _initial_position = Vector3(0, 0, 58)
 _initial_velocity = Vector3(880, 0, 0)
+spin_axis = Vector3(0, 0, 1)
+spin_rate = 500.0
+visual = NodePath("CSGSphere3D")
 metadata/_custom_type_script = "uid://dcgctsod7nggw"
 
 [node name="InfluenceZone" type="CollisionShape3D" parent="MainControl/Sun/Mercury"]
@@ -144,13 +151,16 @@ script = ExtResource("2_hbh2s")
 orbiter = NodePath("../Mercury")
 metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
 
-[node name="Venus" type="Area3D" parent="MainControl/Sun"]
+[node name="Venus" type="Area3D" parent="MainControl/Sun" node_paths=PackedStringArray("visual")]
 transform = Transform3D(-0.967334, -0.253506, 0, 0, 0, 1, -0.253506, 0.967334, 0, 0, 0, 108)
 script = ExtResource("1_0i6je")
 mass = 2.45
 radius = 1.2
 _initial_position = Vector3(0, 0, 108)
 _initial_velocity = Vector3(608.405, 0, 4)
+spin_axis = Vector3(0, 0, 1)
+spin_rate = 500.0
+visual = NodePath("CSGSphere3D")
 metadata/_custom_type_script = "uid://dcgctsod7nggw"
 
 [node name="InfluenceZone" type="CollisionShape3D" parent="MainControl/Sun/Venus"]
@@ -192,7 +202,7 @@ mass = 3.0
 radius = 1.3
 _initial_position = Vector3(0, 0, 150)
 _initial_velocity = Vector3(512.835, 0, 0)
-spin_axis = Vector3(0.398, 0, 0.917)
+spin_axis = Vector3(0.2, 0, 1)
 spin_rate = 1262.0
 visual = NodePath("CSGSphere3D")
 metadata/_custom_type_script = "uid://dcgctsod7nggw"
@@ -234,13 +244,16 @@ script = ExtResource("2_hbh2s")
 orbiter = NodePath("../Earth")
 metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
 
-[node name="Mars" type="Area3D" parent="MainControl/Sun"]
+[node name="Mars" type="Area3D" parent="MainControl/Sun" node_paths=PackedStringArray("visual")]
 transform = Transform3D(-0.106808, 0.99428, 0, 0, 0, 1, 0.99428, 0.106808, 0, 0, 0, 228)
 script = ExtResource("1_0i6je")
 mass = 0.32
 radius = 0.9
 _initial_position = Vector3(0, 0, 228)
 _initial_velocity = Vector3(438.125, 0, 4)
+spin_axis = Vector3(0, 0, 1)
+spin_rate = 500.0
+visual = NodePath("CSGSphere3D")
 metadata/_custom_type_script = "uid://dcgctsod7nggw"
 
 [node name="InfluenceZone" type="CollisionShape3D" parent="MainControl/Sun/Mars"]
@@ -275,13 +288,16 @@ script = ExtResource("2_hbh2s")
 orbiter = NodePath("../Mars")
 metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
 
-[node name="Jupiter" type="Area3D" parent="MainControl/Sun"]
+[node name="Jupiter" type="Area3D" parent="MainControl/Sun" node_paths=PackedStringArray("visual")]
 transform = Transform3D(0, -1, 0, 0, 0, 1, -1, 0, 0, 0, 0, 780)
 script = ExtResource("1_0i6je")
 mass = 951.0
 radius = 4.0
 _initial_position = Vector3(0, 0, 780)
 _initial_velocity = Vector3(221.33, 0, 0)
+spin_axis = Vector3(0, 0, 1)
+spin_rate = 500.0
+visual = NodePath("CSGSphere3D")
 metadata/_custom_type_script = "uid://dcgctsod7nggw"
 
 [node name="InfluenceZone" type="CollisionShape3D" parent="MainControl/Sun/Jupiter"]
@@ -316,13 +332,16 @@ script = ExtResource("2_hbh2s")
 orbiter = NodePath("../Jupiter")
 metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
 
-[node name="Saturn" type="Area3D" parent="MainControl/Sun"]
+[node name="Saturn" type="Area3D" parent="MainControl/Sun" node_paths=PackedStringArray("visual")]
 transform = Transform3D(0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1430)
 script = ExtResource("1_0i6je")
 mass = 285.0
 radius = 3.5
 _initial_position = Vector3(0, 0, 1430)
 _initial_velocity = Vector3(171.555, 0, 0)
+spin_axis = Vector3(0, 0, 1)
+spin_rate = 500.0
+visual = NodePath("CSGSphere3D")
 metadata/_custom_type_script = "uid://dcgctsod7nggw"
 
 [node name="InfluenceZone" type="CollisionShape3D" parent="MainControl/Sun/Saturn"]
@@ -357,13 +376,16 @@ script = ExtResource("2_hbh2s")
 orbiter = NodePath("../Saturn")
 metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
 
-[node name="Uranus" type="Area3D" parent="MainControl/Sun"]
+[node name="Uranus" type="Area3D" parent="MainControl/Sun" node_paths=PackedStringArray("visual")]
 transform = Transform3D(0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 2878)
 script = ExtResource("1_0i6je")
 mass = 43.0
 radius = 2.5
 _initial_position = Vector3(0, 0, 2878)
 _initial_velocity = Vector3(119.725, 0, 0)
+spin_axis = Vector3(0, 0, 1)
+spin_rate = 500.0
+visual = NodePath("CSGSphere3D")
 metadata/_custom_type_script = "uid://dcgctsod7nggw"
 
 [node name="InfluenceZone" type="CollisionShape3D" parent="MainControl/Sun/Uranus"]
@@ -398,13 +420,16 @@ script = ExtResource("2_hbh2s")
 orbiter = NodePath("../Uranus")
 metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
 
-[node name="Neptune" type="Area3D" parent="MainControl/Sun"]
+[node name="Neptune" type="Area3D" parent="MainControl/Sun" node_paths=PackedStringArray("visual")]
 transform = Transform3D(0, -1, 0, 0, 0, 1, -1, 0, 0, 0, 0, 4510)
 script = ExtResource("1_0i6je")
 mass = 51.0
 radius = 2.5
 _initial_position = Vector3(0, 0, 4510)
 _initial_velocity = Vector3(94, 0, 0)
+spin_axis = Vector3(0, 0, 1)
+spin_rate = 500.0
+visual = NodePath("CSGSphere3D")
 metadata/_custom_type_script = "uid://dcgctsod7nggw"
 
 [node name="InfluenceZone" type="CollisionShape3D" parent="MainControl/Sun/Neptune"]
@@ -476,6 +501,16 @@ min_value = 0.001
 max_value = 0.2
 step = 0.001
 value = 0.01
+
+[node name="Button" type="Button" parent="Control/HBoxContainer"]
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+toggle_mode = true
+icon = ExtResource("15_o5cvo")
+expand_icon = true
+script = ExtResource("16_fdkqh")
+icon_on = ExtResource("17_fdkqh")
+icon_off = ExtResource("15_o5cvo")
 
 [node name="VBoxContainer" type="VBoxContainer" parent="Control"]
 layout_mode = 1
