@@ -57,5 +57,5 @@ script = ExtResource("5_c8lup")
 initial_prompt = "以下是普通话句子。"
 maximum_sentence_time = 10
 
-[connection signal="transcribed_msg" from="CaptureStreamToText" to="Panel/Label" method="_on_speech_to_text_transcribed_msg"]
 [connection signal="transcribed_msg" from="CaptureStreamToText" to="Panel/Label" method="_on_capture_stream_to_text_transcribed_msg"]
+[connection signal="transcribed_msg" from="CaptureStreamToText" to="Panel/Label" method="_on_speech_to_text_transcribed_msg"]

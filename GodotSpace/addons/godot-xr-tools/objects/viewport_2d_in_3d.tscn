@@ -22,10 +22,6 @@ size = Vector3(3, 2, 0.02)
 
 [node name="Viewport2Din3D" type="Node3D"]
 script = ExtResource("1")
-thumbstick_action = null
-distance_adjust_speed = null
-min_distance = null
-max_distance = null
 alpha_scissor_threshold = 0.25
 unshaded = false
 filter = true

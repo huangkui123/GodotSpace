@@ -2,7 +2,7 @@
 extends Node
 
 # 语音设置
-var voice_enabled: bool = true
+var voice_enabled: bool = false
 
 # 音频播放器字典 {peer_id: AudioStreamPlayer}
 var voice_players: Dictionary = {}

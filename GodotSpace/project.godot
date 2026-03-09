@@ -27,6 +27,10 @@ Global="*res://Assets/ARSpace/Scripts/Global.gd"
 NetworkHandler="*res://Assets/ARSpace/Scripts/Network/network_handler.gd"
 VoiceChat="*res://Assets/ARSpace/Scripts/Network/voice_chat.gd"
 
+[editor]
+
+run/main_run_args="--testmode"
+
 [editor_plugins]
 
 enabled=PackedStringArray("res://addons/godot-xr-tools/plugin.cfg", "res://addons/unidot/plugin.cfg")
