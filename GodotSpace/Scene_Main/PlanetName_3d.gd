@@ -3,8 +3,10 @@ extends Label3D
 @export var camera: Camera3D
 @export var hide_distance: float = 20.0
 @export var click_radius: float = 25.0
+@export var enable_max_distance: bool = false
+@export var max_distance: float = 1000.0
 
-var label_enabled: bool = true  # 新增开关
+var label_enabled: bool = true
 
 func _ready() -> void:
 	no_depth_test = true
@@ -18,7 +20,13 @@ func _process(_delta: float) -> void:
 		visible = false
 		return
 	var dist = global_position.distance_to(camera.global_position)
-	visible = dist > hide_distance
+	if dist < hide_distance:
+		visible = false
+		return
+	if enable_max_distance and dist > max_distance:
+		visible = false
+		return
+	visible = true
 
 func is_mouse_over() -> bool:
 	if not camera or not visible:

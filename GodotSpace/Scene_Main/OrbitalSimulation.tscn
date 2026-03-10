@@ -1,4 +1,4 @@
-[gd_scene load_steps=44 format=3 uid="uid://cqx8cv3jvl4jh"]
+[gd_scene load_steps=50 format=3 uid="uid://cqx8cv3jvl4jh"]
 
 [ext_resource type="Script" uid="uid://dcgctsod7nggw" path="res://addons/orbital_tools/orbital_object_3d.gd" id="1_0i6je"]
 [ext_resource type="PackedScene" uid="uid://cwy238cxfbs2q" path="res://demo/demo.tscn" id="1_lgk2e"]
@@ -50,11 +50,25 @@ albedo_texture = ExtResource("7_ks1u5")
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_s6cqi"]
 albedo_texture = ExtResource("6_j5tfa")
 
+[sub_resource type="BoxMesh" id="BoxMesh_oh6u1"]
+
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_l7jty"]
 albedo_texture = ExtResource("9_oh6u1")
 
 [sub_resource type="SphereShape3D" id="SphereShape3D_300ft"]
 radius = 0.1
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_oh6u1"]
+radius = 0.0241368
+
+[sub_resource type="ImmediateMesh" id="ImmediateMesh_p6yqs"]
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_l7jty"]
+radius = 0.1
+
+[sub_resource type="BoxMesh" id="BoxMesh_300ft"]
+
+[sub_resource type="ImmediateMesh" id="ImmediateMesh_y86f7"]
 
 [sub_resource type="ImmediateMesh" id="ImmediateMesh_300ft"]
 
@@ -91,7 +105,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.122)
 [node name="MainControl" type="Node3D" parent="." node_paths=PackedStringArray("camera", "planets", "time_slider", "pause_button")]
 script = ExtResource("2_s6cqi")
 camera = NodePath("../Camera3D")
-planets = [NodePath("Sun/Mercury"), NodePath("Sun/Venus"), NodePath("Sun/Earth"), NodePath("Sun/Mars"), NodePath("Sun/Jupiter"), NodePath("Sun/Saturn"), NodePath("Sun/Uranus"), NodePath("Sun/Neptune")]
+planets = [NodePath("Sun/Mercury"), NodePath("Sun/Venus"), NodePath("Sun/Earth"), NodePath("Sun/Mars"), NodePath("Sun/Jupiter"), NodePath("Sun/Saturn"), NodePath("Sun/Uranus"), NodePath("Sun/Neptune"), NodePath("Sun/Earth/Moon")]
 time_slider = NodePath("../Control/HBoxContainer/SpeedSlider")
 pause_button = NodePath("../Control/HBoxContainer/Button")
 
@@ -145,6 +159,8 @@ fixed_size = true
 text = "水星"
 script = ExtResource("5_xj46c")
 camera = NodePath("../../../../Camera3D")
+enable_max_distance = true
+max_distance = 800.0
 
 [node name="Area3D" type="Area3D" parent="MainControl/Sun/Mercury/Label3D"]
 
@@ -189,6 +205,8 @@ fixed_size = true
 text = "金星"
 script = ExtResource("5_xj46c")
 camera = NodePath("../../../../Camera3D")
+enable_max_distance = true
+max_distance = 1500.0
 
 [node name="Area3D" type="Area3D" parent="MainControl/Sun/Venus/Label3D"]
 
@@ -206,11 +224,11 @@ metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
 [node name="Earth" type="Area3D" parent="MainControl/Sun" node_paths=PackedStringArray("visual")]
 transform = Transform3D(0, -1, 0, 0, 0, 1, -1, 0, 0, 0, 0, 150)
 script = ExtResource("1_0i6je")
-mass = 3e+13
+mass = 2.3862e+16
 radius = 0.92
 _initial_position = Vector3(0, 0, 150)
 _initial_velocity = Vector3(512.835, 0, 0)
-spin_axis = Vector3(0.2, 0, 1)
+spin_axis = Vector3(0.398, 0, 0.917)
 spin_rate = 1262.0
 visual = NodePath("CSGSphere3D")
 metadata/_custom_type_script = "uid://dcgctsod7nggw"
@@ -219,11 +237,19 @@ metadata/_custom_type_script = "uid://dcgctsod7nggw"
 shape = SubResource("SphereShape3D_y1m35")
 
 [node name="CSGSphere3D" type="CSGSphere3D" parent="MainControl/Sun/Earth"]
-transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0)
+transform = Transform3D(0.917755, 0.397148, -1.73599e-08, 0, -4.37114e-08, -1, -0.397148, 0.917755, -4.01163e-08, 0, 0, 0)
 radius = 0.92
-radial_segments = 40
-rings = 40
+radial_segments = 80
+rings = 80
 material = SubResource("StandardMaterial3D_s6cqi")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="MainControl/Sun/Earth/CSGSphere3D"]
+transform = Transform3D(0.03, 0, 0, 0, 3, 0, 0, 0, 0.03, 0, 0, 0)
+mesh = SubResource("BoxMesh_oh6u1")
+
+[node name="MeshInstance3D2" type="MeshInstance3D" parent="MainControl/Sun/Earth/CSGSphere3D"]
+transform = Transform3D(-1.31134e-09, 3, 0, -0.03, -1.31134e-07, 0, 0, 0, 0.03, 0, 0, 0)
+mesh = SubResource("BoxMesh_oh6u1")
 
 [node name="Label3D" type="Label3D" parent="MainControl/Sun/Earth" node_paths=PackedStringArray("camera")]
 pixel_size = 0.001
@@ -233,6 +259,7 @@ fixed_size = true
 text = "地球"
 script = ExtResource("5_xj46c")
 camera = NodePath("../../../../Camera3D")
+hide_distance = 10.0
 
 [node name="Area3D" type="Area3D" parent="MainControl/Sun/Earth/Label3D"]
 
@@ -241,12 +268,12 @@ transform = Transform3D(12.045, 0, 0, 0, 12.045, 0, 0, 0, 12.045, 0, 0, 0)
 shape = SubResource("SphereShape3D_xj46c")
 
 [node name="Moon" type="Area3D" parent="MainControl/Sun/Earth" node_paths=PackedStringArray("visual")]
-transform = Transform3D(0.016101, 0.99987, 0, -0.99987, 0.016101, 0, 0, 0, 1, 2, 0.18, 0)
+transform = Transform3D(-0.9937, 0, -0.112071, 0, -1, 0, -0.112072, 0, 0.9937, 13.3, 0, 1.5)
 script = ExtResource("1_0i6je")
-mass = 3.7e+11
+mass = 3.7e+08
 radius = 0.25
-_initial_position = Vector3(2, 0.18, 0)
-_initial_velocity = Vector3(0, 31.6, 0)
+_initial_position = Vector3(13.3, 0, 1.5)
+_initial_velocity = Vector3(0, 340, 0)
 spin_axis = Vector3(0, 0, 1)
 spin_rate = 47.1
 visual = NodePath("CSGSphere3D")
@@ -262,10 +289,52 @@ material = SubResource("StandardMaterial3D_l7jty")
 [node name="InfluenceZone" type="CollisionShape3D" parent="MainControl/Sun/Earth/Moon"]
 shape = SubResource("SphereShape3D_300ft")
 
+[node name="Label3D" type="Label3D" parent="MainControl/Sun/Earth/Moon" node_paths=PackedStringArray("camera")]
+pixel_size = 0.001
+billboard = 1
+no_depth_test = true
+fixed_size = true
+text = "月球"
+script = ExtResource("5_xj46c")
+camera = NodePath("../../../../../Camera3D")
+hide_distance = 3.0
+enable_max_distance = true
+max_distance = 50.0
+
+[node name="Area3D" type="Area3D" parent="MainControl/Sun/Earth/Moon/Label3D"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="MainControl/Sun/Earth/Moon/Label3D/Area3D"]
+transform = Transform3D(12.045, 0, 0, 0, 12.045, 0, 0, 0, 12.045, 0, 0, 0)
+shape = SubResource("SphereShape3D_oh6u1")
+
 [node name="MoonOrbit" type="MeshInstance3D" parent="MainControl/Sun/Earth" node_paths=PackedStringArray("orbiter")]
 extra_cull_margin = 100.0
+mesh = SubResource("ImmediateMesh_p6yqs")
 script = ExtResource("2_hbh2s")
 orbiter = NodePath("../Moon")
+metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
+
+[node name="Cassini-Huygens" type="Area3D" parent="MainControl/Sun/Earth"]
+transform = Transform3D(-0.917314, 0, 0.398141, 0, -1, 0, 0.398164, 0, 0.917324, 0.917, 0, -0.398)
+script = ExtResource("1_0i6je")
+mass = 0.001
+radius = 0.02
+_initial_position = Vector3(0.917, 0, -0.398)
+_initial_velocity = Vector3(0, 1262, 0)
+metadata/_custom_type_script = "uid://dcgctsod7nggw"
+
+[node name="InfluenceZone" type="CollisionShape3D" parent="MainControl/Sun/Earth/Cassini-Huygens"]
+shape = SubResource("SphereShape3D_l7jty")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="MainControl/Sun/Earth/Cassini-Huygens"]
+transform = Transform3D(0.1, 0, 0, 0, 0.1, 0, 0, 0, 0.1, 0, 0, 0)
+mesh = SubResource("BoxMesh_300ft")
+
+[node name="Cassini-HuygensOrbit" type="MeshInstance3D" parent="MainControl/Sun/Earth" node_paths=PackedStringArray("orbiter")]
+extra_cull_margin = 100.0
+mesh = SubResource("ImmediateMesh_y86f7")
+script = ExtResource("2_hbh2s")
+orbiter = NodePath("../Cassini-Huygens")
 metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
 
 [node name="EarthOrbit" type="MeshInstance3D" parent="MainControl/Sun" node_paths=PackedStringArray("orbiter")]
@@ -305,6 +374,8 @@ fixed_size = true
 text = "火星"
 script = ExtResource("5_xj46c")
 camera = NodePath("../../../../Camera3D")
+enable_max_distance = true
+max_distance = 2000.0
 
 [node name="Area3D" type="Area3D" parent="MainControl/Sun/Mars/Label3D"]
 
@@ -511,7 +582,7 @@ grow_vertical = 2
 script = ExtResource("15_optyn")
 toggle_label_button = NodePath("VBoxContainer/Button_Vis_Text")
 toggle_orbit_button = NodePath("VBoxContainer/Button_Vis_Orbit")
-planets = [NodePath("../MainControl/Sun/Mercury"), NodePath("../MainControl/Sun/Venus"), NodePath("../MainControl/Sun/Earth"), NodePath("../MainControl/Sun/Mars"), NodePath("../MainControl/Sun/Jupiter"), NodePath("../MainControl/Sun/Saturn"), NodePath("../MainControl/Sun/Uranus"), NodePath("../MainControl/Sun/Neptune")]
+planets = [NodePath("../MainControl/Sun/Mercury"), NodePath("../MainControl/Sun/Venus"), NodePath("../MainControl/Sun/Earth"), NodePath("../MainControl/Sun/Mars"), NodePath("../MainControl/Sun/Jupiter"), NodePath("../MainControl/Sun/Saturn"), NodePath("../MainControl/Sun/Uranus"), NodePath("../MainControl/Sun/Neptune"), NodePath("../MainControl/Sun/Earth/Moon")]
 
 [node name="HBoxContainer" type="HBoxContainer" parent="Control"]
 layout_mode = 1

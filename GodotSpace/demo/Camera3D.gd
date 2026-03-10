@@ -1,4 +1,3 @@
-# Copyright © 2022 Marc Nahr: https://github.com/MarcPhi/godot-free-look-camera
 extends Camera3D
 
 @export_range(0, 10, 0.01) var sensitivity: float = 3
@@ -17,7 +16,7 @@ var _orbit_target: Node3D = null
 var _orbit_distance: float = 50.0
 var _orbit_yaw: float = 0.0
 var _orbit_pitch: float = 0.3
-const ORBIT_MIN_DIST = 2.0
+const ORBIT_MIN_DIST = 0.3
 const ORBIT_MAX_DIST = 5000.0
 const ORBIT_ZOOM_SCALE = 1.15
 
@@ -27,7 +26,6 @@ const TRANSITION_DURATION: float = 0.8
 var _trans_from_pos: Vector3
 var _trans_from_basis: Basis
 
-# 记录上一帧鼠标是否在UI上
 var _mouse_over_ui: bool = false
 
 func focus_on(target: Node3D) -> void:
@@ -71,16 +69,23 @@ func _calc_orbit_basis() -> Basis:
 	var up = right.cross(dir).normalized()
 	return Basis(right, up, -dir)
 
+func _get_zoom_step() -> float:
+	# 距离越近步长越小，实现平滑减速
+	# 用距离的比例而非固定系数
+	var base = ORBIT_ZOOM_SCALE
+	var t = clamp(_orbit_distance / 2.0, 0.0, 1.0)  # 距离小于10时开始减速
+	# 线性插值：近处用更小的步长系数
+	var scale = lerp(1.01, base, t)
+	return scale
+
 func _input(event: InputEvent) -> void:
 	if not current:
 		return
 
-	# UI层已处理则忽略（用于按钮点击等）
 	if event is InputEventMouseButton:
 		if get_viewport().is_input_handled():
 			return
 
-	# 鼠标移动时检测是否在UI上，记录状态
 	if event is InputEventMouseMotion:
 		if get_viewport().is_input_handled():
 			_mouse_over_ui = true
@@ -88,7 +93,6 @@ func _input(event: InputEvent) -> void:
 		else:
 			_mouse_over_ui = false
 
-	# 右键：切回自由模式
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT:
 		if event.pressed:
 			_mode = Mode.FREE
@@ -99,7 +103,6 @@ func _input(event: InputEvent) -> void:
 			Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 		return
 
-	# 自由模式输入
 	if _mode == Mode.FREE:
 		if Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
 			if event is InputEventMouseMotion:
@@ -114,7 +117,6 @@ func _input(event: InputEvent) -> void:
 					_velocity = clamp(_velocity / speed_scale, min_speed, max_speed)
 		return
 
-	# 轨道模式输入
 	if _mode == Mode.ORBIT:
 		if event is InputEventMouseMotion and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 			if not _mouse_over_ui:
@@ -123,11 +125,12 @@ func _input(event: InputEvent) -> void:
 				_orbit_pitch = clamp(_orbit_pitch, -1.4, 1.4)
 
 		if event is InputEventMouseButton:
+			var zoom = _get_zoom_step()
 			match event.button_index:
 				MOUSE_BUTTON_WHEEL_UP:
-					_orbit_distance = clamp(_orbit_distance / ORBIT_ZOOM_SCALE, ORBIT_MIN_DIST, ORBIT_MAX_DIST)
+					_orbit_distance = clamp(_orbit_distance / zoom, ORBIT_MIN_DIST, ORBIT_MAX_DIST)
 				MOUSE_BUTTON_WHEEL_DOWN:
-					_orbit_distance = clamp(_orbit_distance * ORBIT_ZOOM_SCALE, ORBIT_MIN_DIST, ORBIT_MAX_DIST)
+					_orbit_distance = clamp(_orbit_distance * zoom, ORBIT_MIN_DIST, ORBIT_MAX_DIST)
 
 func _process(delta: float) -> void:
 	if not current:
