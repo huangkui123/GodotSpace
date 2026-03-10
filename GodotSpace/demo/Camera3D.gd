@@ -35,12 +35,12 @@ func focus_on(target: Node3D) -> void:
 	_mode = Mode.ORBIT
 
 	var radius = 1.0
-	if target.get_parent() is OrbitalObject3D:
-		radius = target.get_parent().radius
-	elif target is OrbitalObject3D:
+	if target is OrbitalObject3D:
 		radius = target.radius
+	elif target.get_parent() is OrbitalObject3D:
+		radius = target.get_parent().radius
 
-	_orbit_distance = clamp(radius * 30.0, 10.0, ORBIT_MAX_DIST)
+	_orbit_distance = radius * 3.0
 
 	var to_target = global_position - target.global_position
 	_orbit_yaw = atan2(to_target.x, to_target.z)

@@ -7,7 +7,7 @@ extends Node
 # 真实的G值
 const G: float = 0.000000000066743
 var time_scale: float = 0.1
-var simulation_time: float = 0.0
+var simulation_time: float = 0.1
 
 func _process(delta: float) -> void:
 	simulation_time += delta * time_scale

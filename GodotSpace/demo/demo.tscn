@@ -1,11 +1,9 @@
-[gd_scene load_steps=7 format=3 uid="uid://cwy238cxfbs2q"]
+[gd_scene load_steps=6 format=3 uid="uid://cwy238cxfbs2q"]
 
 [ext_resource type="PackedScene" uid="uid://b0nt4n13a6448" path="res://addons/starlight/Stars.tscn" id="1_xvs24"]
 [ext_resource type="Script" uid="uid://26aidr4wrr72" path="res://addons/starlight/StarGenerator.gd" id="2_6mf2e"]
 [ext_resource type="Texture2D" uid="uid://cwgi2fpms5fll" path="res://addons/starlight/psf-textures/airy_disk.png" id="3_onu7k"]
 [ext_resource type="Script" uid="uid://fndnrhe3mt2s" path="res://demo/FPSCounter.gd" id="4_vr3pp"]
-
-[sub_resource type="BoxMesh" id="BoxMesh_l5rbr"]
 
 [sub_resource type="Environment" id="Environment_ah14t"]
 background_energy_multiplier = 0.0
@@ -26,10 +24,6 @@ shader_params/blur_amount = 0.0
 shader_params/emission_energy = 1e+10
 shader_params/luminosity_cap = 4000.0
 shader_params/color_gamma = 0.0
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
-transform = Transform3D(-0.156173, 0.0545338, -0.986223, 0.071031, 0.99651, 0.0438544, 0.985173, -0.0632037, -0.159502, 10, 0, 0)
-mesh = SubResource("BoxMesh_l5rbr")
 
 [node name="FPSCounter" type="Label" parent="."]
 offset_left = 5.0

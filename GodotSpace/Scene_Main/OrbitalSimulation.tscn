@@ -1,4 +1,4 @@
-[gd_scene load_steps=32 format=3 uid="uid://cqx8cv3jvl4jh"]
+[gd_scene load_steps=44 format=3 uid="uid://cqx8cv3jvl4jh"]
 
 [ext_resource type="Script" uid="uid://dcgctsod7nggw" path="res://addons/orbital_tools/orbital_object_3d.gd" id="1_0i6je"]
 [ext_resource type="PackedScene" uid="uid://cwy238cxfbs2q" path="res://demo/demo.tscn" id="1_lgk2e"]
@@ -11,11 +11,13 @@
 [ext_resource type="Texture2D" uid="uid://cs37500kny7ij" path="res://Assets/ivoyager_assets/maps/Earth.albedo.land_ocean_ice_cloud_8192.jpg" id="6_j5tfa"]
 [ext_resource type="Texture2D" uid="uid://pxtkwpjxd3si" path="res://Assets/ivoyager_assets/maps/Venus.albedo.BjornJonsson.CWreprocessed.4096.jpg" id="7_ks1u5"]
 [ext_resource type="Texture2D" uid="uid://dcmum4rv5sagr" path="res://Assets/ivoyager_assets/maps/Mars.albedo.noaa.CWreprocessed.4096.jpg" id="9_85aj0"]
+[ext_resource type="Texture2D" uid="uid://4uhq4wktpkur" path="res://Assets/ivoyager_assets/maps/Moon.albedo.noaa.4096.jpg" id="9_oh6u1"]
 [ext_resource type="Texture2D" uid="uid://dyaaqx01c0xla" path="res://Assets/ivoyager_assets/maps/Jupiter.albedo.new.BjornJonsson.4096.jpg" id="10_o5cvo"]
 [ext_resource type="Texture2D" uid="uid://chckionlkf2bm" path="res://Assets/ivoyager_assets/maps/Saturn.albedo.noaa.2048.jpg" id="11_fdkqh"]
 [ext_resource type="Texture2D" uid="uid://8xna5noe03ux" path="res://Assets/ivoyager_assets/maps/Uranus.albedo.2024recolor.jpg" id="12_optyn"]
 [ext_resource type="Texture2D" uid="uid://bjf17slbnnnvr" path="res://Assets/ivoyager_assets/maps/Neptune.albedo.2024recolor.4096.jpg" id="13_oh6u1"]
 [ext_resource type="Texture2D" uid="uid://p5b061wtxedr" path="res://Assets/Icons/pause.png" id="15_o5cvo"]
+[ext_resource type="Script" uid="uid://bb0xhiho4nj2l" path="res://Scene_Main/control2d.gd" id="15_optyn"]
 [ext_resource type="Script" uid="uid://m4e6h224463j" path="res://Scene_Main/button.gd" id="16_fdkqh"]
 [ext_resource type="Texture2D" uid="uid://cdk0au457065w" path="res://Assets/Icons/play.png" id="17_fdkqh"]
 
@@ -33,6 +35,9 @@ radius = 0.1
 albedo_texture = ExtResource("4_eta8j")
 
 [sub_resource type="SphereShape3D" id="SphereShape3D_xj46c"]
+radius = 0.0859264
+
+[sub_resource type="ImmediateMesh" id="ImmediateMesh_oh6u1"]
 
 [sub_resource type="SphereShape3D" id="SphereShape3D_y1m35"]
 radius = 0.1
@@ -40,23 +45,43 @@ radius = 0.1
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_300ft"]
 albedo_texture = ExtResource("7_ks1u5")
 
+[sub_resource type="ImmediateMesh" id="ImmediateMesh_l7jty"]
+
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_s6cqi"]
 albedo_texture = ExtResource("6_j5tfa")
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_l7jty"]
+albedo_texture = ExtResource("9_oh6u1")
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_300ft"]
+radius = 0.1
+
+[sub_resource type="ImmediateMesh" id="ImmediateMesh_300ft"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_w5acp"]
 albedo_texture = ExtResource("9_85aj0")
 
+[sub_resource type="ImmediateMesh" id="ImmediateMesh_w5acp"]
+
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ev1gt"]
 albedo_texture = ExtResource("10_o5cvo")
+
+[sub_resource type="ImmediateMesh" id="ImmediateMesh_ev1gt"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_vavlq"]
 albedo_texture = ExtResource("11_fdkqh")
 
+[sub_resource type="ImmediateMesh" id="ImmediateMesh_vavlq"]
+
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_vwpro"]
 albedo_texture = ExtResource("12_optyn")
 
+[sub_resource type="ImmediateMesh" id="ImmediateMesh_vwpro"]
+
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_4qaqc"]
 albedo_texture = ExtResource("13_oh6u1")
+
+[sub_resource type="ImmediateMesh" id="ImmediateMesh_4qaqc"]
 
 [node name="OrbitalSimulation" type="Node3D"]
 
@@ -94,6 +119,7 @@ material = SubResource("StandardMaterial3D_0i6je")
 transform = Transform3D(0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 58)
 script = ExtResource("1_0i6je")
 mass = 0.165
+radius = 0.35
 _initial_position = Vector3(0, 0, 58)
 _initial_velocity = Vector3(880, 0, 0)
 spin_axis = Vector3(0, 0, 1)
@@ -106,7 +132,7 @@ shape = SubResource("SphereShape3D_lgk2e")
 
 [node name="CSGSphere3D" type="CSGSphere3D" parent="MainControl/Sun/Mercury"]
 transform = Transform3D(1, 0, 0, 0, -4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0, 0)
-radius = 4.0
+radius = 0.35
 radial_segments = 40
 rings = 40
 material = SubResource("StandardMaterial3D_hbh2s")
@@ -128,6 +154,7 @@ shape = SubResource("SphereShape3D_xj46c")
 
 [node name="MercuryOrbit" type="MeshInstance3D" parent="MainControl/Sun" node_paths=PackedStringArray("orbiter")]
 extra_cull_margin = 100.0
+mesh = SubResource("ImmediateMesh_oh6u1")
 script = ExtResource("2_hbh2s")
 orbiter = NodePath("../Mercury")
 metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
@@ -136,7 +163,7 @@ metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
 transform = Transform3D(-0.967334, -0.253506, 0, 0, 0, 1, -0.253506, 0.967334, 0, 0, 0, 108)
 script = ExtResource("1_0i6je")
 mass = 2.45
-radius = 1.2
+radius = 0.87
 _initial_position = Vector3(0, 0, 108)
 _initial_velocity = Vector3(608.405, 0, 4)
 spin_axis = Vector3(0, 0, 1)
@@ -149,7 +176,7 @@ shape = SubResource("SphereShape3D_y1m35")
 
 [node name="CSGSphere3D" type="CSGSphere3D" parent="MainControl/Sun/Venus"]
 transform = Transform3D(1, 0, 0, 0, -4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0, 0)
-radius = 6.0
+radius = 0.87
 radial_segments = 40
 rings = 40
 material = SubResource("StandardMaterial3D_300ft")
@@ -171,6 +198,7 @@ shape = SubResource("SphereShape3D_xj46c")
 
 [node name="VenusOrbit" type="MeshInstance3D" parent="MainControl/Sun" node_paths=PackedStringArray("orbiter")]
 extra_cull_margin = 100.0
+mesh = SubResource("ImmediateMesh_l7jty")
 script = ExtResource("2_hbh2s")
 orbiter = NodePath("../Venus")
 metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
@@ -178,8 +206,8 @@ metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
 [node name="Earth" type="Area3D" parent="MainControl/Sun" node_paths=PackedStringArray("visual")]
 transform = Transform3D(0, -1, 0, 0, 0, 1, -1, 0, 0, 0, 0, 150)
 script = ExtResource("1_0i6je")
-mass = 3.0
-radius = 1.3
+mass = 3e+13
+radius = 0.92
 _initial_position = Vector3(0, 0, 150)
 _initial_velocity = Vector3(512.835, 0, 0)
 spin_axis = Vector3(0.2, 0, 1)
@@ -192,7 +220,7 @@ shape = SubResource("SphereShape3D_y1m35")
 
 [node name="CSGSphere3D" type="CSGSphere3D" parent="MainControl/Sun/Earth"]
 transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0)
-radius = 6.0
+radius = 0.92
 radial_segments = 40
 rings = 40
 material = SubResource("StandardMaterial3D_s6cqi")
@@ -212,8 +240,37 @@ camera = NodePath("../../../../Camera3D")
 transform = Transform3D(12.045, 0, 0, 0, 12.045, 0, 0, 0, 12.045, 0, 0, 0)
 shape = SubResource("SphereShape3D_xj46c")
 
+[node name="Moon" type="Area3D" parent="MainControl/Sun/Earth" node_paths=PackedStringArray("visual")]
+transform = Transform3D(0.016101, 0.99987, 0, -0.99987, 0.016101, 0, 0, 0, 1, 2, 0.18, 0)
+script = ExtResource("1_0i6je")
+mass = 3.7e+11
+radius = 0.25
+_initial_position = Vector3(2, 0.18, 0)
+_initial_velocity = Vector3(0, 31.6, 0)
+spin_axis = Vector3(0, 0, 1)
+spin_rate = 47.1
+visual = NodePath("CSGSphere3D")
+metadata/_custom_type_script = "uid://dcgctsod7nggw"
+
+[node name="CSGSphere3D" type="CSGSphere3D" parent="MainControl/Sun/Earth/Moon"]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0)
+radius = 0.25
+radial_segments = 40
+rings = 40
+material = SubResource("StandardMaterial3D_l7jty")
+
+[node name="InfluenceZone" type="CollisionShape3D" parent="MainControl/Sun/Earth/Moon"]
+shape = SubResource("SphereShape3D_300ft")
+
+[node name="MoonOrbit" type="MeshInstance3D" parent="MainControl/Sun/Earth" node_paths=PackedStringArray("orbiter")]
+extra_cull_margin = 100.0
+script = ExtResource("2_hbh2s")
+orbiter = NodePath("../Moon")
+metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
+
 [node name="EarthOrbit" type="MeshInstance3D" parent="MainControl/Sun" node_paths=PackedStringArray("orbiter")]
 extra_cull_margin = 100.0
+mesh = SubResource("ImmediateMesh_300ft")
 script = ExtResource("2_hbh2s")
 orbiter = NodePath("../Earth")
 metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
@@ -222,7 +279,7 @@ metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
 transform = Transform3D(-0.106808, 0.99428, 0, 0, 0, 1, 0.99428, 0.106808, 0, 0, 0, 228)
 script = ExtResource("1_0i6je")
 mass = 0.32
-radius = 0.9
+radius = 0.49
 _initial_position = Vector3(0, 0, 228)
 _initial_velocity = Vector3(438.125, 0, 4)
 spin_axis = Vector3(0, 0, 1)
@@ -235,7 +292,7 @@ shape = SubResource("SphereShape3D_y1m35")
 
 [node name="CSGSphere3D" type="CSGSphere3D" parent="MainControl/Sun/Mars"]
 transform = Transform3D(1, 0, 0, 0, -4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0, 0)
-radius = 6.0
+radius = 0.49
 radial_segments = 40
 rings = 40
 material = SubResource("StandardMaterial3D_w5acp")
@@ -257,6 +314,7 @@ shape = SubResource("SphereShape3D_xj46c")
 
 [node name="MarsOrbit" type="MeshInstance3D" parent="MainControl/Sun" node_paths=PackedStringArray("orbiter")]
 extra_cull_margin = 100.0
+mesh = SubResource("ImmediateMesh_w5acp")
 script = ExtResource("2_hbh2s")
 orbiter = NodePath("../Mars")
 metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
@@ -265,7 +323,7 @@ metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
 transform = Transform3D(0, -1, 0, 0, 0, 1, -1, 0, 0, 0, 0, 780)
 script = ExtResource("1_0i6je")
 mass = 951.0
-radius = 4.0
+radius = 10.04
 _initial_position = Vector3(0, 0, 780)
 _initial_velocity = Vector3(221.33, 0, 0)
 spin_axis = Vector3(0, 0, 1)
@@ -278,7 +336,7 @@ shape = SubResource("SphereShape3D_y1m35")
 
 [node name="CSGSphere3D" type="CSGSphere3D" parent="MainControl/Sun/Jupiter"]
 transform = Transform3D(1, 0, 0, 0, -4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0, 0)
-radius = 6.0
+radius = 10.04
 radial_segments = 40
 rings = 40
 material = SubResource("StandardMaterial3D_ev1gt")
@@ -300,6 +358,7 @@ shape = SubResource("SphereShape3D_xj46c")
 
 [node name="JupiterOrbit" type="MeshInstance3D" parent="MainControl/Sun" node_paths=PackedStringArray("orbiter")]
 extra_cull_margin = 156.0
+mesh = SubResource("ImmediateMesh_ev1gt")
 script = ExtResource("2_hbh2s")
 orbiter = NodePath("../Jupiter")
 metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
@@ -308,7 +367,7 @@ metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
 transform = Transform3D(0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1430)
 script = ExtResource("1_0i6je")
 mass = 285.0
-radius = 3.5
+radius = 8.36
 _initial_position = Vector3(0, 0, 1430)
 _initial_velocity = Vector3(171.555, 0, 0)
 spin_axis = Vector3(0, 0, 1)
@@ -321,7 +380,7 @@ shape = SubResource("SphereShape3D_y1m35")
 
 [node name="CSGSphere3D" type="CSGSphere3D" parent="MainControl/Sun/Saturn"]
 transform = Transform3D(1, 0, 0, 0, -4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0, 0)
-radius = 6.0
+radius = 8.36
 radial_segments = 40
 rings = 40
 material = SubResource("StandardMaterial3D_vavlq")
@@ -343,6 +402,7 @@ shape = SubResource("SphereShape3D_xj46c")
 
 [node name="SaturnOrbit" type="MeshInstance3D" parent="MainControl/Sun" node_paths=PackedStringArray("orbiter")]
 extra_cull_margin = 316.714
+mesh = SubResource("ImmediateMesh_vavlq")
 script = ExtResource("2_hbh2s")
 orbiter = NodePath("../Saturn")
 metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
@@ -351,7 +411,7 @@ metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
 transform = Transform3D(0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 2878)
 script = ExtResource("1_0i6je")
 mass = 43.0
-radius = 2.5
+radius = 3.64
 _initial_position = Vector3(0, 0, 2878)
 _initial_velocity = Vector3(119.725, 0, 0)
 spin_axis = Vector3(0, 0, 1)
@@ -364,7 +424,7 @@ shape = SubResource("SphereShape3D_y1m35")
 
 [node name="CSGSphere3D" type="CSGSphere3D" parent="MainControl/Sun/Uranus"]
 transform = Transform3D(1, 0, 0, 0, -4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0, 0)
-radius = 6.0
+radius = 3.64
 radial_segments = 40
 rings = 40
 material = SubResource("StandardMaterial3D_vwpro")
@@ -386,6 +446,7 @@ shape = SubResource("SphereShape3D_xj46c")
 
 [node name="UranusOrbit" type="MeshInstance3D" parent="MainControl/Sun" node_paths=PackedStringArray("orbiter")]
 extra_cull_margin = 611.396
+mesh = SubResource("ImmediateMesh_vwpro")
 script = ExtResource("2_hbh2s")
 orbiter = NodePath("../Uranus")
 metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
@@ -394,7 +455,7 @@ metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
 transform = Transform3D(0, -1, 0, 0, 0, 1, -1, 0, 0, 0, 0, 4510)
 script = ExtResource("1_0i6je")
 mass = 51.0
-radius = 2.5
+radius = 3.54
 _initial_position = Vector3(0, 0, 4510)
 _initial_velocity = Vector3(94, 0, 0)
 spin_axis = Vector3(0, 0, 1)
@@ -407,7 +468,7 @@ shape = SubResource("SphereShape3D_y1m35")
 
 [node name="CSGSphere3D" type="CSGSphere3D" parent="MainControl/Sun/Neptune"]
 transform = Transform3D(1, 0, 0, 0, -4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0, 0)
-radius = 6.0
+radius = 3.54
 radial_segments = 40
 rings = 40
 material = SubResource("StandardMaterial3D_4qaqc")
@@ -429,6 +490,7 @@ shape = SubResource("SphereShape3D_xj46c")
 
 [node name="NeptuneOrbit" type="MeshInstance3D" parent="MainControl/Sun" node_paths=PackedStringArray("orbiter")]
 extra_cull_margin = 902.0
+mesh = SubResource("ImmediateMesh_4qaqc")
 script = ExtResource("2_hbh2s")
 orbiter = NodePath("../Neptune")
 metadata/_custom_type_script = "uid://ca4jo2eui6k2t"
@@ -439,13 +501,17 @@ far = 40000.0
 script = ExtResource("4_y1m35")
 default_velocity = 500.0
 
-[node name="Control" type="Control" parent="."]
+[node name="Control" type="Control" parent="." node_paths=PackedStringArray("toggle_label_button", "toggle_orbit_button", "planets")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+script = ExtResource("15_optyn")
+toggle_label_button = NodePath("VBoxContainer/Button_Vis_Text")
+toggle_orbit_button = NodePath("VBoxContainer/Button_Vis_Orbit")
+planets = [NodePath("../MainControl/Sun/Mercury"), NodePath("../MainControl/Sun/Venus"), NodePath("../MainControl/Sun/Earth"), NodePath("../MainControl/Sun/Mars"), NodePath("../MainControl/Sun/Jupiter"), NodePath("../MainControl/Sun/Saturn"), NodePath("../MainControl/Sun/Uranus"), NodePath("../MainControl/Sun/Neptune")]
 
 [node name="HBoxContainer" type="HBoxContainer" parent="Control"]
 layout_mode = 1
@@ -467,7 +533,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
 min_value = 0.001
-max_value = 0.2
+max_value = 1.0
 step = 0.001
 value = 0.01
 
@@ -491,12 +557,22 @@ offset_right = 374.0
 offset_bottom = -38.0
 grow_vertical = 0
 
+[node name="Button_Vis_Text" type="Button" parent="Control/VBoxContainer"]
+layout_mode = 2
+text = "隐藏"
+
+[node name="Button_Vis_Orbit" type="Button" parent="Control/VBoxContainer"]
+layout_mode = 2
+text = "隐藏"
+
 [node name="HelpTextButton" type="Button" parent="Control/VBoxContainer"]
+visible = false
 layout_mode = 2
 text = "隐藏"
 script = ExtResource("6_8fbr4")
 
 [node name="HelpText" type="Label" parent="Control/VBoxContainer"]
+visible = false
 layout_mode = 2
 text = "移动：WASD
 上/下：Q/E

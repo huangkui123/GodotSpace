@@ -74,6 +74,17 @@ func _ready() -> void:
 	for orbiter:OrbitalObject3D in _orbiters:
 		var orb_pos:Vector3 = orbiter._initial_position
 		var orb_vel:Vector3 = orbiter._initial_velocity
+
+		# 只在运行时随机，编辑器保持原样
+		if not Engine.is_editor_hint():
+			var random_angle = randf() * 2.0 * PI
+			var orbit_normal = orb_pos.cross(orb_vel).normalized()
+			if orbit_normal.length() < 0.01:
+				orbit_normal = Vector3.UP
+			var rotation_quat = Quaternion(orbit_normal, random_angle)
+			orb_pos = rotation_quat * orb_pos
+			orb_vel = rotation_quat * orb_vel
+
 		add_orbiter(orbiter, orb_pos, orb_vel)
 
 	set_notify_transform(true)
@@ -390,6 +401,8 @@ func _is_eliptic() -> bool:
 	return _eliptic
 
 func get_velocity() -> Vector3:
+	if Engine.is_editor_hint():
+		return Vector3.ZERO
 	var current_time = OrbitalManager.simulation_time - _initial_time
 	return _get_velocity_at_time(current_time)
 
@@ -446,7 +459,10 @@ func calcule_orbit(new_position: Vector3, new_velocity: Vector3) -> ORBITS_TYPES
 		return ORBITS_TYPES.CENTRAL_OBJECT
 	var o_t:ORBITS_TYPES = _calculate_orbital_elements(new_position, new_velocity, attractor)
 	if o_t:
-		_initial_time = OrbitalManager.simulation_time
+		if Engine.is_editor_hint():
+			_initial_time = 0.0
+		else:
+			_initial_time = OrbitalManager.simulation_time
 		influence_radius = _calculate_influence_radius(attractor.mass, mass)
 		orbit_changed.emit()
 	return o_t

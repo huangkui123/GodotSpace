@@ -9,6 +9,14 @@ var _hovered_planet: OrbitalObject3D = null
 var _paused: bool = false
 var _last_time_scale: float = 1.0
 
+# 指数映射：slider 0-1 → time_scale 的实际范围
+const TIME_SCALE_MIN = 0.00001   # slider=0 时的速度
+const TIME_SCALE_MAX = 0.5  # slider=1 时的速度
+
+func _slider_to_time_scale(slider_val: float) -> float:
+	# 指数插值：scale = MIN * (MAX/MIN)^slider_val
+	return TIME_SCALE_MIN * pow(TIME_SCALE_MAX / TIME_SCALE_MIN, slider_val)
+
 func _ready() -> void:
 	if pause_button:
 		pause_button.pressed.connect(_on_pause_pressed)
@@ -21,13 +29,11 @@ func _on_pause_pressed() -> void:
 		pause_button.text = "继续"
 	else:
 		OrbitalManager.time_scale = _last_time_scale
-		if time_slider:
-			time_slider.value = _last_time_scale
 		pause_button.text = "暂停"
 
 func _process(_delta: float) -> void:
 	if time_slider and not _paused:
-		OrbitalManager.time_scale = time_slider.value
+		OrbitalManager.time_scale = _slider_to_time_scale(time_slider.value)
 	_update_hover()
 
 func _update_hover() -> void:
