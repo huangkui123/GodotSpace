@@ -16,7 +16,7 @@ var _orbit_target: Node3D = null
 var _orbit_distance: float = 50.0
 var _orbit_yaw: float = 0.0
 var _orbit_pitch: float = 0.3
-const ORBIT_MIN_DIST = 0.3
+const ORBIT_MIN_DIST = 0.2
 const ORBIT_MAX_DIST = 5000.0
 const ORBIT_ZOOM_SCALE = 1.15
 
