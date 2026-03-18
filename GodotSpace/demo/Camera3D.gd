@@ -1,11 +1,19 @@
 extends Camera3D
 
+@export_group("自由飞行")
 @export_range(0, 10, 0.01) var sensitivity: float = 3
 @export_range(0, 1000, 0.1) var default_velocity: float = 5
 @export_range(0, 10, 0.01) var speed_scale: float = 1.17
 @export_range(1, 100, 0.1) var boost_speed_multiplier: float = 3.0
 @export var max_speed: float = 1000
 @export var min_speed: float = 0.2
+
+@export_group("轨道环绕")
+@export var orbit_min_dist: float = 0.2
+@export var orbit_max_dist: float = 5000.0
+@export var orbit_zoom_scale: float = 1.15
+## 聚焦时距离 = 目标Radius × 此系数
+@export var orbit_radius_multiplier: float = 3.0
 
 @onready var _velocity = default_velocity
 
@@ -16,9 +24,6 @@ var _orbit_target: Node3D = null
 var _orbit_distance: float = 50.0
 var _orbit_yaw: float = 0.0
 var _orbit_pitch: float = 0.3
-const ORBIT_MIN_DIST = 0.2
-const ORBIT_MAX_DIST = 5000.0
-const ORBIT_ZOOM_SCALE = 1.15
 
 var _transitioning: bool = false
 var _transition_time: float = 0.0
@@ -38,7 +43,7 @@ func focus_on(target: Node3D) -> void:
 	elif target.get_parent() is OrbitalObject3D:
 		radius = target.get_parent().radius
 
-	_orbit_distance = radius * 3.0
+	_orbit_distance = radius * orbit_radius_multiplier
 
 	var to_target = global_position - target.global_position
 	_orbit_yaw = atan2(to_target.x, to_target.z)
@@ -70,13 +75,8 @@ func _calc_orbit_basis() -> Basis:
 	return Basis(right, up, -dir)
 
 func _get_zoom_step() -> float:
-	# 距离越近步长越小，实现平滑减速
-	# 用距离的比例而非固定系数
-	var base = ORBIT_ZOOM_SCALE
-	var t = clamp(_orbit_distance / 2.0, 0.0, 1.0)  # 距离小于10时开始减速
-	# 线性插值：近处用更小的步长系数
-	var scale = lerp(1.01, base, t)
-	return scale
+	var t = clamp(_orbit_distance / 2.0, 0.0, 1.0)
+	return lerp(1.01, orbit_zoom_scale, t)
 
 func _input(event: InputEvent) -> void:
 	if not current:
@@ -128,9 +128,9 @@ func _input(event: InputEvent) -> void:
 			var zoom = _get_zoom_step()
 			match event.button_index:
 				MOUSE_BUTTON_WHEEL_UP:
-					_orbit_distance = clamp(_orbit_distance / zoom, ORBIT_MIN_DIST, ORBIT_MAX_DIST)
+					_orbit_distance = clamp(_orbit_distance / zoom, orbit_min_dist, orbit_max_dist)
 				MOUSE_BUTTON_WHEEL_DOWN:
-					_orbit_distance = clamp(_orbit_distance * zoom, ORBIT_MIN_DIST, ORBIT_MAX_DIST)
+					_orbit_distance = clamp(_orbit_distance * zoom, orbit_min_dist, orbit_max_dist)
 
 func _process(delta: float) -> void:
 	if not current:

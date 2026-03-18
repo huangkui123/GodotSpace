@@ -1,0 +1,19 @@
+[gd_resource type="StandardMaterial3D" load_steps=6 format=3 uid="uid://bdwiytc1bd4cj"]
+
+[ext_resource type="Texture2D" uid="uid://lbpr5y50peyc" path="res://Scene_Main/ori/James Webb Space Telescope/texture/James Webb Space Telescope (B)_lambert2_Albedo.png" id="1_qj21w"]
+[ext_resource type="Texture2D" uid="uid://ba0tfiogc0bpx" path="res://Scene_Main/ori/James Webb Space Telescope/texture/James Webb Space Telescope (B)_lambert2_AO.png" id="2_4mn5i"]
+[ext_resource type="Texture2D" uid="uid://cl83gk0r6ocy7" path="res://Scene_Main/ori/James Webb Space Telescope/texture/James Webb Space Telescope (B)_lambert2_Emissive.png" id="3_q7jy5"]
+[ext_resource type="Texture2D" uid="uid://c47yxn7rd8alg" path="res://Scene_Main/ori/James Webb Space Telescope/texture/James Webb Space Telescope (B)_lambert2_Matallic.png" id="4_dibbp"]
+[ext_resource type="Texture2D" uid="uid://dxhwjuet88t6c" path="res://Scene_Main/ori/James Webb Space Telescope/texture/James Webb Space Telescope (B)_lambert2_Normal.png" id="5_wknqb"]
+
+[resource]
+albedo_texture = ExtResource("1_qj21w")
+metallic = 1.0
+metallic_texture = ExtResource("4_dibbp")
+roughness = 0.5
+emission_enabled = true
+emission_texture = ExtResource("3_q7jy5")
+normal_enabled = true
+normal_texture = ExtResource("5_wknqb")
+ao_enabled = true
+ao_texture = ExtResource("2_4mn5i")

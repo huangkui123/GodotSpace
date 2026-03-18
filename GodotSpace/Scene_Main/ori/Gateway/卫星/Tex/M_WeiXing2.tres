@@ -1,0 +1,19 @@
+[gd_resource type="StandardMaterial3D" load_steps=6 format=3 uid="uid://ihhxyw6ulfug"]
+
+[ext_resource type="Texture2D" uid="uid://bs1hr3q7k7ij2" path="res://Scene_Main/ori/Gateway/卫星/Tex/WeiXing2_M_Albedo.png" id="1_fcka8"]
+[ext_resource type="Texture2D" uid="uid://cfsbr43e40myk" path="res://Scene_Main/ori/Gateway/卫星/Tex/WeiXing2_M_AO.jpg" id="2_pqvm6"]
+[ext_resource type="Texture2D" uid="uid://dklobp6s8c745" path="res://Scene_Main/ori/Galileo/texture/Galileo_1001_Emissive.png" id="3_vmggt"]
+[ext_resource type="Texture2D" uid="uid://d3kayexdxd4c1" path="res://Scene_Main/ori/Gateway/卫星/Tex/WeiXing2_M_MS.tga" id="4_o1n1p"]
+[ext_resource type="Texture2D" uid="uid://b3nh786hxx7gp" path="res://Scene_Main/ori/Gateway/卫星/Tex/WeiXing2_M_Normal.png" id="5_8qyb0"]
+
+[resource]
+albedo_texture = ExtResource("1_fcka8")
+metallic = 1.0
+metallic_texture = ExtResource("4_o1n1p")
+metallic_texture_channel = 3
+roughness = 0.5
+emission_texture = ExtResource("3_vmggt")
+normal_enabled = true
+normal_texture = ExtResource("5_8qyb0")
+ao_enabled = true
+ao_texture = ExtResource("2_pqvm6")
