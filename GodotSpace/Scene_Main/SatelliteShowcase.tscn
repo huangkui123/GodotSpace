@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3 uid="uid://dls8dvhv6s6j6"]
+[gd_scene load_steps=23 format=3 uid="uid://dls8dvhv6s6j6"]
 
 [ext_resource type="PackedScene" uid="uid://cwy238cxfbs2q" path="res://demo/demo.tscn" id="1_11tal"]
 [ext_resource type="Script" uid="uid://cs8336dsnr7jx" path="res://demo/Camera3D.gd" id="1_rbj1o"]
@@ -13,9 +13,18 @@
 [ext_resource type="PackedScene" uid="uid://b8hll8ddqvjnv" path="res://Scene_Main/ori/MESSENGER/M.fbx" id="11_jjpsg"]
 [ext_resource type="PackedScene" uid="uid://c2h1tmev08dpk" path="res://Scene_Main/ori/Pioneer 10/Pioneer.fbx" id="12_qmwtq"]
 [ext_resource type="Script" uid="uid://olmmic3asuv1" path="res://Scene_Main/SatelliteControl2D.gd" id="13_qmwtq"]
+[ext_resource type="Material" uid="uid://cp6vspmer2840" path="res://Scene_Main/Mat/M_Plane_Yellow.tres" id="14_uwh6b"]
+[ext_resource type="Material" uid="uid://cv42qomp4ainl" path="res://Scene_Main/Mat/M_Plane_Green02.tres" id="15_artsq"]
+[ext_resource type="Material" uid="uid://by867abw5jgal" path="res://Scene_Main/Mat/M_Plane_Green01.tres" id="16_2qfoy"]
+[ext_resource type="Material" uid="uid://bp331siv66p83" path="res://Scene_Main/Mat/M_Plane_Qing.tres" id="17_erjnf"]
+[ext_resource type="Material" uid="uid://yown4njlxe4v" path="res://Scene_Main/Mat/M_Plane_Orange.tres" id="18_erjnf"]
+[ext_resource type="Material" uid="uid://dmocb8m7mvbu2" path="res://Scene_Main/Mat/M_Plane_Red.tres" id="19_duuxi"]
+[ext_resource type="Material" uid="uid://ccnquu1ute6ax" path="res://Scene_Main/Mat/M_Plane_Purple.tres" id="20_anm0b"]
 
 [sub_resource type="SphereShape3D" id="SphereShape3D_4mii6"]
 radius = 0.215437
+
+[sub_resource type="QuadMesh" id="QuadMesh_duuxi"]
 
 [node name="SatelliteShowcase" type="Node3D"]
 
@@ -32,7 +41,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.122)
 [node name="SatelliteControl" type="Node3D" parent="." node_paths=PackedStringArray("camera", "node_planets")]
 script = ExtResource("3_jjpsg")
 camera = NodePath("../Camera3D")
-node_planets = [NodePath("GaoGuiZhan"), NodePath("TenMeter"), NodePath("DaKeWei"), NodePath("ZhongKeWei"), NodePath("FangYu01"), NodePath("QianMi"), NodePath("FangYu02"), NodePath("TingBoGang")]
+node_planets = [NodePath("GaoGuiZhan"), NodePath("TenMeter"), NodePath("DaKeWei"), NodePath("ZhongKeWei"), NodePath("FangYu01_1"), NodePath("QianMi"), NodePath("FangYu02_1"), NodePath("TingBoGang"), NodePath("ZhongKeWei02"), NodePath("TingBoGang"), NodePath("FangYu02_2"), NodePath("FangYu01_2")]
 
 [node name="GaoGuiZhan" type="Node3D" parent="SatelliteControl"]
 
@@ -56,10 +65,10 @@ transform = Transform3D(12.045, 0, 0, 0, 12.045, 0, 0, 0, 12.045, 0, 0, 0)
 shape = SubResource("SphereShape3D_4mii6")
 
 [node name="WeiXing" parent="SatelliteControl/GaoGuiZhan" instance=ExtResource("8_hmane")]
-transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 2.28434, -0.45746, 0)
+transform = Transform3D(0.35, 0, 0, 0, 0.35, 0, 0, 0, 0.35, 1.57878, -0.45746, 0)
 
 [node name="TenMeter" type="Node3D" parent="SatelliteControl"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 14.3283, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 10.9993, 0)
 
 [node name="Kepler(B)" parent="SatelliteControl/TenMeter" instance=ExtResource("10_s5hka")]
 transform = Transform3D(50, 0, 0, 0, 50, 0, 0, 0, 50, 0, -1.67993, 0.897914)
@@ -76,7 +85,7 @@ script = ExtResource("4_4mii6")
 camera = NodePath("../../../Camera3D")
 hide_distance = 13.0
 enable_max_distance = true
-max_distance = 600.0
+max_distance = 300.0
 
 [node name="Area3D" type="Area3D" parent="SatelliteControl/TenMeter/Label3D"]
 
@@ -85,7 +94,7 @@ transform = Transform3D(12.045, 0, 0, 0, 12.045, 0, 0, 0, 12.045, 0, 0, 0)
 shape = SubResource("SphereShape3D_4mii6")
 
 [node name="DaKeWei" type="Node3D" parent="SatelliteControl"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -14.2412, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -11.3333, 0)
 
 [node name="M" parent="SatelliteControl/DaKeWei" instance=ExtResource("11_jjpsg")]
 
@@ -100,7 +109,7 @@ script = ExtResource("4_4mii6")
 camera = NodePath("../../../Camera3D")
 hide_distance = 13.0
 enable_max_distance = true
-max_distance = 700.0
+max_distance = 300.0
 
 [node name="Area3D" type="Area3D" parent="SatelliteControl/DaKeWei/Label3D"]
 
@@ -109,7 +118,7 @@ transform = Transform3D(12.045, 0, 0, 0, 12.045, 0, 0, 0, 12.045, 0, 0, 0)
 shape = SubResource("SphereShape3D_4mii6")
 
 [node name="ZhongKeWei" type="Node3D" parent="SatelliteControl"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 16.5201)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 33.5008)
 
 [node name="Cassini-Huygens (A)" parent="SatelliteControl/ZhongKeWei" instance=ExtResource("3_4k0w6")]
 transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 0, 0, 0)
@@ -126,7 +135,7 @@ script = ExtResource("4_4mii6")
 camera = NodePath("../../../Camera3D")
 hide_distance = 13.0
 enable_max_distance = true
-max_distance = 800.0
+max_distance = 300.0
 
 [node name="Area3D" type="Area3D" parent="SatelliteControl/ZhongKeWei/Label3D"]
 
@@ -134,13 +143,13 @@ max_distance = 800.0
 transform = Transform3D(12.045, 0, 0, 0, 12.045, 0, 0, 0, 12.045, 0, 0, 0)
 shape = SubResource("SphereShape3D_4mii6")
 
-[node name="FangYu01" type="Node3D" parent="SatelliteControl"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 29.3183)
+[node name="FangYu01_1" type="Node3D" parent="SatelliteControl"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 68.4346)
 
-[node name="Galileo_autosave_1" parent="SatelliteControl/FangYu01" instance=ExtResource("7_gpb2q")]
+[node name="Galileo_autosave_1" parent="SatelliteControl/FangYu01_1" instance=ExtResource("7_gpb2q")]
 transform = Transform3D(0.03, 0, 0, 0, 0.03, 0, 0, 0, 0.03, 0, 0, 0)
 
-[node name="Label3D" type="Label3D" parent="SatelliteControl/FangYu01" node_paths=PackedStringArray("camera")]
+[node name="Label3D" type="Label3D" parent="SatelliteControl/FangYu01_1" node_paths=PackedStringArray("camera")]
 pixel_size = 0.001
 billboard = 1
 no_depth_test = true
@@ -152,16 +161,16 @@ script = ExtResource("4_4mii6")
 camera = NodePath("../../../Camera3D")
 hide_distance = 13.0
 enable_max_distance = true
-max_distance = 850.0
+max_distance = 400.0
 
-[node name="Area3D" type="Area3D" parent="SatelliteControl/FangYu01/Label3D"]
+[node name="Area3D" type="Area3D" parent="SatelliteControl/FangYu01_1/Label3D"]
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="SatelliteControl/FangYu01/Label3D/Area3D"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="SatelliteControl/FangYu01_1/Label3D/Area3D"]
 transform = Transform3D(12.045, 0, 0, 0, 12.045, 0, 0, 0, 12.045, 0, 0, 0)
 shape = SubResource("SphereShape3D_4mii6")
 
 [node name="QianMi" type="Node3D" parent="SatelliteControl"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 42.082)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 101.547)
 
 [node name="James Webb Space Telescope (B) (2)" parent="SatelliteControl/QianMi" instance=ExtResource("9_gpb2q")]
 transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, 0, 0)
@@ -177,7 +186,7 @@ script = ExtResource("4_4mii6")
 camera = NodePath("../../../Camera3D")
 hide_distance = 13.0
 enable_max_distance = true
-max_distance = 900.0
+max_distance = 300.0
 
 [node name="Area3D" type="Area3D" parent="SatelliteControl/QianMi/Label3D"]
 
@@ -185,12 +194,12 @@ max_distance = 900.0
 transform = Transform3D(12.045, 0, 0, 0, 12.045, 0, 0, 0, 12.045, 0, 0, 0)
 shape = SubResource("SphereShape3D_4mii6")
 
-[node name="FangYu02" type="Node3D" parent="SatelliteControl"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 56.4266)
+[node name="FangYu02_1" type="Node3D" parent="SatelliteControl"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 135.555)
 
-[node name="Pioneer" parent="SatelliteControl/FangYu02" instance=ExtResource("12_qmwtq")]
+[node name="Pioneer" parent="SatelliteControl/FangYu02_1" instance=ExtResource("12_qmwtq")]
 
-[node name="Label3D" type="Label3D" parent="SatelliteControl/FangYu02" node_paths=PackedStringArray("camera")]
+[node name="Label3D" type="Label3D" parent="SatelliteControl/FangYu02_1" node_paths=PackedStringArray("camera")]
 pixel_size = 0.001
 billboard = 1
 no_depth_test = true
@@ -201,16 +210,68 @@ script = ExtResource("4_4mii6")
 camera = NodePath("../../../Camera3D")
 hide_distance = 13.0
 enable_max_distance = true
-max_distance = 950.0
+max_distance = 300.0
 
-[node name="Area3D" type="Area3D" parent="SatelliteControl/FangYu02/Label3D"]
+[node name="Area3D" type="Area3D" parent="SatelliteControl/FangYu02_1/Label3D"]
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="SatelliteControl/FangYu02/Label3D/Area3D"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="SatelliteControl/FangYu02_1/Label3D/Area3D"]
+transform = Transform3D(12.045, 0, 0, 0, 12.045, 0, 0, 0, 12.045, 0, 0, 0)
+shape = SubResource("SphereShape3D_4mii6")
+
+[node name="ZhongKeWei02" type="Node3D" parent="SatelliteControl"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -34.0039)
+
+[node name="Cassini-Huygens (A)" parent="SatelliteControl/ZhongKeWei02" instance=ExtResource("3_4k0w6")]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 0, 0, 0)
+
+[node name="Label3D" type="Label3D" parent="SatelliteControl/ZhongKeWei02" node_paths=PackedStringArray("camera")]
+pixel_size = 0.001
+billboard = 1
+no_depth_test = true
+fixed_size = true
+text = "中可维
+"
+font_size = 23
+script = ExtResource("4_4mii6")
+camera = NodePath("../../../Camera3D")
+hide_distance = 13.0
+enable_max_distance = true
+max_distance = 300.0
+
+[node name="Area3D" type="Area3D" parent="SatelliteControl/ZhongKeWei02/Label3D"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="SatelliteControl/ZhongKeWei02/Label3D/Area3D"]
+transform = Transform3D(12.045, 0, 0, 0, 12.045, 0, 0, 0, 12.045, 0, 0, 0)
+shape = SubResource("SphereShape3D_4mii6")
+
+[node name="FangYu01_2" type="Node3D" parent="SatelliteControl"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -66.5431)
+
+[node name="Galileo_autosave_1" parent="SatelliteControl/FangYu01_2" instance=ExtResource("7_gpb2q")]
+transform = Transform3D(0.03, 0, 0, 0, 0.03, 0, 0, 0, 0.03, 0, 0, 0)
+
+[node name="Label3D" type="Label3D" parent="SatelliteControl/FangYu01_2" node_paths=PackedStringArray("camera")]
+pixel_size = 0.001
+billboard = 1
+no_depth_test = true
+fixed_size = true
+text = "防御一号
+"
+font_size = 23
+script = ExtResource("4_4mii6")
+camera = NodePath("../../../Camera3D")
+hide_distance = 13.0
+enable_max_distance = true
+max_distance = 400.0
+
+[node name="Area3D" type="Area3D" parent="SatelliteControl/FangYu01_2/Label3D"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="SatelliteControl/FangYu01_2/Label3D/Area3D"]
 transform = Transform3D(12.045, 0, 0, 0, 12.045, 0, 0, 0, 12.045, 0, 0, 0)
 shape = SubResource("SphereShape3D_4mii6")
 
 [node name="TingBoGang" type="Node3D" parent="SatelliteControl"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -16.0239)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -94.8973)
 
 [node name="D" parent="SatelliteControl/TingBoGang" instance=ExtResource("4_s6w1e")]
 
@@ -225,11 +286,35 @@ script = ExtResource("4_4mii6")
 camera = NodePath("../../../Camera3D")
 hide_distance = 13.0
 enable_max_distance = true
-max_distance = 980.0
+max_distance = 300.0
 
 [node name="Area3D" type="Area3D" parent="SatelliteControl/TingBoGang/Label3D"]
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="SatelliteControl/TingBoGang/Label3D/Area3D"]
+transform = Transform3D(12.045, 0, 0, 0, 12.045, 0, 0, 0, 12.045, 0, 0, 0)
+shape = SubResource("SphereShape3D_4mii6")
+
+[node name="FangYu02_2" type="Node3D" parent="SatelliteControl"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -127.441)
+
+[node name="Pioneer" parent="SatelliteControl/FangYu02_2" instance=ExtResource("12_qmwtq")]
+
+[node name="Label3D" type="Label3D" parent="SatelliteControl/FangYu02_2" node_paths=PackedStringArray("camera")]
+pixel_size = 0.001
+billboard = 1
+no_depth_test = true
+fixed_size = true
+text = "防御二号"
+font_size = 23
+script = ExtResource("4_4mii6")
+camera = NodePath("../../../Camera3D")
+hide_distance = 13.0
+enable_max_distance = true
+max_distance = 300.0
+
+[node name="Area3D" type="Area3D" parent="SatelliteControl/FangYu02_2/Label3D"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="SatelliteControl/FangYu02_2/Label3D/Area3D"]
 transform = Transform3D(12.045, 0, 0, 0, 12.045, 0, 0, 0, 12.045, 0, 0, 0)
 shape = SubResource("SphereShape3D_4mii6")
 
@@ -273,3 +358,253 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 color = Color(0, 0, 0, 1)
+
+[node name="GuiDaoDai" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.51223, 0, 0)
+
+[node name="GEO_Orbital" type="Node3D" parent="GuiDaoDai"]
+
+[node name="GEO_Orbital" type="MeshInstance3D" parent="GuiDaoDai/GEO_Orbital"]
+transform = Transform3D(-1.31134e-05, 0, 40, 0, 30, 0, -300, 0, -1.74846e-06, 0, 0, 0)
+mesh = SubResource("QuadMesh_duuxi")
+skeleton = NodePath("../..")
+surface_material_override/0 = ExtResource("14_uwh6b")
+
+[node name="Label3D" type="Label3D" parent="GuiDaoDai/GEO_Orbital" node_paths=PackedStringArray("camera")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 163.563)
+pixel_size = 0.001
+billboard = 1
+no_depth_test = true
+fixed_size = true
+text = "GEO轨道带"
+script = ExtResource("4_4mii6")
+camera = NodePath("../../../Camera3D")
+hide_distance = 13.0
+enable_max_distance = true
+max_distance = 1300.0
+
+[node name="Label3D2" type="Label3D" parent="GuiDaoDai/GEO_Orbital" node_paths=PackedStringArray("camera")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -167.308)
+pixel_size = 0.001
+billboard = 1
+no_depth_test = true
+fixed_size = true
+text = "7200km"
+script = ExtResource("4_4mii6")
+camera = NodePath("../../../Camera3D")
+hide_distance = 13.0
+enable_max_distance = true
+max_distance = 1300.0
+
+[node name="Low_Orbital_In" type="Node3D" parent="GuiDaoDai"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 32, 0)
+
+[node name="Low_Orbital_In" type="MeshInstance3D" parent="GuiDaoDai/Low_Orbital_In"]
+transform = Transform3D(-1.31134e-05, 0, 40, 0, 30, 0, -300, 0, -1.74846e-06, 0, 0, 0)
+mesh = SubResource("QuadMesh_duuxi")
+skeleton = NodePath("../..")
+surface_material_override/0 = ExtResource("15_artsq")
+
+[node name="Label3D" type="Label3D" parent="GuiDaoDai/Low_Orbital_In" node_paths=PackedStringArray("camera")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 163.563)
+pixel_size = 0.001
+billboard = 1
+no_depth_test = true
+fixed_size = true
+text = "低轨带-内"
+script = ExtResource("4_4mii6")
+camera = NodePath("../../../Camera3D")
+hide_distance = 13.0
+enable_max_distance = true
+max_distance = 500.0
+
+[node name="Label3D2" type="Label3D" parent="GuiDaoDai/Low_Orbital_In" node_paths=PackedStringArray("camera")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -167.308)
+pixel_size = 0.001
+billboard = 1
+no_depth_test = true
+fixed_size = true
+text = "4200km"
+script = ExtResource("4_4mii6")
+camera = NodePath("../../../Camera3D")
+hide_distance = 13.0
+enable_max_distance = true
+max_distance = 400.0
+
+[node name="Low_Orbital_In2" type="Node3D" parent="GuiDaoDai"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 64, 0)
+
+[node name="Low_Orbital_Out" type="MeshInstance3D" parent="GuiDaoDai/Low_Orbital_In2"]
+transform = Transform3D(-1.31134e-05, 0, 40, 0, 30, 0, -300, 0, -1.74846e-06, 0, 0, 0)
+mesh = SubResource("QuadMesh_duuxi")
+skeleton = NodePath("../..")
+surface_material_override/0 = ExtResource("16_2qfoy")
+
+[node name="Label3D" type="Label3D" parent="GuiDaoDai/Low_Orbital_In2" node_paths=PackedStringArray("camera")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 163.563)
+pixel_size = 0.001
+billboard = 1
+no_depth_test = true
+fixed_size = true
+text = "低轨带-外"
+script = ExtResource("4_4mii6")
+camera = NodePath("../../../Camera3D")
+hide_distance = 13.0
+enable_max_distance = true
+max_distance = 500.0
+
+[node name="Label3D2" type="Label3D" parent="GuiDaoDai/Low_Orbital_In2" node_paths=PackedStringArray("camera")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -167.308)
+pixel_size = 0.001
+billboard = 1
+no_depth_test = true
+fixed_size = true
+text = "2700km"
+script = ExtResource("4_4mii6")
+camera = NodePath("../../../Camera3D")
+hide_distance = 13.0
+enable_max_distance = true
+max_distance = 400.0
+
+[node name="Low_Orbital_In3" type="Node3D" parent="GuiDaoDai"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 96, 0)
+
+[node name="Low_Orbital_Max" type="MeshInstance3D" parent="GuiDaoDai/Low_Orbital_In3"]
+transform = Transform3D(-1.31134e-05, 0, 40, 0, 30, 0, -300, 0, -1.74846e-06, 0, 0, 0)
+mesh = SubResource("QuadMesh_duuxi")
+skeleton = NodePath("../..")
+surface_material_override/0 = ExtResource("17_erjnf")
+
+[node name="Label3D" type="Label3D" parent="GuiDaoDai/Low_Orbital_In3" node_paths=PackedStringArray("camera")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 163.563)
+pixel_size = 0.001
+billboard = 1
+no_depth_test = true
+fixed_size = true
+text = "超低轨带"
+script = ExtResource("4_4mii6")
+camera = NodePath("../../../Camera3D")
+hide_distance = 13.0
+enable_max_distance = true
+max_distance = 500.0
+
+[node name="Label3D2" type="Label3D" parent="GuiDaoDai/Low_Orbital_In3" node_paths=PackedStringArray("camera")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -167.308)
+pixel_size = 0.001
+billboard = 1
+no_depth_test = true
+fixed_size = true
+text = "1500km"
+script = ExtResource("4_4mii6")
+camera = NodePath("../../../Camera3D")
+hide_distance = 13.0
+enable_max_distance = true
+max_distance = 400.0
+
+[node name="High_Orbital_In" type="Node3D" parent="GuiDaoDai"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -32, 0)
+
+[node name="High_Orbital_In" type="MeshInstance3D" parent="GuiDaoDai/High_Orbital_In"]
+transform = Transform3D(-1.31134e-05, 0, 40, 0, 30, 0, -300, 0, -1.74846e-06, 0, 0, 0)
+material_override = ExtResource("18_erjnf")
+mesh = SubResource("QuadMesh_duuxi")
+skeleton = NodePath("../..")
+surface_material_override/0 = ExtResource("15_artsq")
+
+[node name="Label3D" type="Label3D" parent="GuiDaoDai/High_Orbital_In" node_paths=PackedStringArray("camera")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 163.563)
+pixel_size = 0.001
+billboard = 1
+no_depth_test = true
+fixed_size = true
+text = "高轨带-内"
+script = ExtResource("4_4mii6")
+camera = NodePath("../../../Camera3D")
+hide_distance = 13.0
+enable_max_distance = true
+max_distance = 500.0
+
+[node name="Label3D2" type="Label3D" parent="GuiDaoDai/High_Orbital_In" node_paths=PackedStringArray("camera")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -167.308)
+pixel_size = 0.001
+billboard = 1
+no_depth_test = true
+fixed_size = true
+text = "9700km"
+script = ExtResource("4_4mii6")
+camera = NodePath("../../../Camera3D")
+hide_distance = 13.0
+enable_max_distance = true
+max_distance = 400.0
+
+[node name="High_Orbital_In2" type="Node3D" parent="GuiDaoDai"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -64, 0)
+
+[node name="High_Orbital_Out" type="MeshInstance3D" parent="GuiDaoDai/High_Orbital_In2"]
+transform = Transform3D(-1.31134e-05, 0, 40, 0, 30, 0, -300, 0, -1.74846e-06, 0, 0, 0)
+material_override = ExtResource("19_duuxi")
+mesh = SubResource("QuadMesh_duuxi")
+skeleton = NodePath("../..")
+surface_material_override/0 = ExtResource("15_artsq")
+
+[node name="Label3D" type="Label3D" parent="GuiDaoDai/High_Orbital_In2" node_paths=PackedStringArray("camera")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 163.563)
+pixel_size = 0.001
+billboard = 1
+no_depth_test = true
+fixed_size = true
+text = "高轨带-外"
+script = ExtResource("4_4mii6")
+camera = NodePath("../../../Camera3D")
+hide_distance = 13.0
+enable_max_distance = true
+max_distance = 500.0
+
+[node name="Label3D2" type="Label3D" parent="GuiDaoDai/High_Orbital_In2" node_paths=PackedStringArray("camera")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -167.308)
+pixel_size = 0.001
+billboard = 1
+no_depth_test = true
+fixed_size = true
+text = "11200km"
+script = ExtResource("4_4mii6")
+camera = NodePath("../../../Camera3D")
+hide_distance = 13.0
+enable_max_distance = true
+max_distance = 400.0
+
+[node name="High_Orbital_In3" type="Node3D" parent="GuiDaoDai"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -96, 0)
+
+[node name="High_Orbital_Max" type="MeshInstance3D" parent="GuiDaoDai/High_Orbital_In3"]
+transform = Transform3D(-1.31134e-05, 0, 40, 0, 30, 0, -300, 0, -1.74846e-06, 0, 0, 0)
+material_override = ExtResource("20_anm0b")
+mesh = SubResource("QuadMesh_duuxi")
+skeleton = NodePath("../..")
+surface_material_override/0 = ExtResource("15_artsq")
+
+[node name="Label3D" type="Label3D" parent="GuiDaoDai/High_Orbital_In3" node_paths=PackedStringArray("camera")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 163.563)
+pixel_size = 0.001
+billboard = 1
+no_depth_test = true
+fixed_size = true
+text = "超高轨带"
+script = ExtResource("4_4mii6")
+camera = NodePath("../../../Camera3D")
+hide_distance = 13.0
+enable_max_distance = true
+max_distance = 500.0
+
+[node name="Label3D2" type="Label3D" parent="GuiDaoDai/High_Orbital_In3" node_paths=PackedStringArray("camera")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -167.308)
+pixel_size = 0.001
+billboard = 1
+no_depth_test = true
+fixed_size = true
+text = "12700km"
+script = ExtResource("4_4mii6")
+camera = NodePath("../../../Camera3D")
+hide_distance = 13.0
+enable_max_distance = true
+max_distance = 400.0

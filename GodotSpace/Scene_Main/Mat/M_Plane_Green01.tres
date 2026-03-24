@@ -1,0 +1,10 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3 uid="uid://by867abw5jgal"]
+
+[ext_resource type="Shader" uid="uid://baf8b7yclhjma" path="res://Scene_Main/S_EMspatial.gdshader" id="1_vbld8"]
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_vbld8")
+shader_parameter/fill_color = Color(0.713011, 1, 0.88759, 1)
+shader_parameter/fill_alpha = 0.1
+shader_parameter/edge_pixels = 0.0

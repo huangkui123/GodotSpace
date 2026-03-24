@@ -1,4 +1,4 @@
-[gd_scene load_steps=55 format=3 uid="uid://cqx8cv3jvl4jh"]
+[gd_scene load_steps=57 format=3 uid="uid://cqx8cv3jvl4jh"]
 
 [ext_resource type="Script" uid="uid://dcgctsod7nggw" path="res://addons/orbital_tools/orbital_object_3d.gd" id="1_0i6je"]
 [ext_resource type="PackedScene" uid="uid://cwy238cxfbs2q" path="res://demo/demo.tscn" id="1_lgk2e"]
@@ -15,7 +15,9 @@
 [ext_resource type="Texture2D" uid="uid://4uhq4wktpkur" path="res://Assets/ivoyager_assets/maps/Moon.albedo.noaa.4096.jpg" id="9_oh6u1"]
 [ext_resource type="Texture2D" uid="uid://dyaaqx01c0xla" path="res://Assets/ivoyager_assets/maps/Jupiter.albedo.new.BjornJonsson.4096.jpg" id="10_o5cvo"]
 [ext_resource type="PackedScene" uid="uid://df52bnavn71w0" path="res://Scene_Main/ori/Gateway/卫星/WeiXing.fbx" id="10_w5acp"]
+[ext_resource type="ArrayMesh" uid="uid://d3tw3kbfdad02" path="res://Scene_Main/ori/SM_Tri.obj" id="11_ev1gt"]
 [ext_resource type="Texture2D" uid="uid://chckionlkf2bm" path="res://Assets/ivoyager_assets/maps/Saturn.albedo.noaa.2048.jpg" id="11_fdkqh"]
+[ext_resource type="Material" uid="uid://ci54ap2f2p6u0" path="res://Scene_Main/Mat/M_Shanxing.tres" id="11_vavlq"]
 [ext_resource type="ImmediateMesh" uid="uid://d2x2s2bdj7bqa" path="res://Scene_Main/ori/Cassini-Huygens (A)/OrbitalSimulation.tres" id="11_w5acp"]
 [ext_resource type="Texture2D" uid="uid://8xna5noe03ux" path="res://Assets/ivoyager_assets/maps/Uranus.albedo.2024recolor.jpg" id="12_optyn"]
 [ext_resource type="Texture2D" uid="uid://bjf17slbnnnvr" path="res://Assets/ivoyager_assets/maps/Neptune.albedo.2024recolor.4096.jpg" id="13_oh6u1"]
@@ -277,6 +279,11 @@ transform = Transform3D(0.005, 0, 0, 0, 3, 0, 0, 0, 0.005, 0, 0, 0)
 mesh = SubResource("BoxMesh_oh6u1")
 surface_material_override/0 = SubResource("ShaderMaterial_l7jty")
 
+[node name="OrbitalSimulation" type="MeshInstance3D" parent="MainControl/Sun/Earth/EarthMesh"]
+transform = Transform3D(2.29439, -2.64525e-07, -0.992869, 0.992869, -1.61759e-07, 2.29439, -3.07011e-07, -2.5, -4.33997e-08, 0, 0.6, 0)
+mesh = ExtResource("11_w5acp")
+skeleton = NodePath("../..")
+
 [node name="ChinaPoint" type="CSGSphere3D" parent="MainControl/Sun/Earth/EarthMesh"]
 transform = Transform3D(1, -1.49012e-07, 7.10543e-15, 1.49012e-07, 1, -3.10862e-15, 1.95399e-14, 2.22045e-15, 1, -0.640381, 0.585915, 0.303685)
 radius = 0.007
@@ -301,8 +308,13 @@ hide_distance = 0.1
 enable_max_distance = true
 max_distance = 20.0
 
+[node name="MeshInstance3D" type="MeshInstance3D" parent="MainControl/Sun/Earth/EarthMesh/ChinaPoint"]
+transform = Transform3D(-1.53286, 0, -0.041, 0, 1.181, 0, 0.885, 0, -0.0710141, 0, 0, 0)
+material_override = ExtResource("11_vavlq")
+mesh = ExtResource("11_ev1gt")
+
 [node name="WeiXing" parent="MainControl/Sun/Earth/EarthMesh" instance=ExtResource("10_w5acp")]
-transform = Transform3D(0.00483386, 0.00842776, -0.00236781, 0.00180537, 0.00168692, 0.00968993, 0.00856588, -0.00511146, -0.000706085, -1.87881, -0.0111694, 0.669365)
+transform = Transform3D(0.00604431, 0.00756463, -0.00249851, 0.00268977, 0.00101428, 0.0095779, 0.00749876, -0.00646123, -0.00142164, -2.17374, 0.607609, 1.23271)
 
 [node name="Label3D" type="Label3D" parent="MainControl/Sun/Earth/EarthMesh/WeiXing" node_paths=PackedStringArray("camera")]
 transform = Transform3D(100, 3.8147e-06, 2.38742e-12, -3.8147e-06, 100, -1.08002e-12, 1.7053e-12, 3.58114e-12, 99.9999, 0, 0, 0)
@@ -324,9 +336,21 @@ max_distance = 20.0
 transform = Transform3D(12.045, 0, 0, 0, 12.045, 0, 0, 0, 12.045, 0, 0, 0)
 shape = SubResource("SphereShape3D_w5acp")
 
-[node name="OrbitalSimulation" type="MeshInstance3D" parent="MainControl/Sun/Earth"]
-transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0)
-mesh = ExtResource("11_w5acp")
+[node name="Label3D_Text" type="Label3D" parent="MainControl/Sun/Earth/EarthMesh/WeiXing" node_paths=PackedStringArray("camera")]
+transform = Transform3D(100, -7.62939e-06, 0, 0, 100, 9.53674e-07, 0, -4.76837e-06, 99.9999, 22.1104, 33.9473, -10.9966)
+pixel_size = 0.0008
+billboard = 1
+no_depth_test = true
+fixed_size = true
+text = "轨道带覆盖范围
+精度：109°E-111°E
+高度：1500km-12700km
+"
+script = ExtResource("5_xj46c")
+camera = NodePath("../../../../../../Camera3D")
+hide_distance = 0.1
+enable_max_distance = true
+max_distance = 4.0
 
 [node name="Label3D" type="Label3D" parent="MainControl/Sun/Earth" node_paths=PackedStringArray("camera")]
 pixel_size = 0.001
