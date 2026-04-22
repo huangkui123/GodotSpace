@@ -1,4 +1,4 @@
-[gd_scene load_steps=23 format=3 uid="uid://dls8dvhv6s6j6"]
+[gd_scene load_steps=25 format=3 uid="uid://dls8dvhv6s6j6"]
 
 [ext_resource type="PackedScene" uid="uid://cwy238cxfbs2q" path="res://demo/demo.tscn" id="1_11tal"]
 [ext_resource type="Script" uid="uid://cs8336dsnr7jx" path="res://demo/Camera3D.gd" id="1_rbj1o"]
@@ -20,6 +20,8 @@
 [ext_resource type="Material" uid="uid://yown4njlxe4v" path="res://Scene_Main/Mat/M_Plane_Orange.tres" id="18_erjnf"]
 [ext_resource type="Material" uid="uid://dmocb8m7mvbu2" path="res://Scene_Main/Mat/M_Plane_Red.tres" id="19_duuxi"]
 [ext_resource type="Material" uid="uid://ccnquu1ute6ax" path="res://Scene_Main/Mat/M_Plane_Purple.tres" id="20_anm0b"]
+[ext_resource type="Script" uid="uid://d38obbvujtyjh" path="res://Scene_Main/mission_01.gd" id="21_duuxi"]
+[ext_resource type="PackedScene" uid="uid://c7hvc8ncvje8a" path="res://Scene_Main/ori/Cassini-Huygens (A)/SM_Sofa4Pillow.FBX" id="22_anm0b"]
 
 [sub_resource type="SphereShape3D" id="SphereShape3D_4mii6"]
 radius = 0.215437
@@ -321,7 +323,7 @@ shape = SubResource("SphereShape3D_4mii6")
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
 transform = Transform3D(-0.518952, -0.431228, 0.738059, -0.290723, 0.900994, 0.32201, -0.803846, -0.0474632, -0.592941, 0, 3.73473, 0)
 
-[node name="Control" type="Control" parent="." node_paths=PackedStringArray("back_button", "fade_overlay", "camera", "focus_target")]
+[node name="Control" type="Control" parent="." node_paths=PackedStringArray("back_button", "fade_overlay", "camera", "focus_target", "open_close_button")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -334,6 +336,7 @@ back_button = NodePath("VBoxContainer/Button_Back")
 fade_overlay = NodePath("FadeOverlay")
 camera = NodePath("../Camera3D")
 focus_target = NodePath("../SatelliteControl/GaoGuiZhan")
+open_close_button = NodePath("VBoxContainer/OpenCloseText")
 
 [node name="VBoxContainer" type="VBoxContainer" parent="Control"]
 layout_mode = 1
@@ -347,6 +350,14 @@ grow_vertical = 0
 [node name="Button_Back" type="Button" parent="Control/VBoxContainer"]
 layout_mode = 2
 text = "返回"
+
+[node name="OpenCloseText" type="Button" parent="Control/VBoxContainer"]
+layout_mode = 2
+text = "关闭名称"
+
+[node name="Mission01" type="Button" parent="Control/VBoxContainer"]
+layout_mode = 2
+text = "任务一：接包裹"
 
 [node name="FadeOverlay" type="ColorRect" parent="Control"]
 visible = false
@@ -608,3 +619,20 @@ camera = NodePath("../../../Camera3D")
 hide_distance = 13.0
 enable_max_distance = true
 max_distance = 400.0
+
+[node name="Mission" type="Node3D" parent="."]
+
+[node name="Mission01" type="Node3D" parent="Mission" node_paths=PackedStringArray("package", "satellite", "satellite_control", "trigger_button", "mission_camera")]
+script = ExtResource("21_duuxi")
+package = NodePath("PackageNode")
+satellite = NodePath("../../SatelliteControl/ZhongKeWei")
+satellite_control = NodePath("../../SatelliteControl")
+trigger_button = NodePath("../../Control/VBoxContainer/Mission01")
+mission_camera = NodePath("../../Camera3D")
+offset_distance = Vector3(0, 0, -40)
+
+[node name="PackageNode" type="Node3D" parent="Mission/Mission01"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 94.6616, 125.534)
+
+[node name="SM_Sofa4Pillow" parent="Mission/Mission01/PackageNode" instance=ExtResource("22_anm0b")]
+transform = Transform3D(-0.112932, -1.58132, 0.613735, 1.69624, -0.105281, 0.0408611, 2.5332e-08, 0.615094, 1.58482, 0.193367, 0.00370789, 0.848656)

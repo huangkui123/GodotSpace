@@ -22,6 +22,7 @@ offset_right = 40.0
 offset_bottom = 40.0
 
 [node name="Label" type="Label" parent="SubViewport/Control"]
+layout_mode = 0
 offset_left = 382.806
 offset_top = 244.632
 offset_right = 465.806
