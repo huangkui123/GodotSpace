@@ -26,6 +26,7 @@ XRToolsRumbleManager="*res://addons/godot-xr-tools/rumble/rumble_manager.gd"
 Global="*res://Assets/ARSpace/Scripts/Global.gd"
 NetworkHandler="*res://Assets/ARSpace/Scripts/Network/network_handler.gd"
 VoiceChat="*res://Assets/ARSpace/Scripts/Network/voice_chat.gd"
+SpatialCalibrationBootstrap="*res://Assets/ARSpace/Scripts/SpatialCalibration/spatial_calibration_bootstrap.gd"
 
 [editor]
 

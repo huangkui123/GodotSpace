@@ -1,0 +1,32 @@
+<resources>
+    <string name="app_name">Pico Spatial Anchor</string>
+    <string name="receiver_host">Godot 接收端 IP</string>
+    <string name="receiver_port">Godot 接收端端口</string>
+    <string name="stream_params_title">推流参数（可调）</string>
+    <string name="stream_width">宽度（320-4096）</string>
+    <string name="stream_height">高度（240-4096）</string>
+    <string name="stream_fps">帧率 FPS（5-60）</string>
+    <string name="stream_jpeg_quality">JPEG 质量（30-95）</string>
+    <string name="stream_render_mode">渲染模式 0=左目 1=右目 2=3D 3=交错</string>
+    <string name="output_raw_switch">输出原始画面（鱼眼，不反畸变）</string>
+    <string name="rectified_mode">反畸变</string>
+    <string name="raw_mode">原始鱼眼</string>
+    <string name="start_streaming">开始推流</string>
+    <string name="stop_streaming">停止推流</string>
+    <string name="status_idle">等待开始推流</string>
+    <string name="status_waiting_permission">等待权限授权</string>
+    <string name="status_permission_denied">缺少权限，无法启动后台推流</string>
+    <string name="status_invalid_host">请输入有效的接收端 IP 或主机名</string>
+    <string name="status_invalid_port">请输入 1-65535 范围内的端口</string>
+    <string name="status_invalid_width">宽度必须是 320-4096</string>
+    <string name="status_invalid_height">高度必须是 240-4096</string>
+    <string name="status_invalid_fps">FPS 必须是 5-60</string>
+    <string name="status_invalid_jpeg_quality">JPEG 质量必须是 30-95</string>
+    <string name="status_invalid_render_mode">渲染模式必须是 0/1/2/3</string>
+    <string name="status_starting">后台服务正在启动</string>
+    <string name="notification_title">Pico Spatial Anchor 正在运行</string>
+    <string name="notification_channel_name">Pico Spatial Anchor</string>
+    <string name="helper_hint">这个 helper 会一直抓取 Pico 相机预览，并把 JPEG 帧通过局域网 TCP 发给 Godot。</string>
+    <string name="background_note">启动成功后可以切到后台，再打开你的 Godot/串流应用。服务会通过前台通知保持存活。</string>
+    <string name="stream_defaults_template">默认参数：%1$dx%2$d，%3$d FPS，JPEG %4$d，渲染模式 %5$d，%6$s</string>
+</resources>

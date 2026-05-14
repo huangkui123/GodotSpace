@@ -10,9 +10,6 @@ var xr_interface: XRInterface
 
 var is_test_mode: bool = false
 
-# 标注覆盖层
-var annotation_overlay: CanvasLayer
-
 func _ready():
 	var args = OS.get_cmdline_args()
 
@@ -23,11 +20,8 @@ func _ready():
 	if multiplayer.is_server() or is_test_mode:
 		if xr_interface and xr_interface.is_initialized():
 			xr_interface.uninitialize()
-			
+
 		spectator_camera.make_current()
-		
-		# 服务器端（地面端）加载标注覆盖层
-		_setup_annotation_overlay()
 	else:
 		spectator_camera.current = false
 		xr_interface = XRServer.find_interface("OpenXR")
@@ -37,7 +31,7 @@ func _ready():
 			DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 			# Change our main viewport to output to the HMD
 			get_viewport().use_xr = true
-			
+
 			# 启用MR透视
 			if enable_passthrough:
 				_start_passthrough()
@@ -50,18 +44,18 @@ func _start_passthrough():
 	if not xr_interface:
 		push_warning("MR透视: XR接口未初始化")
 		return false
-	
+
 	# 方式1: 尝试使用 environment_blend_mode (Godot 4.3+ 推荐方式)
 	# XR_ENV_BLEND_MODE_ALPHA_BLEND = 2，适用于MR透视
 	var supported_blend_modes = xr_interface.get_supported_environment_blend_modes()
 	print("MR透视: 支持的混合模式 = ", supported_blend_modes)
-	
+
 	if XRInterface.XR_ENV_BLEND_MODE_ALPHA_BLEND in supported_blend_modes:
 		xr_interface.environment_blend_mode = XRInterface.XR_ENV_BLEND_MODE_ALPHA_BLEND
 		get_viewport().transparent_bg = true
 		print("MR透视: 已通过 environment_blend_mode (ALPHA_BLEND) 启用")
 		return true
-	
+
 	# 方式2: 回退到 passthrough API
 	if xr_interface.is_passthrough_supported():
 		if xr_interface.start_passthrough():
@@ -72,7 +66,7 @@ func _start_passthrough():
 			push_warning("MR透视: start_passthrough() 失败")
 	else:
 		push_warning("MR透视: 设备不支持透视功能")
-	
+
 	return false
 
 
@@ -80,31 +74,18 @@ func _start_passthrough():
 func _stop_passthrough():
 	if not xr_interface:
 		return
-	
+
 	# 恢复为不透明VR模式
 	var supported_blend_modes = xr_interface.get_supported_environment_blend_modes()
 	if XRInterface.XR_ENV_BLEND_MODE_OPAQUE in supported_blend_modes:
 		xr_interface.environment_blend_mode = XRInterface.XR_ENV_BLEND_MODE_OPAQUE
-	
+
 	xr_interface.stop_passthrough()
 	get_viewport().transparent_bg = false
 	print("MR透视: 已关闭")
-
-## 设置地面端标注覆盖层
-func _setup_annotation_overlay():
-	var overlay_script = load("res://addons/annotation_system/ground/ground_annotation_overlay.gd")
-	if overlay_script:
-		annotation_overlay = CanvasLayer.new()
-		annotation_overlay.name = "AnnotationOverlay"
-		annotation_overlay.set_script(overlay_script)
-		add_child(annotation_overlay)
-		print("✅ 地面端标注覆盖层已加载")
-	else:
-		print("⚠️ 标注覆盖层脚本未找到")
 
 func _process(delta: float):
 	if multiplayer.is_server() or is_test_mode:
 		var xr_camera = find_child("XRCamera3D", true, false)
 		if xr_camera:
 			subUI.transform = xr_camera.global_transform
-
