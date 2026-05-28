@@ -3,6 +3,8 @@ extends Node
 const IP_ADDRESS: String = "127.0.0.1"
 # const IP_ADDRESS: String = "172.25.80.1"
 const PORT: int = 42069
+const MAX_CLIENTS: int = 8
+const CHANNEL_COUNT: int = 3
 
 signal network_ready
 ## 收到远程标注信号
@@ -22,17 +24,32 @@ func _on_peer_connected(peer_id: int):
 
 func start_server():
 	peer = ENetMultiplayerPeer.new()
-	peer.create_server(PORT)
+	var error := peer.create_server(PORT, MAX_CLIENTS, CHANNEL_COUNT)
+	if error != OK:
+		push_error("Failed to start server on port %d. Error: %d" % [PORT, error])
+		return
 	multiplayer.multiplayer_peer = peer
 	print("服务器已启动...")
 	network_ready.emit()
 
 
-func start_client():
+func start_client(ip: String = IP_ADDRESS):
+	var target_ip := _get_server_ip_from_args(ip)
 	peer = ENetMultiplayerPeer.new()
-	peer.create_client(IP_ADDRESS, PORT)
+	var error := peer.create_client(target_ip, PORT, CHANNEL_COUNT)
+	if error != OK:
+		push_error("Failed to connect to %s:%d. Error: %d" % [target_ip, PORT, error])
+		return
 	multiplayer.multiplayer_peer = peer
-	print("客户端正在连接到 ", IP_ADDRESS)
+	print("Client connecting to ", target_ip)
+
+func _get_server_ip_from_args(default_ip: String) -> String:
+	for arg in OS.get_cmdline_args():
+		if arg.begins_with("--server-ip="):
+			var value := arg.get_slice("=", 1).strip_edges()
+			if value != "":
+				return value
+	return default_ip
 
 func _on_connected_to_server():
 	print("已成功连接到服务器！")
