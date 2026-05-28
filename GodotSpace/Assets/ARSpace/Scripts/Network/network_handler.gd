@@ -29,6 +29,7 @@ func start_server():
 		push_error("Failed to start server on port %d. Error: %d" % [PORT, error])
 		return
 	multiplayer.multiplayer_peer = peer
+	shutdown_xr_for_server()
 	print("服务器已启动...")
 	network_ready.emit()
 
@@ -50,6 +51,14 @@ func _get_server_ip_from_args(default_ip: String) -> String:
 			if value != "":
 				return value
 	return default_ip
+
+func shutdown_xr_for_server() -> void:
+	get_viewport().use_xr = false
+
+	var openxr_interface := XRServer.find_interface("OpenXR")
+	if openxr_interface and openxr_interface.is_initialized():
+		openxr_interface.uninitialize()
+		print("OpenXR disabled for server instance")
 
 func _on_connected_to_server():
 	print("已成功连接到服务器！")

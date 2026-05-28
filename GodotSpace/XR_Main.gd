@@ -12,20 +12,18 @@ var is_test_mode: bool = false
 
 func _ready():
 	var args = OS.get_cmdline_args()
+	xr_interface = XRServer.find_interface("OpenXR")
 
 	if "--testmode" in args:
 		print("Starting in test mode (no XR)")
 		is_test_mode = true
 
 	if multiplayer.is_server() or is_test_mode:
-		if xr_interface and xr_interface.is_initialized():
-			xr_interface.uninitialize()
-
+		NetworkHandler.shutdown_xr_for_server()
 		spectator_camera.make_current()
 	else:
 		spectator_camera.current = false
-		xr_interface = XRServer.find_interface("OpenXR")
-		if xr_interface and xr_interface.is_initialized():
+		if xr_interface and _ensure_openxr_initialized():
 			print("OpenXR initialized successfully")
 			# Turn off v-sync!
 			DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
@@ -37,6 +35,12 @@ func _ready():
 				_start_passthrough()
 		else:
 			print("OpenXR not initialized, please check if your headset is connected")
+
+func _ensure_openxr_initialized() -> bool:
+	if xr_interface.is_initialized():
+		return true
+
+	return xr_interface.initialize()
 
 
 ## 启动MR透视模式
