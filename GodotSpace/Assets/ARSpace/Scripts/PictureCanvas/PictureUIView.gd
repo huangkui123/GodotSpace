@@ -2,6 +2,8 @@ extends Control
 
 class_name PictureUIView
 
+const DEBUG_LOGS := false
+
 var info_save_list: Array = []
 @export var info_: Array[PictureListItem] = []
 
@@ -15,7 +17,7 @@ var is_max: bool = false
 var can_max: bool = true
 
 func _ready():
-	print("PictureUIView _ready")
+	if DEBUG_LOGS: print("PictureUIView _ready")
 	self.visible = false
 	Global.picture_canvas = self
 	info_save_list = []
@@ -32,15 +34,15 @@ func _enter_tree():
 
 
 func init_view():
-	print("InitView")
+	if DEBUG_LOGS: print("InitView")
 	# 你可以连接信号或绑定数据模型刷新接口
 
 func refresh_data_change_view(result: PictureListDataResult):
-	print("->PictureListDataResult")
+	if DEBUG_LOGS: print("->PictureListDataResult")
 	refresh_list(result)
 
 func refresh_list(refresh_list: PictureListDataResult):
-	print("->RefreshList:刷新列表")
+	if DEBUG_LOGS: print("->RefreshList:刷新列表")
 	info_save_list.clear()
 	for item in refresh_list.list:
 		info_save_list.append(item)
@@ -53,7 +55,7 @@ func refresh_list(refresh_list: PictureListDataResult):
 func refresh_info():
 	item_count = info_save_list.size()
 	page_count = int(item_count / page_item_count) if item_count % page_item_count == 0 else int(item_count / page_item_count) + 1
-	print("ItemCount = ", item_count, ", PageCount = ", page_count)
+	if DEBUG_LOGS: print("ItemCount = ", item_count, ", PageCount = ", page_count)
 	bind_page(page_index)
 
 func bind_page(index: int):
@@ -76,12 +78,12 @@ func bind_page(index: int):
 		else:
 			for i in range(page_item_count):
 				var idx = page_item_count * (index - 1) + i
-				print("BindItem: ", i, " Data = ", info_save_list[i])
+				if DEBUG_LOGS: print("BindItem: ", i, " Data = ", info_save_list[i])
 				bind_item(info_[i], info_save_list[idx])
 				info_[i].visible = true
 
 func bind_item(item: PictureListItem, data: PictureListData):
-	print("Title = ", data.title)
+	if DEBUG_LOGS: print("Title = ", data.title)
 	item.refresh_info(data)
 
 func pre_click():

@@ -2,6 +2,8 @@
 
 extends Control
 
+const DEBUG_LOGS := false
+
 var _info_save_list: Array[WorkListData] = []
 
 @export var info_: Array[WorkListItem] = []
@@ -15,16 +17,16 @@ var item_count: int = 0
 var page_item_count: int = 5
 
 func _ready():
-	print(self.name, ": _ready")
+	if DEBUG_LOGS: print(self.name, ": _ready")
 	if OS.has_feature("editor"):
 		sample_data_init()
 
 func on_refresh_data_change_view(result: WorkListDataResult):
-	print(self.name, ": on_refresh_data_change_view -> WorkListDataResult")
+	if DEBUG_LOGS: print(self.name, ": on_refresh_data_change_view -> WorkListDataResult")
 	refresh_list(result)
 
 func refresh_list(refresh_list_data: WorkListDataResult):
-	print(self.name, "-> refresh_list: 刷新列表")
+	if DEBUG_LOGS: print(self.name, "-> refresh_list: 刷新列表")
 	_info_save_list.clear()
 	for item_data in refresh_list_data.list:
 		_info_save_list.append(item_data)
@@ -42,7 +44,7 @@ func refresh_info():
 	bind_page(page_index)
 
 func bind_page(index: int):
-	print("page_count = ", page_count, ", page_index = ", index)
+	if DEBUG_LOGS: print("page_count = ", page_count, ", page_index = ", index)
 	
 	for i in range(info_.size()):
 		info_[i].visible = false
@@ -68,7 +70,7 @@ func bind_page(index: int):
 					info_[i].visible = true
 
 func bind_item(item: WorkListItem, infos: WorkListData):
-	print(self.name, ": Title = ", infos.title)
+	if DEBUG_LOGS: print(self.name, ": Title = ", infos.title)
 	item.refresh_info(infos)
 
 func pre_click():

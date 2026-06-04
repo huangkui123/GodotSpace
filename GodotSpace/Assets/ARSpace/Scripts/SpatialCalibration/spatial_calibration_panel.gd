@@ -1,5 +1,7 @@
 extends CanvasLayer
 
+const DEBUG_LOGS := false
+
 const FrameProtocol := preload("res://Assets/ARSpace/Scripts/SpatialCalibration/anchor_frame_protocol.gd")
 const DepthEstimator := preload("res://Assets/ARSpace/Scripts/SpatialCalibration/visual_depth_estimator.gd")
 
@@ -914,7 +916,7 @@ func _set_status(text: String) -> void:
 	last_status_text = text
 	if status_label != null:
 		status_label.text = text
-	print("SpatialCalibration: %s" % text)
+	if DEBUG_LOGS: print("SpatialCalibration: %s" % text)
 
 
 func _send_ack(frame_id: int) -> void:

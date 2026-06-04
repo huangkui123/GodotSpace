@@ -2,6 +2,7 @@
 class_name XRToolsViewport2DIn3D
 extends Node3D
 
+const DEBUG_LOGS := false
 
 ## XR ToolsViewport 2D in 3D
 ##
@@ -376,9 +377,9 @@ func server_receive_pointer_event(data: Dictionary):
 	)
 
 	if data.get("event_type") == 2:
-		print("服务器收到来自 %s 的点击事件: %s" % [sender_id, data.get("event_type", "unknown")])
-		print("pointer_node: ", pointer_node) 
-		print("target_node: ", target_node)
+		if DEBUG_LOGS: print("服务器收到来自 %s 的点击事件: %s" % [sender_id, data.get("event_type", "unknown")])
+		if DEBUG_LOGS: print("pointer_node: ", pointer_node)
+		if DEBUG_LOGS: print("target_node: ", target_node)
 
 	_handle_pointer_event(sender_id, fake_event, data.get("grip_value", 0.0))
 
@@ -461,7 +462,7 @@ func _position_window_relative_to_last_clicked():
 		# 只在有有效的上一个窗口位置时才应用新位置
 		if Global.last_clicked_window_position != Vector3.ZERO:
 			global_transform = new_transform
-			print("✅ 窗口已定位到上一个被点击窗口的右侧: ", global_position)
+			if DEBUG_LOGS: print("✅ 窗口已定位到上一个被点击窗口的右侧: ", global_position)
 
 
 # Update child visibility tracking
@@ -612,7 +613,7 @@ func _update_enabled():
 
 	# 如果窗口从隐藏变为可见，设置新的位置
 	var is_currently_visible = _child_visible
-	print("窗口可见性状态: ", is_currently_visible, _was_visible_last_frame)
+	if DEBUG_LOGS: print("窗口可见性状态: ", is_currently_visible, _was_visible_last_frame)
 	if is_currently_visible and not _was_visible_last_frame:
 		_position_window_relative_to_last_clicked()
 	

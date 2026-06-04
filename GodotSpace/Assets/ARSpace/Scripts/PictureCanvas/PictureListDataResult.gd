@@ -1,6 +1,8 @@
 extends Resource
 class_name PictureListDataResult
 
+const DEBUG_LOGS := false
+
 @export var list: Array[PictureListData] = []
 
 func refresh_image_list():
@@ -14,9 +16,9 @@ func refresh_image_list():
 		data.title = file_name.get_basename()
 		list.append(data)
 
-	print("PictureListDataResult initialized with %d items." % list.size())
+	if DEBUG_LOGS: print("PictureListDataResult initialized with %d items." % list.size())
 	for item in list:
-		print("Item: %s" % [item.title])
+		if DEBUG_LOGS: print("Item: %s" % [item.title])
 
 func get_image_file_names():
 	var dir_path = "res://Assets/StreamingAssets/Images"

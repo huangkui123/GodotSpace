@@ -3,6 +3,8 @@
 class_name AudioStreamToText
 extends SpeechToText
 
+const DEBUG_LOGS := false
+
 # For Traditional Chinese "以下是普通話的句子。"
 # For Simplified Chinese "以下是普通话的句子。"
 @export var initial_prompt: String = "以下是普通话的句子，请以简体输出"
@@ -50,8 +52,8 @@ func get_text():
 			continue
 		text += token["text"]
 	text = full_text
-	print("Transcribe: " + str((Time.get_ticks_msec() - start_time)/ 1000.0))
-	print(text)
+	if DEBUG_LOGS: print("Transcribe: " + str((Time.get_ticks_msec() - start_time)/ 1000.0))
+	if DEBUG_LOGS: print(text)
 	return _remove_special_characters(text)
 
 func _remove_special_characters(message: String):

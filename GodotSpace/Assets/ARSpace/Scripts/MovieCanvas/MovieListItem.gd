@@ -1,6 +1,9 @@
 extends Control
 class_name MovieListItem
 
+const DEBUG_LOGS := false
+const ENABLE_VIDEO_PREVIEWS := false
+
 # 数据对象
 var item_data: MovieListData
 
@@ -24,7 +27,7 @@ func refresh_info(data: MovieListData):
 	var file_name = data.banner_path.get_file()
 	var file_path = get_media_path("Videos", file_name)
 
-	if file_path != "":
+	if file_path != "" and ENABLE_VIDEO_PREVIEWS:
 		var stream = ClassDB.instantiate("FFmpegVideoStream")
 		if stream:
 			stream.set_file(file_path)
@@ -34,7 +37,7 @@ func refresh_info(data: MovieListData):
 			await get_tree().create_timer(0.5).timeout
 			banner_video.paused = true
 
-	print("data.tile = " + data.title)
+	if DEBUG_LOGS: print("data.tile = " + data.title)
 	title_label.text = data.title
 
 func get_media_path(root_directory_name: String, file_name: String):
@@ -47,15 +50,15 @@ func get_media_path(root_directory_name: String, file_name: String):
 
 	var full_path = base_path + file_name
 
-	print("GetMediaPath -> FilePath: ", full_path)
+	if DEBUG_LOGS: print("GetMediaPath -> FilePath: ", full_path)
 
 	var dir = DirAccess.open(base_path)
 	if dir and FileAccess.file_exists(full_path):
 		return full_path
 	
 	if dir:
-		print("Directory exists, but file does not: ", full_path)
+		if DEBUG_LOGS: print("Directory exists, but file does not: ", full_path)
 	else:
-		print("Directory does not exist: ", base_path)
+		if DEBUG_LOGS: print("Directory does not exist: ", base_path)
 
 	return ""

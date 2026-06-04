@@ -1,6 +1,8 @@
 @tool
 extends Node
 
+const DEBUG_LOGS := false
+
 @export var option_button: OptionButton
 
 # Called when the HTTP request is completed.
@@ -10,7 +12,7 @@ func _http_request_completed(result, response_code, headers, body, file_path):
 		return
 	EditorInterface.get_resource_filesystem().scan()
 	ResourceLoader.load(file_path, "WhisperResource", 2)
-	print("Download successful. Check " + file_path)
+	if DEBUG_LOGS: print("Download successful. Check " + file_path)
 
 func _on_button_pressed():
 	var http_request = HTTPRequest.new()
@@ -22,7 +24,7 @@ func _on_button_pressed():
 	http_request.request_completed.connect(self._http_request_completed.bind(file_path))
 	http_request.download_file = file_path
 	var url : String = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-" + model + ".bin?download=true"
-	print("Downloading file from " + url)
+	if DEBUG_LOGS: print("Downloading file from " + url)
 	# Perform a GET request. The URL below returns JSON as of writing.
 	var error = http_request.request(url)
 	if error != OK:

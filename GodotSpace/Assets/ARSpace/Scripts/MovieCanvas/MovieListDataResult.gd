@@ -1,6 +1,8 @@
 extends Resource
 class_name MovieListDataResult
 
+const DEBUG_LOGS := false
+
 @export var list: Array[MovieListData] = []
 
 func refresh_video_list():
@@ -13,9 +15,9 @@ func refresh_video_list():
 		data.title = file_name.get_basename()
 		list.append(data)
 
-	print("MovieListDataResult initialized with %d items." % list.size())
+	if DEBUG_LOGS: print("MovieListDataResult initialized with %d items." % list.size())
 	for item in list:
-		print("Item: %s" % [item.title])
+		if DEBUG_LOGS: print("Item: %s" % [item.title])
 
 func get_video_file_names():
 	var dir_path = "res://Assets/StreamingAssets/Videos"

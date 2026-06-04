@@ -2,6 +2,8 @@ extends Control
 
 class_name WorkListInfoUIView
 
+const DEBUG_LOGS := false
+
 @export var to_sound: Button
 @export var to_video: Button
 @export var to_animation: Button
@@ -20,27 +22,27 @@ func _ready():
 	Global.work_list_info_canvas = self
 	self.visible = false
 
-	print(self.name, ": _ready")
+	if DEBUG_LOGS: print(self.name, ": _ready")
 	init_view()
 
 func _enter_tree():
-	print(self.name, ": _enter_tree")
+	if DEBUG_LOGS: print(self.name, ": _enter_tree")
 
 func init_view():
-	print(self.name, ": init_view")
+	if DEBUG_LOGS: print(self.name, ": init_view")
 
 func on_refresh_data_change_view(result: WorkListInfoDataResult):
-	print(self.name, ": on_refresh_data_change_view -> WorkListInfoDataResult")
+	if DEBUG_LOGS: print(self.name, ": on_refresh_data_change_view -> WorkListInfoDataResult")
 	if title_label:
 		title_label.text = result.title
 	refresh_list(result)
 
 func refresh_list(refresh_list_data: WorkListInfoDataResult):
-	print("refresh_list refresh_list_data.list.size() = ", refresh_list_data.list.size())
+	if DEBUG_LOGS: print("refresh_list refresh_list_data.list.size() = ", refresh_list_data.list.size())
 	
 	_info_save_list.clear()
 	for i in range(refresh_list_data.list.size()):
-		print(refresh_list_data.list[i].step, refresh_list_data.list[i].title)
+		if DEBUG_LOGS: print(refresh_list_data.list[i].step, refresh_list_data.list[i].title)
 		_info_save_list.append(refresh_list_data.list[i])
 	
 	page_index = 1
@@ -55,7 +57,7 @@ func refresh_info():
 
 func bind_page(index: int):
 	if _info_save_list.size() <= 0:
-		print("_info_save_list.size() = ", _info_save_list.size())
+		if DEBUG_LOGS: print("_info_save_list.size() = ", _info_save_list.size())
 		return
 	
 	for item in info_:
@@ -82,14 +84,14 @@ func bind_page(index: int):
 					info_[i].visible = true
 
 func bind_item(item: WorkListInfoItem, infos: WorkListInfoData):
-	print(self.name, ": WorkListInfoStep = ", infos.step)
-	print("🟦 [DEBUG] 尝试播放动画 Step", infos.step)
+	if DEBUG_LOGS: print(self.name, ": WorkListInfoStep = ", infos.step)
+	if DEBUG_LOGS: print("🟦 [DEBUG] 尝试播放动画 Step", infos.step)
 
 	if Global.spacebox_controller:
 		Global.spacebox_controller.play_step(infos.step)
 		Global.spacebox_controller.show_only_work_info(infos.step)
 	else:
-		print("❌ [DEBUG] Global.spacebox_controller 为空")
+		if DEBUG_LOGS: print("❌ [DEBUG] Global.spacebox_controller 为空")
 
 	item.refresh_info(infos)
 

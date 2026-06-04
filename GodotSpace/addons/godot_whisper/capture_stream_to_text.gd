@@ -2,6 +2,8 @@
 class_name CaptureStreamToText
 extends SpeechToText
 
+const DEBUG_LOGS := false
+
 signal transcribed_msg(is_partial, new_text)
 
 # For Traditional Chinese "以下是普通話的句子。"
@@ -14,13 +16,16 @@ func _get_configuration_warnings():
 	else:
 		return []
 		
-@export var recording := true:
+@export var recording := false:
 	set(value):
 		recording = value
 		if recording:
-			_ready()
+			if is_inside_tree():
+				_ready()
 		else:
-			thread.wait_to_finish()
+			_should_capture = false
+			if thread && thread.is_alive():
+				thread.wait_to_finish()
 	get:
 		return recording
 ## The interval at which transcribing is done. Use a value bigger than the time it takes to transcribe (eg. depends on model).
@@ -47,17 +52,20 @@ func _get_configuration_warnings():
 var thread : Thread
 
 # 调试：保存音频到文件
-@export var save_audio_debug := true  # 是否保存调试音频
+@export var save_audio_debug := false  # 是否保存调试音频
 var audio_save_counter := 0  # 保存文件计数器
 
 func _ready():
 	if Engine.is_editor_hint():
 		return
+	if !recording:
+		return
 	if thread && thread.is_alive():
-		recording = false
+		_should_capture = false
 		thread.wait_to_finish()
 	thread = Thread.new()
-	_effect_capture.clear_buffer()
+	if _effect_capture:
+		_effect_capture.clear_buffer()
 	thread.start(transcribe_thread)
 
 var _accumulated_frames: PackedVector2Array
@@ -145,8 +153,8 @@ func transcribe_thread():
 		
 		if !no_activity:
 			call_deferred("emit_signal", "transcribed_msg", finish_sentence, full_text)
-			print(full_text)
-			print("Transcribe " + str(time_processing/ 1000.0) + " s")
+			if DEBUG_LOGS: print(full_text)
+			if DEBUG_LOGS: print("Transcribe " + str(time_processing/ 1000.0) + " s")
 		
 		last_token_count = tokens.size()
 
@@ -241,7 +249,7 @@ func _save_audio_stereo_to_file(audio_data: PackedVector2Array, prefix: String):
 		file.store_16(right)
 	
 	file.close()
-	print("✅ 保存调试音频(立体声): %s (采样率: %d Hz, 帧数: %d)" % [filename, sample_rate, audio_data.size()])
+	if DEBUG_LOGS: print("✅ 保存调试音频(立体声): %s (采样率: %d Hz, 帧数: %d)" % [filename, sample_rate, audio_data.size()])
 
 # 保存单声道音频数据到WAV文件用于调试
 func _save_audio_mono_to_file(audio_data: PackedFloat32Array, prefix: String):
@@ -299,4 +307,4 @@ func _save_audio_mono_to_file(audio_data: PackedFloat32Array, prefix: String):
 		file.store_16(value)
 	
 	file.close()
-	print("✅ 保存调试音频(单声道): %s (采样率: %d Hz, 采样数: %d)" % [filename, sample_rate, audio_data.size()])
+	if DEBUG_LOGS: print("✅ 保存调试音频(单声道): %s (采样率: %d Hz, 采样数: %d)" % [filename, sample_rate, audio_data.size()])

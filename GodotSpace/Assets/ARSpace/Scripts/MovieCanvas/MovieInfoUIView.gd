@@ -2,17 +2,18 @@ extends Control
 
 class_name MovieInfoUIView
 
+const DEBUG_LOGS := false
+
 var videoname: String = ""
 @export var title_label: Node = null
 @export var p_info: Node = null
 
 func _ready():
-	print("MovieInfoUIView _ready")
+	if DEBUG_LOGS: print("MovieInfoUIView _ready")
 	Global.movie_info_canvas = self
 
 	self.visible = false
-	videoname = "Demo1.mp4"
-	p_info.set_video("Demo1.mp4")
+	videoname = ""
 
 func set_video_name(name: String):
 	if not self.visible:

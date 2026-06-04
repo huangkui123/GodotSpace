@@ -2,6 +2,7 @@ extends Control
 
 class_name WorkListInfoItem
 
+const DEBUG_LOGS := false
 
 @export var item_data: WorkListInfoData
 
@@ -34,7 +35,7 @@ func refresh_info(data: WorkListInfoData):
 				if image_texture:
 					banner_img.texture = image_texture
 				else:
-					print("Error loading texture from file:", file_path)
+					if DEBUG_LOGS: print("Error loading texture from file:", file_path)
 		2: # Video
 			if banner_img:
 				banner_img.visible = false
@@ -70,7 +71,7 @@ func refresh_info(data: WorkListInfoData):
 				if image_texture:
 					banner_img.texture = image_texture
 				else:
-					print("Error loading texture from file:", file_path)
+					if DEBUG_LOGS: print("Error loading texture from file:", file_path)
 	
 	if title_label:
 		title_label.text = data.title
@@ -84,7 +85,7 @@ func get_media_path(root_directory_name: String, file_name: String):
 	
 	var full_path: String = base_path + file_name
 	
-	print("get_media_path -> FilePath:", full_path)
+	if DEBUG_LOGS: print("get_media_path -> FilePath:", full_path)
 
 	if FileAccess.file_exists(full_path):
 		return full_path

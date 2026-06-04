@@ -1,8 +1,9 @@
 extends VBoxContainer
 
 @onready var mic_player: AudioStreamPlayer = $MicPlayer
-@onready var audio_to_text: CaptureStreamToText = $CaptureStreamToText
+@onready var audio_to_text = $CaptureStreamToText
 @onready var transcribe_label: RichTextLabel = $Panel/Label
+@export var transcription_enabled := false
 # Called when the node enters the scene tree for the first time.
 func _init():
 	pass
@@ -14,4 +15,10 @@ func _ready():
 	# 	return
 
 	mic_player.bus = "Mic"
+	if !transcription_enabled:
+		mic_player.stop()
+		audio_to_text.set("recording", false)
+		return
+
 	audio_to_text.transcribed_msg.connect(transcribe_label._on_capture_stream_to_text_transcribed_msg)
+	audio_to_text.set("recording", true)

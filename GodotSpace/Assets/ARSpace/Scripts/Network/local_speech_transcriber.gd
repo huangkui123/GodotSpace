@@ -4,9 +4,9 @@ extends Node
 signal transcript_ready(data: Dictionary)
 
 const DEFAULT_MODEL_PATH := "res://addons/godot_whisper/models/ggml-base.bin"
-const CaptureStreamToTextScript := preload("res://addons/godot_whisper/capture_stream_to_text.gd")
+const CAPTURE_STREAM_TO_TEXT_SCRIPT_PATH := "res://addons/godot_whisper/capture_stream_to_text.gd"
 
-@export var enabled: bool = true
+@export var enabled: bool = false
 @export var model_path: String = DEFAULT_MODEL_PATH
 @export var record_bus: String = "Mic"
 
@@ -25,12 +25,17 @@ func setup(peer_id: int, p_display_name: String = "Local") -> void:
 		push_warning("Whisper model not found: " + model_path)
 		return
 
+	var capture_stream_to_text_script: Script = load(CAPTURE_STREAM_TO_TEXT_SCRIPT_PATH) as Script
+	if capture_stream_to_text_script == null:
+		push_warning("Unable to load speech-to-text script: " + CAPTURE_STREAM_TO_TEXT_SCRIPT_PATH)
+		return
+
 	var model := ResourceLoader.load(model_path)
 	if model == null:
 		push_warning("Unable to load Whisper model: " + model_path)
 		return
 
-	_transcriber = CaptureStreamToTextScript.new()
+	_transcriber = capture_stream_to_text_script.new()
 	_transcriber.name = "CaptureStreamToText"
 	_transcriber.record_bus = record_bus
 	_transcriber.language_model = model

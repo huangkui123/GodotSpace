@@ -2,6 +2,8 @@
 extends Control
 class_name PictureListItem
 
+const DEBUG_LOGS := false
+
 # 数据对象
 var item_data: PictureListData
 
@@ -30,7 +32,7 @@ func refresh_info(data: PictureListData):
 		if image_texture:
 			banner_img.texture = image_texture
 
-	print("data.tile = " + data.title)
+	if DEBUG_LOGS: print("data.tile = " + data.title)
 	title_label.text = data.title
 
 # 获取图片路径
@@ -44,16 +46,16 @@ func get_media_path(root_directory_name: String, file_name: String):
 
 	var full_path = base_path + file_name
 
-	print("GetMediaPath -> FilePath: ", full_path)
+	if DEBUG_LOGS: print("GetMediaPath -> FilePath: ", full_path)
 
 	var dir = DirAccess.open(base_path)
 	if dir and FileAccess.file_exists(full_path):
 		return full_path
 	
 	if dir:
-		print("Directory exists, but file does not: ", full_path)
+		if DEBUG_LOGS: print("Directory exists, but file does not: ", full_path)
 	else:
-		print("Directory does not exist: ", base_path)
+		if DEBUG_LOGS: print("Directory does not exist: ", base_path)
 
 	return ""
 

@@ -1,6 +1,8 @@
 # SpaceBox.gd
 extends Node3D
 
+const DEBUG_LOGS := false
+
 @onready var environment_node := $SpaceBox/Environment_Life
 @onready var dashiyangui := $SpaceBox/dashiyangui
 
@@ -9,12 +11,12 @@ extends Node3D
 func _ready():
 	Global.spacebox_controller = self
 	worklist1.visible = false  # 默认隐藏
-	print("✅ SpaceBox 控制器已注册到 Global 单例")
+	if DEBUG_LOGS: print("✅ SpaceBox 控制器已注册到 Global 单例")
 
 func set_worklist1_visible(visible: bool):
 	if worklist1 and is_instance_valid(worklist1):
 		worklist1.visible = visible
-		print("✅ 设置 WorkList1 可见性为: ", visible)
+		if DEBUG_LOGS: print("✅ 设置 WorkList1 可见性为: ", visible)
 	else:
 		printerr("❌ WorkList1 无法访问")
 
@@ -30,7 +32,7 @@ func show_only_work_info(step_index: int):
 func set_environment_visible(visible: bool) -> void:
 	if environment_node and is_instance_valid(environment_node):
 		environment_node.visible = visible
-		print("✅ Environment_Life 可见性设置为: ", visible)
+		if DEBUG_LOGS: print("✅ Environment_Life 可见性设置为: ", visible)
 	else:
 		printerr("❌ environment_node 无效，无法设置可见性")
 

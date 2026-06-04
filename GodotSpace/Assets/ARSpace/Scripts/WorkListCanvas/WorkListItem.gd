@@ -2,6 +2,8 @@ extends Control
 
 class_name WorkListItem
 
+const DEBUG_LOGS := false
+
 @export var item_data: WorkListData
 
 @onready var banner_img: TextureRect = $Mask/Image
@@ -13,25 +15,25 @@ func _ready():
 	self.pressed.connect(click_btn)
 
 func click_btn():
-	print(self.name, ": click_btn")
+	if DEBUG_LOGS: print(self.name, ": click_btn")
 
 	if item_data.id > 1:
-		print(self.name, ": 该实验流程暂未开放")
+		if DEBUG_LOGS: print(self.name, ": 该实验流程暂未开放")
 		# if InfoToastManager and MainMenuUIView:
 		# 	InfoToastManager.show_info_toast_window(InfoState.FAIL, "该实验流程暂未开放", MainMenuUIView.instance)
 		return
 
-	print(self.name, ": Step = 1")
+	if DEBUG_LOGS: print(self.name, ": Step = 1")
 
 	var work_info = Global.work_list_info_canvas
 	if work_info:
 		work_info.visible = true
 		work_info.on_refresh_data_change_view(item_data.info_data_result)
 
-	print(self.name, ": Index = ", item_data.id)
+	if DEBUG_LOGS: print(self.name, ": Index = ", item_data.id)
 
 func close_guide():
-	print(self.name, ": Step = 1")
+	if DEBUG_LOGS: print(self.name, ": Step = 1")
 
 	var work_info = Global.work_list_info_canvas
 	if work_info:
@@ -50,7 +52,7 @@ func refresh_info(data: WorkListData):
 		if image_texture:
 			banner_img.texture = image_texture
 		else:
-			print("Error loading texture from file:", file_path)
+			if DEBUG_LOGS: print("Error loading texture from file:", file_path)
 
 	if title_label:
 		title_label.text = data.title
@@ -66,7 +68,7 @@ func get_media_path(root_directory_name: String, file_name: String):
 	
 	var full_path: String = base_path + file_name
 	
-	print("get_media_path -> FilePath:", full_path)
+	if DEBUG_LOGS: print("get_media_path -> FilePath:", full_path)
 
 	if FileAccess.file_exists(full_path):
 		return full_path

@@ -1,6 +1,8 @@
 extends Control
 class_name MovieInfoItem
 
+const DEBUG_LOGS := false
+
 # @onready var banner_video: TextureRect = $BannerVideo
 @onready var texture_button: TextureButton = $PlayPauseButton
 @export var banner_video: VideoStreamPlayer
@@ -17,7 +19,7 @@ func set_video(name: String):
 	if file_path != "":
 		var stream = ClassDB.instantiate("FFmpegVideoStream")
 		if stream:
-			print("✅ 成功创建 FFmpegVideoStream 实例")
+			if DEBUG_LOGS: print("✅ 成功创建 FFmpegVideoStream 实例")
 			stream.set_file(file_path)
 			is_playing = true
 			banner_video.stream = stream
@@ -33,7 +35,7 @@ func destory():
 	if banner_video:
 		banner_video.stream = null
 		is_playing = false
-		print("Video stream stopped and cleared.")
+		if DEBUG_LOGS: print("Video stream stopped and cleared.")
 
 # 获取图片路径
 func get_media_path(root_directory_name: String, file_name: String):
@@ -60,10 +62,10 @@ func _on_texture_button_pressed():
 		texture_button.texture_normal = icons[0] # 设置为播放图标
 		is_playing = false
 		banner_video.paused = true
-		print("Video paused")
+		if DEBUG_LOGS: print("Video paused")
 	else:
 		# 开始视频播放
 		texture_button.texture_normal = icons[1] # 设置为暂停图标
 		is_playing = true
 		banner_video.paused = false
-		print("Video playing")
+		if DEBUG_LOGS: print("Video playing")

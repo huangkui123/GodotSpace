@@ -20,6 +20,7 @@ offset_bottom = 219.5
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_3o758")
+transcription_enabled = false
 
 [node name="MicPlayer" type="AudioStreamPlayer" parent="."]
 stream = SubResource("AudioStreamMicrophone_rhq81")
@@ -54,6 +55,7 @@ Takes sample every 5s and transcribes below."
 language = 2
 language_model = ExtResource("5_3o758")
 script = ExtResource("5_c8lup")
+recording = false
 initial_prompt = "以下是普通话句子。"
 maximum_sentence_time = 10
 
