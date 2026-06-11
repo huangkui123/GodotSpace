@@ -14,16 +14,40 @@ script = ExtResource("1_vmui7")
 
 [node name="VBoxContainer" type="VBoxContainer" parent="UI"]
 layout_mode = 0
-offset_right = 40.0
-offset_bottom = 40.0
+offset_right = 360.0
+offset_bottom = 210.0
 
-[node name="Server" type="Button" parent="UI/VBoxContainer"]
+[node name="ModeLabel" type="Label" parent="UI/VBoxContainer"]
+custom_minimum_size = Vector2(340, 0)
 layout_mode = 2
-text = "SERVER"
+text = "MODE: PC SERVER"
+horizontal_alignment = 1
 
-[node name="Client" type="Button" parent="UI/VBoxContainer"]
+[node name="Audio" type="VBoxContainer" parent="UI/VBoxContainer"]
 layout_mode = 2
-text = "CLIENT"
 
-[connection signal="pressed" from="UI/VBoxContainer/Server" to="UI" method="_on_server_pressed"]
-[connection signal="pressed" from="UI/VBoxContainer/Client" to="UI" method="_on_client_pressed"]
+[node name="Title" type="Label" parent="UI/VBoxContainer/Audio"]
+layout_mode = 2
+text = "AUDIO"
+
+[node name="InputLabel" type="Label" parent="UI/VBoxContainer/Audio"]
+layout_mode = 2
+text = "INPUT"
+
+[node name="InputDevice" type="OptionButton" parent="UI/VBoxContainer/Audio"]
+custom_minimum_size = Vector2(340, 0)
+layout_mode = 2
+
+[node name="OutputLabel" type="Label" parent="UI/VBoxContainer/Audio"]
+layout_mode = 2
+text = "OUTPUT"
+
+[node name="OutputDevice" type="OptionButton" parent="UI/VBoxContainer/Audio"]
+custom_minimum_size = Vector2(340, 0)
+layout_mode = 2
+
+[node name="Start" type="Button" parent="UI/VBoxContainer"]
+layout_mode = 2
+text = "START"
+
+[connection signal="pressed" from="UI/VBoxContainer/Start" to="UI" method="_on_start_pressed"]

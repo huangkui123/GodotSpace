@@ -7,6 +7,7 @@ const MAX_CLIENTS: int = 8
 const CHANNEL_COUNT: int = 3
 
 signal network_ready
+signal network_role_selected(is_server: bool)
 ## 收到远程标注信号
 signal remote_annotation_received(position: Vector3, data: Dictionary)
 
@@ -22,27 +23,31 @@ func _ready():
 func _on_peer_connected(peer_id: int):
 	print("🔗 玩家 %d 已连接" % peer_id)
 
-func start_server():
+func start_server() -> bool:
 	peer = ENetMultiplayerPeer.new()
 	var error := peer.create_server(PORT, MAX_CLIENTS, CHANNEL_COUNT)
 	if error != OK:
 		push_error("Failed to start server on port %d. Error: %d" % [PORT, error])
-		return
+		return false
 	multiplayer.multiplayer_peer = peer
 	shutdown_xr_for_server()
 	print("服务器已启动...")
+	network_role_selected.emit(true)
 	network_ready.emit()
+	return true
 
 
-func start_client(ip: String = IP_ADDRESS):
+func start_client(ip: String = IP_ADDRESS) -> bool:
 	var target_ip := _get_server_ip_from_args(ip)
 	peer = ENetMultiplayerPeer.new()
 	var error := peer.create_client(target_ip, PORT, CHANNEL_COUNT)
 	if error != OK:
 		push_error("Failed to connect to %s:%d. Error: %d" % [target_ip, PORT, error])
-		return
+		return false
 	multiplayer.multiplayer_peer = peer
+	network_role_selected.emit(false)
 	print("Client connecting to ", target_ip)
+	return true
 
 func _get_server_ip_from_args(default_ip: String) -> String:
 	for arg in OS.get_cmdline_args():
