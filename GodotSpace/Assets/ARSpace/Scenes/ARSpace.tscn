@@ -1,4 +1,4 @@
-[gd_scene load_steps=101 format=4 uid="uid://ca028g0q2kstx"]
+[gd_scene load_steps=103 format=4 uid="uid://ca028g0q2kstx"]
 
 [ext_resource type="Script" uid="uid://d1pt7mdt5llk4" path="res://XR_Main.gd" id="1_g432p"]
 [ext_resource type="Script" uid="uid://bt6aew4asx754" path="res://Assets/ARSpace/Scenes/SpaceBox.gd" id="2_wjh8v"]
@@ -67,6 +67,7 @@
 [ext_resource type="Script" uid="uid://cn1r7xfdwq04v" path="res://Assets/ARSpace/Scripts/UI/tree_list.gd" id="65_l4ah6"]
 [ext_resource type="PackedScene" uid="uid://bv8x3yq7hfn1k" path="res://Assets/ARSpace/Scenes/voice_chat_ui.tscn" id="67_ltm1f"]
 [ext_resource type="Script" uid="uid://cgre2apvnqf2e" path="res://Assets/ARSpace/Scripts/SpatialCalibration/spatial_calibration_panel.gd" id="68_spatial"]
+[ext_resource type="Script" uid="uid://dqsqeamwaa1jl" path="res://Assets/ARSpace/Scripts/UI/unified_panel_ui.gd" id="69_control"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_m4rif"]
 resource_name = "Default-Skybox"
@@ -271,31 +272,25 @@ metadata/humanoid_rotation_delta = {
 resource_local_to_scene = true
 size = Vector2(620, 460)
 
-[sub_resource type="ViewportTexture" id="ViewportTexture_g432p"]
+[sub_resource type="ViewportTexture" id="ViewportTexture_wjh8v"]
 viewport_path = NodePath("Viewport")
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_wjh8v"]
 transparency = 1
 cull_mode = 2
 shading_mode = 0
-albedo_texture = SubResource("ViewportTexture_g432p")
+albedo_texture = SubResource("ViewportTexture_wjh8v")
 texture_filter = 1
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_6yffd"]
 resource_local_to_scene = true
 size = Vector3(620, 460, 0.02)
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_spatial_panel"]
-bg_color = Color(0.05, 0.06, 0.08, 0.92)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.22, 0.75, 0.95, 0.72)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
+[sub_resource type="LabelSettings" id="LabelSettings_2envh"]
+font_size = 20
+
+[sub_resource type="LabelSettings" id="LabelSettings_swovu"]
+font_size = 20
 
 [node name="RootNode3D" type="Node3D" node_paths=PackedStringArray("subUI")]
 script = ExtResource("1_g432p")
@@ -1945,7 +1940,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.976, 0, 0)
 visible = true
 
 [node name="T_product_dot" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a/xiaoshiyangui_d/OldTips/Ani_effect" index="4"]
-transform = Transform3D(0.203074, 0, 0, 0, 0.203074, 0, 0, 0, 0.203074, 0, -0.68, 0)
+transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, -0.68, 0)
 
 [node name="T_product_Left_bg" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a/xiaoshiyangui_d/OldTips/Ani_effect" index="5"]
 transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, 0, 0)
@@ -1958,7 +1953,7 @@ visible = false
 visible = true
 
 [node name="T_product_dot" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a/xiaoshiyangui_d_new/NewTips/Ani_effect" index="4"]
-transform = Transform3D(0.203074, 0, 0, 0, 0.203074, 0, 0, 0, 0.203074, 0, -0.68, 0)
+transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, -0.68, 0)
 
 [node name="T_product_Left_bg" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a/xiaoshiyangui_d_new/NewTips/Ani_effect" index="5"]
 transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, 0, 0)
@@ -1967,7 +1962,7 @@ transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, 0, 0)
 visible = true
 
 [node name="T_product_dot" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a/zhongxinjigouTips/Ani_effect" index="4"]
-transform = Transform3D(0.203074, 0, 0, 0, 0.203074, 0, 0, 0, 0.203074, 0, -0.68, 0)
+transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, -0.68, 0)
 
 [node name="T_product_Left_bg" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a/zhongxinjigouTips/Ani_effect" index="5"]
 transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, 0, 0)
@@ -2391,93 +2386,193 @@ render_target_update_mode = 4
 [node name="Camera3D" type="Camera3D" parent="UI/SubViewportContainer/SubViewport"]
 transform = Transform3D(-0.979177, 0, 0.20301, 0, 1, 0, -0.20301, 0, -0.979177, 0, 1.874, 0)
 
-[node name="PanelContainer" type="PanelContainer" parent="UI"]
-custom_minimum_size = Vector2(250, 0)
-anchors_preset = 9
+[node name="ControlPanelUI" type="Control" parent="UI"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
 anchor_bottom = 1.0
-offset_right = 16.0
+offset_right = -567.0
+grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("69_control")
 
-[node name="Tree" type="Tree" parent="UI/PanelContainer"]
+[node name="PanelRoot" type="HBoxContainer" parent="UI/ControlPanelUI"]
+layout_mode = 1
+anchors_preset = -1
+anchor_bottom = 1.0
+offset_left = 2.0
+offset_top = 1.0
+offset_right = 593.0
+offset_bottom = -1.0
+grow_vertical = 2
+theme_override_constants/separation = 8
+
+[node name="Sidebar" type="PanelContainer" parent="UI/ControlPanelUI/PanelRoot"]
 layout_mode = 2
-allow_reselect = true
-script = ExtResource("65_l4ah6")
+size_flags_vertical = 3
 
-[node name="VoiceChatUI" parent="." instance=ExtResource("67_ltm1f")]
+[node name="SidebarMargin" type="MarginContainer" parent="UI/ControlPanelUI/PanelRoot/Sidebar"]
+layout_mode = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 8
 
-[node name="SpatialCalibrationPanel" type="CanvasLayer" parent="."]
-script = ExtResource("68_spatial")
+[node name="SidebarButtons" type="VBoxContainer" parent="UI/ControlPanelUI/PanelRoot/Sidebar/SidebarMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
 
-[node name="SpatialCalibrationWindow" type="PanelContainer" parent="SpatialCalibrationPanel"]
-offset_left = 16.0
-offset_top = 16.0
-offset_right = 622.0
-offset_bottom = 728.0
-theme_override_styles/panel = SubResource("StyleBoxFlat_spatial_panel")
+[node name="ModelButton" type="Button" parent="UI/ControlPanelUI/PanelRoot/Sidebar/SidebarMargin/SidebarButtons"]
+custom_minimum_size = Vector2(60, 36)
+layout_mode = 2
+text = "模型"
 
-[node name="MarginContainer" type="MarginContainer" parent="SpatialCalibrationPanel/SpatialCalibrationWindow"]
+[node name="VoiceButton" type="Button" parent="UI/ControlPanelUI/PanelRoot/Sidebar/SidebarMargin/SidebarButtons"]
+custom_minimum_size = Vector2(60, 36)
+layout_mode = 2
+text = "语音"
+
+[node name="CalibrationButton" type="Button" parent="UI/ControlPanelUI/PanelRoot/Sidebar/SidebarMargin/SidebarButtons"]
+custom_minimum_size = Vector2(60, 36)
+layout_mode = 2
+text = "标定"
+
+[node name="SidebarSpacer" type="Control" parent="UI/ControlPanelUI/PanelRoot/Sidebar/SidebarMargin/SidebarButtons"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="CollapseButton" type="Button" parent="UI/ControlPanelUI/PanelRoot/Sidebar/SidebarMargin/SidebarButtons"]
+custom_minimum_size = Vector2(60, 36)
+layout_mode = 2
+text = "收起"
+
+[node name="ContentPanel" type="PanelContainer" parent="UI/ControlPanelUI/PanelRoot"]
+custom_minimum_size = Vector2(500, 0)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ContentMargin" type="MarginContainer" parent="UI/ControlPanelUI/PanelRoot/ContentPanel"]
 layout_mode = 2
 theme_override_constants/margin_left = 12
 theme_override_constants/margin_top = 10
 theme_override_constants/margin_right = 12
 theme_override_constants/margin_bottom = 12
 
-[node name="Layout" type="VBoxContainer" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer"]
+[node name="Sections" type="Control" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="ModelSection" type="MarginContainer" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections"]
+layout_mode = 0
+offset_right = 475.0
+offset_bottom = 619.0
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="ModelSectionInner" type="VBoxContainer" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/ModelSection"]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="TitleBar" type="HBoxContainer" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer/Layout"]
+[node name="Title" type="Label" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/ModelSection/ModelSectionInner"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "模型选择"
+label_settings = SubResource("LabelSettings_2envh")
+
+[node name="Tree" type="Tree" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/ModelSection/ModelSectionInner"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+allow_reselect = true
+script = ExtResource("65_l4ah6")
+
+[node name="VoiceSection" type="Control" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VoiceChatUI" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/VoiceSection" instance=ExtResource("67_ltm1f")]
+layout_mode = 1
+
+[node name="CalibrationSection" type="MarginContainer" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("68_spatial")
+
+[node name="MarginContainer" type="MarginContainer" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/CalibrationSection"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="Layout" type="VBoxContainer" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/CalibrationSection/MarginContainer"]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="Title" type="Label" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer/Layout/TitleBar"]
+[node name="TitleBar" type="HBoxContainer" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/CalibrationSection/MarginContainer/Layout"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/CalibrationSection/MarginContainer/Layout/TitleBar"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 18
 text = "空间标定"
+label_settings = SubResource("LabelSettings_swovu")
 
-[node name="TitleSpacer" type="Control" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer/Layout/TitleBar"]
+[node name="TitleSpacer" type="Control" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/CalibrationSection/MarginContainer/Layout/TitleBar"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="CollapseButton" type="Button" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer/Layout/TitleBar"]
-layout_mode = 2
-text = "隐藏"
-
-[node name="AddressLabel" type="Label" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer/Layout"]
+[node name="AddressLabel" type="Label" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/CalibrationSection/MarginContainer/Layout"]
 layout_mode = 2
 autowrap_mode = 3
 
-[node name="Controls" type="HBoxContainer" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer/Layout"]
+[node name="Controls" type="HBoxContainer" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/CalibrationSection/MarginContainer/Layout"]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="PortLabel" type="Label" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer/Layout/Controls"]
+[node name="PortLabel" type="Label" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/CalibrationSection/MarginContainer/Layout/Controls"]
 layout_mode = 2
 text = "监听端口"
 
-[node name="PortInput" type="LineEdit" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer/Layout/Controls"]
+[node name="PortInput" type="LineEdit" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/CalibrationSection/MarginContainer/Layout/Controls"]
 custom_minimum_size = Vector2(90, 0)
 layout_mode = 2
 text = "8787"
 
-[node name="StartButton" type="Button" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer/Layout/Controls"]
+[node name="StartButton" type="Button" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/CalibrationSection/MarginContainer/Layout/Controls"]
 layout_mode = 2
 text = "开始监听"
 
-[node name="StopButton" type="Button" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer/Layout/Controls"]
+[node name="StopButton" type="Button" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/CalibrationSection/MarginContainer/Layout/Controls"]
 layout_mode = 2
 text = "停止监听"
 
-[node name="StatusLabel" type="Label" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer/Layout"]
+[node name="StatusLabel" type="Label" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/CalibrationSection/MarginContainer/Layout"]
 layout_mode = 2
 autowrap_mode = 3
 
-[node name="StatsLabel" type="Label" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer/Layout"]
+[node name="StatsLabel" type="Label" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/CalibrationSection/MarginContainer/Layout"]
+visible = false
 layout_mode = 2
 autowrap_mode = 3
 
-[node name="PreviewTexture" type="TextureRect" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer/Layout"]
-custom_minimum_size = Vector2(560, 360)
+[node name="PreviewTexture" type="TextureRect" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/CalibrationSection/MarginContainer/Layout"]
+custom_minimum_size = Vector2(0, 300)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -2485,7 +2580,7 @@ mouse_filter = 0
 expand_mode = 1
 stretch_mode = 5
 
-[node name="ClickMarker" type="ColorRect" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer/Layout/PreviewTexture"]
+[node name="ClickMarker" type="ColorRect" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/CalibrationSection/MarginContainer/Layout/PreviewTexture"]
 visible = false
 custom_minimum_size = Vector2(16, 16)
 layout_mode = 0
@@ -2494,15 +2589,15 @@ offset_bottom = 16.0
 mouse_filter = 2
 color = Color(1, 0.14, 0.04, 0.95)
 
-[node name="DepthControls" type="HBoxContainer" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer/Layout"]
+[node name="DepthControls" type="HBoxContainer" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/CalibrationSection/MarginContainer/Layout"]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="DepthLabel" type="Label" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer/Layout/DepthControls"]
+[node name="DepthLabel" type="Label" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/CalibrationSection/MarginContainer/Layout/DepthControls"]
 layout_mode = 2
 text = "深度(m)"
 
-[node name="DepthInput" type="SpinBox" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer/Layout/DepthControls"]
+[node name="DepthInput" type="SpinBox" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/CalibrationSection/MarginContainer/Layout/DepthControls"]
 custom_minimum_size = Vector2(110, 0)
 layout_mode = 2
 min_value = 0.05
@@ -2510,30 +2605,21 @@ max_value = 20.0
 step = 0.05
 value = 1.0
 
-[node name="ConfirmButton" type="Button" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer/Layout/DepthControls"]
+[node name="ConfirmButton" type="Button" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/CalibrationSection/MarginContainer/Layout/DepthControls"]
 layout_mode = 2
 disabled = true
 text = "确认标定点"
 
-[node name="ClearButton" type="Button" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer/Layout/DepthControls"]
+[node name="ClearButton" type="Button" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/CalibrationSection/MarginContainer/Layout/DepthControls"]
 layout_mode = 2
 text = "清除标定点"
 
-[node name="ResultLabel" type="Label" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer/Layout"]
-custom_minimum_size = Vector2(0, 110)
+[node name="ResultLabel" type="Label" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/CalibrationSection/MarginContainer/Layout"]
 layout_mode = 2
 text = "点击 Pico 预览画面选择点，滚轮调整深度，右键或点击按钮确认。"
 autowrap_mode = 3
 
-[node name="CollapsedButton" type="Button" parent="SpatialCalibrationPanel"]
-visible = false
-offset_left = 16.0
-offset_top = 16.0
-offset_right = 120.0
-offset_bottom = 48.0
-text = "空间标定"
-
-[connection signal="item_selected" from="UI/PanelContainer/Tree" to="UI/PanelContainer/Tree" method="_on_Tree_item_selected"]
+[connection signal="item_selected" from="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/ModelSection/ModelSectionInner/Tree" to="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/ModelSection/ModelSectionInner/Tree" method="_on_Tree_item_selected"]
 
 [editable path="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/Drager"]
 [editable path="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/Drager"]

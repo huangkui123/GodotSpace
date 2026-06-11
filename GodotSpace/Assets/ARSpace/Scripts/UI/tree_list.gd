@@ -20,9 +20,6 @@ func _ready():
 	var root = create_item()  # Tree 根（内部用）
 	add_node_recursive(parts_root, root)
 
-	if not multiplayer.is_server():
-		get_parent().get_parent().visible = false
-
 func add_node_recursive(node: Node, parent_item: TreeItem):
 	if node is MeshInstance3D:
 		return

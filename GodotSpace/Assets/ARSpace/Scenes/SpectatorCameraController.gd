@@ -17,15 +17,18 @@ func _ready():
 	# 只有按住右键时才控制摄像机视角
 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 
-func _unhandled_input(event: InputEvent):
+func _input(event: InputEvent):
 	# 处理鼠标按钮事件
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT:
+		if event.is_pressed() and _is_mouse_over_interactive_ui():
+			return
 		if event.is_pressed():
 			# 按下右键时，捕获鼠标进行视角控制
 			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 		else:
 			# 释放右键时，恢复鼠标显示
 			Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+		get_viewport().set_input_as_handled()
 	
 	# 处理鼠标移动事件，只有在按住右键时才旋转视角
 	if event is InputEventMouseMotion:
@@ -40,12 +43,15 @@ func _unhandled_input(event: InputEvent):
 			self.rotation_degrees.x = 0
 			# 再围绕自己的X轴旋转
 			self.rotate_object_local(Vector3.RIGHT, deg_to_rad(pitch_degrees))
+			get_viewport().set_input_as_handled()
 	
 	# 按下 Escape 键释放鼠标
 	if event.is_action_pressed("ui_cancel"): # "ui_cancel" 默认是 Escape 键
 		Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 		
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.is_pressed():
+		if get_viewport().gui_get_hovered_control() != null:
+			return
 		#Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 		
 		# 计算点击的3D位置
@@ -84,6 +90,19 @@ func _unhandled_input(event: InputEvent):
 					network_handler.rpc_id(peer_id, "create_marker_at_position", hit_position)
 			else:
 				print("错误：未找到NetworkHandler节点")
+
+
+func _is_mouse_over_interactive_ui() -> bool:
+	var control := get_viewport().gui_get_hovered_control()
+	while control != null:
+		if control is Button \
+				or control is Tree \
+				or control is LineEdit \
+				or control is SpinBox \
+				or control.name == "PreviewTexture":
+			return true
+		control = control.get_parent() as Control
+	return false
 
 
 func _process(delta: float):

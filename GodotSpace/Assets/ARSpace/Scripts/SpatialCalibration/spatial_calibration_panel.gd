@@ -1,4 +1,4 @@
-extends CanvasLayer
+extends Control
 
 const DEBUG_LOGS := false
 
@@ -25,20 +25,18 @@ var ack_buffer: PackedByteArray = PackedByteArray()
 var stream_texture: ImageTexture
 var decode_image: Image = Image.new()
 
-@onready var root_panel: PanelContainer = $SpatialCalibrationWindow
-@onready var collapsed_button: Button = $CollapsedButton
-@onready var address_label: Label = $SpatialCalibrationWindow/MarginContainer/Layout/AddressLabel
-@onready var status_label: Label = $SpatialCalibrationWindow/MarginContainer/Layout/StatusLabel
-@onready var stats_label: Label = $SpatialCalibrationWindow/MarginContainer/Layout/StatsLabel
-@onready var port_input: LineEdit = $SpatialCalibrationWindow/MarginContainer/Layout/Controls/PortInput
-@onready var start_button: Button = $SpatialCalibrationWindow/MarginContainer/Layout/Controls/StartButton
-@onready var stop_button: Button = $SpatialCalibrationWindow/MarginContainer/Layout/Controls/StopButton
-@onready var texture_rect: TextureRect = $SpatialCalibrationWindow/MarginContainer/Layout/PreviewTexture
-@onready var click_marker: ColorRect = $SpatialCalibrationWindow/MarginContainer/Layout/PreviewTexture/ClickMarker
-@onready var depth_input: SpinBox = $SpatialCalibrationWindow/MarginContainer/Layout/DepthControls/DepthInput
-@onready var confirm_button: Button = $SpatialCalibrationWindow/MarginContainer/Layout/DepthControls/ConfirmButton
-@onready var clear_button: Button = $SpatialCalibrationWindow/MarginContainer/Layout/DepthControls/ClearButton
-@onready var result_label: Label = $SpatialCalibrationWindow/MarginContainer/Layout/ResultLabel
+@onready var address_label: Label = $MarginContainer/Layout/AddressLabel
+@onready var status_label: Label = $MarginContainer/Layout/StatusLabel
+@onready var stats_label: Label = $MarginContainer/Layout/StatsLabel
+@onready var port_input: LineEdit = $MarginContainer/Layout/Controls/PortInput
+@onready var start_button: Button = $MarginContainer/Layout/Controls/StartButton
+@onready var stop_button: Button = $MarginContainer/Layout/Controls/StopButton
+@onready var texture_rect: TextureRect = $MarginContainer/Layout/PreviewTexture
+@onready var click_marker: ColorRect = $MarginContainer/Layout/PreviewTexture/ClickMarker
+@onready var depth_input: SpinBox = $MarginContainer/Layout/DepthControls/DepthInput
+@onready var confirm_button: Button = $MarginContainer/Layout/DepthControls/ConfirmButton
+@onready var clear_button: Button = $MarginContainer/Layout/DepthControls/ClearButton
+@onready var result_label: Label = $MarginContainer/Layout/ResultLabel
 
 var last_frame_size := Vector2i.ZERO
 var last_frame_id := -1
@@ -70,10 +68,10 @@ var preview_marker: MeshInstance3D
 
 func _ready() -> void:
 	if not multiplayer.is_server():
-		queue_free()
+		visible = false
+		set_process(false)
 		return
 
-	layer = 50
 	ack_buffer.resize(ACK_HEADER_SIZE)
 	_wire_static_ui()
 	_set_status("等待 Pico helper 连接")
@@ -123,177 +121,8 @@ func _wire_static_ui() -> void:
 	confirm_button.pressed.connect(_confirm_current_point)
 	clear_button.pressed.connect(_clear_confirmed_points)
 	depth_input.value_changed.connect(_on_click_depth_changed)
-	root_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	texture_rect.mouse_filter = Control.MOUSE_FILTER_STOP
 	click_marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	collapsed_button.pressed.connect(_on_expand_pressed)
-
-	var collapse_button := root_panel.get_node("MarginContainer/Layout/TitleBar/CollapseButton") as Button
-	collapse_button.pressed.connect(_on_collapse_pressed)
-
-
-func _create_ui() -> void:
-	root_panel = PanelContainer.new()
-	root_panel.name = "SpatialCalibrationWindow"
-	root_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	root_panel.offset_left = 16.0
-	root_panel.offset_top = 16.0
-	root_panel.offset_right = 620.0
-	root_panel.offset_bottom = 760.0
-	root_panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	add_child(root_panel)
-
-	var panel_style := StyleBoxFlat.new()
-	panel_style.bg_color = Color(0.05, 0.06, 0.08, 0.92)
-	panel_style.border_color = Color(0.22, 0.75, 0.95, 0.72)
-	panel_style.border_width_left = 1
-	panel_style.border_width_top = 1
-	panel_style.border_width_right = 1
-	panel_style.border_width_bottom = 1
-	panel_style.corner_radius_top_left = 8
-	panel_style.corner_radius_top_right = 8
-	panel_style.corner_radius_bottom_left = 8
-	panel_style.corner_radius_bottom_right = 8
-	root_panel.add_theme_stylebox_override("panel", panel_style)
-
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 12)
-	margin.add_theme_constant_override("margin_right", 12)
-	margin.add_theme_constant_override("margin_top", 10)
-	margin.add_theme_constant_override("margin_bottom", 12)
-	root_panel.add_child(margin)
-
-	var layout := VBoxContainer.new()
-	layout.add_theme_constant_override("separation", 8)
-	margin.add_child(layout)
-
-	var title_bar := HBoxContainer.new()
-	title_bar.add_theme_constant_override("separation", 8)
-	layout.add_child(title_bar)
-
-	var title := Label.new()
-	title.text = "空间标定"
-	title.add_theme_font_size_override("font_size", 18)
-	title_bar.add_child(title)
-
-	var title_spacer := Control.new()
-	title_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title_bar.add_child(title_spacer)
-
-	var collapse_button := Button.new()
-	collapse_button.text = "隐藏"
-	collapse_button.pressed.connect(_on_collapse_pressed)
-	title_bar.add_child(collapse_button)
-
-	address_label = Label.new()
-	address_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	layout.add_child(address_label)
-
-	var controls := HBoxContainer.new()
-	controls.add_theme_constant_override("separation", 8)
-	layout.add_child(controls)
-
-	var port_label := Label.new()
-	port_label.text = "监听端口"
-	controls.add_child(port_label)
-
-	port_input = LineEdit.new()
-	port_input.custom_minimum_size = Vector2(90, 0)
-	port_input.text = str(DEFAULT_PORT)
-	controls.add_child(port_input)
-
-	start_button = Button.new()
-	start_button.text = "开始监听"
-	start_button.pressed.connect(_on_start_pressed)
-	controls.add_child(start_button)
-
-	stop_button = Button.new()
-	stop_button.text = "停止监听"
-	stop_button.pressed.connect(_on_stop_pressed)
-	controls.add_child(stop_button)
-
-	status_label = Label.new()
-	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	layout.add_child(status_label)
-
-	stats_label = Label.new()
-	stats_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	layout.add_child(stats_label)
-
-	texture_rect = TextureRect.new()
-	texture_rect.name = "PreviewTexture"
-	texture_rect.custom_minimum_size = Vector2(560, 360)
-	texture_rect.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	texture_rect.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	texture_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	texture_rect.mouse_filter = Control.MOUSE_FILTER_STOP
-	texture_rect.gui_input.connect(_on_preview_gui_input)
-	layout.add_child(texture_rect)
-
-	click_marker = ColorRect.new()
-	click_marker.name = "ClickMarker"
-	click_marker.custom_minimum_size = CLICK_MARKER_SIZE
-	click_marker.size = CLICK_MARKER_SIZE
-	click_marker.color = Color(1.0, 0.14, 0.04, 0.95)
-	click_marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	click_marker.visible = false
-	texture_rect.add_child(click_marker)
-
-	var depth_controls := HBoxContainer.new()
-	depth_controls.add_theme_constant_override("separation", 8)
-	layout.add_child(depth_controls)
-
-	var depth_label := Label.new()
-	depth_label.text = "深度(m)"
-	depth_controls.add_child(depth_label)
-
-	depth_input = SpinBox.new()
-	depth_input.custom_minimum_size = Vector2(110, 0)
-	depth_input.min_value = 0.05
-	depth_input.max_value = 20.0
-	depth_input.step = 0.05
-	depth_input.value = DEFAULT_CLICK_DEPTH_METERS
-	depth_input.value_changed.connect(_on_click_depth_changed)
-	depth_controls.add_child(depth_input)
-
-	confirm_button = Button.new()
-	confirm_button.text = "确认标定点"
-	confirm_button.disabled = true
-	confirm_button.pressed.connect(_confirm_current_point)
-	depth_controls.add_child(confirm_button)
-
-	clear_button = Button.new()
-	clear_button.text = "清除标定点"
-	clear_button.pressed.connect(_clear_confirmed_points)
-	depth_controls.add_child(clear_button)
-
-	result_label = Label.new()
-	result_label.text = "点击 Pico 预览画面选点；滚轮调深度，右键或按钮确认。"
-	result_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	result_label.custom_minimum_size = Vector2(0, 110)
-	layout.add_child(result_label)
-
-	collapsed_button = Button.new()
-	collapsed_button.text = "空间标定"
-	collapsed_button.visible = false
-	collapsed_button.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	collapsed_button.offset_left = 16.0
-	collapsed_button.offset_top = 16.0
-	collapsed_button.offset_right = 120.0
-	collapsed_button.offset_bottom = 48.0
-	collapsed_button.pressed.connect(_on_expand_pressed)
-	add_child(collapsed_button)
-
-
-func _on_collapse_pressed() -> void:
-	root_panel.visible = false
-	collapsed_button.visible = true
-
-
-func _on_expand_pressed() -> void:
-	root_panel.visible = true
-	collapsed_button.visible = false
 
 
 func _on_start_pressed() -> void:
