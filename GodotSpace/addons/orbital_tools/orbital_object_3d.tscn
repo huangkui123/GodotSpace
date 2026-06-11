@@ -1,0 +1,15 @@
+[gd_scene load_steps=3 format=3 uid="uid://bbk0utj7ivy0i"]
+
+[ext_resource type="Script" uid="uid://iaimbwwkitcw" path="res://addons/orbital_tools/orbital_object_3d.gd" id="1_pnwv0"]
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_fagbt"]
+resource_local_to_scene = true
+
+[node name="OrbitalObject3D" type="Area3D"]
+script = ExtResource("1_pnwv0")
+
+[node name="InfluenceZone" type="CollisionShape3D" parent="."]
+shape = SubResource("SphereShape3D_fagbt")
+
+[connection signal="area_entered" from="." to="." method="_on_area_entered"]
+[connection signal="area_exited" from="." to="." method="_on_area_exited"]

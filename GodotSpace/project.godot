@@ -28,10 +28,11 @@ Global="*res://Assets/ARSpace/Scripts/Global.gd"
 NetworkHandler="*res://Assets/ARSpace/Scripts/Network/network_handler.gd"
 VoiceChat="*res://Assets/ARSpace/Scripts/Network/voice_chat.gd"
 SpatialCalibrationBootstrap="*res://Assets/ARSpace/Scripts/SpatialCalibration/spatial_calibration_bootstrap.gd"
+OrbitalManager="*res://addons/orbital_tools/orbital_manager.gd"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/godot-xr-tools/plugin.cfg", "res://addons/unidot/plugin.cfg")
+enabled=PackedStringArray("res://addons/godot-xr-tools/plugin.cfg", "res://addons/orbital_tools/plugin.cfg", "res://addons/unidot/plugin.cfg")
 
 [filesystem]
 

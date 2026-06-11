@@ -1,0 +1,19 @@
+[gd_resource type="StandardMaterial3D" load_steps=6 format=3 uid="uid://de8ob4mohwp3o"]
+
+[ext_resource type="Texture2D" uid="uid://dbtngjd88hvv6" path="res://Scene_Main/ori/Galileo/texture/Galileo_1001_Albedo.png" id="1_uov2n"]
+[ext_resource type="Texture2D" uid="uid://b2s8jmqkwkx73" path="res://Scene_Main/ori/Galileo/texture/Galileo_1001_AO.png" id="2_0gyd0"]
+[ext_resource type="Texture2D" uid="uid://dklobp6s8c745" path="res://Scene_Main/ori/Galileo/texture/Galileo_1001_Emissive.png" id="3_4jhgd"]
+[ext_resource type="Texture2D" uid="uid://c6oprdpss6kr8" path="res://Scene_Main/ori/Galileo/texture/Galileo_1001_Matallic.png" id="4_rhraq"]
+[ext_resource type="Texture2D" uid="uid://ccddrm31udkt3" path="res://Scene_Main/ori/Galileo/texture/Galileo_1001_Normal.png" id="5_sewpg"]
+
+[resource]
+albedo_texture = ExtResource("1_uov2n")
+metallic = 1.0
+metallic_texture = ExtResource("4_rhraq")
+roughness = 0.5
+emission_enabled = true
+emission_texture = ExtResource("3_4jhgd")
+normal_enabled = true
+normal_texture = ExtResource("5_sewpg")
+ao_enabled = true
+ao_texture = ExtResource("2_0gyd0")

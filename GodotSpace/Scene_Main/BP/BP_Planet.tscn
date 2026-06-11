@@ -1,0 +1,45 @@
+[gd_scene load_steps=7 format=3 uid="uid://dwfg2n4076u63"]
+
+[ext_resource type="Script" uid="uid://dcgctsod7nggw" path="res://addons/orbital_tools/orbital_object_3d.gd" id="1_iwbu3"]
+[ext_resource type="Texture2D" uid="uid://bx3rebp2ocs1m" path="res://Assets/ivoyager_assets/maps/Mercury.albedo.GlobalColor2017.CWreprocessed.4096.jpg" id="2_346l7"]
+[ext_resource type="Script" uid="uid://djv6n03prokp2" path="res://Scene_Main/PlanetName_3d.gd" id="3_1ah52"]
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_lgk2e"]
+radius = 0.1
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_hbh2s"]
+albedo_texture = ExtResource("2_346l7")
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_xj46c"]
+
+[node name="Mercury" type="Area3D"]
+transform = Transform3D(0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 58)
+script = ExtResource("1_iwbu3")
+mass = 0.165
+_initial_position = Vector3(0, 0, 58)
+_initial_velocity = Vector3(880, 0, 0)
+metadata/_custom_type_script = "uid://dcgctsod7nggw"
+
+[node name="InfluenceZone" type="CollisionShape3D" parent="."]
+shape = SubResource("SphereShape3D_lgk2e")
+
+[node name="CSGSphere3D" type="CSGSphere3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0, 0)
+radius = 4.0
+radial_segments = 40
+rings = 40
+material = SubResource("StandardMaterial3D_hbh2s")
+
+[node name="Label3D" type="Label3D" parent="."]
+pixel_size = 0.001
+billboard = 1
+no_depth_test = true
+fixed_size = true
+text = "水星"
+script = ExtResource("3_1ah52")
+
+[node name="Area3D" type="Area3D" parent="Label3D"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Label3D/Area3D"]
+transform = Transform3D(12.045, 0, 0, 0, 12.045, 0, 0, 0, 12.045, 0, 0, 0)
+shape = SubResource("SphereShape3D_xj46c")

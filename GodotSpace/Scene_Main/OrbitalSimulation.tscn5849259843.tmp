@@ -1,0 +1,61 @@
+[gd_scene load_steps=55 format=3 uid="uid://cqx8cv3jvl4jh"]
+
+[ext_resource type="Script" uid="uid://dcgctsod7nggw" path="res://addons/orbital_tools/orbital_object_3d.gd" id="1_0i6je"]
+[ext_resource type="PackedScene" uid="uid://cwy238cxfbs2q" path="res://demo/demo.tscn" id="1_lgk2e"]
+[ext_resource type="Script" uid="uid://ca4jo2eui6k2t" path="res://addons/orbital_tools/orbit_render_3d.gd" id="2_hbh2s"]
+[ext_resource type="Script" uid="uid://dts35ch6cey5q" path="res://Scene_Main/main_control.gd" id="2_s6cqi"]
+[ext_resource type="Texture2D" uid="uid://bx3rebp2ocs1m" path="res://Assets/ivoyager_assets/maps/Mercury.albedo.GlobalColor2017.CWreprocessed.4096.jpg" id="4_eta8j"]
+[ext_resource type="Script" uid="uid://cs8336dsnr7jx" path="res://demo/Camera3D.gd" id="4_y1m35"]
+[ext_resource type="Script" uid="uid://djv6n03prokp2" path="res://Scene_Main/PlanetName_3d.gd" id="5_xj46c"]
+[ext_resource type="Script" uid="uid://h04avu46175p" path="res://demo/HelpText.gd" id="6_8fbr4"]
+[ext_resource type="Texture2D" uid="uid://cs37500kny7ij" path="res://Assets/ivoyager_assets/maps/Earth.albedo.land_ocean_ice_cloud_8192.jpg" id="6_j5tfa"]
+[ext_resource type="Texture2D" uid="uid://pxtkwpjxd3si" path="res://Assets/ivoyager_assets/maps/Venus.albedo.BjornJonsson.CWreprocessed.4096.jpg" id="7_ks1u5"]
+[ext_resource type="Texture2D" uid="uid://dcmum4rv5sagr" path="res://Assets/ivoyager_assets/maps/Mars.albedo.noaa.CWreprocessed.4096.jpg" id="9_85aj0"]
+[ext_resource type="Shader" uid="uid://dmofg1ih6sk7g" path="res://Scene_Main/Shader/EM.gdshader" id="9_l7jty"]
+[ext_resource type="Texture2D" uid="uid://4uhq4wktpkur" path="res://Assets/ivoyager_assets/maps/Moon.albedo.noaa.4096.jpg" id="9_oh6u1"]
+[ext_resource type="PackedScene" uid="uid://cbohug70r5xqw" path="res://Scene_Main/ori/Cassini-Huygens (A)/Cassini-Huygens (A).fbx" id="10_300ft"]
+[ext_resource type="Texture2D" uid="uid://dyaaqx01c0xla" path="res://Assets/ivoyager_assets/maps/Jupiter.albedo.new.BjornJonsson.4096.jpg" id="10_o5cvo"]
+[ext_resource type="Texture2D" uid="uid://chckionlkf2bm" path="res://Assets/ivoyager_assets/maps/Saturn.albedo.noaa.2048.jpg" id="11_fdkqh"]
+[ext_resource type="ImmediateMesh" uid="uid://d2x2s2bdj7bqa" path="res://Scene_Main/ori/Cassini-Huygens (A)/OrbitalSimulation.tres" id="11_w5acp"]
+[ext_resource type="Texture2D" uid="uid://8xna5noe03ux" path="res://Assets/ivoyager_assets/maps/Uranus.albedo.2024recolor.jpg" id="12_optyn"]
+[ext_resource type="Texture2D" uid="uid://bjf17slbnnnvr" path="res://Assets/ivoyager_assets/maps/Neptune.albedo.2024recolor.4096.jpg" id="13_oh6u1"]
+[ext_resource type="Texture2D" uid="uid://p5b061wtxedr" path="res://Assets/Icons/pause.png" id="15_o5cvo"]
+[ext_resource type="Script" uid="uid://bb0xhiho4nj2l" path="res://Scene_Main/control2d.gd" id="15_optyn"]
+[ext_resource type="Script" uid="uid://m4e6h224463j" path="res://Scene_Main/button.gd" id="16_fdkqh"]
+[ext_resource type="Texture2D" uid="uid://cdk0au457065w" path="res://Assets/Icons/play.png" id="17_fdkqh"]
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_hbh2s"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_0i6je"]
+emission_enabled = true
+emission = Color(1, 0.429186, 0.250836, 1)
+emission_energy_multiplier = 10.0
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_lgk2e"]
+radius = 0.1
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_hbh2s"]
+albedo_texture = ExtResource("4_eta8j")
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_xj46c"]
+radius = 0.0859264
+
+[sub_resource type="ImmediateMesh" id="ImmediateMesh_oh6u1"]
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_y1m35"]
+radius = 0.1
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_300ft"]
+albedo_texture = ExtResource("7_ks1u5")
+
+[sub_resource type="ImmediateMesh" id="ImmediateMesh_l7jty"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_s6cqi"]
+albedo_texture = ExtResource("6_j5tfa")
+
+[sub_resource type="BoxMesh" id="BoxMesh_oh6u1"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_l7jty"]
+render_priority = 0
+shader = ExtResource("9_l7jty")
+shad

@@ -1,0 +1,36 @@
+[gd_scene load_steps=5 format=3 uid="uid://cp3s3cg1tql7g"]
+
+[ext_resource type="Script" uid="uid://cr2rqreskcla0" path="res://Scene_Main/BP/billboard_ui.gd" id="1_c8vqk"]
+[ext_resource type="Shader" uid="uid://dxuefi14wtcy1" path="res://Scene_Main/BP/BillboardUI.gdshader" id="2_dpwx8"]
+
+[sub_resource type="QuadMesh" id="QuadMesh_1vdxe"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_8fhyw"]
+render_priority = 0
+shader = ExtResource("2_dpwx8")
+
+[node name="BillboardUi" type="Node3D"]
+script = ExtResource("1_c8vqk")
+
+[node name="SubViewport" type="SubViewport" parent="."]
+size = Vector2i(400, 200)
+
+[node name="Control" type="Control" parent="SubViewport"]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="Label" type="Label" parent="SubViewport/Control"]
+layout_mode = 0
+offset_left = 382.806
+offset_top = 244.632
+offset_right = 465.806
+offset_bottom = 319.632
+text = "123456
+1235467
+123452315"
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+mesh = SubResource("QuadMesh_1vdxe")
+surface_material_override/0 = SubResource("ShaderMaterial_8fhyw")

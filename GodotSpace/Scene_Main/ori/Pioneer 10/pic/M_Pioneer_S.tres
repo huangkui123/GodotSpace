@@ -1,0 +1,18 @@
+[gd_resource type="StandardMaterial3D" load_steps=6 format=3 uid="uid://bw85at3c5cw8t"]
+
+[ext_resource type="Texture2D" uid="uid://i8ptbf0wghv" path="res://Scene_Main/ori/Pioneer 10/pic/Pioneer_S_M_Albedo.png" id="1_fiqt1"]
+[ext_resource type="Texture2D" uid="uid://bf1udt1msegj0" path="res://Scene_Main/ori/MESSENGER/pic/M_S_M_AO.png" id="2_cu8ow"]
+[ext_resource type="Texture2D" uid="uid://cl83gk0r6ocy7" path="res://Scene_Main/ori/James Webb Space Telescope/texture/James Webb Space Telescope (B)_lambert2_Emissive.png" id="3_qyfct"]
+[ext_resource type="Texture2D" uid="uid://d4nhwxiebtdh1" path="res://Scene_Main/ori/Pioneer 10/pic/Pioneer_S_M_Metallic.png" id="4_cu8ow"]
+[ext_resource type="Texture2D" uid="uid://b7h38km248qkc" path="res://Scene_Main/ori/Pioneer 10/pic/Pioneer_S_M_Normal.png" id="5_qyfct"]
+
+[resource]
+albedo_texture = ExtResource("1_fiqt1")
+metallic = 1.0
+metallic_texture = ExtResource("4_cu8ow")
+roughness = 0.5
+emission_texture = ExtResource("3_qyfct")
+normal_enabled = true
+normal_texture = ExtResource("5_qyfct")
+ao_enabled = true
+ao_texture = ExtResource("2_cu8ow")
