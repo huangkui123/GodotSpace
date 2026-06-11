@@ -25,20 +25,20 @@ var ack_buffer: PackedByteArray = PackedByteArray()
 var stream_texture: ImageTexture
 var decode_image: Image = Image.new()
 
-var root_panel: PanelContainer
-var collapsed_button: Button
-var address_label: Label
-var status_label: Label
-var stats_label: Label
-var port_input: LineEdit
-var start_button: Button
-var stop_button: Button
-var texture_rect: TextureRect
-var click_marker: ColorRect
-var depth_input: SpinBox
-var confirm_button: Button
-var clear_button: Button
-var result_label: Label
+@onready var root_panel: PanelContainer = $SpatialCalibrationWindow
+@onready var collapsed_button: Button = $CollapsedButton
+@onready var address_label: Label = $SpatialCalibrationWindow/MarginContainer/Layout/AddressLabel
+@onready var status_label: Label = $SpatialCalibrationWindow/MarginContainer/Layout/StatusLabel
+@onready var stats_label: Label = $SpatialCalibrationWindow/MarginContainer/Layout/StatsLabel
+@onready var port_input: LineEdit = $SpatialCalibrationWindow/MarginContainer/Layout/Controls/PortInput
+@onready var start_button: Button = $SpatialCalibrationWindow/MarginContainer/Layout/Controls/StartButton
+@onready var stop_button: Button = $SpatialCalibrationWindow/MarginContainer/Layout/Controls/StopButton
+@onready var texture_rect: TextureRect = $SpatialCalibrationWindow/MarginContainer/Layout/PreviewTexture
+@onready var click_marker: ColorRect = $SpatialCalibrationWindow/MarginContainer/Layout/PreviewTexture/ClickMarker
+@onready var depth_input: SpinBox = $SpatialCalibrationWindow/MarginContainer/Layout/DepthControls/DepthInput
+@onready var confirm_button: Button = $SpatialCalibrationWindow/MarginContainer/Layout/DepthControls/ConfirmButton
+@onready var clear_button: Button = $SpatialCalibrationWindow/MarginContainer/Layout/DepthControls/ClearButton
+@onready var result_label: Label = $SpatialCalibrationWindow/MarginContainer/Layout/ResultLabel
 
 var last_frame_size := Vector2i.ZERO
 var last_frame_id := -1
@@ -75,7 +75,7 @@ func _ready() -> void:
 
 	layer = 50
 	ack_buffer.resize(ACK_HEADER_SIZE)
-	_create_ui()
+	_wire_static_ui()
 	_set_status("等待 Pico helper 连接")
 	_reset_click_selection(false)
 	_start_listening(DEFAULT_PORT)
@@ -114,6 +114,22 @@ func _process(_delta: float) -> void:
 		dropped_frames_this_second = 0
 		fps_tick_ms = now_ms
 		_refresh_stats()
+
+
+func _wire_static_ui() -> void:
+	texture_rect.gui_input.connect(_on_preview_gui_input)
+	start_button.pressed.connect(_on_start_pressed)
+	stop_button.pressed.connect(_on_stop_pressed)
+	confirm_button.pressed.connect(_confirm_current_point)
+	clear_button.pressed.connect(_clear_confirmed_points)
+	depth_input.value_changed.connect(_on_click_depth_changed)
+	root_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	texture_rect.mouse_filter = Control.MOUSE_FILTER_STOP
+	click_marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	collapsed_button.pressed.connect(_on_expand_pressed)
+
+	var collapse_button := root_panel.get_node("MarginContainer/Layout/TitleBar/CollapseButton") as Button
+	collapse_button.pressed.connect(_on_collapse_pressed)
 
 
 func _create_ui() -> void:

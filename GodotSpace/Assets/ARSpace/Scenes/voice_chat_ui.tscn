@@ -1,6 +1,10 @@
-[gd_scene load_steps=2 format=3 uid="uid://bv8x3yq7hfn1k"]
+[gd_scene load_steps=5 format=3 uid="uid://bv8x3yq7hfn1k"]
 
 [ext_resource type="Script" uid="uid://bbh8uiiah3wtw" path="res://Assets/ARSpace/Scripts/Network/voice_chat_ui.gd" id="1"]
+[ext_resource type="WhisperResource" uid="uid://yhwtdgf3v6xd" path="res://addons/godot_whisper/models/ggml-base.bin" id="2_model"]
+[ext_resource type="Script" uid="uid://c5plctmo0htue" path="res://addons/godot_whisper/capture_stream_to_text.gd" id="3_capture"]
+
+[sub_resource type="AudioStreamMicrophone" id="AudioStreamMicrophone_voice_ui"]
 
 [node name="VoiceChatUI" type="Control"]
 layout_mode = 3
@@ -9,52 +13,130 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
 script = ExtResource("1")
 
-[node name="Panel" type="Panel" parent="."]
+[node name="PanelContainer" type="PanelContainer" parent="."]
 layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -220.0
+offset_left = -720.0
 offset_top = 20.0
 offset_right = -20.0
-offset_bottom = 120.0
+offset_bottom = 460.0
 grow_horizontal = 0
 
-[node name="VBoxContainer" type="VBoxContainer" parent="Panel"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 10.0
-offset_top = 10.0
-offset_right = -10.0
-offset_bottom = -10.0
-grow_horizontal = 2
-grow_vertical = 2
+[node name="MarginContainer" type="MarginContainer" parent="PanelContainer"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
 
-[node name="VoiceButton" type="Button" parent="."]
-layout_mode = 1
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -210.0
-offset_top = 30.0
-offset_right = -30.0
-offset_bottom = 70.0
-grow_horizontal = 0
-text = "🎤 语音开启"
+[node name="Layout" type="VBoxContainer" parent="PanelContainer/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 10
 
-[node name="StatusLabel" type="Label" parent="."]
-layout_mode = 1
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -210.0
-offset_top = 80.0
-offset_right = -30.0
-offset_bottom = 103.0
-grow_horizontal = 0
-text = "等待连接..."
+[node name="Header" type="HBoxContainer" parent="PanelContainer/MarginContainer/Layout"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="VoiceButton" type="Button" parent="PanelContainer/MarginContainer/Layout/Header"]
+custom_minimum_size = Vector2(128, 34)
+layout_mode = 2
+text = "语音关闭"
+
+[node name="StatusLabel" type="Label" parent="PanelContainer/MarginContainer/Layout/Header"]
+custom_minimum_size = Vector2(520, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "网络离线"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="TranscribeSection" type="VBoxContainer" parent="PanelContainer/MarginContainer/Layout"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="TranscribeHeader" type="HBoxContainer" parent="PanelContainer/MarginContainer/Layout/TranscribeSection"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TranscribeTitle" type="Label" parent="PanelContainer/MarginContainer/Layout/TranscribeSection/TranscribeHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "实时转写"
+
+[node name="TranscribeButton" type="Button" parent="PanelContainer/MarginContainer/Layout/TranscribeSection/TranscribeHeader"]
+custom_minimum_size = Vector2(112, 30)
+layout_mode = 2
+toggle_mode = true
+text = "转写关闭"
+
+[node name="TranscriptBox" type="PanelContainer" parent="PanelContainer/MarginContainer/Layout/TranscribeSection"]
+custom_minimum_size = Vector2(0, 170)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="TranscriptLabel" type="RichTextLabel" parent="PanelContainer/MarginContainer/Layout/TranscribeSection/TranscriptBox"]
+layout_mode = 2
+bbcode_enabled = true
+text = "等待语音输入..."
+scroll_following = true
+
+[node name="ServerVoiceLevels" type="VBoxContainer" parent="PanelContainer/MarginContainer/Layout"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Title" type="Label" parent="PanelContainer/MarginContainer/Layout/ServerVoiceLevels"]
+layout_mode = 2
+text = "服务器语音音量"
 horizontal_alignment = 1
+
+[node name="TableHeader" type="HBoxContainer" parent="PanelContainer/MarginContainer/Layout/ServerVoiceLevels"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="PeerLabel" type="Label" parent="PanelContainer/MarginContainer/Layout/ServerVoiceLevels/TableHeader"]
+custom_minimum_size = Vector2(96, 0)
+layout_mode = 2
+text = "对象"
+
+[node name="MicLabel" type="Label" parent="PanelContainer/MarginContainer/Layout/ServerVoiceLevels/TableHeader"]
+custom_minimum_size = Vector2(68, 0)
+layout_mode = 2
+text = "麦克风"
+horizontal_alignment = 1
+
+[node name="LevelLabel" type="Label" parent="PanelContainer/MarginContainer/Layout/ServerVoiceLevels/TableHeader"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "音量"
+horizontal_alignment = 1
+
+[node name="DbLabel" type="Label" parent="PanelContainer/MarginContainer/Layout/ServerVoiceLevels/TableHeader"]
+custom_minimum_size = Vector2(68, 0)
+layout_mode = 2
+text = "dB"
+horizontal_alignment = 2
+
+[node name="Rows" type="VBoxContainer" parent="PanelContainer/MarginContainer/Layout/ServerVoiceLevels"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Runtime" type="Node" parent="."]
+
+[node name="MicPlayer" type="AudioStreamPlayer" parent="Runtime"]
+stream = SubResource("AudioStreamMicrophone_voice_ui")
+
+[node name="AudioPlayer" type="AudioStreamPlayer" parent="Runtime"]
+
+[node name="CaptureStreamToText" type="SpeechToText" parent="Runtime"]
+language = 2
+language_model = ExtResource("2_model")
+script = ExtResource("3_capture")
+initial_prompt = "以下是普通话句子。"
+maximum_sentence_time = 10
+audio_effect_capture_index = 0

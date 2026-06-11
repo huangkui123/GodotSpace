@@ -85,10 +85,6 @@ var _remote_playback_seconds: float = 0.0
 var _remote_playback_warning_key: String = ""
 var voice_level_states: Dictionary = {}
 var _voice_level_send_accum: float = 0.0
-var _server_volume_panel_update_accum: float = 0.0
-var _server_volume_layer: CanvasLayer
-var _server_volume_rows_container: VBoxContainer
-var _server_volume_rows: Dictionary = {}
 
 func _ready() -> void:
 	if _has_cmdline_arg(VOICE_DEBUG_ARG):
@@ -139,7 +135,6 @@ func _process(delta: float) -> void:
 	_poll_vr_voice_toggle()
 	_pump_output_test_tone()
 	_update_voice_level_state(delta)
-	_update_server_volume_panel(delta)
 	_log_voice_pipeline_state(delta)
 
 func toggle_voice() -> void:
@@ -337,23 +332,29 @@ func set_audio_devices(input_device: String, output_device: String) -> void:
 			capture.restart_for_device_change()
 
 func _setup_components() -> void:
-	capture = VoiceCaptureScript.new()
-	capture.name = "VoiceCapture"
-	add_child(capture)
+	capture = get_node_or_null("VoiceCapture")
+	if capture == null:
+		capture = VoiceCaptureScript.new()
+		capture.name = "VoiceCapture"
+		add_child(capture)
 	capture.opus_packet_captured.connect(_on_local_opus_packet_captured)
 	capture.speaking_changed.connect(_on_local_speaking_changed)
 
-	transport = VoiceTransportScript.new()
-	transport.name = "VoiceTransportENet"
-	add_child(transport)
+	transport = get_node_or_null("VoiceTransportENet")
+	if transport == null:
+		transport = VoiceTransportScript.new()
+		transport.name = "VoiceTransportENet"
+		add_child(transport)
 	transport.server_voice_packet_received.connect(_on_server_voice_packet_received)
 	transport.downlink_voice_packet_received.connect(_on_downlink_voice_packet_received)
 	transport.speaking_state_received.connect(_on_remote_speaking_state_received)
 	transport.voice_level_received.connect(_on_voice_level_received)
 
-	playback = VoicePlaybackScript.new()
-	playback.name = "VoicePlayback"
-	add_child(playback)
+	playback = get_node_or_null("VoicePlayback")
+	if playback == null:
+		playback = VoicePlaybackScript.new()
+		playback.name = "VoicePlayback"
+		add_child(playback)
 	voice_players = playback.players
 
 func _connect_multiplayer_signals() -> void:
@@ -418,7 +419,6 @@ func _on_network_ready() -> void:
 	if voice_endpoint_selected:
 		_apply_audio_device_profile()
 	if multiplayer.is_server():
-		_ensure_server_volume_panel()
 		_set_voice_level_mic_state(SERVER_PEER_ID, voice_enabled)
 	_log("VoiceChat network ready")
 
@@ -428,13 +428,11 @@ func _on_peer_connected(peer_id: int) -> void:
 		transport.send_server_speaking_state_to_peer(peer_id, voice_enabled)
 	if multiplayer.is_server():
 		_set_voice_level_mic_state(peer_id, false)
-		_ensure_server_volume_panel()
 
 func _on_peer_disconnected(peer_id: int) -> void:
 	_log("Voice peer disconnected: %d" % peer_id)
 	remove_player(peer_id)
 	voice_level_states.erase(peer_id)
-	_remove_server_volume_row(peer_id)
 
 func _on_connected_to_server() -> void:
 	_log("VoiceChat connected to server")
@@ -448,14 +446,12 @@ func _on_connected_to_server() -> void:
 func _on_connection_failed() -> void:
 	_log("VoiceChat connection failed")
 	set_voice_enabled(false)
-	_hide_server_volume_panel()
 	if playback != null:
 		playback.clear()
 
 func _on_server_disconnected() -> void:
 	_log("VoiceChat server disconnected")
 	set_voice_enabled(false)
-	_hide_server_volume_panel()
 	if playback != null:
 		playback.clear()
 
@@ -512,216 +508,6 @@ func _get_local_voice_peer_id() -> int:
 		return multiplayer.get_unique_id()
 	return SERVER_PEER_ID if voice_endpoint_selected and not is_vr_mode else 0
 
-func _ensure_server_volume_panel() -> void:
-	if DisplayServer.get_name() == "headless":
-		return
-	if not voice_endpoint_selected or is_vr_mode:
-		return
-	if _server_volume_layer != null and is_instance_valid(_server_volume_layer):
-		_server_volume_layer.visible = true
-		return
-
-	_server_volume_layer = CanvasLayer.new()
-	_server_volume_layer.name = "ServerVoiceLevels"
-	_server_volume_layer.layer = 96
-	add_child(_server_volume_layer)
-
-	var panel := PanelContainer.new()
-	panel.name = "Panel"
-	panel.position = Vector2(12.0, 12.0)
-	panel.custom_minimum_size = Vector2(420.0, 0.0)
-	_server_volume_layer.add_child(panel)
-
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 10)
-	margin.add_theme_constant_override("margin_top", 8)
-	margin.add_theme_constant_override("margin_right", 10)
-	margin.add_theme_constant_override("margin_bottom", 8)
-	panel.add_child(margin)
-
-	var column := VBoxContainer.new()
-	column.name = "Column"
-	column.add_theme_constant_override("separation", 6)
-	margin.add_child(column)
-
-	var title := Label.new()
-	title.name = "Title"
-	title.text = "SERVER VOICE LEVELS"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	column.add_child(title)
-
-	var header := HBoxContainer.new()
-	header.name = "Header"
-	header.add_theme_constant_override("separation", 8)
-	column.add_child(header)
-	_add_server_volume_header_label(header, "PEER", 96.0, HORIZONTAL_ALIGNMENT_LEFT)
-	_add_server_volume_header_label(header, "MIC", 68.0, HORIZONTAL_ALIGNMENT_CENTER)
-	_add_server_volume_header_label(header, "LEVEL", 150.0, HORIZONTAL_ALIGNMENT_CENTER)
-	_add_server_volume_header_label(header, "DB", 68.0, HORIZONTAL_ALIGNMENT_RIGHT)
-
-	_server_volume_rows_container = VBoxContainer.new()
-	_server_volume_rows_container.name = "Rows"
-	_server_volume_rows_container.add_theme_constant_override("separation", 4)
-	column.add_child(_server_volume_rows_container)
-
-func _add_server_volume_header_label(parent: Container, text: String, width: float, alignment: HorizontalAlignment) -> void:
-	var label := Label.new()
-	label.text = text
-	label.custom_minimum_size = Vector2(width, 0.0)
-	label.horizontal_alignment = alignment
-	parent.add_child(label)
-
-func _hide_server_volume_panel() -> void:
-	if _server_volume_layer != null and is_instance_valid(_server_volume_layer):
-		_server_volume_layer.visible = false
-
-func _update_server_volume_panel(delta: float) -> void:
-	if not voice_endpoint_selected or is_vr_mode:
-		_hide_server_volume_panel()
-		return
-	if DisplayServer.get_name() == "headless":
-		return
-	if not multiplayer.is_server():
-		_hide_server_volume_panel()
-		return
-
-	_ensure_server_volume_panel()
-	if _server_volume_layer == null or not is_instance_valid(_server_volume_layer):
-		return
-
-	_server_volume_panel_update_accum += delta
-	if _server_volume_panel_update_accum < SERVER_VOLUME_PANEL_UPDATE_INTERVAL:
-		return
-	_server_volume_panel_update_accum = 0.0
-
-	var peer_ids := _get_server_volume_peer_ids()
-	_sync_server_volume_rows(peer_ids)
-	var now := Time.get_ticks_msec()
-	for peer_id in peer_ids:
-		_update_server_volume_row(int(peer_id), now)
-
-func _get_server_volume_peer_ids() -> Array:
-	var ids: Array = [SERVER_PEER_ID]
-	if multiplayer.has_multiplayer_peer():
-		for peer_id in multiplayer.get_peers():
-			if not ids.has(peer_id):
-				ids.append(peer_id)
-
-	for peer_id in voice_level_states.keys():
-		var id := int(peer_id)
-		if id == SERVER_PEER_ID or (multiplayer.has_multiplayer_peer() and multiplayer.get_peers().has(id)):
-			if not ids.has(id):
-				ids.append(id)
-
-	ids.sort()
-	return ids
-
-func _sync_server_volume_rows(peer_ids: Array) -> void:
-	if _server_volume_rows_container == null or not is_instance_valid(_server_volume_rows_container):
-		return
-
-	for peer_id in _server_volume_rows.keys().duplicate():
-		if not peer_ids.has(int(peer_id)):
-			_remove_server_volume_row(int(peer_id))
-
-	for peer_id in peer_ids:
-		var id := int(peer_id)
-		if not _server_volume_rows.has(id):
-			_create_server_volume_row(id)
-
-func _create_server_volume_row(peer_id: int) -> void:
-	if _server_volume_rows_container == null or not is_instance_valid(_server_volume_rows_container):
-		return
-
-	var row := HBoxContainer.new()
-	row.name = "Peer_%d" % peer_id
-	row.custom_minimum_size = Vector2(390.0, 28.0)
-	row.add_theme_constant_override("separation", 8)
-	_server_volume_rows_container.add_child(row)
-
-	var name_label := Label.new()
-	name_label.custom_minimum_size = Vector2(96.0, 0.0)
-	name_label.text = _get_voice_panel_peer_label(peer_id)
-	row.add_child(name_label)
-
-	var mic_label := Label.new()
-	mic_label.custom_minimum_size = Vector2(68.0, 0.0)
-	mic_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	row.add_child(mic_label)
-
-	var meter := ProgressBar.new()
-	meter.custom_minimum_size = Vector2(150.0, 18.0)
-	meter.min_value = 0.0
-	meter.max_value = 1.0
-	meter.step = 0.01
-	meter.show_percentage = false
-	meter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(meter)
-
-	var db_label := Label.new()
-	db_label.custom_minimum_size = Vector2(68.0, 0.0)
-	db_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	row.add_child(db_label)
-
-	_server_volume_rows[peer_id] = {
-		"root": row,
-		"name": name_label,
-		"mic": mic_label,
-		"meter": meter,
-		"db": db_label,
-	}
-
-func _remove_server_volume_row(peer_id: int) -> void:
-	if not _server_volume_rows.has(peer_id):
-		return
-
-	var row_state: Dictionary = _server_volume_rows[peer_id]
-	var row := row_state.get("root") as Node
-	if row != null and is_instance_valid(row):
-		row.queue_free()
-	_server_volume_rows.erase(peer_id)
-
-func _update_server_volume_row(peer_id: int, now_msec: int) -> void:
-	if not _server_volume_rows.has(peer_id):
-		return
-
-	var row_state: Dictionary = _server_volume_rows[peer_id]
-	var name_label := row_state.get("name") as Label
-	var mic_label := row_state.get("mic") as Label
-	var meter := row_state.get("meter") as ProgressBar
-	var db_label := row_state.get("db") as Label
-	var state: Dictionary = voice_level_states.get(peer_id, {})
-	var has_state := not state.is_empty()
-	var has_level := bool(state.get("has_level", false))
-	var level_updated_msec := int(state.get("level_updated_msec", 0))
-	var level_is_fresh := has_level and level_updated_msec > 0 and float(now_msec - level_updated_msec) / 1000.0 <= VOICE_LEVEL_STALE_SECONDS
-	var mic_open := bool(state.get("mic_open", false))
-
-	if name_label != null:
-		name_label.text = _get_voice_panel_peer_label(peer_id)
-
-	if mic_label != null:
-		if has_state:
-			mic_label.text = "ON" if mic_open else "OFF"
-			mic_label.modulate = Color(0.3, 1.0, 0.45) if mic_open else Color(0.9, 0.9, 0.9)
-		else:
-			mic_label.text = "NO DATA"
-			mic_label.modulate = Color(1.0, 0.85, 0.35)
-
-	if meter != null:
-		meter.value = _voice_db_to_meter_value(float(state.get("peak_db", -80.0))) if level_is_fresh else 0.0
-
-	if db_label != null:
-		db_label.text = "%.1f dB" % float(state.get("peak_db", -80.0)) if level_is_fresh else "-- dB"
-
-func _get_voice_panel_peer_label(peer_id: int) -> String:
-	return "SERVER" if peer_id == SERVER_PEER_ID else "CLIENT %d" % peer_id
-
-func _voice_db_to_meter_value(peak_db: float) -> float:
-	if peak_db <= VOICE_LEVEL_MIN_DB:
-		return 0.0
-	return clampf((peak_db - VOICE_LEVEL_MIN_DB) / (VOICE_LEVEL_MAX_DB - VOICE_LEVEL_MIN_DB), 0.0, 1.0)
-
 func _request_runtime_audio_permissions() -> void:
 	if OS.has_feature("android") and OS.has_method("request_permissions"):
 		OS.request_permissions()
@@ -742,10 +528,6 @@ func _set_voice_endpoint_role(is_server_role: bool) -> void:
 	is_vr_mode = not is_server_role
 	_apply_audio_device_profile()
 	_setup_capture_after_device_selection()
-	if is_server_role:
-		_ensure_server_volume_panel()
-	else:
-		_hide_server_volume_panel()
 	_ensure_debug_controls()
 	_update_debug_controls()
 	if voice_debug_enabled and _has_cmdline_arg(VOICE_TEST_TONE_ARG):
@@ -880,11 +662,11 @@ func _ensure_debug_controls() -> void:
 	row.add_theme_constant_override("separation", 6)
 	panel.add_child(row)
 
-	_add_debug_button(row, "Voice", "toggle_voice")
-	_add_debug_button(row, "Tone", "play_output_test_tone")
-	_add_debug_button(row, "Mic", "play_microphone_monitor_test")
-	_add_debug_button(row, "In", "cycle_voice_input_device")
-	_add_debug_button(row, "Out", "cycle_voice_output_device")
+	_add_debug_button(row, "语音", "toggle_voice")
+	_add_debug_button(row, "测试音", "play_output_test_tone")
+	_add_debug_button(row, "麦克风", "play_microphone_monitor_test")
+	_add_debug_button(row, "输入", "cycle_voice_input_device")
+	_add_debug_button(row, "输出", "cycle_voice_output_device")
 
 	_debug_status_label = Label.new()
 	_debug_status_label.name = "Status"
@@ -902,8 +684,8 @@ func _add_debug_button(parent: Container, text: String, method_name: String) -> 
 func _update_debug_controls() -> void:
 	if _debug_status_label == null or not is_instance_valid(_debug_status_label):
 		return
-	var monitor_state := "MON" if _mic_monitor_player != null and is_instance_valid(_mic_monitor_player) else ""
-	var voice_state := "ON" if voice_enabled else "OFF"
+	var monitor_state := "监听" if _mic_monitor_player != null and is_instance_valid(_mic_monitor_player) else ""
+	var voice_state := "开" if voice_enabled else "关"
 	_debug_status_label.text = "%s %s %s %s" % [
 		_get_network_role(),
 		_get_voice_mode_label(),

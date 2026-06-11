@@ -1,0 +1,18 @@
+[gd_scene load_steps=5 format=3 uid="uid://dxka2hy60cjmt"]
+
+[ext_resource type="Script" uid="uid://cakyk17hhuwt0" path="res://Assets/ARSpace/Scripts/Network/voice_chat.gd" id="1_voice_chat"]
+[ext_resource type="Script" uid="uid://cgv72uyf5ogfq" path="res://Assets/ARSpace/Scripts/Network/voice_capture.gd" id="2_capture"]
+[ext_resource type="Script" uid="uid://dlil6a6h2e2qc" path="res://Assets/ARSpace/Scripts/Network/voice_transport_enet.gd" id="3_transport"]
+[ext_resource type="Script" uid="uid://bcjv8dj53lplh" path="res://Assets/ARSpace/Scripts/Network/voice_playback.gd" id="4_playback"]
+
+[node name="VoiceChat" type="Node"]
+script = ExtResource("1_voice_chat")
+
+[node name="VoiceCapture" type="Node" parent="."]
+script = ExtResource("2_capture")
+
+[node name="VoiceTransportENet" type="Node" parent="."]
+script = ExtResource("3_transport")
+
+[node name="VoicePlayback" type="Node" parent="."]
+script = ExtResource("4_playback")

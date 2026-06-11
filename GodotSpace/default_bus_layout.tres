@@ -1,9 +1,13 @@
 [gd_resource type="AudioBusLayout" format=3 uid="uid://bpeulamkmvew0"]
 
+[sub_resource type="AudioEffectCapture" id="AudioEffectCapture_mic"]
+
 [resource]
 bus/1/name = &"Mic"
 bus/1/solo = false
 bus/1/mute = false
 bus/1/bypass_fx = false
 bus/1/volume_db = 0.0
+bus/1/effect/0/effect = SubResource("AudioEffectCapture_mic")
+bus/1/effect/0/enabled = true
 bus/1/send = &"Master"

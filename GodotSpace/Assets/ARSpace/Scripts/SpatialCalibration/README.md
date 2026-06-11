@@ -5,7 +5,7 @@
 ## Runtime Flow
 
 1. Start GodotSpace server and client as usual.
-2. The server enters `ARSpace.scn`; `SpatialCalibrationBootstrap` mounts the calibration panel only in the server process.
+2. The server enters `ARSpace.tscn`; the scene contains `SpatialCalibrationPanel`, which keeps itself only in the server process.
 3. Install and start the companion helper at `res://companion_app/pico_spatial_anchor_helper`.
 4. Point the helper to the server IP shown in the panel, port `8787`.
 5. Click the PICO preview in the server panel, adjust depth, then confirm the calibration point.

@@ -1,4 +1,4 @@
-[gd_scene load_steps=100 format=4 uid="uid://ca028g0q2kstx"]
+[gd_scene load_steps=101 format=4 uid="uid://ca028g0q2kstx"]
 
 [ext_resource type="Script" uid="uid://d1pt7mdt5llk4" path="res://XR_Main.gd" id="1_g432p"]
 [ext_resource type="Script" uid="uid://bt6aew4asx754" path="res://Assets/ARSpace/Scenes/SpaceBox.gd" id="2_wjh8v"]
@@ -65,8 +65,8 @@
 [ext_resource type="PackedScene" uid="uid://c0oao8sfhry88" path="res://Assets/ARSpace/Scenes/Player.tscn" id="63_toxth"]
 [ext_resource type="Script" uid="uid://hnn8flphryw0" path="res://Assets/ARSpace/Scenes/SpectatorCameraController.gd" id="64_escuv"]
 [ext_resource type="Script" uid="uid://cn1r7xfdwq04v" path="res://Assets/ARSpace/Scripts/UI/tree_list.gd" id="65_l4ah6"]
-[ext_resource type="PackedScene" uid="uid://dibqfutwftm8j" path="res://Assets/ARSpace/Scenes/godot-whisper/mic_transcribe.tscn" id="66_37o7n"]
 [ext_resource type="PackedScene" uid="uid://bv8x3yq7hfn1k" path="res://Assets/ARSpace/Scenes/voice_chat_ui.tscn" id="67_ltm1f"]
+[ext_resource type="Script" uid="uid://cgre2apvnqf2e" path="res://Assets/ARSpace/Scripts/SpatialCalibration/spatial_calibration_panel.gd" id="68_spatial"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_m4rif"]
 resource_name = "Default-Skybox"
@@ -274,7 +274,7 @@ size = Vector2(620, 460)
 [sub_resource type="ViewportTexture" id="ViewportTexture_g432p"]
 viewport_path = NodePath("Viewport")
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_g432p"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_wjh8v"]
 transparency = 1
 cull_mode = 2
 shading_mode = 0
@@ -284,6 +284,18 @@ texture_filter = 1
 [sub_resource type="BoxShape3D" id="BoxShape3D_6yffd"]
 resource_local_to_scene = true
 size = Vector3(620, 460, 0.02)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_spatial_panel"]
+bg_color = Color(0.05, 0.06, 0.08, 0.92)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.22, 0.75, 0.95, 0.72)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
 
 [node name="RootNode3D" type="Node3D" node_paths=PackedStringArray("subUI")]
 script = ExtResource("1_g432p")
@@ -1933,7 +1945,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.976, 0, 0)
 visible = true
 
 [node name="T_product_dot" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a/xiaoshiyangui_d/OldTips/Ani_effect" index="4"]
-transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, -0.68, 0)
+transform = Transform3D(0.203074, 0, 0, 0, 0.203074, 0, 0, 0, 0.203074, 0, -0.68, 0)
 
 [node name="T_product_Left_bg" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a/xiaoshiyangui_d/OldTips/Ani_effect" index="5"]
 transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, 0, 0)
@@ -1946,7 +1958,7 @@ visible = false
 visible = true
 
 [node name="T_product_dot" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a/xiaoshiyangui_d_new/NewTips/Ani_effect" index="4"]
-transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, -0.68, 0)
+transform = Transform3D(0.203074, 0, 0, 0, 0.203074, 0, 0, 0, 0.203074, 0, -0.68, 0)
 
 [node name="T_product_Left_bg" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a/xiaoshiyangui_d_new/NewTips/Ani_effect" index="5"]
 transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, 0, 0)
@@ -1955,7 +1967,7 @@ transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, 0, 0)
 visible = true
 
 [node name="T_product_dot" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a/zhongxinjigouTips/Ani_effect" index="4"]
-transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, -0.68, 0)
+transform = Transform3D(0.203074, 0, 0, 0, 0.203074, 0, 0, 0, 0.203074, 0, -0.68, 0)
 
 [node name="T_product_Left_bg" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a/zhongxinjigouTips/Ani_effect" index="5"]
 transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, 0, 0)
@@ -2252,7 +2264,7 @@ bones/21/rotation = Quaternion(-0.0329693, 0.849871, 0.0272099, 0.525254)
 [node name="Root" parent="SpaceBox/SpaceBox/Environment_Life/Malamute/GeneralSkeleton" index="0"]
 transform = Transform3D(-11.9508, -19.1468, 97.4196, 22.0729, -96.1795, -16.1953, 96.7986, 19.5679, 15.7205, -0.497334, 16.6447, -5.71002)
 joint_offset = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00161743, -0.00416488, 0.0040881)
-body_offset = Transform3D(99.9994, -0.348801, -0.0122128, 0.34886, 99.999, 0.271122, 0.0112591, -0.271177, 99.9997, 0.160339, 0.415939, -0.40992)
+body_offset = Transform3D(99.9994, -0.348785, -0.0122204, 0.348841, 99.999, 0.271122, 0.0112667, -0.271174, 99.9997, 0.160339, 0.415939, -0.40992)
 
 [node name="AnimationPlayer" parent="SpaceBox/SpaceBox/Environment_Life/Malamute/GeneralSkeleton/Root" index="0"]
 root_motion_track = NodePath("../..")
@@ -2275,7 +2287,7 @@ size = Vector2i(620, 460)
 
 [node name="Screen" parent="MainMenuCanvas" index="1"]
 mesh = SubResource("QuadMesh_34xb6")
-surface_material_override/0 = SubResource("StandardMaterial3D_g432p")
+surface_material_override/0 = SubResource("StandardMaterial3D_wjh8v")
 
 [node name="StaticBody3D" parent="MainMenuCanvas" index="2"]
 screen_size = Vector2(620, 460)
@@ -2391,23 +2403,135 @@ layout_mode = 2
 allow_reselect = true
 script = ExtResource("65_l4ah6")
 
-[node name="CaptureStreamToText" parent="UI" instance=ExtResource("66_37o7n")]
-anchors_preset = -1
-anchor_left = 0.323
-anchor_top = 0.708
-anchor_right = 0.67
-anchor_bottom = 1.332
-offset_left = -0.0960083
-offset_top = 0.216003
-offset_right = 0.159973
-offset_bottom = -0.135986
-
 [node name="VoiceChatUI" parent="." instance=ExtResource("67_ltm1f")]
-anchors_preset = -1
-anchor_left = 0.806
-anchor_bottom = 0.188
-offset_left = -0.512085
-offset_bottom = 0.175995
+
+[node name="SpatialCalibrationPanel" type="CanvasLayer" parent="."]
+script = ExtResource("68_spatial")
+
+[node name="SpatialCalibrationWindow" type="PanelContainer" parent="SpatialCalibrationPanel"]
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 622.0
+offset_bottom = 728.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_spatial_panel")
+
+[node name="MarginContainer" type="MarginContainer" parent="SpatialCalibrationPanel/SpatialCalibrationWindow"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="Layout" type="VBoxContainer" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TitleBar" type="HBoxContainer" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer/Layout"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer/Layout/TitleBar"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "空间标定"
+
+[node name="TitleSpacer" type="Control" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer/Layout/TitleBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CollapseButton" type="Button" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer/Layout/TitleBar"]
+layout_mode = 2
+text = "隐藏"
+
+[node name="AddressLabel" type="Label" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer/Layout"]
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="Controls" type="HBoxContainer" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer/Layout"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="PortLabel" type="Label" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer/Layout/Controls"]
+layout_mode = 2
+text = "监听端口"
+
+[node name="PortInput" type="LineEdit" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer/Layout/Controls"]
+custom_minimum_size = Vector2(90, 0)
+layout_mode = 2
+text = "8787"
+
+[node name="StartButton" type="Button" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer/Layout/Controls"]
+layout_mode = 2
+text = "开始监听"
+
+[node name="StopButton" type="Button" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer/Layout/Controls"]
+layout_mode = 2
+text = "停止监听"
+
+[node name="StatusLabel" type="Label" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer/Layout"]
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="StatsLabel" type="Label" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer/Layout"]
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="PreviewTexture" type="TextureRect" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer/Layout"]
+custom_minimum_size = Vector2(560, 360)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 0
+expand_mode = 1
+stretch_mode = 5
+
+[node name="ClickMarker" type="ColorRect" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer/Layout/PreviewTexture"]
+visible = false
+custom_minimum_size = Vector2(16, 16)
+layout_mode = 0
+offset_right = 16.0
+offset_bottom = 16.0
+mouse_filter = 2
+color = Color(1, 0.14, 0.04, 0.95)
+
+[node name="DepthControls" type="HBoxContainer" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer/Layout"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="DepthLabel" type="Label" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer/Layout/DepthControls"]
+layout_mode = 2
+text = "深度(m)"
+
+[node name="DepthInput" type="SpinBox" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer/Layout/DepthControls"]
+custom_minimum_size = Vector2(110, 0)
+layout_mode = 2
+min_value = 0.05
+max_value = 20.0
+step = 0.05
+value = 1.0
+
+[node name="ConfirmButton" type="Button" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer/Layout/DepthControls"]
+layout_mode = 2
+disabled = true
+text = "确认标定点"
+
+[node name="ClearButton" type="Button" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer/Layout/DepthControls"]
+layout_mode = 2
+text = "清除标定点"
+
+[node name="ResultLabel" type="Label" parent="SpatialCalibrationPanel/SpatialCalibrationWindow/MarginContainer/Layout"]
+custom_minimum_size = Vector2(0, 110)
+layout_mode = 2
+text = "点击 Pico 预览画面选择点，滚轮调整深度，右键或点击按钮确认。"
+autowrap_mode = 3
+
+[node name="CollapsedButton" type="Button" parent="SpatialCalibrationPanel"]
+visible = false
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 120.0
+offset_bottom = 48.0
+text = "空间标定"
 
 [connection signal="item_selected" from="UI/PanelContainer/Tree" to="UI/PanelContainer/Tree" method="_on_Tree_item_selected"]
 
@@ -2423,4 +2547,3 @@ offset_bottom = 0.175995
 [editable path="SpaceBox/SpaceBox/WorkEffect"]
 [editable path="SpaceBox/SpaceBox/Environment_Life/Malamute"]
 [editable path="MainMenuCanvas"]
-[editable path="UI/CaptureStreamToText"]
