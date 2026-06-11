@@ -1,0 +1,219 @@
+[gd_scene load_steps=13 format=3]
+
+[ext_resource type="Script" path="res://Assets/ARSpace/Scripts/WorkListCanvas/WorkListInfoUIView.gd" id="1_fnqeu"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/UIWindow/Rectangle 1385.png" id="2_8oww3"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/UIWindow/TopMenuBox.png" id="3_f3tce"]
+[ext_resource type="FontFile" path="res://scenes/shared/fonts/lato/Lato-Regular.ttf" id="4_kaj5u"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155655.png" id="5_7tjsl"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155657.png" id="6_e43d7"]
+[ext_resource type="Script" path="res://Assets/ARSpace/Scripts/WorkListCanvas/WorkListInfoItem.gd" id="7_oh8jc"]
+[ext_resource type="Texture2D" path="res://Assets/StreamingAssets/Images/step1.png" id="8_6ch3g"]
+[ext_resource type="Texture2D" path="res://Assets/Modern UI Pack/Textures/Icon/Communication & Social/YouTube Filled.png" id="9_pqh44"]
+[ext_resource type="Texture2D" path="res://Assets/Modern UI Pack/Textures/Icon/UI Elements/Switch.png" id="10_b508j"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155621.png" id="11_xfmqy"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155614.png" id="12_vcpeh"]
+
+[node name="WorkListInfoCanvas" type="CanvasLayer"]
+
+[node name="Canvas" type="Control" parent="." node_paths=PackedStringArray("info_")]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 571.0
+offset_bottom = 504.0
+script = ExtResource("1_fnqeu")
+info_ = [NodePath("WorkListInfo/ListContent/WorkListInfoItem")]
+
+[node name="TextureRect" type="TextureRect" parent="Canvas"]
+layout_mode = 0
+offset_left = 2.0
+offset_top = 55.0
+offset_right = 517.0
+offset_bottom = 500.0
+texture = ExtResource("2_8oww3")
+expand_mode = 1
+
+[node name="TopMenuBox" type="Sprite2D" parent="Canvas"]
+position = Vector2(260, 33)
+scale = Vector2(0.852941, 0.852941)
+texture = ExtResource("3_f3tce")
+
+[node name="CanvasRenderer" type="Node" parent="Canvas/TopMenuBox"]
+
+[node name="Title" type="Label" parent="Canvas/TopMenuBox"]
+anchors_preset = -1
+anchor_left = -127.271
+anchor_top = -25.023
+anchor_right = -126.093
+anchor_bottom = -20.79
+offset_left = 76453.4
+offset_top = 1260.17
+offset_right = 76233.1
+offset_bottom = 1079.29
+theme_override_colors/font_color = Color(0.521569, 0.619608, 0.945098, 1)
+theme_override_fonts/font = ExtResource("4_kaj5u")
+theme_override_font_sizes/font_size = 24
+text = "实验流程标题"
+
+[node name="Controller" type="Control" parent="Canvas/TopMenuBox"]
+layout_mode = 3
+anchors_preset = 0
+
+[node name="CanvasRenderer" type="Node" parent="Canvas/TopMenuBox/Controller"]
+
+[node name="CloseButton" type="Button" parent="Canvas/TopMenuBox/Controller"]
+layout_mode = 0
+offset_left = 197.948
+offset_top = -25.5
+offset_right = 250.948
+offset_bottom = 26.5
+icon = ExtResource("5_7tjsl")
+flat = true
+
+[node name="MaxButton" type="Button" parent="Canvas/TopMenuBox/Controller"]
+layout_mode = 0
+offset_left = 243.672
+offset_top = -24.3276
+offset_right = 296.672
+offset_bottom = 27.6724
+icon = ExtResource("6_e43d7")
+flat = true
+
+[node name="WorkListInfo" type="Control" parent="Canvas"]
+anchors_preset = 0
+offset_right = 519.0
+offset_bottom = 502.0
+mouse_filter = 2
+
+[node name="ListContent" type="Control" parent="Canvas/WorkListInfo"]
+anchors_preset = 0
+offset_right = 515.0
+offset_bottom = 497.0
+mouse_filter = 2
+
+[node name="WorkListInfoItem" type="Control" parent="Canvas/WorkListInfo/ListContent"]
+anchors_preset = 0
+offset_right = 523.0
+offset_bottom = 502.0
+mouse_filter = 2
+script = ExtResource("7_oh8jc")
+
+[node name="TitleInfo" type="Label" parent="Canvas/WorkListInfo/ListContent/WorkListInfoItem"]
+layout_mode = 0
+offset_left = 11.0
+offset_top = 70.0
+offset_right = 226.0
+offset_bottom = 100.0
+theme_override_colors/font_color = Color(0.574951, 0.665366, 0.953734, 1)
+theme_override_fonts/font = ExtResource("4_kaj5u")
+theme_override_font_sizes/font_size = 22
+text = "1.步骤一标题"
+
+[node name="Mask" type="Control" parent="Canvas/WorkListInfo/ListContent/WorkListInfoItem"]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="Image" type="TextureRect" parent="Canvas/WorkListInfo/ListContent/WorkListInfoItem/Mask"]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 116.0
+offset_right = 501.0
+offset_bottom = 427.0
+texture = ExtResource("8_6ch3g")
+expand_mode = 1
+
+[node name="Video" type="VideoStreamPlayer" parent="Canvas/WorkListInfo/ListContent/WorkListInfoItem/Mask"]
+layout_mode = 0
+offset_left = 17.0
+offset_top = 112.0
+offset_right = 505.0
+offset_bottom = 431.0
+expand = true
+
+[node name="WorkInfo" type="Label" parent="Canvas/WorkListInfo/ListContent/WorkListInfoItem"]
+layout_mode = 0
+offset_left = 18.0
+offset_top = 432.0
+offset_right = 504.0
+offset_bottom = 493.0
+theme_override_fonts/font = ExtResource("4_kaj5u")
+theme_override_font_sizes/font_size = 11
+text = "步骤一文字说明步骤一文字说明步骤一文字说明步骤一文字说明步骤一文字说明步骤一文字说明步骤一文字说明步骤一文字说明步骤一文字说明步骤一文字说明步骤一文字说明步骤一文字说明步骤一文字说明"
+vertical_alignment = 1
+autowrap_mode = 1
+
+[node name="AnimationToggle" type="Button" parent="Canvas/WorkListInfo/ListContent/WorkListInfoItem"]
+layout_mode = 0
+offset_left = 263.0
+offset_top = 75.0
+offset_right = 387.0
+offset_bottom = 114.0
+flat = true
+
+[node name="Background" type="TextureRect" parent="Canvas/WorkListInfo/ListContent/WorkListInfoItem/AnimationToggle"]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 3.0
+offset_right = 47.0
+offset_bottom = 35.0
+texture = ExtResource("9_pqh44")
+expand_mode = 1
+
+[node name="Label" type="Label" parent="Canvas/WorkListInfo/ListContent/WorkListInfoItem/AnimationToggle"]
+layout_mode = 0
+offset_left = 54.0
+offset_top = 8.0
+offset_right = 118.0
+offset_bottom = 31.0
+theme_override_colors/font_color = Color(0.576471, 0.666667, 0.952941, 1)
+theme_override_fonts/font = ExtResource("4_kaj5u")
+text = "重播动画"
+
+[node name="AudioToggle" type="Button" parent="Canvas/WorkListInfo/ListContent/WorkListInfoItem"]
+layout_mode = 0
+offset_left = 392.0
+offset_top = 75.0
+offset_right = 516.0
+offset_bottom = 114.0
+flat = true
+
+[node name="Background" type="TextureRect" parent="Canvas/WorkListInfo/ListContent/WorkListInfoItem/AudioToggle"]
+layout_mode = 0
+offset_left = 1.0
+offset_top = -1.0
+offset_right = 41.0
+offset_bottom = 39.0
+texture = ExtResource("10_b508j")
+expand_mode = 1
+
+[node name="Label" type="Label" parent="Canvas/WorkListInfo/ListContent/WorkListInfoItem/AudioToggle"]
+layout_mode = 0
+offset_left = 49.0
+offset_top = 8.0
+offset_right = 113.0
+offset_bottom = 31.0
+theme_override_colors/font_color = Color(0.576471, 0.666667, 0.952941, 1)
+theme_override_fonts/font = ExtResource("4_kaj5u")
+text = "播放语音"
+
+[node name="Back" type="Button" parent="Canvas"]
+layout_mode = 0
+offset_left = 528.0
+offset_top = 413.0
+offset_right = 637.0
+offset_bottom = 521.0
+scale = Vector2(0.4, 0.4)
+icon = ExtResource("11_xfmqy")
+
+[node name="Next" type="Button" parent="Canvas"]
+layout_mode = 0
+offset_left = 527.0
+offset_top = 454.0
+offset_right = 736.0
+offset_bottom = 662.0
+scale = Vector2(0.21, 0.21)
+icon = ExtResource("12_vcpeh")
+
+[connection signal="pressed" from="Canvas/TopMenuBox/Controller/CloseButton" to="Canvas" method="_on_close_button_pressed"]
+[connection signal="pressed" from="Canvas/Back" to="Canvas" method="_on_back_pressed"]
+[connection signal="pressed" from="Canvas/Next" to="Canvas" method="_on_next_pressed"]

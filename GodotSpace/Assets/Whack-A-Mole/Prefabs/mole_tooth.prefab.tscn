@@ -1,0 +1,87 @@
+[gd_scene load_steps=11 format=3]
+
+[ext_resource type="ArrayMesh" path="res://Assets/Whack-A-Mole/Models/extracted/mole_tooth.Icosphere.mesh" id="1_wi4m8"]
+[ext_resource type="Material" path="res://Assets/DisolveMat/livingRoom/moguratex.material" id="2_4djpn"]
+[ext_resource type="ArrayMesh" path="res://Assets/Whack-A-Mole/Models/extracted/mole_tooth.Icosphere_001.mesh" id="3_wlb6w"]
+[ext_resource type="ArrayMesh" path="res://Assets/Whack-A-Mole/Models/extracted/mole_tooth.立方体_002.mesh" id="4_pkiga"]
+[ext_resource type="ArrayMesh" path="res://Assets/Whack-A-Mole/Models/extracted/mole_tooth.Cube_006.mesh" id="5_u63gh"]
+[ext_resource type="ArrayMesh" path="res://Assets/Whack-A-Mole/Models/extracted/mole_tooth.Icosphere_002.mesh" id="6_5dnxl"]
+[ext_resource type="ArrayMesh" path="res://Assets/Whack-A-Mole/Models/extracted/mole_tooth.Cube_005.mesh" id="7_ph7le"]
+[ext_resource type="ArrayMesh" path="res://Assets/Whack-A-Mole/Models/extracted/mole_tooth.立方体.mesh" id="8_alpcw"]
+[ext_resource type="ArrayMesh" path="res://Assets/Whack-A-Mole/Models/extracted/mole_tooth.Cube_004.mesh" id="9_kn0lx"]
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_vgp7o"]
+radius = 1.5
+
+[node name="mole_tooth" type="Node3D"]
+transform = Transform3D(0.6, 0, 0, 0, 0.6, 0, 0, 0, 0.6, 416.935, -96.6067, -274.803)
+
+[node name="SphereCollider" type="StaticBody3D" parent="."]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="SphereCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
+shape = SubResource("SphereShape3D_vgp7o")
+
+[node name="body" type="Node3D" parent="."]
+transform = Transform3D(100, 0, 0, 0, -4.37114e-06, 100, 0, -100, -4.37114e-06, 0, 0, 0)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="body"]
+gi_mode = 2
+mesh = ExtResource("1_wi4m8")
+surface_material_override/0 = ExtResource("2_4djpn")
+
+[node name="eye" type="Node3D" parent="."]
+transform = Transform3D(100, 0, 0, 0, -4.37114e-06, 100, 0, -100, -4.37114e-06, 0, 0, 0)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="eye"]
+gi_mode = 2
+mesh = ExtResource("3_wlb6w")
+surface_material_override/0 = ExtResource("2_4djpn")
+
+[node name="eyebrow" type="Node3D" parent="."]
+transform = Transform3D(16.5623, 0, 0, 0, -1.77931e-07, 4.07059, 0, -4.07059, -1.77931e-07, 0, 0, 0)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="eyebrow"]
+gi_mode = 2
+mesh = ExtResource("4_pkiga")
+surface_material_override/0 = ExtResource("2_4djpn")
+
+[node name="leftHand" type="Node3D" parent="."]
+transform = Transform3D(25.0775, 0, 0, 0, -1.09617e-06, 25.0775, 0, -25.0775, -1.09617e-06, 0, 0, 0)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="leftHand"]
+gi_mode = 2
+mesh = ExtResource("5_u63gh")
+surface_material_override/0 = ExtResource("2_4djpn")
+
+[node name="nose" type="Node3D" parent="."]
+transform = Transform3D(100, 0, 0, 0, -4.37114e-06, 100, 0, -100, -4.37114e-06, 0, 0, 0)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="nose"]
+gi_mode = 2
+mesh = ExtResource("6_5dnxl")
+surface_material_override/0 = ExtResource("2_4djpn")
+
+[node name="rightHand" type="Node3D" parent="."]
+transform = Transform3D(26.1382, 0, 0, 0, -1.14254e-06, 26.1382, 0, -26.1382, -1.14254e-06, 0, 0, 0)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="rightHand"]
+gi_mode = 2
+mesh = ExtResource("7_ph7le")
+surface_material_override/0 = ExtResource("2_4djpn")
+
+[node name="tooth" type="Node3D" parent="."]
+transform = Transform3D(-7.68717, 0, 0, 0, 2.31919e-07, -14.948, 0, 5.3057, 6.53398e-07, 0, 0, 0)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="tooth"]
+gi_mode = 2
+mesh = ExtResource("8_alpcw")
+surface_material_override/0 = ExtResource("2_4djpn")
+
+[node name="whisker" type="Node3D" parent="."]
+transform = Transform3D(-16.7496, 0, 0, 0, 1.58683e-07, -3.63024, 0, 3.63024, 1.58683e-07, 0, 0, 0)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="whisker"]
+gi_mode = 2
+mesh = ExtResource("9_kn0lx")
+surface_material_override/0 = ExtResource("2_4djpn")

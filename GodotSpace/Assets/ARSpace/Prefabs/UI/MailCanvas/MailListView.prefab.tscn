@@ -1,0 +1,44 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/MailCanvas/MailItem.prefab.tscn" id="1_18yjr"]
+
+[node name="MailListView" type="Node3D"]
+
+[node name="CanvasRenderer" type="Node" parent="."]
+
+[node name="BackButton" type="Node3D" parent="."]
+transform = Transform3D(-4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0, 0, 1, 0, 0, 0.991)
+
+[node name="CanvasRenderer" type="Node" parent="BackButton"]
+
+[node name="Title" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="Title"]
+
+[node name="ListContent" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="ListContent"]
+
+[node name="MailItem" parent="ListContent" instance=ExtResource("1_18yjr")]
+
+[node name="MailItem (1)" parent="ListContent" instance=ExtResource("1_18yjr")]
+
+[node name="MailItem (2)" parent="ListContent" instance=ExtResource("1_18yjr")]
+
+[node name="MailItem (3)" parent="ListContent" instance=ExtResource("1_18yjr")]
+
+[node name="MailItem (4)" parent="ListContent" instance=ExtResource("1_18yjr")]
+
+[node name="Back" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="Back"]
+
+[node name="Next" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="Next"]
+
+[editable path="ListContent/MailItem"]
+[editable path="ListContent/MailItem (1)"]
+[editable path="ListContent/MailItem (2)"]
+[editable path="ListContent/MailItem (3)"]
+[editable path="ListContent/MailItem (4)"]

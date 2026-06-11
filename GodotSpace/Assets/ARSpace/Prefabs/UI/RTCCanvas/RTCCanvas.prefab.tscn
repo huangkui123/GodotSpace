@@ -1,0 +1,42 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/DragBox.prefab.tscn" id="1_odule"]
+[ext_resource type="PackedScene" path="res://Assets/Vuplex/WebView/Core/Prefabs/Resources/CanvasWebViewPrefab.prefab.tscn" id="2_lsny5"]
+
+[node name="RTCCanvas" type="Node3D"]
+
+[node name="Canvas" type="Node" parent="."]
+
+[node name="AudioSource" type="AudioStreamPlayer" parent="."]
+autoplay = true
+
+[node name="TopMenuBox" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="TopMenuBox"]
+
+[node name="DragBox" parent="TopMenuBox" instance=ExtResource("1_odule")]
+
+[node name="CloseButton" type="Node3D" parent="TopMenuBox"]
+
+[node name="CanvasRenderer" type="Node" parent="TopMenuBox/CloseButton"]
+
+[node name="MaxButton" type="Node3D" parent="TopMenuBox"]
+
+[node name="CanvasRenderer" type="Node" parent="TopMenuBox/MaxButton"]
+
+[node name="Panel" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="Panel"]
+
+[node name="CanvasWebViewPrefab" parent="Panel" instance=ExtResource("2_lsny5")]
+visible = false
+
+[node name="MultiReceiverliediaStreamReceiver" type="Node3D" parent="Panel"]
+
+[node name="CanvasRenderer" type="Node" parent="Panel/MultiReceiverliediaStreamReceiver"]
+
+[node name="ZegoExpressEngine" type="Node3D" parent="."]
+transform = Transform3D(2000, 0, 0, 0, 1969.62, 347.297, 0, -347.297, 1969.62, -1636, -4756.5, -6418.85)
+
+[editable path="TopMenuBox/DragBox"]
+[editable path="Panel/CanvasWebViewPrefab"]

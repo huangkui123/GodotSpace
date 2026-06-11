@@ -3,7 +3,7 @@ extends Node
 const DEBUG_LOGS := false
 
 const PANEL_SCRIPT := preload("res://Assets/ARSpace/Scripts/SpatialCalibration/spatial_calibration_panel.gd")
-const TARGET_SCENE_PATH := "res://Assets/ARSpace/Scenes/ARSpace.scn"
+const TARGET_SCENE_PATH := "res://Assets/ARSpace/Scenes/ARSpace.tscn"
 
 var calibration_panel: CanvasLayer
 var last_scene: Node

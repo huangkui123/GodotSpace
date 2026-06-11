@@ -1,0 +1,98 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/Background.prefab.tscn" id="1_427xo"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/BackButtonTip.prefab.tscn" id="2_2ol08"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/NextButtonTip.prefab.tscn" id="3_rluco"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/DragBox.prefab.tscn" id="4_tgfyj"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/CloseButtonTip.prefab.tscn" id="5_58pg2"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/MaxButtonTip.prefab.tscn" id="6_nlls2"]
+
+[node name="MailListInfoCanvas" type="Node3D"]
+transform = Transform3D(0.001, 0, 0, 0, 0.001, 0, 0, 0, 0.001, 0, 0, 0.991)
+
+[node name="Canvas" type="Node" parent="."]
+
+[node name="AudioSource" type="AudioStreamPlayer" parent="."]
+autoplay = true
+
+[node name="Background" parent="." instance=ExtResource("1_427xo")]
+
+[node name="MailListInfo" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="MailListInfo"]
+
+[node name="ListContent" type="Node3D" parent="MailListInfo"]
+
+[node name="CanvasRenderer" type="Node" parent="MailListInfo/ListContent"]
+
+[node name="MailListInfoItem" type="Node3D" parent="MailListInfo/ListContent"]
+
+[node name="BG" type="Node3D" parent="MailListInfo/ListContent/MailListInfoItem"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -7.82311e-05)
+
+[node name="CanvasRenderer" type="Node" parent="MailListInfo/ListContent/MailListInfoItem/BG"]
+
+[node name="Mask" type="Node3D" parent="MailListInfo/ListContent/MailListInfoItem"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 3.28291e-05)
+
+[node name="CanvasRenderer" type="Node" parent="MailListInfo/ListContent/MailListInfoItem/Mask"]
+
+[node name="Image" type="Node3D" parent="MailListInfo/ListContent/MailListInfoItem"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 3.28291e-05)
+
+[node name="CanvasRenderer" type="Node" parent="MailListInfo/ListContent/MailListInfoItem/Image"]
+
+[node name="MailInfo" type="Node3D" parent="MailListInfo/ListContent/MailListInfoItem"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -4.09782e-05)
+
+[node name="CanvasRenderer" type="Node" parent="MailListInfo/ListContent/MailListInfoItem/MailInfo"]
+
+[node name="DateTime" type="Node3D" parent="MailListInfo/ListContent/MailListInfoItem"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.000104308)
+
+[node name="CanvasRenderer" type="Node" parent="MailListInfo/ListContent/MailListInfoItem/DateTime"]
+
+[node name="Back" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="Back"]
+
+[node name="BackButtonTip" parent="Back" instance=ExtResource("2_2ol08")]
+
+[node name="Next" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="Next"]
+
+[node name="NextButtonTip" parent="Next" instance=ExtResource("3_rluco")]
+
+[node name="TopMenuBox" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="TopMenuBox"]
+
+[node name="DragBox" parent="TopMenuBox" instance=ExtResource("4_tgfyj")]
+
+[node name="Controller" type="Node3D" parent="TopMenuBox"]
+
+[node name="CanvasRenderer" type="Node" parent="TopMenuBox/Controller"]
+
+[node name="CloseButton" type="Node3D" parent="TopMenuBox/Controller"]
+
+[node name="CanvasRenderer" type="Node" parent="TopMenuBox/Controller/CloseButton"]
+
+[node name="CloseButtonTip" parent="TopMenuBox/Controller/CloseButton" instance=ExtResource("5_58pg2")]
+
+[node name="MaxButton" type="Node3D" parent="TopMenuBox/Controller"]
+
+[node name="CanvasRenderer" type="Node" parent="TopMenuBox/Controller/MaxButton"]
+
+[node name="MaxButtonTip" parent="TopMenuBox/Controller/MaxButton" instance=ExtResource("6_nlls2")]
+
+[node name="MinButton" type="Node3D" parent="TopMenuBox/Controller"]
+
+[node name="CanvasRenderer" type="Node" parent="TopMenuBox/Controller/MinButton"]
+
+[editable path="Background"]
+[editable path="Back/BackButtonTip"]
+[editable path="Next/NextButtonTip"]
+[editable path="TopMenuBox/DragBox"]
+[editable path="TopMenuBox/Controller/CloseButton/CloseButtonTip"]
+[editable path="TopMenuBox/Controller/MaxButton/MaxButtonTip"]

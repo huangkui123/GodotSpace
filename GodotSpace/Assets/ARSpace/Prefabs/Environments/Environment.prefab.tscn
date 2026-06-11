@@ -1,0 +1,127 @@
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="PackedScene" path="res://Assets/Butterfly (Animated)/Prefab/Butterfly.prefab.tscn" id="1_vb7ot"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/Environments/Environment.prefab.Fern.tscn" id="2_jqcpm"]
+[ext_resource type="Script" path="res://addons/unidot/runtime/anim_tree.gd" id="3_o8tew"]
+
+[sub_resource type="Animation" id="Animation_sq6np"]
+
+[sub_resource type="Animation" id="Animation_s626k"]
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_lefoa"]
+_data = {
+&"RESET": SubResource("Animation_s626k"),
+&"_T-Pose_": SubResource("Animation_sq6np")
+}
+
+[sub_resource type="Animation" id="Animation_px1na"]
+
+[sub_resource type="Animation" id="Animation_dc65v"]
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_g5vy6"]
+_data = {
+&"RESET": SubResource("Animation_dc65v"),
+&"_T-Pose_": SubResource("Animation_px1na")
+}
+
+[node name="Environment" type="Node3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1.004, 0)
+
+[node name="AudioSource" type="AudioStreamPlayer" parent="."]
+volume_db = -6.0206
+autoplay = true
+
+[node name="GameObject (1)" type="Node3D" parent="."]
+transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, 0.314, 2.617)
+
+[node name="Butterfly" parent="GameObject (1)" instance=ExtResource("1_vb7ot")]
+transform = Transform3D(-0.000869818, -0.0099621, -4.35457e-10, 0, -4.37114e-10, 0.01, -0.0099621, 0.000869818, 3.80209e-11, 0, 0, 0)
+
+[node name="GameObject" type="Node3D" parent="."]
+transform = Transform3D(0.0692508, 0.0219784, 0.186336, -0.0148314, 0.198643, -0.0179179, -0.187041, -0.00761404, 0.0704107, 0.489, 0.23, 2.983)
+
+[node name="Butterfly (1)" parent="GameObject" instance=ExtResource("1_vb7ot")]
+transform = Transform3D(-0.00989067, -0.00147464, -6.44586e-11, 0, -4.37114e-10, 0.01, -0.00147464, 0.00989067, 4.32335e-10, -0.694, 0, 0)
+
+[node name="Grass" type="Node3D" parent="."]
+
+[node name="Grass Patch" type="Node3D" parent="Grass"]
+transform = Transform3D(0.526199, 0, 0, 0, 0.47551, 0, 0, 0, 0.57608, 0.078, 0, 1.468)
+
+[node name="Meadow_Grass_01_Var4_LOD2" type="Node3D" parent="Grass/Grass Patch"]
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="Grass/Grass Patch/Meadow_Grass_01_Var4_LOD2"]
+cast_shadow = 2
+gi_mode = 2
+
+[node name="Grass Patch (3)" type="Node3D" parent="Grass"]
+transform = Transform3D(0.725515, 0, 0, 0, 0.548627, 0, 0, 0, 0.725515, 0.219, 0, 4.547)
+
+[node name="Meadow_Grass_01_Var4_LOD2" type="Node3D" parent="Grass/Grass Patch (3)"]
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="Grass/Grass Patch (3)/Meadow_Grass_01_Var4_LOD2"]
+cast_shadow = 2
+gi_mode = 2
+
+[node name="Ferns" type="Node3D" parent="."]
+
+[node name="Fern" parent="Ferns" instance=ExtResource("2_jqcpm")]
+transform = Transform3D(0.749589, -0.160253, 0.261556, 0.0879477, 0.773892, 0.222108, -0.293867, -0.177161, 0.733644, -0.431, -0.06, 2.698)
+
+[node name="AnimationPlayer" parent="Ferns/Fern" index="0"]
+libraries = {
+&"": SubResource("AnimationLibrary_lefoa")
+}
+
+[node name="AnimationTree" parent="Ferns/Fern" index="1"]
+deterministic = false
+root_motion_track = NodePath("%GeneralSkeleton:Root")
+root_motion_local = false
+anim_player = NodePath("../AnimationPlayer")
+script = ExtResource("3_o8tew")
+
+[node name="MeshRenderer" parent="Ferns/Fern/Fern_Var0_LOD2" index="0"]
+gi_mode = 2
+
+[node name="Fern2" parent="Ferns" instance=ExtResource("2_jqcpm")]
+transform = Transform3D(0.225591, -0.0143285, -0.40782, -0.0409508, 0.462841, -0.0389142, 0.406011, 0.0546441, 0.222671, 0.61, 0.0720001, 2.88)
+
+[node name="AnimationPlayer" parent="Ferns/Fern2" index="0"]
+libraries = {
+&"": SubResource("AnimationLibrary_g5vy6")
+}
+
+[node name="AnimationTree" parent="Ferns/Fern2" index="1"]
+deterministic = false
+root_motion_track = NodePath("%GeneralSkeleton:Root")
+root_motion_local = false
+anim_player = NodePath("../AnimationPlayer")
+script = ExtResource("3_o8tew")
+
+[node name="MeshRenderer" parent="Ferns/Fern2/Fern_Var0_LOD2" index="0"]
+gi_mode = 2
+
+[node name="Bushes" type="Node3D" parent="."]
+
+[node name="Red Bush" type="Node3D" parent="Bushes"]
+transform = Transform3D(0.0936896, 0, -0.1588, 0, 0.184378, 0, 0.1588, 0, 0.0936896, 0.8, 0, 3.519)
+
+[node name="RedBush_Var1_LOD2" type="Node3D" parent="Bushes/Red Bush"]
+transform = Transform3D(6.4516, 0, 0, 0, 6.4516, -1.0511e-06, 0, 1.0511e-06, 6.4516, -5.44, 0, 5.13)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="Bushes/Red Bush/RedBush_Var1_LOD2"]
+gi_mode = 2
+
+[node name="RedBush_Var1_LOD2 (1)" type="Node3D" parent="Bushes/Red Bush"]
+transform = Transform3D(6.4516, 0, 0, 0, 6.4516, -1.0511e-06, 0, 1.0511e-06, 6.4516, -1.94, 0, -2.84)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="Bushes/Red Bush/RedBush_Var1_LOD2 (1)"]
+gi_mode = 2
+
+[node name="Wind" type="Node3D" parent="."]
+transform = Transform3D(-0.34202, 0, 0.939693, 0, 1, 0, -0.939693, 0, -0.34202, 2, 1.99, 6)
+
+[editable path="GameObject (1)/Butterfly"]
+[editable path="GameObject/Butterfly (1)"]
+[editable path="Ferns/Fern"]
+[editable path="Ferns/Fern2"]

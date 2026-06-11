@@ -1,7 +1,7 @@
 # start_menu_ui.gd
 extends Control
 
-const GAME_SCENE_PATH = "res://Assets/ARSpace/Scenes/ARSpace.scn"
+const GAME_SCENE_PATH = "res://Assets/ARSpace/Scenes/ARSpace.tscn"
 const XR_CLIENT_ARG = "--xr-client"
 const XR_MODE_ARG = "--xr-mode"
 const VOICE_ROLE_ARG = "--voice-role="

@@ -1,0 +1,140 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://Assets/ARSpace/Scripts/MovieCanvas/MovieUIView.gd" id="1_12j2f"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/UIWindow/TopMenuBox.png" id="2_3wex0"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/DragBox.prefab.tscn" id="3_ie5of"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155655.png" id="4_1xsw2"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155657.png" id="5_u4nnf"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/MovieCanvas/MovieIntem.prefab.tscn" id="6_2y0qw"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155621.png" id="7_m6pu0"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155614.png" id="8_gofk4"]
+
+[node name="MovieCanvas" type="CanvasLayer"]
+
+[node name="Canvas" type="Control" parent="." node_paths=PackedStringArray("info_")]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 571.0
+offset_bottom = 504.0
+script = ExtResource("1_12j2f")
+info_ = [NodePath("GridContainer/MovieIntem"), NodePath("GridContainer/MovieIntem2"), NodePath("GridContainer/MovieIntem3"), NodePath("GridContainer/MovieIntem4"), NodePath("GridContainer/MovieIntem5"), NodePath("GridContainer/MovieIntem6"), NodePath("GridContainer/MovieIntem7"), NodePath("GridContainer/MovieIntem8"), NodePath("GridContainer/MovieIntem9")]
+
+[node name="CanvasRenderer" type="ColorRect" parent="Canvas"]
+layout_mode = 0
+offset_left = 1.0
+offset_top = 54.0
+offset_right = 159.0
+offset_bottom = 191.0
+scale = Vector2(3.255, 3.255)
+color = Color(0.117647, 0.223529, 0.45098, 0.403922)
+
+[node name="TopMenuBox" type="Sprite2D" parent="Canvas"]
+position = Vector2(260, 33)
+scale = Vector2(0.852941, 0.852941)
+texture = ExtResource("2_3wex0")
+
+[node name="CanvasRenderer" type="Node" parent="Canvas/TopMenuBox"]
+
+[node name="DragBox" parent="Canvas/TopMenuBox" instance=ExtResource("3_ie5of")]
+position = Vector2(-177.224, 2.63793)
+scale = Vector2(0.994889, 1.1245)
+texture = null
+
+[node name="Title" type="Label" parent="Canvas/TopMenuBox/DragBox"]
+anchors_preset = -1
+anchor_left = -127.271
+anchor_top = -25.023
+anchor_right = -126.093
+anchor_bottom = -20.79
+offset_left = 13.271
+offset_top = 4.023
+offset_right = 459.093
+offset_bottom = 43.79
+theme_override_font_sizes/font_size = 27
+text = "影片
+"
+
+[node name="Controller" type="Control" parent="Canvas/TopMenuBox"]
+layout_mode = 3
+anchors_preset = 0
+
+[node name="CanvasRenderer" type="Node" parent="Canvas/TopMenuBox/Controller"]
+
+[node name="CloseButton" type="Button" parent="Canvas/TopMenuBox/Controller"]
+layout_mode = 0
+offset_left = 197.948
+offset_top = -25.5
+offset_right = 250.948
+offset_bottom = 26.5
+icon = ExtResource("4_1xsw2")
+flat = true
+
+[node name="MaxButton" type="Button" parent="Canvas/TopMenuBox/Controller"]
+layout_mode = 0
+offset_left = 243.672
+offset_top = -24.3276
+offset_right = 296.672
+offset_bottom = 27.6724
+icon = ExtResource("5_u4nnf")
+flat = true
+
+[node name="GridContainer" type="GridContainer" parent="Canvas"]
+layout_mode = 1
+anchors_preset = -1
+anchor_top = 0.12
+anchor_bottom = 0.12
+offset_top = -0.480003
+offset_right = 517.0
+offset_bottom = 429.52
+columns = 3
+
+[node name="MovieIntem" parent="Canvas/GridContainer" instance=ExtResource("6_2y0qw")]
+layout_mode = 2
+
+[node name="MovieIntem2" parent="Canvas/GridContainer" instance=ExtResource("6_2y0qw")]
+layout_mode = 2
+
+[node name="MovieIntem3" parent="Canvas/GridContainer" instance=ExtResource("6_2y0qw")]
+layout_mode = 2
+
+[node name="MovieIntem4" parent="Canvas/GridContainer" instance=ExtResource("6_2y0qw")]
+layout_mode = 2
+
+[node name="MovieIntem5" parent="Canvas/GridContainer" instance=ExtResource("6_2y0qw")]
+layout_mode = 2
+
+[node name="MovieIntem6" parent="Canvas/GridContainer" instance=ExtResource("6_2y0qw")]
+layout_mode = 2
+
+[node name="MovieIntem7" parent="Canvas/GridContainer" instance=ExtResource("6_2y0qw")]
+layout_mode = 2
+
+[node name="MovieIntem8" parent="Canvas/GridContainer" instance=ExtResource("6_2y0qw")]
+layout_mode = 2
+
+[node name="MovieIntem9" parent="Canvas/GridContainer" instance=ExtResource("6_2y0qw")]
+layout_mode = 2
+
+[node name="Back" type="Button" parent="Canvas"]
+layout_mode = 0
+offset_left = 528.0
+offset_top = 413.0
+offset_right = 637.0
+offset_bottom = 521.0
+scale = Vector2(0.4, 0.4)
+icon = ExtResource("7_m6pu0")
+
+[node name="Next" type="Button" parent="Canvas"]
+layout_mode = 0
+offset_left = 527.0
+offset_top = 454.0
+offset_right = 736.0
+offset_bottom = 662.0
+scale = Vector2(0.21, 0.21)
+icon = ExtResource("8_gofk4")
+
+[connection signal="pressed" from="Canvas/TopMenuBox/Controller/CloseButton" to="Canvas" method="_on_close_button_pressed"]
+[connection signal="pressed" from="Canvas/Back" to="Canvas" method="_on_back_pressed"]
+[connection signal="pressed" from="Canvas/Next" to="Canvas" method="_on_next_pressed"]
+
+[editable path="Canvas/TopMenuBox/DragBox"]

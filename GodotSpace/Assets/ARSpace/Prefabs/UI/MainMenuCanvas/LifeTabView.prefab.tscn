@@ -1,0 +1,135 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/生活模式-2.png" id="1_yxqi5"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/MainMenuCanvas/Photo.prefab.tscn" id="2_0ulyl"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/MainMenuCanvas/Movie.prefab.tscn" id="3_4pmj2"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/MainMenuCanvas/Model.prefab.tscn" id="4_llhut"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/MainMenuCanvas/Weather.prefab.tscn" id="5_gf8ur"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/MainMenuCanvas/MoleGame.prefab.tscn" id="6_s34xk"]
+
+[node name="LifeTabView" type="Control"]
+layout_mode = 3
+anchor_right = 0.128
+anchor_bottom = 0.142
+offset_right = -147.456
+offset_bottom = -92.016
+
+[node name="CanvasRenderer" type="ColorRect" parent="."]
+layout_mode = 0
+offset_right = 137.0
+offset_bottom = 99.0
+scale = Vector2(3.255, 3.255)
+color = Color(0.111301, 0.21437, 0.430628, 1)
+
+[node name="LocationIcon" type="Sprite2D" parent="."]
+position = Vector2(34.165, 33)
+texture = ExtResource("1_yxqi5")
+
+[node name="CanvasRenderer" type="Node" parent="LocationIcon"]
+
+[node name="LocationName" type="Label" parent="."]
+modulate = Color(0.55591, 0.613617, 1, 1)
+layout_mode = 0
+offset_left = 60.865
+offset_top = 23.0
+offset_right = 131.325
+offset_bottom = 72.0
+text = "生活模式
+"
+
+[node name="CanvasRenderer" type="Node" parent="LocationName"]
+
+[node name="Scroll View" type="MarginContainer" parent="."]
+layout_mode = 0
+offset_right = 444.0
+offset_bottom = 324.0
+
+[node name="CanvasRenderer" type="Node" parent="Scroll View"]
+
+[node name="Viewport" type="Control" parent="Scroll View"]
+layout_mode = 2
+
+[node name="Content" type="Control" parent="Scroll View/Viewport"]
+layout_mode = 2
+anchors_preset = 0
+offset_right = 444.0
+offset_bottom = 324.0
+
+[node name="Photo" parent="Scroll View/Viewport/Content" instance=ExtResource("2_0ulyl")]
+layout_mode = 0
+offset_left = 38.0
+offset_top = 41.0
+offset_right = 315.0
+offset_bottom = 237.0
+scale = Vector2(0.7, 0.7)
+
+[node name="Movie" parent="Scroll View/Viewport/Content" instance=ExtResource("3_4pmj2")]
+layout_mode = 0
+offset_left = 222.0
+offset_top = 168.0
+offset_right = 499.0
+offset_bottom = 364.0
+scale = Vector2(0.7, 0.7)
+
+[node name="Model" parent="Scroll View/Viewport/Content" instance=ExtResource("4_llhut")]
+layout_mode = 0
+offset_left = 40.0
+offset_top = 169.0
+offset_right = 317.0
+offset_bottom = 365.0
+scale = Vector2(0.7, 0.7)
+
+[node name="Weather" parent="Scroll View/Viewport/Content" instance=ExtResource("5_gf8ur")]
+layout_mode = 0
+offset_left = 221.0
+offset_top = 40.0
+offset_right = 498.0
+offset_bottom = 236.0
+scale = Vector2(0.7, 0.7)
+
+[node name="MoleGame" parent="Scroll View/Viewport/Content" instance=ExtResource("6_s34xk")]
+
+[node name="StyleSceen" type="Node3D" parent="Scroll View/Viewport/Content"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 5.7742e-05)
+
+[node name="CanvasRenderer" type="Node" parent="Scroll View/Viewport/Content/StyleSceen"]
+
+[node name="Name" type="Node3D" parent="Scroll View/Viewport/Content/StyleSceen"]
+
+[node name="CanvasRenderer" type="Node" parent="Scroll View/Viewport/Content/StyleSceen/Name"]
+
+[node name="Image (3)" type="Node3D" parent="Scroll View/Viewport/Content/StyleSceen"]
+transform = Transform3D(0.85858, 0, 0, 0, 0.85858, 0, 0, 0, 0.85858, 0, 0, 0)
+
+[node name="CanvasRenderer" type="Node" parent="Scroll View/Viewport/Content/StyleSceen/Image (3)"]
+
+[node name="Image (4)" type="Node3D" parent="Scroll View/Viewport/Content/StyleSceen/Image (3)"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.000123659)
+
+[node name="CanvasRenderer" type="Node" parent="Scroll View/Viewport/Content/StyleSceen/Image (3)/Image (4)"]
+
+[node name="Scrollbar Horizontal" type="Node3D" parent="Scroll View"]
+
+[node name="CanvasRenderer" type="Node" parent="Scroll View/Scrollbar Horizontal"]
+
+[node name="Sliding Area" type="Node3D" parent="Scroll View/Scrollbar Horizontal"]
+
+[node name="Handle" type="Node3D" parent="Scroll View/Scrollbar Horizontal/Sliding Area"]
+
+[node name="CanvasRenderer" type="Node" parent="Scroll View/Scrollbar Horizontal/Sliding Area/Handle"]
+
+[node name="Scrollbar Vertical" type="Node3D" parent="Scroll View"]
+
+[node name="CanvasRenderer" type="Node" parent="Scroll View/Scrollbar Vertical"]
+
+[node name="Sliding Area" type="Node3D" parent="Scroll View/Scrollbar Vertical"]
+
+[node name="Handle" type="Node3D" parent="Scroll View/Scrollbar Vertical/Sliding Area"]
+
+[node name="CanvasRenderer" type="Node" parent="Scroll View/Scrollbar Vertical/Sliding Area/Handle"]
+
+[editable path="Scroll View/Viewport/Content/Photo"]
+[editable path="Scroll View/Viewport/Content/Movie"]
+[editable path="Scroll View/Viewport/Content/Model"]
+[editable path="Scroll View/Viewport/Content/Weather"]
+[editable path="Scroll View/Viewport/Content/MoleGame"]

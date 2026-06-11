@@ -1,0 +1,79 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/Background.prefab.tscn" id="1_hf2oj"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/PictureCanvas/PictureIntem.prefab.tscn" id="2_r207h"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/DragBox.prefab.tscn" id="3_f75o4"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/CloseButtonTip.prefab.tscn" id="4_6qhjm"]
+
+[node name="PictureCanvas" type="Node3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.991)
+
+[node name="Canvas" type="Node" parent="."]
+
+[node name="AudioSource" type="AudioStreamPlayer" parent="."]
+autoplay = true
+
+[node name="Background" parent="." instance=ExtResource("1_hf2oj")]
+
+[node name="Panel (1)" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="Panel (1)"]
+
+[node name="GridGroup" type="Node3D" parent="Panel (1)"]
+
+[node name="CanvasRenderer" type="Node" parent="Panel (1)/GridGroup"]
+
+[node name="PictureIntem" parent="Panel (1)/GridGroup" instance=ExtResource("2_r207h")]
+
+[node name="PictureIntem (1)" parent="Panel (1)/GridGroup" instance=ExtResource("2_r207h")]
+
+[node name="PictureIntem (2)" parent="Panel (1)/GridGroup" instance=ExtResource("2_r207h")]
+
+[node name="PictureIntem (3)" parent="Panel (1)/GridGroup" instance=ExtResource("2_r207h")]
+
+[node name="PictureIntem (4)" parent="Panel (1)/GridGroup" instance=ExtResource("2_r207h")]
+
+[node name="PictureIntem (5)" parent="Panel (1)/GridGroup" instance=ExtResource("2_r207h")]
+
+[node name="PictureIntem (6)" parent="Panel (1)/GridGroup" instance=ExtResource("2_r207h")]
+
+[node name="PictureIntem (7)" parent="Panel (1)/GridGroup" instance=ExtResource("2_r207h")]
+
+[node name="PictureIntem (8)" parent="Panel (1)/GridGroup" instance=ExtResource("2_r207h")]
+
+[node name="Back" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="Back"]
+
+[node name="Next" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="Next"]
+
+[node name="ChildWindowPivot" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="ChildWindowPivot"]
+
+[node name="TopMenuBox" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="TopMenuBox"]
+
+[node name="DragBox" parent="TopMenuBox" instance=ExtResource("3_f75o4")]
+
+[node name="CloseButton" type="Node3D" parent="TopMenuBox"]
+
+[node name="CanvasRenderer" type="Node" parent="TopMenuBox/CloseButton"]
+
+[node name="CloseButtonTip" parent="TopMenuBox/CloseButton" instance=ExtResource("4_6qhjm")]
+
+[editable path="Background"]
+[editable path="Panel (1)/GridGroup/PictureIntem"]
+[editable path="Panel (1)/GridGroup/PictureIntem (1)"]
+[editable path="Panel (1)/GridGroup/PictureIntem (2)"]
+[editable path="Panel (1)/GridGroup/PictureIntem (3)"]
+[editable path="Panel (1)/GridGroup/PictureIntem (4)"]
+[editable path="Panel (1)/GridGroup/PictureIntem (5)"]
+[editable path="Panel (1)/GridGroup/PictureIntem (6)"]
+[editable path="Panel (1)/GridGroup/PictureIntem (7)"]
+[editable path="Panel (1)/GridGroup/PictureIntem (8)"]
+[editable path="TopMenuBox/DragBox"]
+[editable path="TopMenuBox/CloseButton/CloseButtonTip"]

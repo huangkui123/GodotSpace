@@ -1,0 +1,33 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155628.png" id="1_hxv3w"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155644.png" id="2_rp0vw"]
+
+[node name="Model" type="Button"]
+icon = ExtResource("1_hxv3w")
+flat = true
+
+[node name="CanvasRenderer" type="Node" parent="."]
+
+[node name="Name" type="Label" parent="."]
+modulate = Color(0.794788, 0.754551, 1, 1)
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -26.5
+offset_top = -23.0
+offset_right = 26.5
+grow_horizontal = 2
+grow_vertical = 0
+text = "3D模型"
+
+[node name="CanvasRenderer" type="Node" parent="Name"]
+
+[node name="Image (2)" type="Sprite2D" parent="."]
+position = Vector2(138, 99)
+texture = ExtResource("2_rp0vw")
+
+[node name="CanvasRenderer" type="Node" parent="Image (2)"]

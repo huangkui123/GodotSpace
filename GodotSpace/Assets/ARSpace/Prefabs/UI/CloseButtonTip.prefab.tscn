@@ -1,0 +1,10 @@
+[gd_scene format=3]
+
+[node name="CloseButtonTip" type="Node3D"]
+
+[node name="CanvasRenderer" type="Node" parent="."]
+
+[node name="Text (TMP)" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -9.31323e-05)
+
+[node name="CanvasRenderer" type="Node" parent="Text (TMP)"]

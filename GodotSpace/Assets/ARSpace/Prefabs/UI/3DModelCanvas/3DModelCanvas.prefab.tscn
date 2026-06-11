@@ -1,0 +1,78 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/Background.prefab.tscn" id="1_xnwdm"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/3DModelCanvas/ModelIntem.prefab.tscn" id="2_7mpwa"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/DragBox.prefab.tscn" id="3_sw34f"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/CloseButtonTip.prefab.tscn" id="4_585g0"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_wei66"]
+size = Vector3(600, 600, 16.2187)
+
+[node name="3DModelCanvas" type="RigidBody3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.991)
+gravity_scale = 0.0
+freeze_mode = 1
+angular_damp = 0.05
+
+[node name="Canvas" type="Node" parent="."]
+
+[node name="AudioSource" type="AudioStreamPlayer" parent="."]
+autoplay = true
+
+[node name="BoxCollider" type="Area3D" parent="."]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.3122e-07, 17.6556)
+shape = SubResource("BoxShape3D_wei66")
+
+[node name="Background" parent="." instance=ExtResource("1_xnwdm")]
+
+[node name="Panel (1)" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="Panel (1)"]
+
+[node name="GridGroup" type="Node3D" parent="Panel (1)"]
+
+[node name="CanvasRenderer" type="Node" parent="Panel (1)/GridGroup"]
+
+[node name="ModelIntem" parent="Panel (1)/GridGroup" instance=ExtResource("2_7mpwa")]
+
+[node name="ModelIntem (1)" parent="Panel (1)/GridGroup" instance=ExtResource("2_7mpwa")]
+
+[node name="ModelIntem (2)" parent="Panel (1)/GridGroup" instance=ExtResource("2_7mpwa")]
+
+[node name="ModelIntem (3)" parent="Panel (1)/GridGroup" instance=ExtResource("2_7mpwa")]
+
+[node name="ModelIntem (4)" parent="Panel (1)/GridGroup" instance=ExtResource("2_7mpwa")]
+
+[node name="ModelIntem (5)" parent="Panel (1)/GridGroup" instance=ExtResource("2_7mpwa")]
+
+[node name="Back" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="Back"]
+
+[node name="Next" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="Next"]
+
+[node name="TopMenuBox" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="TopMenuBox"]
+
+[node name="DragBox" parent="TopMenuBox" instance=ExtResource("3_sw34f")]
+
+[node name="CloseButton" type="Node3D" parent="TopMenuBox"]
+
+[node name="CanvasRenderer" type="Node" parent="TopMenuBox/CloseButton"]
+
+[node name="CloseButtonTip" parent="TopMenuBox/CloseButton" instance=ExtResource("4_585g0")]
+
+[editable path="Background"]
+[editable path="Panel (1)/GridGroup/ModelIntem"]
+[editable path="Panel (1)/GridGroup/ModelIntem (1)"]
+[editable path="Panel (1)/GridGroup/ModelIntem (2)"]
+[editable path="Panel (1)/GridGroup/ModelIntem (3)"]
+[editable path="Panel (1)/GridGroup/ModelIntem (4)"]
+[editable path="Panel (1)/GridGroup/ModelIntem (5)"]
+[editable path="TopMenuBox/DragBox"]
+[editable path="TopMenuBox/CloseButton/CloseButtonTip"]

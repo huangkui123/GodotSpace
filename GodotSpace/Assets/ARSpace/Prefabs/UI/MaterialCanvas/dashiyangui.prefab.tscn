@@ -1,0 +1,277 @@
+[gd_scene load_steps=35 format=3]
+
+[ext_resource type="AnimationLibrary" path="res://Assets/ARSpace/Scripts/WorkListCanvas/Containerless/dashiyangui.library.res" id="1_a1wh0"]
+[ext_resource type="AnimationNodeBlendTree" path="res://Assets/ARSpace/Scripts/WorkListCanvas/Containerless/dashiyangui.controller.res" id="2_5g274"]
+[ext_resource type="Script" path="res://addons/unidot/runtime/anim_tree.gd" id="3_8taub"]
+[ext_resource type="ArrayMesh" path="res://Assets/ARSpace/Models/dashiyangui/extracted/dashiyangui.dashiyangui.mesh" id="4_ddrmm"]
+[ext_resource type="Material" path="res://Assets/ARSpace/Models/dashiyangui/dashiyangui-02.material" id="5_wff7r"]
+[ext_resource type="Material" path="res://Assets/ARSpace/Models/dashiyangui/dashiyangui-02 1.material" id="6_p3ewm"]
+[ext_resource type="ArrayMesh" path="res://Assets/ARSpace/Models/xiaoshiyangui/extracted/xiaoshiyangui.xiaoshiyangui_a.mesh" id="7_co1nn"]
+[ext_resource type="Material" path="res://Assets/ARSpace/Models/xiaoshiyangui/xiaoshiyangui_1.material" id="8_hpqfb"]
+[ext_resource type="Material" path="res://Assets/ARSpace/Models/xiaoshiyangui/xiaoshiyangui_2.material" id="9_j0ga2"]
+[ext_resource type="ArrayMesh" path="res://Assets/ARSpace/Models/xiaoshiyangui/extracted/xiaoshiyangui.xiaoshiyangui_b.mesh" id="10_uqjs1"]
+[ext_resource type="Material" path="res://Assets/ARSpace/Models/xiaoshiyangui/核心外盖手把.material" id="11_3mpjq"]
+[ext_resource type="Material" path="res://Assets/ARSpace/Models/xiaoshiyangui/核心外盖板.material" id="12_8erbw"]
+[ext_resource type="ArrayMesh" path="res://Assets/ARSpace/Models/xiaoshiyangui/extracted/xiaoshiyangui.xiaoshiyangui_c.mesh" id="13_pr61k"]
+[ext_resource type="Material" path="res://Assets/ARSpace/Models/xiaoshiyangui/核心外盖螺丝.material" id="14_522i7"]
+[ext_resource type="ArrayMesh" path="res://Assets/ARSpace/Models/zhouxinjigou/extracted/zhouxinjigou.dingzi.mesh" id="15_hob4v"]
+[ext_resource type="Material" path="res://Assets/ARSpace/Models/zhouxinjigou/轴心螺丝.material" id="16_rjmex"]
+[ext_resource type="ArrayMesh" path="res://Assets/ARSpace/Models/zhouxinjigou/extracted/zhouxinjigou.zhouxinjigou_a.mesh" id="17_q428c"]
+[ext_resource type="Material" path="res://Assets/ARSpace/Models/zhouxinjigou/轴心内壳.material" id="18_j6fgo"]
+[ext_resource type="Material" path="res://Assets/ARSpace/Models/zhouxinjigou/轴心传动轴.material" id="19_54eug"]
+[ext_resource type="ArrayMesh" path="res://Assets/ARSpace/Models/xiaoshiyangui/extracted/xiaoshiyangui.xiaoshiyangui_d.mesh" id="20_udm7l"]
+[ext_resource type="Material" path="res://Assets/ARSpace/Models/xiaoshiyangui/轴心样品盒子.material" id="21_syyr5"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Models/Effects/Ani_product_Mid_02.prefab.tscn" id="22_hxddj"]
+[ext_resource type="Material" path="res://Assets/ARSpace/Models/xiaoshiyangui/轴心样品盒子New.material" id="23_73hw0"]
+[ext_resource type="ArrayMesh" path="res://Assets/Laboratory_Interior/Models/extracted/Prop_Glass.Prop_MassCylinder.mesh" id="24_4ugrs"]
+[ext_resource type="Material" path="res://Assets/ARSpace/Models/zhouxinjigou/zhouxinjigou_a.material" id="25_3weqa"]
+[ext_resource type="ArrayMesh" path="res://Assets/Laboratory_Interior/Models/extracted/Prop_Glass.Prop_MassCylinder_Liquid.mesh" id="26_rhlfn"]
+[ext_resource type="ArrayMesh" path="res://Assets/ARSpace/Models/gongju/extracted/newgongju.BanShou.mesh" id="27_rtdvr"]
+[ext_resource type="Material" path="res://Assets/ARSpace/Models/gongju/gongju.material" id="28_1xrsp"]
+[ext_resource type="ArrayMesh" path="res://Assets/ARSpace/Models/gongju/extracted/newgongju.GongJu01.mesh" id="29_o2epd"]
+[ext_resource type="ArrayMesh" path="res://Assets/ARSpace/Models/gongju/extracted/newgongju.GongJu02.mesh" id="30_sb4wh"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/MaterialCanvas/Canvas.prefab.tscn" id="31_to3rt"]
+
+[sub_resource type="SphereMesh" id="SphereMesh_1buup"]
+resource_name = "Sphere"
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_hbon4"]
+resource_name = "Default-Line"
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_5r6n8"]
+
+[node name="dashiyangui" type="Node3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.18, 0.1)
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+libraries = {
+&"": ExtResource("1_a1wh0")
+}
+
+[node name="AnimationTree" type="AnimationTree" parent="."]
+deterministic = false
+root_motion_track = NodePath("%GeneralSkeleton:Root")
+root_motion_local = false
+tree_root = ExtResource("2_5g274")
+anim_player = NodePath("../AnimationPlayer")
+script = ExtResource("3_8taub")
+metadata/EState = 0
+metadata/guid_fileid_to_animation_name = {
+"00cb66612009d014d934a36bd33c291b:7400000": "Step11",
+"169962026804248499df3d521bb88658:7400000": "Step18",
+"3a2610d6801eb6a40972d23b79d363fd:7400000": "Step12",
+"775e31fd3bac50340ab5fbd715d00add:7400000": "Step5",
+"79472d4f92173f341a1fafbf064ae400:7400000": "Containerless",
+"7975cc23b0b224841a5b1be5ddc4f878:7400000": "Step6",
+"9518fbab9101ecf4d853cb32cd1de035:7400000": "Step8",
+"a8cc958709fba4345af0c65a0e39b601:7400000": "Step7",
+"aae68b9105e73734eb41547d9d25cb07:7400000": "Step14",
+"bd7e2f09f570c134499aa9e059d063f1:7400000": "Step9",
+"c22f8781320ab5644a8dcc83475ca455:7400000": "Step10",
+"dc6ce9cddd508a047b6f3d03475a74a1:7400000": "Step13",
+"e86fcd41a64f8fc439588e2a8ed72951:7400000": "Step16"
+}
+
+[node name="dashiyangui" type="Node3D" parent="."]
+transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 1.374, 0, 5.383)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="dashiyangui"]
+gi_mode = 2
+mesh = ExtResource("4_ddrmm")
+surface_material_override/0 = ExtResource("5_wff7r")
+surface_material_override/1 = ExtResource("6_p3ewm")
+
+[node name="xiaoshiyangui" type="Node3D" parent="."]
+transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 1.336, 1.356, 5.393)
+
+[node name="xiaoshiyangui_a" type="Node3D" parent="xiaoshiyangui"]
+transform = Transform3D(1, 0, 0, 0, 1, 7.54979e-08, 0, -7.54979e-08, 1, 0, 0, 0)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="xiaoshiyangui/xiaoshiyangui_a"]
+gi_mode = 2
+mesh = ExtResource("7_co1nn")
+surface_material_override/0 = ExtResource("8_hpqfb")
+surface_material_override/1 = ExtResource("9_j0ga2")
+
+[node name="xiaoshiyangui_b" type="Node3D" parent="xiaoshiyangui"]
+transform = Transform3D(1, 0, 0, 0, 1, 7.54979e-08, 0, -7.54979e-08, 1, -0.315, 0, 0)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="xiaoshiyangui/xiaoshiyangui_b"]
+gi_mode = 2
+mesh = ExtResource("10_uqjs1")
+surface_material_override/0 = ExtResource("11_3mpjq")
+surface_material_override/1 = ExtResource("12_8erbw")
+
+[node name="xiaoshiyangui_c" type="Node3D" parent="xiaoshiyangui"]
+transform = Transform3D(1, 0, 0, 0, 1, 7.54979e-08, 0, -7.54979e-08, 1, -0.553, 0, 0)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="xiaoshiyangui/xiaoshiyangui_c"]
+gi_mode = 2
+mesh = ExtResource("13_pr61k")
+surface_material_override/0 = ExtResource("14_522i7")
+
+[node name="zhouxinjigou" type="Node3D" parent="."]
+transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 1.265, 1.363, 5.388)
+
+[node name="dingzi" type="Node3D" parent="zhouxinjigou"]
+transform = Transform3D(1, 0, 0, 0, 1, 7.54979e-08, 0, -7.54979e-08, 1, -1.1457, 0, 0)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="zhouxinjigou/dingzi"]
+gi_mode = 2
+mesh = ExtResource("15_hob4v")
+surface_material_override/0 = ExtResource("16_rjmex")
+
+[node name="zhouxinjigou_a" type="Node3D" parent="zhouxinjigou"]
+transform = Transform3D(1, 0, 0, 0, 1, 7.54979e-08, 0, -7.54979e-08, 1, -0.976, 0, 0)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="zhouxinjigou/zhouxinjigou_a"]
+gi_mode = 2
+mesh = ExtResource("17_q428c")
+surface_material_override/0 = ExtResource("18_j6fgo")
+surface_material_override/1 = ExtResource("19_54eug")
+
+[node name="xiaoshiyangui_d" type="Node3D" parent="zhouxinjigou/zhouxinjigou_a"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3481, 0, -0.55)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="zhouxinjigou/zhouxinjigou_a/xiaoshiyangui_d"]
+gi_mode = 2
+mesh = ExtResource("20_udm7l")
+surface_material_override/0 = ExtResource("21_syyr5")
+
+[node name="OldTips" parent="zhouxinjigou/zhouxinjigou_a/xiaoshiyangui_d" instance=ExtResource("22_hxddj")]
+transform = Transform3D(-1.09278e-08, 0, -0.25, 0, 0.25, 0, 0.25, 0, -1.09278e-08, 0.65, 0.28, 0.55)
+visible = false
+
+[node name="T_product_dot" parent="zhouxinjigou/zhouxinjigou_a/xiaoshiyangui_d/OldTips/Ani_effect" index="4"]
+transform = Transform3D(0.210859, 0, 0, 0, 0.210859, 0, 0, 0, 0.210859, 0, -0.68, 0)
+
+[node name="T_product_Left_bg" parent="zhouxinjigou/zhouxinjigou_a/xiaoshiyangui_d/OldTips/Ani_effect" index="5"]
+transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, 0, 0)
+
+[node name="T_product_word1" parent="zhouxinjigou/zhouxinjigou_a/xiaoshiyangui_d/OldTips/Ani_effect" index="6"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="xiaoshiyangui_d_new" type="Node3D" parent="zhouxinjigou/zhouxinjigou_a"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3481, 0.15, -0.8)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="zhouxinjigou/zhouxinjigou_a/xiaoshiyangui_d_new"]
+gi_mode = 2
+mesh = ExtResource("20_udm7l")
+surface_material_override/0 = ExtResource("23_73hw0")
+
+[node name="NewTips" parent="zhouxinjigou/zhouxinjigou_a/xiaoshiyangui_d_new" instance=ExtResource("22_hxddj")]
+transform = Transform3D(-1.09278e-08, 0, -0.25, 0, 0.25, 0, 0.25, 0, -1.09278e-08, 0.65, 0.28, 0.55)
+visible = false
+
+[node name="T_product_dot" parent="zhouxinjigou/zhouxinjigou_a/xiaoshiyangui_d_new/NewTips/Ani_effect" index="4"]
+transform = Transform3D(0.210859, 0, 0, 0, 0.210859, 0, 0, 0, 0.210859, 0, -0.68, 0)
+
+[node name="T_product_Left_bg" parent="zhouxinjigou/zhouxinjigou_a/xiaoshiyangui_d_new/NewTips/Ani_effect" index="5"]
+transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, 0, 0)
+
+[node name="T_product_word1" parent="zhouxinjigou/zhouxinjigou_a/xiaoshiyangui_d_new/NewTips/Ani_effect" index="6"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="zhongxinjigouTips" parent="zhouxinjigou/zhouxinjigou_a" instance=ExtResource("22_hxddj")]
+transform = Transform3D(-1.09278e-08, 0, -0.25, 0, 0.25, 0, 0.25, 0, -1.09278e-08, 1, 0.28, 0)
+visible = false
+
+[node name="T_product_dot" parent="zhouxinjigou/zhouxinjigou_a/zhongxinjigouTips/Ani_effect" index="4"]
+transform = Transform3D(0.210859, 0, 0, 0, 0.210859, 0, 0, 0, 0.210859, 0, -0.68, 0)
+
+[node name="T_product_Left_bg" parent="zhouxinjigou/zhouxinjigou_a/zhongxinjigouTips/Ani_effect" index="5"]
+transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, 0, 0)
+
+[node name="T_product_word1" parent="zhouxinjigou/zhouxinjigou_a/zhongxinjigouTips/Ani_effect" index="6"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="zhouxinjigou_a (1)" type="Node3D" parent="zhouxinjigou"]
+transform = Transform3D(1, 0, 0, 0, 1, 7.54979e-08, 0, -7.54979e-08, 1, -0.3, 0, 0.5)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="zhouxinjigou/zhouxinjigou_a (1)"]
+gi_mode = 2
+mesh = ExtResource("17_q428c")
+surface_material_override/0 = ExtResource("18_j6fgo")
+surface_material_override/1 = ExtResource("19_54eug")
+
+[node name="xiaoshiyangui_d" type="Node3D" parent="zhouxinjigou/zhouxinjigou_a (1)"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3481, 0, -0.55)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="zhouxinjigou/zhouxinjigou_a (1)/xiaoshiyangui_d"]
+gi_mode = 2
+mesh = ExtResource("20_udm7l")
+surface_material_override/0 = ExtResource("21_syyr5")
+
+[node name="xiaoshiyangui_d_new" type="Node3D" parent="zhouxinjigou/zhouxinjigou_a (1)"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3481, 0.15, -0.8)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="zhouxinjigou/zhouxinjigou_a (1)/xiaoshiyangui_d_new"]
+gi_mode = 2
+mesh = ExtResource("20_udm7l")
+surface_material_override/0 = ExtResource("23_73hw0")
+
+[node name="gongju" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.2, 1.5346, 5.4845)
+
+[node name="zhouxinjigou_a" type="Node3D" parent="gongju"]
+transform = Transform3D(1, 0, 0, 0, 1, 7.54979e-08, 0, -7.54979e-08, 1, 0, 0, 0)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="gongju/zhouxinjigou_a"]
+gi_mode = 2
+mesh = ExtResource("24_4ugrs")
+surface_material_override/0 = ExtResource("25_3weqa")
+
+[node name="zhouxinjigou_a (1)" type="Node3D" parent="gongju"]
+transform = Transform3D(-4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="gongju/zhouxinjigou_a (1)"]
+gi_mode = 2
+mesh = ExtResource("26_rhlfn")
+surface_material_override/0 = ExtResource("25_3weqa")
+
+[node name="newgongju" type="Node3D" parent="gongju"]
+
+[node name="BanShou" type="Node3D" parent="gongju/newgongju"]
+transform = Transform3D(-1.74846e-08, 0.396107, -0.0556693, 0, 0.0556693, 0.396107, 0.4, 1.73144e-08, -2.43338e-09, -0.0345709, 0.225763, 0.365)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="gongju/newgongju/BanShou"]
+gi_mode = 2
+mesh = ExtResource("27_rtdvr")
+surface_material_override/0 = ExtResource("28_1xrsp")
+
+[node name="GongJu01" type="Node3D" parent="gongju/newgongju"]
+transform = Transform3D(-0.4, 0, -3.49691e-08, 0, 0.4, 0, 3.49691e-08, 0, -0.4, -0.0129, -0.00979988, -0.2059)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="gongju/newgongju/GongJu01"]
+gi_mode = 2
+mesh = ExtResource("29_o2epd")
+surface_material_override/0 = ExtResource("28_1xrsp")
+
+[node name="GongJu02" type="Node3D" parent="gongju/newgongju"]
+transform = Transform3D(-1.74846e-08, 0, -0.4, 0, 0.4, 0, 0.4, 0, -1.74846e-08, 0.2527, -0.0057, -0.1544)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="gongju/newgongju/GongJu02"]
+gi_mode = 2
+mesh = ExtResource("30_sb4wh")
+surface_material_override/0 = ExtResource("28_1xrsp")
+
+[node name="Sphere" type="Node3D" parent="gongju"]
+transform = Transform3D(0.01, 0, 0, 0, 0.01, 0, 0, 0, 0.01, 0, 0, 0)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="gongju/Sphere"]
+gi_mode = 2
+mesh = SubResource("SphereMesh_1buup")
+surface_material_override/0 = SubResource("StandardMaterial3D_hbon4")
+
+[node name="SphereCollider" type="StaticBody3D" parent="gongju/Sphere"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="gongju/Sphere/SphereCollider"]
+shape = SubResource("SphereShape3D_5r6n8")
+
+[node name="Canvas" parent="." instance=ExtResource("31_to3rt")]
+transform = Transform3D(0, 0, 0.005, 0, 0.005, 0, -0.005, 0, 0, 0, 0, 6.02)
+
+[editable path="zhouxinjigou/zhouxinjigou_a/xiaoshiyangui_d/OldTips"]
+[editable path="zhouxinjigou/zhouxinjigou_a/xiaoshiyangui_d_new/NewTips"]
+[editable path="zhouxinjigou/zhouxinjigou_a/zhongxinjigouTips"]
+[editable path="Canvas"]

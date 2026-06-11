@@ -1,0 +1,19 @@
+[gd_scene format=3]
+
+[node name="PB - Standard" type="Node3D"]
+
+[node name="Background" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="Background"]
+
+[node name="Bar Mask" type="Node3D" parent="Background"]
+
+[node name="CanvasRenderer" type="Node" parent="Background/Bar Mask"]
+
+[node name="Bar" type="Node3D" parent="Background/Bar Mask"]
+
+[node name="CanvasRenderer" type="Node" parent="Background/Bar Mask/Bar"]
+
+[node name="Text" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="Text"]

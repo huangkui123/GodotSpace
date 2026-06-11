@@ -1,0 +1,21 @@
+[gd_scene format=3]
+
+[node name="Station temperature" type="Node3D"]
+
+[node name="CanvasRenderer" type="Node" parent="."]
+
+[node name="ApparentIcon" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="ApparentIcon"]
+
+[node name="ApparentLabel" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="ApparentLabel"]
+
+[node name="TemperatureValue" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="TemperatureValue"]
+
+[node name="Image" type="Node3D" parent="TemperatureValue"]
+
+[node name="CanvasRenderer" type="Node" parent="TemperatureValue/Image"]

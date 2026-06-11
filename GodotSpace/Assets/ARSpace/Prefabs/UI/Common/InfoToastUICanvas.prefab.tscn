@@ -1,0 +1,24 @@
+[gd_scene format=3]
+
+[node name="InfoToastUICanvas" type="Node3D"]
+transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0)
+
+[node name="Canvas" type="Node" parent="."]
+
+[node name="AudioSource" type="AudioStreamPlayer" parent="."]
+autoplay = true
+
+[node name="PCView" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -75)
+
+[node name="CanvasRenderer" type="Node" parent="PCView"]
+
+[node name="BG_Image" type="Node3D" parent="PCView"]
+
+[node name="ImageText" type="Node3D" parent="PCView/BG_Image"]
+
+[node name="CanvasRenderer" type="Node" parent="PCView/BG_Image/ImageText"]
+
+[node name="IconImage" type="Node3D" parent="PCView/BG_Image"]
+
+[node name="CanvasRenderer" type="Node" parent="PCView/BG_Image/IconImage"]

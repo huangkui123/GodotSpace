@@ -1,0 +1,2426 @@
+[gd_scene load_steps=100 format=4 uid="uid://ca028g0q2kstx"]
+
+[ext_resource type="Script" uid="uid://d1pt7mdt5llk4" path="res://XR_Main.gd" id="1_g432p"]
+[ext_resource type="Script" uid="uid://bt6aew4asx754" path="res://Assets/ARSpace/Scenes/SpaceBox.gd" id="2_wjh8v"]
+[ext_resource type="Material" uid="uid://d1mn1jn34yh3r" path="res://Assets/ARSpace/Materials/MeshMat/FrontDor.material" id="3_2envh"]
+[ext_resource type="Texture2D" uid="uid://bbhbakfdmrd25" path="res://Assets/ARSpace/Textures/6_200新副本-工作模式.png" id="4_swovu"]
+[ext_resource type="Material" uid="uid://otjutv26pvb1" path="res://Assets/ARSpace/Materials/MeshMat/RightPlane.material" id="5_ievty"]
+[ext_resource type="Material" uid="uid://bryym7qu8u17h" path="res://Assets/ARSpace/Materials/MeshMat/LeftPlane.material" id="6_rrlaw"]
+[ext_resource type="Material" uid="uid://e5y5ij43jitr" path="res://Assets/ARSpace/Materials/MeshMat/UpPlane.material" id="7_b6upf"]
+[ext_resource type="Material" uid="uid://col5ctduhde3x" path="res://Assets/ARSpace/Materials/UIBarMat/WorkDeviceGuideBar.material" id="8_3u5fo"]
+[ext_resource type="Material" uid="uid://pi6qajjvmgi4" path="res://Assets/ARSpace/Materials/MeshMat/BackDor.material" id="9_irieg"]
+[ext_resource type="Material" uid="uid://omixcmos5th4" path="res://Assets/ARSpace/Materials/TimeMat/Dash.material" id="10_qiy6x"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/Drager.prefab.tscn" id="11_gl0pi"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/MaterialCanvas/dashiyangui.prefab.tscn" id="12_q8ege"]
+[ext_resource type="Script" uid="uid://b5diqbb74vky2" path="res://Assets/ARSpace/Prefabs/UI/MaterialCanvas/Ani_Play.gd" id="13_ktgtg"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Models/WorkEffect.prefab.tscn" id="14_4q04a"]
+[ext_resource type="ArrayMesh" uid="uid://bldpgmibj48b3" path="res://Assets/ARSpace/Models/搭配场景/室内风格/LOOK1/素材/卡通-家具桌椅/fbx/extracted/20. Tv Table.Cube_001.mesh" id="15_678o8"]
+[ext_resource type="ArrayMesh" uid="uid://g27hnwe70aep" path="res://Assets/ARSpace/Models/搭配场景/室内风格/LOOK1/素材/卡通-家具桌椅/fbx/extracted/20. Tv Table.网格_006.mesh" id="16_jvj31"]
+[ext_resource type="ArrayMesh" uid="uid://cogvdyjy0hloh" path="res://Assets/ARSpace/Models/搭配场景/室内风格/LOOK1/素材/卡通-家具桌椅/fbx/extracted/20. Tv Table.Cube_002.mesh" id="17_ej4kk"]
+[ext_resource type="ArrayMesh" uid="uid://1jqd2sbp5x30" path="res://Assets/ARSpace/Models/搭配场景/室内风格/LOOK1/素材/卡通-家具桌椅/fbx/extracted/20. Tv Table.Cube_003.mesh" id="18_abdad"]
+[ext_resource type="ArrayMesh" uid="uid://bi6na6yvrwq8x" path="res://Assets/ARSpace/Models/搭配场景/室内风格/LOOK1/素材/卡通-家具桌椅/fbx/extracted/20. Tv Table.网格_002.mesh" id="19_mwsbs"]
+[ext_resource type="ArrayMesh" uid="uid://bvq13f0askumv" path="res://Assets/ARSpace/Models/搭配场景/室内风格/LOOK1/素材/卡通-家具桌椅/fbx/extracted/20. Tv Table.网格_003.mesh" id="20_dk6a2"]
+[ext_resource type="ArrayMesh" uid="uid://bauss5111u2n6" path="res://Assets/ARSpace/Models/搭配场景/室内风格/LOOK1/素材/卡通-家具桌椅/fbx/extracted/20. Tv Table.网格_004.mesh" id="21_3f8ot"]
+[ext_resource type="ArrayMesh" uid="uid://bsmbj8688yt1u" path="res://Assets/ARSpace/Models/搭配场景/室内风格/LOOK1/素材/卡通-家具桌椅/fbx/extracted/20. Tv Table.网格_005.mesh" id="22_quew0"]
+[ext_resource type="ArrayMesh" uid="uid://b1yi2tajsk8mg" path="res://Assets/ARSpace/Models/搭配场景/室内风格/LOOK1/素材/卡通-家具桌椅/fbx/extracted/20. Tv Table.网格.mesh" id="23_arfi8"]
+[ext_resource type="ArrayMesh" uid="uid://br2abmi2gr1qj" path="res://Assets/ARSpace/Models/搭配场景/室内风格/LOOK1/素材/卡通-家具桌椅/fbx/extracted/20. Tv Table.Plane_001.mesh" id="24_b82uq"]
+[ext_resource type="ArrayMesh" uid="uid://dh5yidm2w877j" path="res://Assets/ARSpace/Models/搭配场景/室内风格/LOOK1/素材/卡通-家具桌椅/fbx/extracted/20. Tv Table.网格_001.mesh" id="25_wnqly"]
+[ext_resource type="ArrayMesh" uid="uid://ew2xtqrq5gk0" path="res://Assets/ARSpace/Models/搭配场景/室内风格/LOOK1/素材/卡通-家具桌椅/fbx/extracted/20. Tv Table.Plane_002.mesh" id="26_wqv82"]
+[ext_resource type="ArrayMesh" uid="uid://d3wvkwjy2v3on" path="res://Assets/ARSpace/Models/搭配场景/室内风格/LOOK1/素材/卡通-家具桌椅/fbx/extracted/10. Sofa.Cube_001.mesh" id="27_cp5r4"]
+[ext_resource type="Material" uid="uid://t6ph7qxgpbnk" path="res://Assets/ARSpace/Models/搭配场景/室内风格/LOOK1/素材/卡通-家具桌椅/fbx/extracted/10. Sofa.Orange003.material" id="28_lkcar"]
+[ext_resource type="ArrayMesh" uid="uid://ctvv5ouochwr8" path="res://Assets/ARSpace/Models/搭配场景/室内风格/LOOK1/素材/卡通-家具桌椅/fbx/extracted/10. Sofa.网格_001.mesh" id="29_kyp3r"]
+[ext_resource type="Material" uid="uid://be5laea7ygn07" path="res://Assets/ARSpace/Models/搭配场景/室内风格/LOOK1/素材/卡通-家具桌椅/fbx/extracted/10. Sofa.Dark001.material" id="30_lhgp2"]
+[ext_resource type="Material" uid="uid://o63vx36acwar" path="res://Assets/ARSpace/Models/搭配场景/室内风格/LOOK1/素材/卡通-家具桌椅/fbx/extracted/10. Sofa.eyes002.material" id="31_p625h"]
+[ext_resource type="ArrayMesh" uid="uid://cwjj78vtkjcbf" path="res://Assets/ARSpace/Models/搭配场景/室内风格/LOOK1/素材/卡通-家具桌椅/fbx/extracted/10. Sofa.Cube_002.mesh" id="32_vhoj7"]
+[ext_resource type="Material" uid="uid://b332pf330xiu3" path="res://Assets/ARSpace/Models/搭配场景/室内风格/LOOK1/素材/卡通-家具桌椅/fbx/extracted/10. Sofa.Dark Yellow002.material" id="33_56rge"]
+[ext_resource type="ArrayMesh" uid="uid://dbl5d0xrfwiy3" path="res://Assets/ARSpace/Models/搭配场景/室内风格/LOOK1/素材/卡通-家具桌椅/fbx/extracted/10. Sofa.网格.mesh" id="34_uhxdm"]
+[ext_resource type="PackedScene" uid="uid://c8l60rnugru40" path="res://addons/godot-xr-tools/objects/pickable.tscn" id="35_5eh3o"]
+[ext_resource type="ArrayMesh" uid="uid://cwgsc11oxic7i" path="res://Assets/ARSpace/Models/搭配场景/室内风格/LOOK1/素材/卡通-家具桌椅/fbx/extracted/18. Table.Cube_001.mesh" id="36_uo4fk"]
+[ext_resource type="Material" uid="uid://bv5ojki5u2sia" path="res://Assets/ARSpace/Models/搭配场景/室内风格/LOOK1/素材/卡通-家具桌椅/fbx/extracted/18. Table.Wood010.material" id="37_6npy7"]
+[ext_resource type="ArrayMesh" uid="uid://cdbc62gr2vwft" path="res://Assets/ARSpace/Models/搭配场景/室内风格/LOOK1/素材/卡通-家具桌椅/fbx/extracted/18. Table.Cube_002.mesh" id="38_y88fn"]
+[ext_resource type="ArrayMesh" uid="uid://mvvb5kdux0p0" path="res://Assets/ARSpace/Models/搭配场景/室内风格/LOOK1/素材/卡通-家具桌椅/fbx/extracted/18. Table.网格_004.mesh" id="39_4d6r0"]
+[ext_resource type="Material" uid="uid://cancchqp2bned" path="res://Assets/ARSpace/Models/搭配场景/室内风格/LOOK1/素材/卡通-家具桌椅/fbx/extracted/18. Table.Cup002.material" id="40_ke1em"]
+[ext_resource type="ArrayMesh" uid="uid://b7xlkamjaplg2" path="res://Assets/ARSpace/Models/搭配场景/室内风格/LOOK1/素材/卡通-家具桌椅/fbx/extracted/18. Table.网格.mesh" id="41_a80b2"]
+[ext_resource type="Material" uid="uid://c27tby6eyvr4j" path="res://Assets/ARSpace/Models/搭配场景/室内风格/LOOK1/素材/卡通-家具桌椅/fbx/extracted/18. Table.White006.material" id="42_clm8n"]
+[ext_resource type="Material" uid="uid://7pcpddhjddh2" path="res://Assets/ARSpace/Models/搭配场景/室内风格/LOOK1/素材/卡通-家具桌椅/fbx/extracted/18. Table.Dark003.material" id="43_i57mt"]
+[ext_resource type="ArrayMesh" uid="uid://dtfplwhns0amj" path="res://Assets/ARSpace/Models/搭配场景/室内风格/LOOK1/素材/卡通-家具桌椅/fbx/extracted/18. Table.网格_001.mesh" id="44_158jb"]
+[ext_resource type="Material" uid="uid://c6dsq5tcvd" path="res://Assets/ARSpace/Models/搭配场景/室内风格/LOOK1/素材/卡通-家具桌椅/fbx/extracted/18. Table.Green002.material" id="45_oi0jq"]
+[ext_resource type="ArrayMesh" uid="uid://d4gbbfml2teup" path="res://Assets/ARSpace/Models/搭配场景/室内风格/LOOK1/素材/卡通-家具桌椅/fbx/extracted/18. Table.网格_002.mesh" id="46_uo11q"]
+[ext_resource type="ArrayMesh" uid="uid://cbvyw20ugfi1m" path="res://Assets/ARSpace/Models/搭配场景/室内风格/LOOK1/素材/卡通-家具桌椅/fbx/extracted/18. Table.网格_003.mesh" id="47_dmi8h"]
+[ext_resource type="ArrayMesh" uid="uid://bwi6o7nob0v1u" path="res://Assets/ARSpace/Models/搭配场景/室内风格/LOOK1/素材/卡通-家具桌椅/fbx/extracted/18. Table.网格_005.mesh" id="48_duknp"]
+[ext_resource type="ArrayMesh" uid="uid://ovp7xatkley4" path="res://Assets/ARSpace/Models/搭配场景/室内风格/LOOK1/素材/卡通-家具桌椅/fbx/extracted/18. Table.Plane_001.mesh" id="49_ogtbl"]
+[ext_resource type="ArrayMesh" uid="uid://dgt1n2ujf6llu" path="res://Assets/ARSpace/Models/搭配场景/室内风格/LOOK1/素材/卡通-家具桌椅/fbx/extracted/18. Table.网格_006.mesh" id="50_5ue4d"]
+[ext_resource type="Material" uid="uid://kd3ssoion5gi" path="res://Assets/ARSpace/Models/搭配场景/室内风格/LOOK1/素材/卡通-家具桌椅/fbx/extracted/18. Table.Dark Yellow004.material" id="51_ce3nk"]
+[ext_resource type="ArrayMesh" uid="uid://csxfeqesv2de5" path="res://Assets/ARSpace/Models/搭配场景/室内风格/LOOK1/素材/卡通-家具桌椅/fbx/extracted/18. Table.Plane_002.mesh" id="52_hc02f"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Scenes/ARSpace.Malamute.tscn" id="53_q7t41"]
+[ext_resource type="PackedScene" uid="uid://clujaf3u776a3" path="res://addons/godot-xr-tools/objects/viewport_2d_in_3d.tscn" id="54_4gitt"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/MainMenuCanvas/MainMenuCanvasAR2D.tscn" id="55_iecw7"]
+[ext_resource type="PackedScene" uid="uid://clc5dre31iskm" path="res://addons/godot-xr-tools/xr/start_xr.tscn" id="56_0dm4r"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/PictureCanvas.tscn" id="57_ijmol"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/PictureInfoCanvas.tscn" id="58_q6r6r"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/MovieCanvas.tscn" id="59_c4ac8"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/MovieInfoCanvas.tscn" id="60_qufia"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/WorkListInfoCanvas.tscn" id="61_8h1ek"]
+[ext_resource type="Script" uid="uid://bdy27a8b0i3yy" path="res://Assets/ARSpace/Scripts/Network/multiplayer_spawner.gd" id="62_jv21g"]
+[ext_resource type="PackedScene" uid="uid://c0oao8sfhry88" path="res://Assets/ARSpace/Scenes/Player.tscn" id="63_toxth"]
+[ext_resource type="Script" uid="uid://hnn8flphryw0" path="res://Assets/ARSpace/Scenes/SpectatorCameraController.gd" id="64_escuv"]
+[ext_resource type="Script" uid="uid://cn1r7xfdwq04v" path="res://Assets/ARSpace/Scripts/UI/tree_list.gd" id="65_l4ah6"]
+[ext_resource type="PackedScene" uid="uid://dibqfutwftm8j" path="res://Assets/ARSpace/Scenes/godot-whisper/mic_transcribe.tscn" id="66_37o7n"]
+[ext_resource type="PackedScene" uid="uid://bv8x3yq7hfn1k" path="res://Assets/ARSpace/Scenes/voice_chat_ui.tscn" id="67_ltm1f"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_m4rif"]
+resource_name = "Default-Skybox"
+sky_top_color = Color(0.454902, 0.678431, 0.87451, 1)
+sky_horizon_color = Color(0.894118, 0.952941, 1, 1)
+sky_curve = 0.0731028
+ground_bottom_color = Color(0.454902, 0.470588, 0.490196, 1)
+ground_horizon_color = Color(1, 1, 1, 1)
+
+[sub_resource type="Sky" id="Sky_34xb6"]
+sky_material = SubResource("ProceduralSkyMaterial_m4rif")
+
+[sub_resource type="Environment" id="Environment_jwhk2"]
+background_mode = 1
+background_color = Color(0, 0, 0, 0)
+sky = SubResource("Sky_34xb6")
+fog_light_color = Color(0.5, 0.5, 0.5, 1)
+
+[sub_resource type="ArrayMesh" id="ArrayMesh_wkow0"]
+resource_name = "Quad"
+_surfaces = [{
+"aabb": AABB(-0.5, -0.5, 0, 1, 1, 1e-05),
+"attribute_data": PackedByteArray("AAAAAAAAgD8AAIA/AACAPwAAAAAAAAAAAACAPwAAAAA="),
+"format": 34359742487,
+"index_count": 6,
+"index_data": PackedByteArray("AQAAAAIAAwABAAIA"),
+"primitive": 3,
+"uv_scale": Vector4(0, 0, 0, 0),
+"vertex_count": 4,
+"vertex_data": PackedByteArray("AAAAPwAAAL8AAAAAAAAAvwAAAL8AAAAAAAAAPwAAAD8AAAAAAAAAvwAAAD8AAAAA/////////7//////////v/////////+//////////78=")
+}]
+
+[sub_resource type="ConcavePolygonShape3D" id="ConcavePolygonShape3D_6yffd"]
+data = PackedVector3Array(-0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, 0.5, 0, -0.5, 0.5, 0, -0.5, -0.5, 0, 0.5, 0.5, 0)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_34xb6"]
+albedo_texture = ExtResource("4_swovu")
+
+[sub_resource type="ConcavePolygonShape3D" id="ConcavePolygonShape3D_pi7ob"]
+data = PackedVector3Array(-0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, 0.5, 0, -0.5, 0.5, 0, -0.5, -0.5, 0, 0.5, 0.5, 0)
+
+[sub_resource type="ConcavePolygonShape3D" id="ConcavePolygonShape3D_eiau6"]
+data = PackedVector3Array(-0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, 0.5, 0, -0.5, 0.5, 0, -0.5, -0.5, 0, 0.5, 0.5, 0)
+
+[sub_resource type="ConcavePolygonShape3D" id="ConcavePolygonShape3D_iqg2v"]
+data = PackedVector3Array(-0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, 0.5, 0, -0.5, 0.5, 0, -0.5, -0.5, 0, 0.5, 0.5, 0)
+
+[sub_resource type="ConcavePolygonShape3D" id="ConcavePolygonShape3D_cddhk"]
+data = PackedVector3Array(-0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, 0.5, 0, -0.5, 0.5, 0, -0.5, -0.5, 0, 0.5, 0.5, 0)
+
+[sub_resource type="ConcavePolygonShape3D" id="ConcavePolygonShape3D_wl7s3"]
+data = PackedVector3Array(-0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, 0.5, 0, -0.5, 0.5, 0, -0.5, -0.5, 0, 0.5, 0.5, 0)
+
+[sub_resource type="ConcavePolygonShape3D" id="ConcavePolygonShape3D_4j7lv"]
+data = PackedVector3Array(-0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, 0.5, 0, -0.5, 0.5, 0, -0.5, -0.5, 0, 0.5, 0.5, 0)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_km1ue"]
+size = Vector3(1.1196, 1.06497, 0.148527)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_jccxf"]
+size = Vector3(1.1196, 1.06497, 0.148527)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_n4xrg"]
+size = Vector3(1.1196, 1.06497, 0.148527)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_0puw4"]
+size = Vector3(1.1196, 1.06497, 0.148527)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_58ctq"]
+size = Vector3(1.1196, 1.06497, 0.148527)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_2y8nd"]
+size = Vector3(1.1196, 1.06497, 0.148527)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_1f6eu"]
+size = Vector3(1.1196, 1.06497, 0.148527)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_ilpkx"]
+size = Vector3(1.1196, 1.06497, 0.148527)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_0g4xh"]
+size = Vector3(1.1196, 1.06497, 0.148527)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_u1bey"]
+size = Vector3(1.1196, 1.06497, 0.148527)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_eavd2"]
+size = Vector3(1.1196, 1.06497, 0.148527)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_g583a"]
+size = Vector3(1.1196, 1.06497, 0.148527)
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_k76qi"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_hbon4"]
+resource_name = "Default-Line"
+
+[sub_resource type="BoxMesh" id="BoxMesh_34xb6"]
+
+[sub_resource type="Skin" id="Skin_33alu"]
+resource_name = "Skin"
+bind_count = 24
+bind/0/name = &"Head"
+bind/0/bone = 0
+bind/0/pose = Transform3D(-0.00427409, 0.626651, 0.779289, -1.46588e-06, -0.779296, 0.626656, 0.999991, 0.0026772, 0.00333165, -8.37688, -21.1344, -0.0358147)
+bind/1/name = &"Bip001 Ponytail1"
+bind/1/bone = 1
+bind/1/pose = Transform3D(-1.9872e-06, -0.909345, -0.416043, -7.28647e-06, 0.416043, -0.909345, 1, 1.22405e-06, -7.45183e-06, -6.36622, 26.1396, 0.000200773)
+bind/2/name = &"Neck"
+bind/2/bone = 2
+bind/2/pose = Transform3D(-0.00427409, 0.626651, 0.779289, -1.46412e-06, -0.779296, 0.626657, 0.999991, 0.0026772, 0.00333165, -8.37687, -18.3035, -0.0358157)
+bind/3/name = &"Root"
+bind/3/bone = 3
+bind/3/pose = Transform3D(-0.0163456, -0.995957, -0.0883295, 0.982924, 0.000187833, -0.184011, 0.183284, -0.0898289, 0.978947, 7.36576, 3.13567, -16.1592)
+bind/4/name = &"LeftLowerLeg"
+bind/4/bone = 4
+bind/4/pose = Transform3D(-0.227438, 0.423346, 0.876955, 0.0863812, 0.905777, -0.414856, -0.969954, -0.0186014, -0.242577, -7.90628, -1.24106, 6.22231)
+bind/5/name = &"LeftFoot"
+bind/5/bone = 5
+bind/5/pose = Transform3D(0.227438, -0.423346, -0.876955, 0.969954, 0.0186014, 0.242577, -0.0863812, -0.905777, 0.414856, 7.90628, -6.22231, 7.86611)
+bind/6/name = &"LeftUpperLeg"
+bind/6/bone = 6
+bind/6/pose = Transform3D(-0.0304114, -0.990644, 0.133043, 0.247509, -0.136423, -0.959233, 0.968408, 0.00375768, 0.249342, 3.62139, 16.6615, -6.20114)
+bind/7/name = &"Hips"
+bind/7/bone = 7
+bind/7/pose = Transform3D(-0.00542033, 0.015073, 0.999872, -1.12625e-06, -0.999887, 0.0150732, 0.999985, 8.05265e-05, 0.00541969, -17.1332, 5.62621, -0.0928623)
+bind/8/name = &"RightLowerLeg"
+bind/8/bone = 8
+bind/8/pose = Transform3D(0.227437, 0.423345, 0.876956, -0.0863794, 0.905778, -0.414856, -0.969954, 0.0186027, 0.242576, -7.90628, -1.24107, -6.22229)
+bind/9/name = &"RightFoot"
+bind/9/bone = 9
+bind/9/pose = Transform3D(-0.227437, -0.423345, -0.876956, 0.969954, -0.0186027, -0.242576, 0.0863794, -0.905778, 0.414856, 7.90628, 6.2223, 7.86612)
+bind/10/name = &"RightUpperLeg"
+bind/10/bone = 10
+bind/10/pose = Transform3D(0.030409, -0.990644, 0.133043, -0.247507, -0.136422, -0.959233, 0.968409, -0.0037599, -0.24934, 3.6214, 16.6615, 6.20113)
+bind/11/name = &"Spine"
+bind/11/bone = 11
+bind/11/pose = Transform3D(-0.00542033, 0.015073, 0.999872, -1.13012e-06, -0.999887, 0.0150732, 0.999985, 8.05269e-05, 0.00541969, -17.1332, 2.53256, -0.0928623)
+bind/12/name = &"Chest"
+bind/12/bone = 12
+bind/12/pose = Transform3D(-0.00542033, 0.015073, 0.999872, -1.12686e-06, -0.999887, 0.0150732, 0.999985, 8.05238e-05, 0.00541969, -16.9679, -1.87917, -0.0919674)
+bind/13/name = &"Bip001 Tail"
+bind/13/bone = 13
+bind/13/pose = Transform3D(6.24004e-07, 0.983986, 0.178246, -4.01305e-06, -0.178246, 0.983986, 1, -1.32757e-06, 3.83835e-06, -14.5731, -14.2663, -4.95262e-05)
+bind/14/name = &"LeftToes"
+bind/14/bone = 14
+bind/14/pose = Transform3D(-0.227438, 0.423346, 0.876955, 0.969954, 0.0186014, 0.242577, 0.0863812, 0.905777, -0.414856, -3.83414, -5.10352, -9.70716)
+bind/15/name = &"RightToes"
+bind/15/bone = 15
+bind/15/pose = Transform3D(0.227437, 0.423345, 0.876956, 0.969954, -0.0186027, -0.242576, -0.0863794, 0.905778, -0.414856, -3.83414, 5.1035, -9.70717)
+bind/16/name = &"LeftShoulder"
+bind/16/bone = 16
+bind/16/pose = Transform3D(-0.650643, -0.475872, -0.591786, 0.707107, -0.0955184, -0.700625, 0.276881, -0.874313, 0.398641, 6.9433, 11.1132, -15.3051)
+bind/17/name = &"LeftLowerArm"
+bind/17/bone = 17
+bind/17/pose = Transform3D(-0.280321, 0.928531, -0.243414, -0.00214445, -0.254186, -0.967153, -0.959904, -0.270591, 0.0732451, 13.691, 2.4692, 1.26388)
+bind/18/name = &"LeftHand"
+bind/18/bone = 18
+bind/18/pose = Transform3D(0.959904, 0.270591, -0.0732452, -0.00214447, -0.254186, -0.967153, -0.280321, 0.928531, -0.243414, -1.22829, -1.25234, 13.7955)
+bind/19/name = &"LeftUpperArm"
+bind/19/bone = 19
+bind/19/pose = Transform3D(0.959904, 0.270591, -0.0732451, -0.00214445, -0.254186, -0.967153, -0.280321, 0.928531, -0.243414, -1.26388, 10.9777, 13.691)
+bind/20/name = &"RightShoulder"
+bind/20/bone = 20
+bind/20/pose = Transform3D(-0.650643, 0.475873, 0.591784, -0.707106, -0.0955175, -0.700627, -0.276884, -0.874312, 0.398641, -6.94327, 11.1132, -15.3051)
+bind/21/name = &"RightLowerArm"
+bind/21/bone = 21
+bind/21/pose = Transform3D(-0.280323, -0.928531, 0.243413, 0.00214693, -0.254186, -0.967153, 0.959904, -0.270592, 0.0732474, -13.6909, 2.4692, 1.26386)
+bind/22/name = &"RightHand"
+bind/22/bone = 22
+bind/22/pose = Transform3D(0.959903, -0.270593, 0.0732474, 0.00214695, -0.254186, -0.967153, 0.280323, 0.928531, -0.243414, 1.22827, -1.25234, 13.7954)
+bind/23/name = &"RightUpperArm"
+bind/23/bone = 23
+bind/23/pose = Transform3D(0.959903, -0.270592, 0.0732474, 0.00214694, -0.254186, -0.967153, 0.280323, 0.928531, -0.243414, 1.26386, 10.9777, 13.6909)
+metadata/humanoid_rotation_delta = {
+"Bip001 Ponytail1": Transform3D(0.702722, -0.556936, -0.442723, -0.311168, 0.319009, -0.895214, 0.639809, 0.766848, 0.0508739, 0, 0, -3.57628e-07),
+"Bip001 Tail": Transform3D(0.98671, 0.143882, -0.0755106, 0.0815287, -0.0363926, 0.996006, 0.14056, -0.988926, -0.0476396, 9.53674e-07, 0, -2.23517e-07),
+"Chest": Transform3D(0.0185096, 0.0227001, 0.999571, 0.997333, -0.0710115, -0.0168555, 0.0705985, 0.997217, -0.023954, 0, 2.38419e-07, 8.9407e-08),
+"Head": Transform3D(-0.490704, -0.353059, 0.796592, 0.696447, 0.39047, 0.602075, -0.523614, 0.850225, 0.0542816, 0, 0, -1.19209e-07),
+"Hips": Transform3D(0.00981889, -0.118959, 0.992851, 0.981397, -0.189242, -0.0323796, 0.191741, 0.974698, 0.114887, 0, 0, 0),
+"LeftFoot": Transform3D(-0.459799, 0.140955, 0.876765, -0.218814, 0.938897, -0.265695, -0.860643, -0.314015, -0.40086, 4.76837e-07, 0, 0),
+"LeftHand": Transform3D(-0.164541, 0.984683, 0.0576681, 0.105474, 0.0756941, -0.991537, -0.980716, -0.157066, -0.116314, 4.76837e-07, 7.15256e-07, 0),
+"LeftLowerArm": Transform3D(-0.503752, 0.802871, -0.318802, 0.230512, -0.230732, -0.945319, -0.832525, -0.549694, -0.068839, 0, 0, 0),
+"LeftLowerLeg": Transform3D(0.387255, -0.142454, -0.9109, 0.867746, -0.277522, 0.41231, -0.31153, -0.9501, 0.016142, -4.76837e-07, -2.38419e-07, 0),
+"LeftShoulder": Transform3D(-0.91034, 0.0630685, 0.409027, -0.014504, -0.992575, 0.120766, 0.413607, 0.104006, 0.904496, 0, 0, 0),
+"LeftToes": Transform3D(-0.442219, 0.189014, -0.876764, 0.117803, -0.956834, -0.265692, -0.889137, -0.22078, 0.400864, -4.76837e-07, 0, 0),
+"LeftUpperArm": Transform3D(0.969149, 0.236667, 0.0688388, 0.139176, -0.294963, -0.945319, -0.203421, 0.925736, -0.318802, -4.76837e-07, -9.53674e-07, -9.53674e-07),
+"LeftUpperLeg": Transform3D(-0.0073761, 0.992241, -0.124114, 0.0221512, 0.124249, 0.992004, 0.999728, 0.0045678, -0.0228956, 4.76837e-07, 0, 4.76837e-07),
+"Neck": Transform3D(-0.543457, -0.258384, 0.798681, 0.702113, 0.38158, 0.601194, -0.4601, 0.887488, -0.0259577, 0, 0, 0),
+"RightFoot": Transform3D(-0.346579, -0.35617, 0.86777, -0.264554, 0.924668, 0.273863, -0.899942, -0.134657, -0.414696, -9.53674e-07, -1.43051e-06, 1.43051e-06),
+"RightHand": Transform3D(0.942564, -0.329363, 0.0556064, -0.0701586, -0.357976, -0.931091, 0.326573, 0.873713, -0.360524, 2.38419e-07, 9.53674e-07, -9.53674e-07),
+"RightLowerArm": Transform3D(-0.821336, -0.54055, 0.18225, -0.142461, -0.114996, -0.983098, 0.55237, -0.833416, 0.0174419, 0, 1.19209e-06, 2.38419e-07),
+"RightLowerLeg": Transform3D(0.246029, -0.220703, -0.9438, 0.636866, -0.697225, 0.32906, -0.730666, -0.682033, -0.0309794, 4.76837e-07, -9.53674e-07, 4.76837e-07),
+"RightShoulder": Transform3D(-0.857965, 0.11902, 0.499731, 0.12468, 0.991948, -0.0221916, -0.498349, 0.0432669, -0.865897, -4.76837e-07, 0, 9.53674e-07),
+"RightToes": Transform3D(-0.346772, -0.361434, -0.865513, 0.269387, -0.922273, 0.277205, -0.898433, -0.137032, 0.417184, 9.53674e-07, -4.76837e-07, -9.53674e-07),
+"RightUpperArm": Transform3D(0.549489, -0.835319, 0.0174419, -0.142858, -0.114503, -0.983098, 0.823197, 0.53771, -0.182251, 0, 1.90735e-06, -9.53674e-07),
+"RightUpperLeg": Transform3D(0.602824, 0.797123, -0.0346372, -0.00814452, 0.0495573, 0.998738, 0.797833, -0.601781, 0.0363666, 9.53674e-07, 0, 0),
+"Spine": Transform3D(-0.18403, -0.00364501, 0.982914, 0.957526, -0.226506, 0.178437, 0.221985, 0.974003, 0.045174, 0, 7.15256e-07, 0)
+}
+
+[sub_resource type="QuadMesh" id="QuadMesh_34xb6"]
+resource_local_to_scene = true
+size = Vector2(620, 460)
+
+[sub_resource type="ViewportTexture" id="ViewportTexture_g432p"]
+viewport_path = NodePath("Viewport")
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_g432p"]
+transparency = 1
+cull_mode = 2
+shading_mode = 0
+albedo_texture = SubResource("ViewportTexture_g432p")
+texture_filter = 1
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_6yffd"]
+resource_local_to_scene = true
+size = Vector3(620, 460, 0.02)
+
+[node name="RootNode3D" type="Node3D" node_paths=PackedStringArray("subUI")]
+script = ExtResource("1_g432p")
+subUI = NodePath("UI/SubViewportContainer/SubViewport/Camera3D")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_jwhk2")
+
+[node name="SpaceBox" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1.49298)
+script = ExtResource("2_wjh8v")
+
+[node name="SpaceBox" type="Node3D" parent="SpaceBox"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -2.4)
+
+[node name="FrontDor" type="Node3D" parent="SpaceBox/SpaceBox"]
+transform = Transform3D(-2, 0, -1.74846e-07, 0, 2, 0, 1.74846e-07, 0, -2, 0, 1, 0.0716736)
+visible = false
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/FrontDor"]
+gi_mode = 2
+mesh = SubResource("ArrayMesh_wkow0")
+surface_material_override/0 = ExtResource("3_2envh")
+
+[node name="MeshCollider" type="StaticBody3D" parent="SpaceBox/SpaceBox/FrontDor"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="SpaceBox/SpaceBox/FrontDor/MeshCollider"]
+visible = false
+shape = SubResource("ConcavePolygonShape3D_6yffd")
+
+[node name="RightPlane" type="Node3D" parent="SpaceBox/SpaceBox"]
+transform = Transform3D(-2.62268e-07, 0, -2, 0, 2, 0, 6, 0, -8.74228e-08, -1, 1, 3.07167)
+visible = false
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/RightPlane"]
+material_override = SubResource("StandardMaterial3D_34xb6")
+gi_mode = 2
+mesh = SubResource("ArrayMesh_wkow0")
+surface_material_override/0 = ExtResource("5_ievty")
+
+[node name="MeshCollider" type="StaticBody3D" parent="SpaceBox/SpaceBox/RightPlane"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="SpaceBox/SpaceBox/RightPlane/MeshCollider"]
+visible = false
+shape = SubResource("ConcavePolygonShape3D_pi7ob")
+
+[node name="LeftPlane" type="Node3D" parent="SpaceBox/SpaceBox"]
+transform = Transform3D(-2.09815e-07, 0, 2, 0, 2, 0, -4.8, 0, -8.74228e-08, 1, 1, 2.47167)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/LeftPlane"]
+gi_mode = 2
+mesh = SubResource("ArrayMesh_wkow0")
+surface_material_override/0 = ExtResource("6_rrlaw")
+
+[node name="MeshCollider" type="StaticBody3D" parent="SpaceBox/SpaceBox/LeftPlane"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="SpaceBox/SpaceBox/LeftPlane/MeshCollider"]
+visible = false
+shape = SubResource("ConcavePolygonShape3D_eiau6")
+
+[node name="UpPlane" type="Node3D" parent="SpaceBox/SpaceBox"]
+transform = Transform3D(-2.62268e-07, 2, 8.74228e-08, 0, -8.74228e-08, 2, 6, 8.74228e-08, 3.82137e-15, 0, 1.97843, 3.07167)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/UpPlane"]
+transform = Transform3D(1, 0, 0, 0, 1, 8.35187e-23, 8.47033e-22, 8.35187e-23, 1, 0, 0, 0)
+gi_mode = 2
+mesh = SubResource("ArrayMesh_wkow0")
+surface_material_override/0 = ExtResource("7_b6upf")
+
+[node name="MeshCollider" type="StaticBody3D" parent="SpaceBox/SpaceBox/UpPlane"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="SpaceBox/SpaceBox/UpPlane/MeshCollider"]
+visible = false
+shape = SubResource("ConcavePolygonShape3D_iqg2v")
+disabled = true
+
+[node name="DownPlane" type="Node3D" parent="SpaceBox/SpaceBox"]
+transform = Transform3D(-2.62268e-07, -2, 8.74228e-08, 0, -8.74228e-08, -2, 6, -8.74228e-08, 3.82137e-15, 0, 0, 3.07167)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/DownPlane"]
+gi_mode = 2
+mesh = SubResource("ArrayMesh_wkow0")
+surface_material_override/0 = ExtResource("8_3u5fo")
+
+[node name="MeshCollider" type="StaticBody3D" parent="SpaceBox/SpaceBox/DownPlane"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="SpaceBox/SpaceBox/DownPlane/MeshCollider"]
+visible = false
+shape = SubResource("ConcavePolygonShape3D_cddhk")
+
+[node name="BackDor" type="Node3D" parent="SpaceBox/SpaceBox"]
+transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 1, 6.07167)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/BackDor"]
+gi_mode = 2
+mesh = SubResource("ArrayMesh_wkow0")
+surface_material_override/0 = ExtResource("9_irieg")
+
+[node name="MeshCollider" type="StaticBody3D" parent="SpaceBox/SpaceBox/BackDor"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="SpaceBox/SpaceBox/BackDor/MeshCollider"]
+visible = false
+shape = SubResource("ConcavePolygonShape3D_wl7s3")
+
+[node name="LeftPlane (1)" type="Node3D" parent="SpaceBox/SpaceBox"]
+transform = Transform3D(-5.24537e-08, 0, 2, 0, 2, 0, -1.2, 0, -8.74228e-08, 1, 1, 5.4)
+visible = false
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/LeftPlane (1)"]
+visible = false
+gi_mode = 2
+mesh = SubResource("ArrayMesh_wkow0")
+surface_material_override/0 = ExtResource("6_rrlaw")
+
+[node name="MeshCollider" type="StaticBody3D" parent="SpaceBox/SpaceBox/LeftPlane (1)"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="SpaceBox/SpaceBox/LeftPlane (1)/MeshCollider"]
+visible = false
+shape = SubResource("ConcavePolygonShape3D_4j7lv")
+
+[node name="SpaceObject" type="Node3D" parent="SpaceBox/SpaceBox"]
+
+[node name="Adsorb1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject"]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0.99, 1.5, 3.13)
+
+[node name="BoxCollider" type="Area3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb1"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb1/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0136746, -0.0377017, 0.00357074)
+shape = SubResource("BoxShape3D_km1ue")
+
+[node name="Canvas" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb1"]
+transform = Transform3D(0.001, 0, 0, 0, 0.001, 0, 0, 0, 0.001, 0, 0, 0)
+
+[node name="Canvas" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb1/Canvas"]
+
+[node name="Panel" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb1/Canvas"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb1/Canvas/Panel"]
+
+[node name="Adsorb2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject"]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0.99, 1.5, 4.33)
+
+[node name="BoxCollider" type="Area3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb2"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb2/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0136746, -0.0377017, 0.00357074)
+shape = SubResource("BoxShape3D_jccxf")
+
+[node name="Canvas" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb2"]
+transform = Transform3D(0.001, 0, 0, 0, 0.001, 0, 0, 0, 0.001, 0, 0, 0)
+
+[node name="Canvas" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb2/Canvas"]
+
+[node name="Panel" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb2/Canvas"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb2/Canvas/Panel"]
+
+[node name="Adsorb3" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject"]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0.99, 1.5, 5.53)
+
+[node name="BoxCollider" type="Area3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb3"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb3/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0136746, -0.0377017, 0.00357074)
+shape = SubResource("BoxShape3D_n4xrg")
+
+[node name="Canvas" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb3"]
+transform = Transform3D(0.001, 0, 0, 0, 0.001, 0, 0, 0, 0.001, 0, 0, 0)
+
+[node name="Canvas" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb3/Canvas"]
+
+[node name="Panel" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb3/Canvas"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb3/Canvas/Panel"]
+
+[node name="Adsorb4" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject"]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0.99, 0.5, 3.13)
+
+[node name="BoxCollider" type="Area3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb4"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb4/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0136746, -0.0377017, 0.00357074)
+shape = SubResource("BoxShape3D_0puw4")
+
+[node name="Canvas" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb4"]
+transform = Transform3D(0.001, 0, 0, 0, 0.001, 0, 0, 0, 0.001, 0, 0, 0)
+
+[node name="Canvas" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb4/Canvas"]
+
+[node name="Panel" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb4/Canvas"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb4/Canvas/Panel"]
+
+[node name="Adsorb5" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject"]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0.99, 0.5, 4.33)
+
+[node name="BoxCollider" type="Area3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb5"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb5/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0136746, -0.0377017, 0.00357074)
+shape = SubResource("BoxShape3D_58ctq")
+
+[node name="Canvas" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb5"]
+transform = Transform3D(0.001, 0, 0, 0, 0.001, 0, 0, 0, 0.001, 0, 0, 0)
+
+[node name="Canvas" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb5/Canvas"]
+
+[node name="Panel" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb5/Canvas"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb5/Canvas/Panel"]
+
+[node name="Adsorb6" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject"]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0.99, 0.5, 5.53)
+
+[node name="BoxCollider" type="Area3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb6"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb6/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0136746, -0.0377017, 0.00357074)
+shape = SubResource("BoxShape3D_2y8nd")
+
+[node name="Canvas" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb6"]
+transform = Transform3D(0.001, 0, 0, 0, 0.001, 0, 0, 0, 0.001, 0, 0, 0)
+
+[node name="Canvas" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb6/Canvas"]
+
+[node name="Panel" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb6/Canvas"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb6/Canvas/Panel"]
+
+[node name="---------------------" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject"]
+
+[node name="Adsorb1 (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject"]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, -0.99, 1.5, 3.13)
+
+[node name="BoxCollider" type="Area3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb1 (1)"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb1 (1)/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0136746, -0.0377017, 0.00357074)
+shape = SubResource("BoxShape3D_1f6eu")
+
+[node name="Canvas" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb1 (1)"]
+transform = Transform3D(0.001, 0, 0, 0, 0.001, 0, 0, 0, 0.001, 0, 0, 0)
+
+[node name="Canvas" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb1 (1)/Canvas"]
+
+[node name="Panel" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb1 (1)/Canvas"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb1 (1)/Canvas/Panel"]
+
+[node name="Adsorb2 (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject"]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, -0.99, 1.5, 4.33)
+
+[node name="BoxCollider" type="Area3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb2 (1)"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb2 (1)/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0136746, -0.0377017, 0.00357074)
+shape = SubResource("BoxShape3D_ilpkx")
+
+[node name="Canvas" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb2 (1)"]
+transform = Transform3D(0.001, 0, 0, 0, 0.001, 0, 0, 0, 0.001, 0, 0, 0)
+
+[node name="Canvas" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb2 (1)/Canvas"]
+
+[node name="Panel" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb2 (1)/Canvas"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb2 (1)/Canvas/Panel"]
+
+[node name="Adsorb3 (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject"]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, -0.99, 1.5, 5.53)
+
+[node name="BoxCollider" type="Area3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb3 (1)"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb3 (1)/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0136746, -0.0377017, 0.00357074)
+shape = SubResource("BoxShape3D_0g4xh")
+
+[node name="Canvas" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb3 (1)"]
+transform = Transform3D(0.001, 0, 0, 0, 0.001, 0, 0, 0, 0.001, 0, 0, 0)
+
+[node name="Canvas" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb3 (1)/Canvas"]
+
+[node name="Panel" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb3 (1)/Canvas"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb3 (1)/Canvas/Panel"]
+
+[node name="Adsorb4 (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject"]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, -0.99, 0.5, 3.13)
+
+[node name="BoxCollider" type="Area3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb4 (1)"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb4 (1)/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0136746, -0.0377017, 0.00357074)
+shape = SubResource("BoxShape3D_u1bey")
+
+[node name="Canvas" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb4 (1)"]
+transform = Transform3D(0.001, 0, 0, 0, 0.001, 0, 0, 0, 0.001, 0, 0, 0)
+
+[node name="Canvas" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb4 (1)/Canvas"]
+
+[node name="Panel" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb4 (1)/Canvas"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb4 (1)/Canvas/Panel"]
+
+[node name="Adsorb5 (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject"]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, -0.99, 0.5, 4.33)
+
+[node name="BoxCollider" type="Area3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb5 (1)"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb5 (1)/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0136746, -0.0377017, 0.00357074)
+shape = SubResource("BoxShape3D_eavd2")
+
+[node name="Canvas" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb5 (1)"]
+transform = Transform3D(0.001, 0, 0, 0, 0.001, 0, 0, 0, 0.001, 0, 0, 0)
+
+[node name="Canvas" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb5 (1)/Canvas"]
+
+[node name="Panel" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb5 (1)/Canvas"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb5 (1)/Canvas/Panel"]
+
+[node name="Adsorb6 (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject"]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, -0.99, 0.5, 5.53)
+
+[node name="BoxCollider" type="Area3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb6 (1)"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb6 (1)/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0136746, -0.0377017, 0.00357074)
+shape = SubResource("BoxShape3D_g583a")
+
+[node name="Canvas" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb6 (1)"]
+transform = Transform3D(0.001, 0, 0, 0, 0.001, 0, 0, 0, 0.001, 0, 0, 0)
+
+[node name="Canvas" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb6 (1)/Canvas"]
+
+[node name="Panel" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb6 (1)/Canvas"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Adsorb6 (1)/Canvas/Panel"]
+
+[node name="Time" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject"]
+transform = Transform3D(-3.92528e-10, 0, -0.00898, 0, 0.00898, 0, 0.00898, 0, -3.92528e-10, -0.983, 1.821, 0.894)
+visible = false
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/SpaceObject/Time"]
+cast_shadow = 0
+gi_mode = 2
+
+[node name="Label3D" type="Label3D" parent="SpaceBox/SpaceBox/SpaceObject/Time"]
+text = "12 00"
+font_size = 270
+outline_size = 4
+horizontal_alignment = 0
+
+[node name="Dash" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Time"]
+transform = Transform3D(60.2385, 0, 0, 0, 30, 0, 0, 0, 1, 0, 0, -2.7)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/SpaceObject/Time/Dash"]
+cast_shadow = 0
+gi_mode = 2
+mesh = SubResource("ArrayMesh_wkow0")
+surface_material_override/0 = ExtResource("10_qiy6x")
+
+[node name="Spline1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject"]
+transform = Transform3D(1.11111, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 1.68)
+visible = false
+
+[node name="Spline0" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline1"]
+
+[node name="Handle1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline1/Spline0"]
+
+[node name="Handle2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline1/Spline0"]
+
+[node name="Spline1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -1.257)
+
+[node name="Handle1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline1/Spline1"]
+
+[node name="Handle2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline1/Spline1"]
+
+[node name="Spline2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.884, 0, -1.257)
+
+[node name="Handle1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline1/Spline2"]
+
+[node name="Handle2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline1/Spline2"]
+
+[node name="Spline3" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.884, 0.88, -1.257)
+
+[node name="Handle1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline1/Spline3"]
+
+[node name="Handle2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline1/Spline3"]
+
+[node name="FX_Geo_2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline1"]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 0.884, 0.989, -1.257)
+
+[node name="ParticleSystem" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Spline1/FX_Geo_2"]
+
+[node name="ParticleSystemRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Spline1/FX_Geo_2"]
+
+[node name="New Text" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline1"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.884, 1.208, -1.344)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline1/New Text"]
+gi_mode = 2
+
+[node name="Label3D" type="Label3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline1/New Text"]
+modulate = Color(1, 0, 0.835294, 1)
+text = "货包"
+font_size = 100
+outline_size = 4
+horizontal_alignment = 0
+vertical_alignment = 0
+
+[node name="Spline2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject"]
+transform = Transform3D(1.11111, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 1.68)
+visible = false
+
+[node name="Spline0" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline2"]
+
+[node name="Handle1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline2/Spline0"]
+
+[node name="Handle2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline2/Spline0"]
+
+[node name="Spline1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline2"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.784)
+
+[node name="Handle1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline2/Spline1"]
+
+[node name="Handle2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline2/Spline1"]
+
+[node name="Spline2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline2"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.884, 0, -0.784)
+
+[node name="Handle1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline2/Spline2"]
+
+[node name="Handle2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline2/Spline2"]
+
+[node name="Spline3" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline2"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.884, 0.88, -0.784)
+
+[node name="Handle1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline2/Spline3"]
+
+[node name="Handle2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline2/Spline3"]
+
+[node name="FX_Geo_2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline2"]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 0.884, 0.989, -0.784)
+
+[node name="ParticleSystem" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Spline2/FX_Geo_2"]
+
+[node name="ParticleSystemRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Spline2/FX_Geo_2"]
+
+[node name="New Text" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline2"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.884, 1.208, -0.871)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline2/New Text"]
+gi_mode = 2
+
+[node name="Label3D" type="Label3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline2/New Text"]
+modulate = Color(1, 0, 0.835294, 1)
+text = "WIFI"
+font_size = 100
+outline_size = 4
+horizontal_alignment = 0
+vertical_alignment = 0
+
+[node name="Spline3" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject"]
+transform = Transform3D(1.11111, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 1.68)
+visible = false
+
+[node name="Spline0" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline3"]
+
+[node name="Handle1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline3/Spline0"]
+
+[node name="Handle2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline3/Spline0"]
+
+[node name="Spline1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline3"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1.208)
+
+[node name="Handle1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline3/Spline1"]
+
+[node name="Handle2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline3/Spline1"]
+
+[node name="Spline2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline3"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.884, 0, 1.208)
+
+[node name="Handle1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline3/Spline2"]
+
+[node name="Handle2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline3/Spline2"]
+
+[node name="Spline3" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline3"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.884, 0.88, 1.208)
+
+[node name="Handle1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline3/Spline3"]
+
+[node name="Handle2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline3/Spline3"]
+
+[node name="FX_Geo_2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline3"]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 0.884, 0.989, 1.208)
+
+[node name="ParticleSystem" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Spline3/FX_Geo_2"]
+
+[node name="ParticleSystemRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Spline3/FX_Geo_2"]
+
+[node name="New Text" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline3"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.884, 1.208, 1.019)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline3/New Text"]
+gi_mode = 2
+
+[node name="Label3D" type="Label3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline3/New Text"]
+modulate = Color(1, 0, 0.835294, 1)
+text = "健身区域"
+font_size = 100
+outline_size = 4
+horizontal_alignment = 0
+vertical_alignment = 0
+
+[node name="Canvas" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline3"]
+transform = Transform3D(-4.37114e-11, 0, -0.001, 0, 0.001, 0, 0.001, 0, -4.37114e-11, 0, 0, 1.2408)
+
+[node name="Canvas" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Spline3/Canvas"]
+
+[node name="Panel" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline3/Canvas"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Spline3/Canvas/Panel"]
+
+[node name="Spline4" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject"]
+transform = Transform3D(1.11111, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 1.68)
+visible = false
+
+[node name="Spline0" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline4"]
+
+[node name="Handle1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline4/Spline0"]
+
+[node name="Handle2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline4/Spline0"]
+
+[node name="Spline1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline4"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2.458)
+
+[node name="Handle1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline4/Spline1"]
+
+[node name="Handle2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline4/Spline1"]
+
+[node name="Spline2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline4"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.884, 0, 2.458)
+
+[node name="Handle1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline4/Spline2"]
+
+[node name="Handle2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline4/Spline2"]
+
+[node name="Spline3" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline4"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.884, 0.88, 2.458)
+
+[node name="Handle1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline4/Spline3"]
+
+[node name="Handle2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline4/Spline3"]
+
+[node name="FX_Geo_2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline4"]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 0.884, 0.989, 2.458)
+
+[node name="ParticleSystem" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Spline4/FX_Geo_2"]
+
+[node name="ParticleSystemRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Spline4/FX_Geo_2"]
+
+[node name="New Text" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline4"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.884, 1.208, 2.246)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline4/New Text"]
+gi_mode = 2
+
+[node name="Label3D" type="Label3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline4/New Text"]
+modulate = Color(1, 0, 0.835294, 1)
+text = "基础医学柜"
+font_size = 100
+outline_size = 4
+horizontal_alignment = 0
+vertical_alignment = 0
+
+[node name="Canvas (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline4"]
+transform = Transform3D(-4.37114e-11, 0, -0.001, 0, 0.001, 0, 0.001, 0, -4.37114e-11, 0, 0, 2.5091)
+
+[node name="Canvas" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Spline4/Canvas (1)"]
+
+[node name="Panel" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline4/Canvas (1)"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Spline4/Canvas (1)/Panel"]
+
+[node name="Spline5" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject"]
+transform = Transform3D(1.11111, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 1.68)
+visible = false
+
+[node name="Spline0" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline5"]
+
+[node name="Handle1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline5/Spline0"]
+
+[node name="Handle2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline5/Spline0"]
+
+[node name="Spline1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline5"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 3.658)
+
+[node name="Handle1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline5/Spline1"]
+
+[node name="Handle2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline5/Spline1"]
+
+[node name="Spline2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline5"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.884, 0, 3.658)
+
+[node name="Handle1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline5/Spline2"]
+
+[node name="Handle2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline5/Spline2"]
+
+[node name="Spline3" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline5"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.884, 0.88, 3.658)
+
+[node name="Handle1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline5/Spline3"]
+
+[node name="Handle2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline5/Spline3"]
+
+[node name="FX_Geo_2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline5"]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 0.884, 0.989, 3.658)
+
+[node name="ParticleSystem" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Spline5/FX_Geo_2"]
+
+[node name="ParticleSystemRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Spline5/FX_Geo_2"]
+
+[node name="New Text" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline5"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.884, 1.208, 3.37)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline5/New Text"]
+gi_mode = 2
+
+[node name="Label3D" type="Label3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline5/New Text"]
+modulate = Color(1, 0, 0.835294, 1)
+text = "无容器实验台"
+font_size = 100
+outline_size = 4
+horizontal_alignment = 0
+vertical_alignment = 0
+
+[node name="Canvas (2)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline5"]
+transform = Transform3D(-4.37114e-11, 0, -0.001, 0, 0.001, 0, 0.001, 0, -4.37114e-11, 0, 0, 3.6966)
+
+[node name="Canvas" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Spline5/Canvas (2)"]
+
+[node name="Panel" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline5/Canvas (2)"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Spline5/Canvas (2)/Panel"]
+
+[node name="Spline6" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject"]
+transform = Transform3D(1.11111, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 1.68)
+visible = false
+
+[node name="Spline0" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline6"]
+
+[node name="Handle1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline6/Spline0"]
+
+[node name="Handle2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline6/Spline0"]
+
+[node name="Spline1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline6"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 3.658)
+
+[node name="Handle1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline6/Spline1"]
+
+[node name="Handle2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline6/Spline1"]
+
+[node name="Spline2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline6"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.884, 0, 3.658)
+
+[node name="Handle1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline6/Spline2"]
+
+[node name="Handle2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline6/Spline2"]
+
+[node name="Spline3" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline6"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.884, 0.88, 3.658)
+
+[node name="Handle1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline6/Spline3"]
+
+[node name="Handle2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline6/Spline3"]
+
+[node name="FX_Geo_2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline6"]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, -0.884, 0.989, 3.658)
+
+[node name="ParticleSystem" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Spline6/FX_Geo_2"]
+
+[node name="ParticleSystemRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Spline6/FX_Geo_2"]
+
+[node name="New Text" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline6"]
+transform = Transform3D(-4.10554e-10, 0, -0.00939239, 0, 0.00939239, 0, 0.00939239, 0, -4.10554e-10, -0.884, 1.208, 3.878)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline6/New Text"]
+gi_mode = 2
+
+[node name="Label3D" type="Label3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline6/New Text"]
+modulate = Color(1, 0, 0.835294, 1)
+text = "高微实验柜"
+font_size = 100
+outline_size = 4
+horizontal_alignment = 0
+vertical_alignment = 0
+
+[node name="Canvas (3)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline6"]
+transform = Transform3D(-4.37114e-11, 0, 0.001, 0, 0.001, 0, -0.001, 0, -4.37114e-11, 0, 0, 3.6966)
+
+[node name="Canvas" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Spline6/Canvas (3)"]
+
+[node name="Panel" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline6/Canvas (3)"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Spline6/Canvas (3)/Panel"]
+
+[node name="Spline7" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject"]
+transform = Transform3D(1.11111, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 1.68)
+visible = false
+
+[node name="Spline0" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline7"]
+
+[node name="Handle1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline7/Spline0"]
+
+[node name="Handle2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline7/Spline0"]
+
+[node name="Spline1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline7"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2.495)
+
+[node name="Handle1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline7/Spline1"]
+
+[node name="Handle2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline7/Spline1"]
+
+[node name="Spline2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline7"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.884, 0, 2.495)
+
+[node name="Handle1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline7/Spline2"]
+
+[node name="Handle2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline7/Spline2"]
+
+[node name="Spline3" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline7"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.884, 1.339, 2.495)
+
+[node name="Handle1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline7/Spline3"]
+
+[node name="Handle2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline7/Spline3"]
+
+[node name="FX_Geo_2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline7"]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, -0.884, 1.448, 2.495)
+
+[node name="ParticleSystem" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Spline7/FX_Geo_2"]
+
+[node name="ParticleSystemRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Spline7/FX_Geo_2"]
+
+[node name="New Text" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline7"]
+transform = Transform3D(-4.10554e-10, 0, -0.00939239, 0, 0.00939239, 0, 0.00939239, 0, -4.10554e-10, -0.884, 1.667, 2.666)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline7/New Text"]
+gi_mode = 2
+
+[node name="Label3D" type="Label3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline7/New Text"]
+modulate = Color(1, 0, 0.835294, 1)
+text = "通信区域"
+font_size = 100
+outline_size = 4
+horizontal_alignment = 0
+vertical_alignment = 0
+
+[node name="Canvas (4)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline7"]
+transform = Transform3D(-4.37114e-11, 0, 0.001, 0, 0.001, 0, -0.001, 0, -4.37114e-11, 0, 0, 2.4571)
+
+[node name="Canvas" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Spline7/Canvas (4)"]
+
+[node name="Panel" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline7/Canvas (4)"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Spline7/Canvas (4)/Panel"]
+
+[node name="Spline8" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject"]
+transform = Transform3D(1.11111, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 1.68)
+visible = false
+
+[node name="Spline0" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline8"]
+
+[node name="Handle1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline8/Spline0"]
+
+[node name="Handle2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline8/Spline0"]
+
+[node name="Spline1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline8"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.204)
+
+[node name="Handle1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline8/Spline1"]
+
+[node name="Handle2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline8/Spline1"]
+
+[node name="Spline2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline8"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.884, 0, 0.204)
+
+[node name="Handle1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline8/Spline2"]
+
+[node name="Handle2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline8/Spline2"]
+
+[node name="Spline3" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline8"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.884, 1.339, 0.204)
+
+[node name="Handle1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline8/Spline3"]
+
+[node name="Handle2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline8/Spline3"]
+
+[node name="FX_Geo_2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline8"]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, -0.884, 1.448, 0.204)
+
+[node name="ParticleSystem" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Spline8/FX_Geo_2"]
+
+[node name="ParticleSystemRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Spline8/FX_Geo_2"]
+
+[node name="New Text" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline8"]
+transform = Transform3D(-4.10554e-10, 0, -0.00939239, 0, 0.00939239, 0, 0.00939239, 0, -4.10554e-10, -0.884, 1.667, 0.375)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline8/New Text"]
+gi_mode = 2
+
+[node name="Label3D" type="Label3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline8/New Text"]
+modulate = Color(1, 0, 0.835294, 1)
+text = "食品区域"
+font_size = 100
+outline_size = 4
+horizontal_alignment = 0
+vertical_alignment = 0
+
+[node name="Canvas (5)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline8"]
+transform = Transform3D(-4.37114e-11, 0, 0.001, 0, 0.001, 0, -0.001, 0, -4.37114e-11, 0, 0, 0.181)
+
+[node name="Canvas" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Spline8/Canvas (5)"]
+
+[node name="Panel" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline8/Canvas (5)"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Spline8/Canvas (5)/Panel"]
+
+[node name="Spline9" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject"]
+transform = Transform3D(1.11111, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 1.68)
+visible = false
+
+[node name="Spline0" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline9"]
+
+[node name="Handle1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline9/Spline0"]
+
+[node name="Handle2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline9/Spline0"]
+
+[node name="Spline1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline9"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.585)
+
+[node name="Handle1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline9/Spline1"]
+
+[node name="Handle2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline9/Spline1"]
+
+[node name="Spline2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline9"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.884, 0, -0.585)
+
+[node name="Handle1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline9/Spline2"]
+
+[node name="Handle2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline9/Spline2"]
+
+[node name="Spline3" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline9"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.884, 0.984, -0.585)
+
+[node name="Handle1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline9/Spline3"]
+
+[node name="Handle2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline9/Spline3"]
+
+[node name="FX_Geo_2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline9"]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, -0.884, 1.093, -0.585)
+
+[node name="ParticleSystem" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Spline9/FX_Geo_2"]
+
+[node name="ParticleSystemRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Spline9/FX_Geo_2"]
+
+[node name="New Text" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline9"]
+transform = Transform3D(-4.10554e-10, 0, -0.00939239, 0, 0.00939239, 0, 0.00939239, 0, -4.10554e-10, -0.884, 1.312, -0.453)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline9/New Text"]
+gi_mode = 2
+
+[node name="Label3D" type="Label3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline9/New Text"]
+modulate = Color(1, 0, 0.835294, 1)
+text = "饮水机"
+font_size = 100
+outline_size = 4
+horizontal_alignment = 0
+vertical_alignment = 0
+
+[node name="Spline10" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject"]
+transform = Transform3D(1.11111, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 1.68)
+visible = false
+
+[node name="Spline0" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline10"]
+
+[node name="Handle1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline10/Spline0"]
+
+[node name="Handle2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline10/Spline0"]
+
+[node name="Spline1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline10"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.585)
+
+[node name="Handle1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline10/Spline1"]
+
+[node name="Handle2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline10/Spline1"]
+
+[node name="Spline2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline10"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.884, 0, -0.585)
+
+[node name="Handle1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline10/Spline2"]
+
+[node name="Handle2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline10/Spline2"]
+
+[node name="Spline3" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline10"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.884, 0.635, -0.585)
+
+[node name="Handle1" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline10/Spline3"]
+
+[node name="Handle2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline10/Spline3"]
+
+[node name="FX_Geo_2" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline10"]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, -0.884, 0.744, -0.585)
+
+[node name="ParticleSystem" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Spline10/FX_Geo_2"]
+
+[node name="ParticleSystemRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/Spline10/FX_Geo_2"]
+
+[node name="New Text" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline10"]
+transform = Transform3D(-4.10554e-10, 0, -0.00939239, 0, 0.00939239, 0, 0.00939239, 0, -4.10554e-10, -0.884, 0.963, -0.453)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline10/New Text"]
+gi_mode = 2
+
+[node name="Label3D" type="Label3D" parent="SpaceBox/SpaceBox/SpaceObject/Spline10/New Text"]
+modulate = Color(1, 0, 0.835294, 1)
+text = "微波炉"
+font_size = 100
+outline_size = 4
+horizontal_alignment = 0
+vertical_alignment = 0
+
+[node name="WorkTips" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject"]
+visible = false
+
+[node name="Canvas(WorkGuide)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips"]
+transform = Transform3D(-4.37114e-11, 0, 0.001, 0, 0.001, 0, -0.001, 0, -4.37114e-11, 0, 0, 2.9886)
+
+[node name="Canvas" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)"]
+
+[node name="Worning" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/Worning"]
+
+[node name="Animation" type="AnimationPlayer" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/Worning"]
+libraries = {
+&"": SubResource("AnimationLibrary_k76qi")
+}
+
+[node name="Worning" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/Worning"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/Worning/Worning"]
+
+[node name="Title" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/Worning"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/Worning/Title"]
+
+[node name="Image" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/Worning"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/Worning/Image"]
+
+[node name="WorkGuide" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide"]
+
+[node name="Drager" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide" instance=ExtResource("11_gl0pi")]
+
+[node name="Title" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/Title"]
+
+[node name="Image" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/Title"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/Title/Image"]
+
+[node name="List View Custom" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide"]
+
+[node name="Scroll Area" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area"]
+
+[node name="List" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area/List"]
+
+[node name="Image" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area/List"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area/List/Image"]
+
+[node name="Text (TMP)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area/List/Image"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 9.31322e-07)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area/List/Image/Text (TMP)"]
+
+[node name="Text (TMP) (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area/List/Image"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2.23517e-05)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area/List/Image/Text (TMP) (1)"]
+
+[node name="Image (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area/List/Image"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area/List/Image/Image (1)"]
+
+[node name="Image (2)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area/List/Image"]
+transform = Transform3D(-4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0, 0, 1, 0, 0, -3.72529e-06)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area/List/Image/Image (2)"]
+
+[node name="Image (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area/List"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area/List/Image (1)"]
+
+[node name="Text (TMP)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area/List/Image (1)"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 9.31322e-07)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area/List/Image (1)/Text (TMP)"]
+
+[node name="Text (TMP) (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area/List/Image (1)"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2.23517e-05)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area/List/Image (1)/Text (TMP) (1)"]
+
+[node name="Image (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area/List/Image (1)"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -3.72529e-06)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area/List/Image (1)/Image (1)"]
+
+[node name="Image (2)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area/List/Image (1)"]
+transform = Transform3D(-4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0, 0, 1, 0, 0, -3.72529e-06)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area/List/Image (1)/Image (2)"]
+
+[node name="Image (2)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area/List"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area/List/Image (2)"]
+
+[node name="Text (TMP)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area/List/Image (2)"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 9.31322e-07)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area/List/Image (2)/Text (TMP)"]
+
+[node name="Text (TMP) (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area/List/Image (2)"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2.23517e-05)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area/List/Image (2)/Text (TMP) (1)"]
+
+[node name="Image (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area/List/Image (2)"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -3.72529e-06)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area/List/Image (2)/Image (1)"]
+
+[node name="Image (2)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area/List/Image (2)"]
+transform = Transform3D(-4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0, 0, 1, 0, 0, -3.72529e-06)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area/List/Image (2)/Image (2)"]
+
+[node name="Image (3)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area/List"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area/List/Image (3)"]
+
+[node name="Text (TMP)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area/List/Image (3)"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 9.31322e-07)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area/List/Image (3)/Text (TMP)"]
+
+[node name="Text (TMP) (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area/List/Image (3)"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area/List/Image (3)/Text (TMP) (1)"]
+
+[node name="Image (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area/List/Image (3)"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -3.72529e-06)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area/List/Image (3)/Image (1)"]
+
+[node name="Image (2)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area/List/Image (3)"]
+transform = Transform3D(-4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0, 0, 1, 0, 0, -3.72529e-06)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scroll Area/List/Image (3)/Image (2)"]
+
+[node name="Scrollbar" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom"]
+
+[node name="Background" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scrollbar"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scrollbar/Background"]
+
+[node name="Sliding Area" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scrollbar"]
+
+[node name="Handle" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scrollbar/Sliding Area"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/List View Custom/Scrollbar/Sliding Area/Handle"]
+
+[node name="WorkDeviceGuide" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide"]
+
+[node name="Drager" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide" instance=ExtResource("11_gl0pi")]
+
+[node name="Title" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/Title"]
+
+[node name="Image" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/Title"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/Title/Image"]
+
+[node name="List View Custom" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide"]
+
+[node name="Scroll Area" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area"]
+
+[node name="List" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List"]
+
+[node name="Item (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (1)"]
+
+[node name="Text (TMP)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (1)"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 9.31322e-07)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (1)/Text (TMP)"]
+
+[node name="Text (TMP) (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (1)"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2.23517e-05)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (1)/Text (TMP) (1)"]
+
+[node name="Image (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (1)"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (1)/Image (1)"]
+
+[node name="Image (2)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (1)"]
+transform = Transform3D(-4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0, 0, 1, 0, 0, -3.72529e-06)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (1)/Image (2)"]
+
+[node name="Item (2)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (2)"]
+
+[node name="Text (TMP)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (2)"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 9.31322e-07)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (2)/Text (TMP)"]
+
+[node name="Text (TMP) (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (2)"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2.23517e-05)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (2)/Text (TMP) (1)"]
+
+[node name="Image (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (2)"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (2)/Image (1)"]
+
+[node name="Image (2)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (2)"]
+transform = Transform3D(-4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0, 0, 1, 0, 0, -3.72529e-06)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (2)/Image (2)"]
+
+[node name="Item (4)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (4)"]
+
+[node name="Text (TMP)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (4)"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 9.31322e-07)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (4)/Text (TMP)"]
+
+[node name="Text (TMP) (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (4)"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2.23517e-05)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (4)/Text (TMP) (1)"]
+
+[node name="Image (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (4)"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (4)/Image (1)"]
+
+[node name="Image (2)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (4)"]
+transform = Transform3D(-4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0, 0, 1, 0, 0, -3.72529e-06)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (4)/Image (2)"]
+
+[node name="Item (5)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (5)"]
+
+[node name="Text (TMP)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (5)"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 9.31322e-07)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (5)/Text (TMP)"]
+
+[node name="Text (TMP) (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (5)"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2.23517e-05)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (5)/Text (TMP) (1)"]
+
+[node name="Image (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (5)"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (5)/Image (1)"]
+
+[node name="Image (2)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (5)"]
+transform = Transform3D(-4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0, 0, 1, 0, 0, -3.72529e-06)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (5)/Image (2)"]
+
+[node name="Item (6)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (6)"]
+
+[node name="Text (TMP)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (6)"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 9.31322e-07)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (6)/Text (TMP)"]
+
+[node name="Text (TMP) (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (6)"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2.23517e-05)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (6)/Text (TMP) (1)"]
+
+[node name="Image (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (6)"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (6)/Image (1)"]
+
+[node name="Image (2)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (6)"]
+transform = Transform3D(-4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0, 0, 1, 0, 0, -3.72529e-06)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (6)/Image (2)"]
+
+[node name="Item (7)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (7)"]
+
+[node name="Text (TMP)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (7)"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 9.31322e-07)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (7)/Text (TMP)"]
+
+[node name="Text (TMP) (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (7)"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2.23517e-05)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (7)/Text (TMP) (1)"]
+
+[node name="Image (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (7)"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (7)/Image (1)"]
+
+[node name="Image (2)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (7)"]
+transform = Transform3D(-4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0, 0, 1, 0, 0, -3.72529e-06)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scroll Area/List/Item (7)/Image (2)"]
+
+[node name="Scrollbar" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom"]
+
+[node name="Background" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scrollbar"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scrollbar/Background"]
+
+[node name="Sliding Area" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scrollbar"]
+
+[node name="Handle" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scrollbar/Sliding Area"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/List View Custom/Scrollbar/Sliding Area/Handle"]
+
+[node name="Canvas(WorkTask)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips"]
+transform = Transform3D(7.54979e-11, 0, -0.001, 0, 0.001, 0, 0.001, 0, 7.54979e-11, 0, 0, 3.5282)
+
+[node name="Canvas" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)"]
+
+[node name="WorkTask" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask"]
+
+[node name="Drager" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask" instance=ExtResource("11_gl0pi")]
+
+[node name="Title" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Title"]
+
+[node name="Image" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Title"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Title/Image"]
+
+[node name="Menu" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Menu"]
+
+[node name="Task" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Menu"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -2.98023e-05)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Menu/Task"]
+
+[node name="Text (TMP)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Menu/Task"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Menu/Task/Text (TMP)"]
+
+[node name="Task (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Menu"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Menu/Task (1)"]
+
+[node name="Text (TMP)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Menu/Task (1)"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Menu/Task (1)/Text (TMP)"]
+
+[node name="Task (2)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Menu"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2.98023e-05)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Menu/Task (2)"]
+
+[node name="Text (TMP)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Menu/Task (2)"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Menu/Task (2)/Text (TMP)"]
+
+[node name="Context" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context"]
+
+[node name="Text (TMP)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context/Text (TMP)"]
+
+[node name="Button" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context/Button"]
+
+[node name="Image" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context/Button"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context/Button/Image"]
+
+[node name="Text (TMP) (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context/Text (TMP) (1)"]
+
+[node name="Context (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)"]
+
+[node name="Button" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/Button"]
+
+[node name="Image" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/Button"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/Button/Image"]
+
+[node name="List View Custom (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)"]
+
+[node name="Scroll Area" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/List View Custom (1)"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/List View Custom (1)/Scroll Area"]
+
+[node name="List" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/List View Custom (1)/Scroll Area"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/List View Custom (1)/Scroll Area/List"]
+
+[node name="Image" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/List View Custom (1)/Scroll Area/List"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/List View Custom (1)/Scroll Area/List/Image"]
+
+[node name="Text (TMP)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/List View Custom (1)/Scroll Area/List/Image"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 9.31322e-07)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/List View Custom (1)/Scroll Area/List/Image/Text (TMP)"]
+
+[node name="Text (TMP) (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/List View Custom (1)/Scroll Area/List/Image"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 7.45058e-06)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/List View Custom (1)/Scroll Area/List/Image/Text (TMP) (1)"]
+
+[node name="Image (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/List View Custom (1)/Scroll Area/List/Image"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/List View Custom (1)/Scroll Area/List/Image/Image (1)"]
+
+[node name="Image (2)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/List View Custom (1)/Scroll Area/List/Image"]
+transform = Transform3D(-4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0, 0, 1, 0, 0, -3.72529e-06)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/List View Custom (1)/Scroll Area/List/Image/Image (2)"]
+
+[node name="Image (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/List View Custom (1)/Scroll Area/List"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/List View Custom (1)/Scroll Area/List/Image (1)"]
+
+[node name="Text (TMP)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/List View Custom (1)/Scroll Area/List/Image (1)"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 9.31322e-07)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/List View Custom (1)/Scroll Area/List/Image (1)/Text (TMP)"]
+
+[node name="Text (TMP) (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/List View Custom (1)/Scroll Area/List/Image (1)"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 7.45058e-06)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/List View Custom (1)/Scroll Area/List/Image (1)/Text (TMP) (1)"]
+
+[node name="Image (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/List View Custom (1)/Scroll Area/List/Image (1)"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/List View Custom (1)/Scroll Area/List/Image (1)/Image (1)"]
+
+[node name="Image (2)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/List View Custom (1)/Scroll Area/List/Image (1)"]
+transform = Transform3D(-4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0, 0, 1, 0, 0, -3.72529e-06)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/List View Custom (1)/Scroll Area/List/Image (1)/Image (2)"]
+
+[node name="Image (2)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/List View Custom (1)/Scroll Area/List"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/List View Custom (1)/Scroll Area/List/Image (2)"]
+
+[node name="Text (TMP)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/List View Custom (1)/Scroll Area/List/Image (2)"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 9.31322e-07)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/List View Custom (1)/Scroll Area/List/Image (2)/Text (TMP)"]
+
+[node name="Text (TMP) (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/List View Custom (1)/Scroll Area/List/Image (2)"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 7.45058e-06)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/List View Custom (1)/Scroll Area/List/Image (2)/Text (TMP) (1)"]
+
+[node name="Image (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/List View Custom (1)/Scroll Area/List/Image (2)"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/List View Custom (1)/Scroll Area/List/Image (2)/Image (1)"]
+
+[node name="Image (2)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/List View Custom (1)/Scroll Area/List/Image (2)"]
+transform = Transform3D(-4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0, 0, 1, 0, 0, -3.72529e-06)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/List View Custom (1)/Scroll Area/List/Image (2)/Image (2)"]
+
+[node name="Scrollbar" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/List View Custom (1)"]
+
+[node name="Background" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/List View Custom (1)/Scrollbar"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/List View Custom (1)/Scrollbar/Background"]
+
+[node name="Sliding Area" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/List View Custom (1)/Scrollbar"]
+
+[node name="Handle" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/List View Custom (1)/Scrollbar/Sliding Area"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (1)/List View Custom (1)/Scrollbar/Sliding Area/Handle"]
+
+[node name="Context (2)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (2)"]
+
+[node name="Text (TMP)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (2)"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (2)/Text (TMP)"]
+
+[node name="Button" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (2)"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (2)/Button"]
+
+[node name="Image" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (2)/Button"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (2)/Button/Image"]
+
+[node name="Text (TMP) (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (2)"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Context (2)/Text (TMP) (1)"]
+
+[node name="WorkRecord" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord"]
+
+[node name="Drager" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord" instance=ExtResource("11_gl0pi")]
+
+[node name="Title" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/Title"]
+
+[node name="List View Custom" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -7.4506e-06)
+
+[node name="Scroll Area" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area"]
+
+[node name="List" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List"]
+
+[node name="Image" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image"]
+
+[node name="Text (TMP)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 9.31322e-07)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image/Text (TMP)"]
+
+[node name="Text (TMP) (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 7.45058e-06)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image/Text (TMP) (1)"]
+
+[node name="Image (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image/Image (1)"]
+
+[node name="Image (2)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image"]
+transform = Transform3D(-4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image/Image (2)"]
+
+[node name="Image" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image/Image"]
+
+[node name="Image (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (1)"]
+
+[node name="Text (TMP)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (1)"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 9.31322e-07)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (1)/Text (TMP)"]
+
+[node name="Text (TMP) (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (1)"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 7.45058e-06)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (1)/Text (TMP) (1)"]
+
+[node name="Image (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (1)"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (1)/Image (1)"]
+
+[node name="Image (2)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (1)"]
+transform = Transform3D(-4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (1)/Image (2)"]
+
+[node name="Image" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (1)"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (1)/Image"]
+
+[node name="Image (2)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (2)"]
+
+[node name="Text (TMP)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (2)"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 9.31322e-07)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (2)/Text (TMP)"]
+
+[node name="Text (TMP) (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (2)"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 7.45058e-06)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (2)/Text (TMP) (1)"]
+
+[node name="Image (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (2)"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (2)/Image (1)"]
+
+[node name="Image (2)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (2)"]
+transform = Transform3D(-4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (2)/Image (2)"]
+
+[node name="Image" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (2)"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (2)/Image"]
+
+[node name="Image (3)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (3)"]
+
+[node name="Text (TMP)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (3)"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 9.31322e-07)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (3)/Text (TMP)"]
+
+[node name="Text (TMP) (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (3)"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 7.45058e-06)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (3)/Text (TMP) (1)"]
+
+[node name="Image (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (3)"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (3)/Image (1)"]
+
+[node name="Image (2)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (3)"]
+transform = Transform3D(-4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (3)/Image (2)"]
+
+[node name="Image" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (3)"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (3)/Image"]
+
+[node name="Image (4)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (4)"]
+
+[node name="Text (TMP)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (4)"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 9.31322e-07)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (4)/Text (TMP)"]
+
+[node name="Text (TMP) (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (4)"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 7.45058e-06)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (4)/Text (TMP) (1)"]
+
+[node name="Image (1)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (4)"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (4)/Image (1)"]
+
+[node name="Image (2)" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (4)"]
+transform = Transform3D(-4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (4)/Image (2)"]
+
+[node name="Image" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (4)"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scroll Area/List/Image (4)/Image"]
+
+[node name="Scrollbar" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom"]
+
+[node name="Background" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scrollbar"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scrollbar/Background"]
+
+[node name="Sliding Area" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scrollbar"]
+
+[node name="Handle" type="Node3D" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scrollbar/Sliding Area"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scrollbar/Sliding Area/Handle"]
+
+[node name="dashiyangui" parent="SpaceBox/SpaceBox" instance=ExtResource("12_q8ege")]
+script = ExtResource("13_ktgtg")
+
+[node name="xiaoshiyangui_b" parent="SpaceBox/SpaceBox/dashiyangui/xiaoshiyangui" index="1"]
+transform = Transform3D(1, 0, 0, 0, 1, 7.54979e-08, 0, -7.54979e-08, 1, 0.33, 0.5, 0)
+
+[node name="xiaoshiyangui_c" parent="SpaceBox/SpaceBox/dashiyangui/xiaoshiyangui" index="2"]
+transform = Transform3D(1, 0, 0, 0, 1, 7.54979e-08, 0, -7.54979e-08, 1, 0.34, 0, 0)
+
+[node name="dingzi" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 7.54979e-08, 0, -7.54979e-08, 1, 0, 0, 0)
+
+[node name="zhouxinjigou_a" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou" index="1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.976, 0, 0)
+
+[node name="OldTips" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a/xiaoshiyangui_d" index="1"]
+visible = true
+
+[node name="T_product_dot" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a/xiaoshiyangui_d/OldTips/Ani_effect" index="4"]
+transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, -0.68, 0)
+
+[node name="T_product_Left_bg" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a/xiaoshiyangui_d/OldTips/Ani_effect" index="5"]
+transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, 0, 0)
+
+[node name="xiaoshiyangui_d_new" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a" index="2"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, -10, -10)
+visible = false
+
+[node name="NewTips" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a/xiaoshiyangui_d_new" index="1"]
+visible = true
+
+[node name="T_product_dot" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a/xiaoshiyangui_d_new/NewTips/Ani_effect" index="4"]
+transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, -0.68, 0)
+
+[node name="T_product_Left_bg" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a/xiaoshiyangui_d_new/NewTips/Ani_effect" index="5"]
+transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, 0, 0)
+
+[node name="zhongxinjigouTips" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a" index="3"]
+visible = true
+
+[node name="T_product_dot" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a/zhongxinjigouTips/Ani_effect" index="4"]
+transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, -0.68, 0)
+
+[node name="T_product_Left_bg" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a/zhongxinjigouTips/Ani_effect" index="5"]
+transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, 0, 0)
+
+[node name="zhouxinjigou_a (1)" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou" index="2"]
+visible = false
+
+[node name="gongju" parent="SpaceBox/SpaceBox/dashiyangui" index="5"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+visible = false
+
+[node name="WorkEffect" parent="SpaceBox/SpaceBox" instance=ExtResource("14_4q04a")]
+
+[node name="Environment_Life" type="Node3D" parent="SpaceBox/SpaceBox"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1)
+
+[node name="AudioSource" type="AudioStreamPlayer" parent="SpaceBox/SpaceBox/Environment_Life"]
+volume_db = -6.0206
+autoplay = true
+
+[node name="20_ Tv Table" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life"]
+transform = Transform3D(-0.74367, 0, -6.50137e-08, 0, 0.74367, 0, 6.50137e-08, 0, -0.74367, 0, 0.752, 4.919)
+
+[node name="Cube_060" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life/20_ Tv Table"]
+transform = Transform3D(100, 0, 0, 0, -4.37114e-06, 100, 0, -100, -4.37114e-06, 0.0141307, -0.678007, 0.0109171)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/Environment_Life/20_ Tv Table/Cube_060"]
+gi_mode = 2
+mesh = ExtResource("15_678o8")
+
+[node name="Cube_061" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life/20_ Tv Table"]
+transform = Transform3D(14.0333, 0, 0, 0, -6.13414e-07, 14.0333, 0, -14.0333, -6.13414e-07, 0.435335, -0.708141, 0.0106225)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/Environment_Life/20_ Tv Table/Cube_061"]
+gi_mode = 2
+mesh = ExtResource("16_jvj31")
+
+[node name="Cube_062" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life/20_ Tv Table"]
+transform = Transform3D(47.6077, 4.34341e-07, 9.93657, -2.15976e-14, 48.6336, -2.12584e-06, -9.93657, 2.081e-06, 47.6077, 0.703098, -0.162259, 0.216172)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/Environment_Life/20_ Tv Table/Cube_062"]
+gi_mode = 2
+mesh = ExtResource("17_ej4kk")
+
+[node name="Cube_063" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life/20_ Tv Table"]
+transform = Transform3D(103.224, 0, 0, 0, -4.51205e-06, 103.224, 0, -103.224, -4.51205e-06, 0.0141307, 0.67129, -0.153596)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/Environment_Life/20_ Tv Table/Cube_063"]
+gi_mode = 2
+mesh = ExtResource("18_abdad")
+
+[node name="Cylinder_017" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life/20_ Tv Table"]
+transform = Transform3D(41.8046, 0, 0, 0, -1.82734e-06, 41.8046, 0, -41.8046, -1.82734e-06, -0.756967, -0.357798, 0.143813)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/Environment_Life/20_ Tv Table/Cylinder_017"]
+gi_mode = 2
+mesh = ExtResource("19_mwsbs")
+
+[node name="Cylinder_018" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life/20_ Tv Table"]
+transform = Transform3D(37.9671, 17.4962, 7.64784e-07, 0, -1.82733e-06, 41.8046, 17.4962, -37.9671, -1.6596e-06, -0.752146, -0.357798, 0.141961)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/Environment_Life/20_ Tv Table/Cylinder_018"]
+gi_mode = 2
+mesh = ExtResource("20_dk6a2")
+
+[node name="Empty" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life/20_ Tv Table"]
+transform = Transform3D(100, 0, 0, 0, -4.37114e-06, 100, 0, -100, -4.37114e-06, 0, 0, 0)
+
+[node name="Plane_017" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life/20_ Tv Table"]
+transform = Transform3D(7.33138, -4.53113, -2.86792, 4.9891, 8.07238, -1.5842e-07, 3.37849, -2.08806, 6.22344, -0.8061, -0.00457172, 0.129861)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/Environment_Life/20_ Tv Table/Plane_017"]
+gi_mode = 2
+mesh = ExtResource("21_3f8ot")
+
+[node name="Plane_019" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life/20_ Tv Table"]
+transform = Transform3D(-3.92373, 4.88072, -2.88585, 5.37402, 4.32031, 6.82633e-07, -1.80816, 2.24916, 6.26235, -0.690366, -0.0657138, 0.18463)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/Environment_Life/20_ Tv Table/Plane_019"]
+gi_mode = 2
+mesh = ExtResource("22_quew0")
+
+[node name="Switch_003" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life/20_ Tv Table"]
+transform = Transform3D(-7.87771, -2.29168e-06, -5.96729, 1.85791e-06, 21.2521, -9.70148e-07, -19.7381, 2.91506e-06, 2.38162, -0.557449, -0.806438, 0.0556348)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/Environment_Life/20_ Tv Table/Switch_003"]
+gi_mode = 2
+mesh = ExtResource("23_arfi8")
+
+[node name="Plane_015" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life/20_ Tv Table/Switch_003"]
+transform = Transform3D(0.870666, -1.73468e-07, -2.78128e-15, 0, -1.83463e-07, 1.53952, -3.59846e-08, -4.19714, -6.72945e-08, -1.19209e-09, -0.00142898, -9.53674e-09)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/Environment_Life/20_ Tv Table/Switch_003/Plane_015"]
+gi_mode = 2
+mesh = ExtResource("24_b82uq")
+surface_material_override/0 = SubResource("StandardMaterial3D_hbon4")
+
+[node name="Switch_005" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life/20_ Tv Table"]
+transform = Transform3D(-21.189, 2.09938e-06, 0.494487, 1.85791e-06, 21.2521, -9.70148e-07, 1.63562, 3.05646e-06, 6.40595, -0.513059, -0.650413, 0.105509)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/Environment_Life/20_ Tv Table/Switch_005"]
+gi_mode = 2
+mesh = ExtResource("25_wnqly")
+
+[node name="Plane_018" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life/20_ Tv Table/Switch_005"]
+transform = Transform3D(0.870666, 3.72529e-09, 5.97292e-17, 0, -1.83463e-07, 1.53952, 7.72785e-10, -4.19713, -6.72945e-08, 2.38419e-09, -0.00142898, 0)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/Environment_Life/20_ Tv Table/Switch_005/Plane_018"]
+gi_mode = 2
+mesh = ExtResource("26_wqv82")
+surface_material_override/0 = SubResource("StandardMaterial3D_hbon4")
+
+[node name="Sceen" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life/20_ Tv Table"]
+transform = Transform3D(-0.0011, 0, -8.74228e-11, 0, 0.0011, 0, 9.61651e-11, 0, -0.001, 0, 0, -0.083)
+
+[node name="Canvas" type="Node" parent="SpaceBox/SpaceBox/Environment_Life/20_ Tv Table/Sceen"]
+
+[node name="VideoPlayer" type="Node" parent="SpaceBox/SpaceBox/Environment_Life/20_ Tv Table/Sceen"]
+
+[node name="RawImage" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life/20_ Tv Table/Sceen"]
+
+[node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/Environment_Life/20_ Tv Table/Sceen/RawImage"]
+
+[node name="10_ Sofa" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life"]
+transform = Transform3D(0.550676, 0, 0, 0, 0.550676, 0, 0, 0, 0.550676, 0, 0.323, 1.302)
+
+[node name="Cube_030" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life/10_ Sofa"]
+transform = Transform3D(61.2509, 0, 0, 0, -2.67736e-06, 61.2509, 0, -61.2509, -2.67736e-06, 0, 0, 0)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/Environment_Life/10_ Sofa/Cube_030"]
+transform = Transform3D(1, 0, 0, 0, 1, -3.55271e-15, 0, 3.55271e-15, 1, 0, 0, 0.00650381)
+gi_mode = 2
+mesh = ExtResource("27_cp5r4")
+surface_material_override/0 = ExtResource("28_lkcar")
+
+[node name="Cube_031" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life/10_ Sofa"]
+transform = Transform3D(23.2289, -1.5571, -0.928777, 0.354528, -6.43451, 25.4979, -1.72157, -22.3348, -7.28101, -0.287535, 0.413898, -0.0263626)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/Environment_Life/10_ Sofa/Cube_031"]
+gi_mode = 2
+mesh = ExtResource("29_kyp3r")
+surface_material_override/0 = ExtResource("30_lhgp2")
+surface_material_override/1 = ExtResource("31_p625h")
+
+[node name="Cube_032" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life/10_ Sofa"]
+transform = Transform3D(85.6035, 0, 0, 0, -3.74185e-06, 85.6035, 0, -85.6035, -3.74185e-06, 0.0265806, -0.631103, -0.0934309)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/Environment_Life/10_ Sofa/Cube_032"]
+gi_mode = 2
+mesh = ExtResource("32_vhoj7")
+surface_material_override/0 = ExtResource("33_56rge")
+
+[node name="Empty" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life/10_ Sofa"]
+transform = Transform3D(100, 0, 0, 0, -4.37114e-06, 100, 0, -100, -4.37114e-06, 0, 0, 0)
+
+[node name="Plane_009" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life/10_ Sofa"]
+transform = Transform3D(72.4238, 17.1814, -17.4415, -4.39632, 62.7042, 43.514, 24.0848, -40.2194, 60.3899, 0.469971, 0.572098, 0.304193)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/Environment_Life/10_ Sofa/Plane_009"]
+gi_mode = 2
+mesh = ExtResource("34_uhxdm")
+surface_material_override/0 = ExtResource("33_56rge")
+
+[node name="18_ Table" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life"]
+transform = Transform3D(0.325535, 0, 0, 0, 0.325535, 0, 0, 0, 0.325535, 0, 0.216, 2.8)
+
+[node name="PickableObject" parent="SpaceBox/SpaceBox/Environment_Life/18_ Table" instance=ExtResource("35_5eh3o")]
+transform = Transform3D(3.07187, 0, 0, 0, -1.34276e-07, 3.07187, 0, -3.07187, -1.34276e-07, 0, 0.631861, -0.551339)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="SpaceBox/SpaceBox/Environment_Life/18_ Table/PickableObject"]
+transform = Transform3D(0.1, 0, 0, 0, 0.1, 0, 0, 0, 0.1, 0, 0, 0.0197719)
+mesh = SubResource("BoxMesh_34xb6")
+
+[node name="Cube_065" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life/18_ Table"]
+transform = Transform3D(131.482, 0, 0, 0, -5.74726e-06, 131.482, 0, -131.482, -5.74726e-06, 0.0135062, -0.095456, -0.0184803)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/Environment_Life/18_ Table/Cube_065"]
+gi_mode = 2
+mesh = ExtResource("36_uo4fk")
+surface_material_override/0 = ExtResource("37_6npy7")
+
+[node name="Cube_066" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life/18_ Table"]
+transform = Transform3D(131.482, 0, 0, 0, -5.74726e-06, 131.482, 0, -131.482, -5.74726e-06, 0.0145599, -0.854629, -0.141325)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/Environment_Life/18_ Table/Cube_066"]
+gi_mode = 2
+mesh = ExtResource("38_y88fn")
+surface_material_override/0 = ExtResource("37_6npy7")
+
+[node name="Cube_067" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life/18_ Table"]
+transform = Transform3D(24.6405, 0, 0, 0, -1.07707e-06, 24.6405, 0, -24.6405, -1.07707e-06, 0.661336, -0.0347168, 0.714376)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/Environment_Life/18_ Table/Cube_067"]
+gi_mode = 2
+mesh = ExtResource("39_4d6r0")
+surface_material_override/0 = ExtResource("40_ke1em")
+
+[node name="Cylinder_019" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life/18_ Table"]
+transform = Transform3D(75.6215, 0, 0, 0, -3.30552e-06, 75.6215, 0, -75.6215, -3.30552e-06, -0.584903, 0.27866, 0.00829735)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/Environment_Life/18_ Table/Cylinder_019"]
+gi_mode = 2
+mesh = ExtResource("41_a80b2")
+surface_material_override/0 = ExtResource("42_clm8n")
+surface_material_override/1 = ExtResource("43_i57mt")
+
+[node name="Cylinder_020" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life/18_ Table"]
+transform = Transform3D(68.6799, 31.6494, 1.38344e-06, 0, -3.30552e-06, 75.6215, 31.6494, -68.6799, -3.00209e-06, -0.576182, 0.27866, 0.00494604)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/Environment_Life/18_ Table/Cylinder_020"]
+gi_mode = 2
+mesh = ExtResource("44_158jb")
+surface_material_override/0 = ExtResource("45_oi0jq")
+
+[node name="Empty" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life/18_ Table"]
+transform = Transform3D(100, 0, 0, 0, -4.37114e-06, 100, 0, -100, -4.37114e-06, 0, 0, 0)
+
+[node name="Plane_020" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life/18_ Table"]
+transform = Transform3D(13.262, -8.19649, -5.18786, 9.02493, 14.6024, -2.86571e-07, 6.11144, -3.77715, 11.2578, -0.673782, 0.917621, -0.0169409)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/Environment_Life/18_ Table/Plane_020"]
+gi_mode = 2
+mesh = ExtResource("46_uo11q")
+surface_material_override/0 = ExtResource("45_oi0jq")
+
+[node name="Plane_021" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life/18_ Table"]
+transform = Transform3D(-7.09775, 8.82888, -5.2203, 9.72123, 7.81514, 1.08394e-06, -3.27083, 4.06857, 11.3282, -0.464427, 0.80702, 0.0821324)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/Environment_Life/18_ Table/Plane_021"]
+gi_mode = 2
+mesh = ExtResource("47_dmi8h")
+surface_material_override/0 = ExtResource("45_oi0jq")
+
+[node name="Switch_004" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life/18_ Table"]
+transform = Transform3D(-11.7699, -3.42394e-06, -8.9156, 2.77587e-06, 31.7523, -1.44948e-06, -29.4902, 4.35533e-06, 3.55833, 0.367875, 0.405159, 0.274166)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/Environment_Life/18_ Table/Switch_004"]
+gi_mode = 2
+mesh = ExtResource("48_duknp")
+surface_material_override/0 = ExtResource("43_i57mt")
+
+[node name="Plane_022" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life/18_ Table/Switch_004"]
+transform = Transform3D(0.870666, -4.30996e-07, -6.91034e-15, 0, -1.83463e-07, 1.53952, -8.9407e-08, -4.19713, -6.72945e-08, -1.19209e-09, -0.00142898, 0)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/Environment_Life/18_ Table/Switch_004/Plane_022"]
+gi_mode = 2
+mesh = ExtResource("49_ogtbl")
+surface_material_override/0 = SubResource("StandardMaterial3D_hbon4")
+
+[node name="Switch_006" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life/18_ Table"]
+transform = Transform3D(-31.6581, 3.13663e-06, 0.738803, 2.77587e-06, 31.7523, -1.44948e-06, 2.44375, 4.5666e-06, 9.57098, 0.434196, 0.638273, 0.348683)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/Environment_Life/18_ Table/Switch_006"]
+gi_mode = 2
+mesh = ExtResource("50_5ue4d")
+surface_material_override/0 = ExtResource("51_ce3nk")
+
+[node name="Plane_023" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life/18_ Table/Switch_006"]
+transform = Transform3D(0.870666, -3.2191e-08, -5.16132e-16, 0, -1.83463e-07, 1.53952, -6.6778e-09, -4.19713, -6.72945e-08, -1.19209e-09, -0.00142898, 0)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/Environment_Life/18_ Table/Switch_006/Plane_023"]
+transform = Transform3D(0.999997, -0.000830136, 0.00231663, 0.00083017, 1, -1.24683e-05, -0.00231662, 1.4399e-05, 0.999997, 0, 0, 0)
+gi_mode = 2
+mesh = ExtResource("52_hc02f")
+surface_material_override/0 = SubResource("StandardMaterial3D_hbon4")
+
+[node name="Malamute" parent="SpaceBox/SpaceBox/Environment_Life" instance=ExtResource("53_q7t41")]
+transform = Transform3D(-0.00901536, 0, -0.00432703, 0, 0.01, 0, 0.00432703, 0, -0.00901536, 0.575, 0, 2.59398)
+visible = false
+
+[node name="AnimationPlayer" parent="SpaceBox/SpaceBox/Environment_Life/Malamute" index="1"]
+root_motion_track = NodePath("../GeneralSkeleton")
+
+[node name="AnimationTree" parent="SpaceBox/SpaceBox/Environment_Life/Malamute" index="2"]
+root_motion_track = NodePath("../GeneralSkeleton")
+
+[node name="GeneralSkeleton" parent="SpaceBox/SpaceBox/Environment_Life/Malamute" index="3"]
+bones/0/rotation = Quaternion(-0.00343695, 0.0354269, -0.00115634, 0.999366)
+bones/2/rotation = Quaternion(0.00335467, 3.64333e-05, -0.325114, 0.945669)
+bones/3/rotation = Quaternion(-0.68796, -0.0436414, -0.178403, 0.702125)
+bones/4/rotation = Quaternion(-0.593248, 0.803216, -0.0292129, 0.0452465)
+bones/5/rotation = Quaternion(-0.113797, 0.498693, -0.858969, -0.0229865)
+bones/6/rotation = Quaternion(0.0535436, 0.0786592, 0.725891, 0.681196)
+bones/7/rotation = Quaternion(-0.407202, -0.462575, -0.578622, 0.534235)
+bones/8/rotation = Quaternion(-0.593298, 0.804963, 0.00503296, -0.00258076)
+bones/9/rotation = Quaternion(-0.102237, 0.311288, -0.932655, -0.151004)
+bones/10/rotation = Quaternion(0.10134, -0.270654, 0.737563, 0.610309)
+bones/11/rotation = Quaternion(0.00125235, -0.00405052, -0.09981, 0.994998)
+bones/12/rotation = Quaternion(0.00148031, -0.028414, 0.100092, 0.994571)
+bones/19/rotation = Quaternion(0.240095, 0.965397, -0.0700873, 0.0738278)
+bones/20/rotation = Quaternion(0.780588, -0.220926, -0.310107, -0.495688)
+bones/21/rotation = Quaternion(-0.0329693, 0.849871, 0.0272099, 0.525254)
+
+[node name="Root" parent="SpaceBox/SpaceBox/Environment_Life/Malamute/GeneralSkeleton" index="0"]
+transform = Transform3D(-11.9508, -19.1468, 97.4196, 22.0729, -96.1795, -16.1953, 96.7986, 19.5679, 15.7205, -0.497334, 16.6447, -5.71002)
+joint_offset = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00161743, -0.00416488, 0.0040881)
+body_offset = Transform3D(99.9994, -0.348801, -0.0122128, 0.34886, 99.999, 0.271122, 0.0112591, -0.271177, 99.9997, 0.160339, 0.415939, -0.40992)
+
+[node name="AnimationPlayer" parent="SpaceBox/SpaceBox/Environment_Life/Malamute/GeneralSkeleton/Root" index="0"]
+root_motion_track = NodePath("../..")
+
+[node name="AnimationTree" parent="SpaceBox/SpaceBox/Environment_Life/Malamute/GeneralSkeleton/Root" index="1"]
+root_motion_track = NodePath("../..")
+
+[node name="Malamute" parent="SpaceBox/SpaceBox/Environment_Life/Malamute/GeneralSkeleton" index="1"]
+skin = SubResource("Skin_33alu")
+
+[node name="MainMenuCanvas" parent="." instance=ExtResource("54_4gitt")]
+transform = Transform3D(-0.00299996, 1.53247e-05, 4.76738e-06, 1.53492e-05, 0.00299992, 1.55533e-05, -4.68778e-06, 1.55775e-05, -0.00299996, -0.0719683, 1.10385, 2.91889)
+screen_size = Vector2(620, 460)
+scene = ExtResource("55_iecw7")
+viewport_size = Vector2(620, 460)
+unshaded = true
+
+[node name="Viewport" parent="MainMenuCanvas" index="0"]
+size = Vector2i(620, 460)
+
+[node name="Screen" parent="MainMenuCanvas" index="1"]
+mesh = SubResource("QuadMesh_34xb6")
+surface_material_override/0 = SubResource("StandardMaterial3D_g432p")
+
+[node name="StaticBody3D" parent="MainMenuCanvas" index="2"]
+screen_size = Vector2(620, 460)
+viewport_size = Vector2(620, 460)
+
+[node name="CollisionShape3D" parent="MainMenuCanvas/StaticBody3D" index="0"]
+shape = SubResource("BoxShape3D_6yffd")
+
+[node name="StartXR" parent="." instance=ExtResource("56_0dm4r")]
+
+[node name="Light" type="Node3D" parent="."]
+
+[node name="Light" type="DirectionalLight3D" parent="Light"]
+transform = Transform3D(-0.866025, 0.383022, -0.321394, -6.69697e-08, 0.642788, 0.766044, 0.5, 0.663414, -0.55667, 0, 3, 0)
+light_color = Color(1, 0.956863, 0.839216, 1)
+light_bake_mode = 0
+shadow_enabled = true
+shadow_bias = 0.05
+shadow_normal_bias = 0.4
+
+[node name="OmniLight3D" type="OmniLight3D" parent="Light"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.485887, 1.11515, 3.06135)
+
+[node name="DownPlane" type="Node3D" parent="."]
+transform = Transform3D(-2.62268e-07, -2, 8.74228e-08, 0, -8.74228e-08, -2, 6, -8.74228e-08, 3.82137e-15, 0, -0.242068, 3)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="DownPlane"]
+transform = Transform3D(1, 0, 0, 0, 1, -8.35187e-23, 4.23516e-22, -8.35187e-23, 1, 0, 5.70077e-08, 1.30418)
+gi_mode = 2
+mesh = SubResource("ArrayMesh_wkow0")
+surface_material_override/0 = ExtResource("8_3u5fo")
+
+[node name="MeshCollider" type="StaticBody3D" parent="DownPlane"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="DownPlane/MeshCollider"]
+visible = false
+shape = SubResource("ConcavePolygonShape3D_cddhk")
+
+[node name="GroupUI" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.109527, 0)
+
+[node name="PictureCanvas" parent="GroupUI" instance=ExtResource("54_4gitt")]
+transform = Transform3D(-0.00299996, 1.53247e-05, 4.76738e-06, 1.53492e-05, 0.00299992, 1.55533e-05, -4.68778e-06, 1.55775e-05, -0.00299996, -2.03729, 0.967935, 4.1962)
+screen_size = Vector2(610, 460)
+scene = ExtResource("57_ijmol")
+viewport_size = Vector2(610, 500)
+
+[node name="PictureInfoCanvas" parent="GroupUI" instance=ExtResource("54_4gitt")]
+transform = Transform3D(-0.00299996, 1.53247e-05, 4.76738e-06, 1.53492e-05, 0.00299992, 1.55533e-05, -4.68778e-06, 1.55775e-05, -0.00299996, -3.94012, 0.967935, 4.00141)
+screen_size = Vector2(610, 460)
+scene = ExtResource("58_q6r6r")
+viewport_size = Vector2(610, 500)
+
+[node name="MovieCanvas" parent="GroupUI" instance=ExtResource("54_4gitt")]
+transform = Transform3D(-0.00299996, 1.53247e-05, 4.76738e-06, 1.53492e-05, 0.00299992, 1.55533e-05, -4.68778e-06, 1.55775e-05, -0.00299996, -2.03729, 0.967935, 4.1962)
+screen_size = Vector2(610, 460)
+scene = ExtResource("59_c4ac8")
+viewport_size = Vector2(610, 500)
+
+[node name="MovieInfoCanvas" parent="GroupUI" instance=ExtResource("54_4gitt")]
+transform = Transform3D(-0.00299996, 1.53247e-05, 4.76738e-06, 1.53492e-05, 0.00299992, 1.55533e-05, -4.68778e-06, 1.55775e-05, -0.00299996, -3.94012, 0.967935, 4.1962)
+screen_size = Vector2(610, 460)
+scene = ExtResource("60_qufia")
+viewport_size = Vector2(610, 500)
+
+[node name="WorkListInfoCanvas" parent="GroupUI" instance=ExtResource("54_4gitt")]
+transform = Transform3D(-0.00299996, 1.53247e-05, 4.76738e-06, 1.53492e-05, 0.00299992, 1.55533e-05, -4.68778e-06, 1.55775e-05, -0.00299996, -2.02817, 0.967935, 4.1911)
+screen_size = Vector2(610, 460)
+scene = ExtResource("61_8h1ek")
+viewport_size = Vector2(610, 500)
+
+[node name="MultiplayerSpawner" type="MultiplayerSpawner" parent="."]
+_spawnable_scenes = PackedStringArray("uid://c0oao8sfhry88")
+spawn_path = NodePath("..")
+script = ExtResource("62_jv21g")
+network_player = ExtResource("63_toxth")
+
+[node name="SpectatorCamera" type="Camera3D" parent="."]
+transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, -0.155226, 1.1831, 0.436745)
+script = ExtResource("64_escuv")
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="SubViewportContainer" type="SubViewportContainer" parent="UI"]
+anchors_preset = -1
+anchor_left = 0.753
+anchor_top = 0.753
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 0.543945
+offset_top = 0.0559998
+grow_horizontal = 2
+grow_vertical = 2
+stretch = true
+
+[node name="SubViewport" type="SubViewport" parent="UI/SubViewportContainer"]
+handle_input_locally = false
+size = Vector2i(284, 160)
+render_target_update_mode = 4
+
+[node name="Camera3D" type="Camera3D" parent="UI/SubViewportContainer/SubViewport"]
+transform = Transform3D(-0.979177, 0, 0.20301, 0, 1, 0, -0.20301, 0, -0.979177, 0, 1.874, 0)
+
+[node name="PanelContainer" type="PanelContainer" parent="UI"]
+custom_minimum_size = Vector2(250, 0)
+anchors_preset = 9
+anchor_bottom = 1.0
+offset_right = 16.0
+grow_vertical = 2
+
+[node name="Tree" type="Tree" parent="UI/PanelContainer"]
+layout_mode = 2
+allow_reselect = true
+script = ExtResource("65_l4ah6")
+
+[node name="CaptureStreamToText" parent="UI" instance=ExtResource("66_37o7n")]
+anchors_preset = -1
+anchor_left = 0.323
+anchor_top = 0.708
+anchor_right = 0.67
+anchor_bottom = 1.332
+offset_left = -0.0960083
+offset_top = 0.216003
+offset_right = 0.159973
+offset_bottom = -0.135986
+
+[node name="VoiceChatUI" parent="." instance=ExtResource("67_ltm1f")]
+anchors_preset = -1
+anchor_left = 0.806
+anchor_bottom = 0.188
+offset_left = -0.512085
+offset_bottom = 0.175995
+
+[connection signal="item_selected" from="UI/PanelContainer/Tree" to="UI/PanelContainer/Tree" method="_on_Tree_item_selected"]
+
+[editable path="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkGuide/Drager"]
+[editable path="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkGuide)/WorkDeviceGuide/Drager"]
+[editable path="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkTask/Drager"]
+[editable path="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/Drager"]
+[editable path="SpaceBox/SpaceBox/dashiyangui"]
+[editable path="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a/xiaoshiyangui_d/OldTips"]
+[editable path="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a/xiaoshiyangui_d_new/NewTips"]
+[editable path="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a/zhongxinjigouTips"]
+[editable path="SpaceBox/SpaceBox/dashiyangui/Canvas"]
+[editable path="SpaceBox/SpaceBox/WorkEffect"]
+[editable path="SpaceBox/SpaceBox/Environment_Life/Malamute"]
+[editable path="MainMenuCanvas"]
+[editable path="UI/CaptureStreamToText"]

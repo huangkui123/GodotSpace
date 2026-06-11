@@ -1,0 +1,259 @@
+[gd_scene load_steps=21 format=3]
+
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/Background.prefab.tscn" id="1_rptuj"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/White.png" id="2_vi73p"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155626.png" id="3_64vkd"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/生活模式-2.png" id="4_vfgwl"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/工作-2.png" id="5_dspvp"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/MainMenuCanvas/LifeTabView.prefab.tscn" id="6_8wc4m"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/MainMenuCanvas/WorkTabView.prefab.tscn" id="7_2byv8"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/BackButtonTip.prefab.tscn" id="8_qsor5"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/NextButtonTip.prefab.tscn" id="9_bqxs4"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/UIWindow/Clock.png" id="10_1lqxk"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/UIWindow/Vector.png" id="11_fdiis"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/UIWindow/Vector (1).png" id="12_kq106"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/拉伸.png" id="13_ocl8g"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/UIWindow/TopMenuBox.png" id="14_k5qih"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/DragBox.prefab.tscn" id="15_2thkx"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155655.png" id="16_r3sfm"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/CloseButtonTip.prefab.tscn" id="17_2qeam"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155657.png" id="18_pbhv5"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/MaxButtonTip.prefab.tscn" id="19_f03y5"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_e4x1b"]
+size = Vector3(600.686, 552.784, 16.2187)
+
+[node name="MainMenuCanvasAR" type="RigidBody3D"]
+gravity_scale = 0.0
+freeze_mode = 1
+angular_damp = 0.05
+
+[node name="Canvas" type="Node" parent="."]
+
+[node name="AudioSource" type="AudioStreamPlayer" parent="."]
+autoplay = true
+
+[node name="BoxCollider" type="Area3D" parent="."]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.299722, 23.6083, 17.6559)
+shape = SubResource("BoxShape3D_e4x1b")
+
+[node name="Background" parent="." instance=ExtResource("1_rptuj")]
+
+[node name="Navcation" type="Sprite3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -328.833, 0, 0)
+modulate = Color(0.00784314, 0.0627451, 0.180392, 1)
+pixel_size = 1.0
+transparent = false
+texture = ExtResource("2_vi73p")
+hframes = 5
+metadata/_edit_group_ = true
+
+[node name="CanvasRenderer" type="Node" parent="Navcation"]
+
+[node name="ModeLayout" type="Node3D" parent="Navcation"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.291504, 49.5597, 22.4869)
+
+[node name="CanvasRenderer" type="Node" parent="Navcation/ModeLayout"]
+
+[node name="LifeModeTab" type="Area3D" parent="Navcation/ModeLayout"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 131.856, -16.8399)
+
+[node name="CanvasRenderer" type="Node" parent="Navcation/ModeLayout/LifeModeTab"]
+
+[node name="Check" type="Sprite3D" parent="Navcation/ModeLayout/LifeModeTab"]
+pixel_size = 0.35
+texture = ExtResource("3_64vkd")
+
+[node name="CanvasRenderer" type="Node" parent="Navcation/ModeLayout/LifeModeTab/Check"]
+
+[node name="Image" type="Sprite3D" parent="Navcation/ModeLayout/LifeModeTab"]
+pixel_size = 1.0
+texture = ExtResource("4_vfgwl")
+
+[node name="CanvasRenderer" type="Node" parent="Navcation/ModeLayout/LifeModeTab/Image"]
+
+[node name="Text (TMP) (1)" type="Node3D" parent="Navcation/ModeLayout/LifeModeTab"]
+
+[node name="CanvasRenderer" type="Node" parent="Navcation/ModeLayout/LifeModeTab/Text (TMP) (1)"]
+
+[node name="WorkModeTab" type="Area3D" parent="Navcation/ModeLayout"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 53.9135, -16.8399)
+
+[node name="CanvasRenderer" type="Node" parent="Navcation/ModeLayout/WorkModeTab"]
+
+[node name="Check" type="Sprite3D" parent="Navcation/ModeLayout/WorkModeTab"]
+pixel_size = 0.35
+texture = ExtResource("3_64vkd")
+
+[node name="CanvasRenderer" type="Node" parent="Navcation/ModeLayout/WorkModeTab/Check"]
+
+[node name="Image" type="Sprite3D" parent="Navcation/ModeLayout/WorkModeTab"]
+pixel_size = 1.0
+texture = ExtResource("5_dspvp")
+
+[node name="CanvasRenderer" type="Node" parent="Navcation/ModeLayout/WorkModeTab/Image"]
+
+[node name="Text (TMP)" type="Node3D" parent="Navcation/ModeLayout/WorkModeTab"]
+
+[node name="CanvasRenderer" type="Node" parent="Navcation/ModeLayout/WorkModeTab/Text (TMP)"]
+
+[node name="LifeTabView" parent="." instance=ExtResource("6_8wc4m")]
+transform = Transform3D(1.09139, 0, 0, 0, 1.09139, 0, 0, 0, 1.09139, 50.3586, 0, 0)
+
+[node name="MoleGame" parent="LifeTabView/Scroll View/Viewport/Content" index="4"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="StyleSceen" parent="LifeTabView/Scroll View/Viewport/Content" index="5"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="WorkTabView" parent="." instance=ExtResource("7_2byv8")]
+visible = false
+
+[node name="BackButtonTip" parent="WorkTabView/WorkListView/Back" index="1" instance=ExtResource("8_qsor5")]
+visible = false
+
+[node name="NextButtonTip" parent="WorkTabView/WorkListView/Next" index="1" instance=ExtResource("9_bqxs4")]
+visible = false
+
+[node name="TimeLayout" type="Sprite3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -357.179, 345.471, 0)
+pixel_size = 1.0
+texture = ExtResource("10_1lqxk")
+
+[node name="CanvasRenderer" type="Node" parent="TimeLayout"]
+
+[node name="TimeText" type="Label3D" parent="TimeLayout"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 94.9488, 2.95099, 0)
+pixel_size = 1.0
+text = "2024-02-06 17:23"
+font_size = 20
+outline_size = 0
+
+[node name="CanvasRenderer" type="Node" parent="TimeLayout/TimeText"]
+
+[node name="PowerLayout" type="Sprite3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 314.21, 347.307, -0.126465)
+pixel_size = 1.0
+texture = ExtResource("11_fdiis")
+
+[node name="CanvasRenderer" type="Node" parent="PowerLayout"]
+
+[node name="PowerText" type="Label3D" parent="PowerLayout"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 40.6561, 2.35986, 0)
+pixel_size = 1.0
+text = "95%"
+font_size = 20
+outline_size = 0
+
+[node name="CanvasRenderer" type="Node" parent="PowerLayout/PowerText"]
+
+[node name="PowerProgress" type="Sprite3D" parent="PowerLayout"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.31711, 0.61264, 0)
+pixel_size = 1.0
+texture = ExtResource("12_kq106")
+
+[node name="CanvasRenderer" type="Node" parent="PowerLayout/PowerProgress"]
+
+[node name="ChildWindowPivot" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.3)
+
+[node name="CanvasRenderer" type="Node" parent="ChildWindowPivot"]
+
+[node name="LeftUp" type="Sprite3D" parent="."]
+transform = Transform3D(-1, 8.74228e-08, 0, -8.74228e-08, -1, 0, 0, 0, 1, -408.704, 339.148, 0)
+pixel_size = 0.35
+texture = ExtResource("13_ocl8g")
+
+[node name="CanvasRenderer" type="Node" parent="LeftUp"]
+
+[node name="LeftDown" type="Sprite3D" parent="."]
+transform = Transform3D(-4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0, 0, 1, -402.827, -276.303, 0)
+pixel_size = 0.35
+texture = ExtResource("13_ocl8g")
+
+[node name="CanvasRenderer" type="Node" parent="LeftDown"]
+
+[node name="RightUp" type="Sprite3D" parent="."]
+transform = Transform3D(-4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0, 1, 408.155, 342.584, 0)
+pixel_size = 0.35
+texture = ExtResource("13_ocl8g")
+
+[node name="CanvasRenderer" type="Node" parent="RightUp"]
+
+[node name="RightDown" type="Sprite3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 397.531, -272.105, 0)
+pixel_size = 0.35
+texture = ExtResource("13_ocl8g")
+
+[node name="CanvasRenderer" type="Node" parent="RightDown"]
+
+[node name="ChildWindowPivot_L" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.3)
+
+[node name="CanvasRenderer" type="Node" parent="ChildWindowPivot_L"]
+
+[node name="TopMenuBox" type="Sprite3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 292.723, 0)
+pixel_size = 1.265
+transparent = false
+texture = ExtResource("14_k5qih")
+
+[node name="CanvasRenderer" type="Node" parent="TopMenuBox"]
+
+[node name="DragBox" parent="TopMenuBox" instance=ExtResource("15_2thkx")]
+transform = Transform3D(1.22123, 0, 0, 0, 1.38032, 0, 0, 0, 1, -235.036, -0.361511, 0.476624)
+
+[node name="Controller" type="Node3D" parent="TopMenuBox"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 287.474, 0, 3.77132)
+
+[node name="CanvasRenderer" type="Node" parent="TopMenuBox/Controller"]
+
+[node name="CloseButton" type="Sprite3D" parent="TopMenuBox/Controller"]
+pixel_size = 1.0
+texture = ExtResource("16_r3sfm")
+
+[node name="CanvasRenderer" type="Node" parent="TopMenuBox/Controller/CloseButton"]
+
+[node name="CloseButtonTip" parent="TopMenuBox/Controller/CloseButton" instance=ExtResource("17_2qeam")]
+
+[node name="MaxButton" type="Sprite3D" parent="TopMenuBox/Controller"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 53.6638, 0, 0)
+pixel_size = 1.0
+texture = ExtResource("18_pbhv5")
+
+[node name="CanvasRenderer" type="Node" parent="TopMenuBox/Controller/MaxButton"]
+
+[node name="MaxButtonTip" parent="TopMenuBox/Controller/MaxButton" instance=ExtResource("19_f03y5")]
+
+[node name="MinButton" type="Node3D" parent="TopMenuBox/Controller"]
+
+[node name="CanvasRenderer" type="Node" parent="TopMenuBox/Controller/MinButton"]
+
+[editable path="Background"]
+[editable path="LifeTabView"]
+[editable path="LifeTabView/Scroll View/Viewport/Content/Photo"]
+[editable path="LifeTabView/Scroll View/Viewport/Content/Movie"]
+[editable path="LifeTabView/Scroll View/Viewport/Content/Model"]
+[editable path="LifeTabView/Scroll View/Viewport/Content/Weather"]
+[editable path="LifeTabView/Scroll View/Viewport/Content/MoleGame"]
+[editable path="WorkTabView"]
+[editable path="WorkTabView/WorkListView"]
+[editable path="WorkTabView/WorkListView/ListContent/WorkItem"]
+[editable path="WorkTabView/WorkListView/ListContent/WorkItem (1)"]
+[editable path="WorkTabView/WorkListView/ListContent/WorkItem (2)"]
+[editable path="WorkTabView/WorkListView/ListContent/WorkItem (3)"]
+[editable path="WorkTabView/WorkListView/ListContent/WorkItem (4)"]
+[editable path="WorkTabView/WorkListView/Back/BackButtonTip"]
+[editable path="WorkTabView/WorkListView/Next/NextButtonTip"]
+[editable path="WorkTabView/MailListView"]
+[editable path="WorkTabView/MailListView/ListContent/MailItem"]
+[editable path="WorkTabView/MailListView/ListContent/MailItem (1)"]
+[editable path="WorkTabView/MailListView/ListContent/MailItem (2)"]
+[editable path="WorkTabView/MailListView/ListContent/MailItem (3)"]
+[editable path="WorkTabView/MailListView/ListContent/MailItem (4)"]
+[editable path="WorkTabView/BrushView"]
+[editable path="TopMenuBox/DragBox"]
+[editable path="TopMenuBox/Controller/CloseButton/CloseButtonTip"]
+[editable path="TopMenuBox/Controller/MaxButton/MaxButtonTip"]

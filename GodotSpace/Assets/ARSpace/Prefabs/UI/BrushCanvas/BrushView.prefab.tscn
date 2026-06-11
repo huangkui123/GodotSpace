@@ -1,0 +1,138 @@
+[gd_scene format=3]
+
+[node name="BrushView" type="Node3D"]
+
+[node name="CanvasRenderer" type="Node" parent="."]
+
+[node name="BackButton" type="Node3D" parent="."]
+transform = Transform3D(-4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0, 0, 1, 0, 0, 0.991)
+
+[node name="CanvasRenderer" type="Node" parent="BackButton"]
+
+[node name="Title" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="Title"]
+
+[node name="ListContent" type="Node3D" parent="."]
+
+[node name="BG" type="Node3D" parent="ListContent"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.005)
+
+[node name="CanvasRenderer" type="Node" parent="ListContent/BG"]
+
+[node name="Toggle" type="Node3D" parent="ListContent"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.005)
+
+[node name="Background" type="Node3D" parent="ListContent/Toggle"]
+
+[node name="CanvasRenderer" type="Node" parent="ListContent/Toggle/Background"]
+
+[node name="Checkmark" type="Node3D" parent="ListContent/Toggle/Background"]
+
+[node name="CanvasRenderer" type="Node" parent="ListContent/Toggle/Background/Checkmark"]
+
+[node name="Label" type="Node3D" parent="ListContent/Toggle"]
+
+[node name="CanvasRenderer" type="Node" parent="ListContent/Toggle/Label"]
+
+[node name="Tool Buttons" type="Node3D" parent="ListContent"]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="Red" type="Node3D" parent="ListContent/Tool Buttons"]
+
+[node name="CanvasRenderer" type="Node" parent="ListContent/Tool Buttons/Red"]
+
+[node name="Text" type="Node3D" parent="ListContent/Tool Buttons/Red"]
+transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="CanvasRenderer" type="Node" parent="ListContent/Tool Buttons/Red/Text"]
+
+[node name="Green" type="Node3D" parent="ListContent/Tool Buttons"]
+
+[node name="CanvasRenderer" type="Node" parent="ListContent/Tool Buttons/Green"]
+
+[node name="Text" type="Node3D" parent="ListContent/Tool Buttons/Green"]
+transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="CanvasRenderer" type="Node" parent="ListContent/Tool Buttons/Green/Text"]
+
+[node name="Blue" type="Node3D" parent="ListContent/Tool Buttons"]
+
+[node name="CanvasRenderer" type="Node" parent="ListContent/Tool Buttons/Blue"]
+
+[node name="Text" type="Node3D" parent="ListContent/Tool Buttons/Blue"]
+transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="CanvasRenderer" type="Node" parent="ListContent/Tool Buttons/Blue/Text"]
+
+[node name="Magenta" type="Node3D" parent="ListContent/Tool Buttons"]
+
+[node name="CanvasRenderer" type="Node" parent="ListContent/Tool Buttons/Magenta"]
+
+[node name="Text" type="Node3D" parent="ListContent/Tool Buttons/Magenta"]
+transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="CanvasRenderer" type="Node" parent="ListContent/Tool Buttons/Magenta/Text"]
+
+[node name="Orange" type="Node3D" parent="ListContent/Tool Buttons"]
+
+[node name="CanvasRenderer" type="Node" parent="ListContent/Tool Buttons/Orange"]
+
+[node name="Text" type="Node3D" parent="ListContent/Tool Buttons/Orange"]
+transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="CanvasRenderer" type="Node" parent="ListContent/Tool Buttons/Orange/Text"]
+
+[node name="Erase" type="Node3D" parent="ListContent/Tool Buttons"]
+
+[node name="CanvasRenderer" type="Node" parent="ListContent/Tool Buttons/Erase"]
+
+[node name="Text" type="Node3D" parent="ListContent/Tool Buttons/Erase"]
+transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="CanvasRenderer" type="Node" parent="ListContent/Tool Buttons/Erase/Text"]
+
+[node name="Undo" type="Node3D" parent="ListContent/Tool Buttons"]
+
+[node name="CanvasRenderer" type="Node" parent="ListContent/Tool Buttons/Undo"]
+
+[node name="Text" type="Node3D" parent="ListContent/Tool Buttons/Undo"]
+transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="CanvasRenderer" type="Node" parent="ListContent/Tool Buttons/Undo/Text"]
+
+[node name="Clear One Button" type="Node3D" parent="ListContent/Tool Buttons"]
+
+[node name="CanvasRenderer" type="Node" parent="ListContent/Tool Buttons/Clear One Button"]
+
+[node name="Text" type="Node3D" parent="ListContent/Tool Buttons/Clear One Button"]
+transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="CanvasRenderer" type="Node" parent="ListContent/Tool Buttons/Clear One Button/Text"]
+
+[node name="Save" type="Node3D" parent="ListContent/Tool Buttons"]
+
+[node name="CanvasRenderer" type="Node" parent="ListContent/Tool Buttons/Save"]
+
+[node name="Text" type="Node3D" parent="ListContent/Tool Buttons/Save"]
+transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="CanvasRenderer" type="Node" parent="ListContent/Tool Buttons/Save/Text"]
+
+[node name="Replace" type="Node3D" parent="ListContent/Tool Buttons"]
+
+[node name="CanvasRenderer" type="Node" parent="ListContent/Tool Buttons/Replace"]
+
+[node name="Text" type="Node3D" parent="ListContent/Tool Buttons/Replace"]
+transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="CanvasRenderer" type="Node" parent="ListContent/Tool Buttons/Replace/Text"]
+
+[node name="Sync" type="Node3D" parent="ListContent/Tool Buttons"]
+
+[node name="CanvasRenderer" type="Node" parent="ListContent/Tool Buttons/Sync"]
+
+[node name="Text" type="Node3D" parent="ListContent/Tool Buttons/Sync"]
+transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="CanvasRenderer" type="Node" parent="ListContent/Tool Buttons/Sync/Text"]

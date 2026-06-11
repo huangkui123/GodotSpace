@@ -1,0 +1,53 @@
+[gd_scene format=3]
+
+[node name="MailItem" type="Node3D"]
+
+[node name="CanvasRenderer" type="Node" parent="."]
+
+[node name="Panel" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="Panel"]
+
+[node name="Mask" type="Node3D" parent="Panel"]
+
+[node name="CanvasRenderer" type="Node" parent="Panel/Mask"]
+
+[node name="Image" type="Node3D" parent="Panel/Mask"]
+
+[node name="CanvasRenderer" type="Node" parent="Panel/Mask/Image"]
+
+[node name="Image" type="Node3D" parent="Panel"]
+
+[node name="CanvasRenderer" type="Node" parent="Panel/Image"]
+
+[node name="Name" type="Node3D" parent="Panel"]
+
+[node name="CanvasRenderer" type="Node" parent="Panel/Name"]
+
+[node name="Time" type="Node3D" parent="Panel"]
+
+[node name="CanvasRenderer" type="Node" parent="Panel/Time"]
+
+[node name="Item" type="Node3D" parent="Panel"]
+
+[node name="CanvasRenderer" type="Node" parent="Panel/Item"]
+
+[node name="state" type="Node3D" parent="Panel"]
+
+[node name="CanvasRenderer" type="Node" parent="Panel/state"]
+
+[node name="NullPanel" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="NullPanel"]
+
+[node name="Text (TMP)" type="Node3D" parent="NullPanel"]
+
+[node name="CanvasRenderer" type="Node" parent="NullPanel/Text (TMP)"]
+
+[node name="Button" type="Node3D" parent="NullPanel"]
+
+[node name="CanvasRenderer" type="Node" parent="NullPanel/Button"]
+
+[node name="Text (TMP)" type="Node3D" parent="NullPanel/Button"]
+
+[node name="CanvasRenderer" type="Node" parent="NullPanel/Button/Text (TMP)"]

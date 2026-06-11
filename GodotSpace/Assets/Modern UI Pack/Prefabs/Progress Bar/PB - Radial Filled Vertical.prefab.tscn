@@ -1,0 +1,41 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="AnimationLibrary" path="res://Assets/Modern UI Pack/Animations/Progress Bar/Radial PB Filled.library.res" id="1_07lxh"]
+[ext_resource type="AnimationNodeBlendTree" path="res://Assets/Modern UI Pack/Animations/Progress Bar/Radial PB Filled.controller.res" id="2_umbb7"]
+[ext_resource type="Script" path="res://addons/unidot/runtime/anim_tree.gd" id="3_cjetl"]
+
+[node name="PB - Radial Filled Vertical" type="Node3D"]
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+libraries = {
+&"": ExtResource("1_07lxh")
+}
+
+[node name="AnimationTree" type="AnimationTree" parent="."]
+deterministic = false
+root_motion_track = NodePath("%GeneralSkeleton:Root")
+root_motion_local = false
+tree_root = ExtResource("2_umbb7")
+anim_player = NodePath("../AnimationPlayer")
+script = ExtResource("3_cjetl")
+metadata/guid_fileid_to_animation_name = {
+"21dd6eb180628814ea00d9690d234eb9:7400000": "Radial PB Filled",
+"a37eee480bdac8840b18bd62eb52eff2:0": "New State"
+}
+
+[node name="Background" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="Background"]
+
+[node name="Loading Bar" type="Node3D" parent="Background"]
+
+[node name="CanvasRenderer" type="Node" parent="Background/Loading Bar"]
+
+[node name="Min Label" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="CanvasRenderer" type="Node" parent="Min Label"]
+
+[node name="Max Label" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="Max Label"]

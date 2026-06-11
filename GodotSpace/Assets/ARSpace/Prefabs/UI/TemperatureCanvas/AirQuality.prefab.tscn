@@ -1,0 +1,17 @@
+[gd_scene format=3]
+
+[node name="AirQuality" type="Node3D"]
+
+[node name="CanvasRenderer" type="Node" parent="."]
+
+[node name="AirQualityIcon" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="AirQualityIcon"]
+
+[node name="AirQualityLabel" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="AirQualityLabel"]
+
+[node name="AirQuality" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="AirQuality"]

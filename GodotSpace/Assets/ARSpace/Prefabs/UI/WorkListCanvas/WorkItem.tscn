@@ -1,0 +1,75 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Rectangle 1386-1.png" id="1_ne2cq"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/UIWindow/Rectangle 1387.png" id="2_r75eb"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Rectangle 1386.png" id="3_6sgyt"]
+[ext_resource type="Script" path="res://Assets/ARSpace/Scripts/WorkListCanvas/WorkListItem.gd" id="4_0g6ha"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155676.png" id="5_p7ee5"]
+[ext_resource type="FontFile" path="res://scenes/shared/fonts/lato/Lato-Regular.ttf" id="6_p48gh"]
+
+[node name="WorkItem" type="TextureButton"]
+custom_minimum_size = Vector2(420, 55)
+offset_left = 1.0
+offset_top = -1.0
+offset_right = 421.0
+offset_bottom = 51.0
+texture_normal = ExtResource("1_ne2cq")
+texture_pressed = ExtResource("2_r75eb")
+texture_hover = ExtResource("3_6sgyt")
+ignore_texture_size = true
+stretch_mode = 0
+script = ExtResource("4_0g6ha")
+
+[node name="Mask" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 3.0
+offset_right = -338.0
+offset_bottom = -2.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Image" type="TextureRect" parent="Mask"]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 4.0
+offset_right = 65.0
+offset_bottom = 51.0
+texture = ExtResource("5_p7ee5")
+expand_mode = 1
+
+[node name="Title" type="Label" parent="."]
+layout_mode = 0
+offset_left = 92.0
+offset_top = 5.0
+offset_right = 236.0
+offset_bottom = 28.0
+theme_override_colors/font_color = Color(0.521569, 0.619608, 0.945098, 1)
+theme_override_fonts/font = ExtResource("6_p48gh")
+theme_override_font_sizes/font_size = 14
+text = "无容器样品实验流程"
+
+[node name="Num" type="Label" parent="."]
+layout_mode = 0
+offset_left = 276.0
+offset_top = 5.0
+offset_right = 415.0
+offset_bottom = 28.0
+theme_override_colors/font_color = Color(0.521569, 0.619608, 0.945098, 1)
+theme_override_fonts/font = ExtResource("6_p48gh")
+theme_override_font_sizes/font_size = 14
+text = "共20步"
+horizontal_alignment = 2
+
+[node name="Info" type="Label" parent="."]
+layout_mode = 0
+offset_left = 97.0
+offset_top = 30.0
+offset_right = 424.0
+offset_bottom = 53.0
+theme_override_colors/font_color = Color(0.521569, 0.619608, 0.945098, 1)
+theme_override_fonts/font = ExtResource("6_p48gh")
+theme_override_font_sizes/font_size = 12
+text = "1.准备应用系统综合包。2.准备工具。3.操作准备..."

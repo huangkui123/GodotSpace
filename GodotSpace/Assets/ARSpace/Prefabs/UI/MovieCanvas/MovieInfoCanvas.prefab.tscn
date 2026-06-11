@@ -1,0 +1,131 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/Background.prefab.tscn" id="1_mhckf"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/DragBox.prefab.tscn" id="2_i4d2a"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/CloseButtonTip.prefab.tscn" id="3_6tcen"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/MaxButtonTip.prefab.tscn" id="4_bm11o"]
+
+[node name="MovieInfoCanvas" type="Node3D"]
+transform = Transform3D(0.001, 0, 0, 0, 0.001, 0, 0, 0, 0.001, 0, 0, 0.991)
+
+[node name="Canvas" type="Node" parent="."]
+
+[node name="AudioSource" type="AudioStreamPlayer" parent="."]
+autoplay = true
+
+[node name="Background" parent="." instance=ExtResource("1_mhckf")]
+
+[node name="MovieInfo" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="MovieInfo"]
+
+[node name="ListContent" type="Node3D" parent="MovieInfo"]
+
+[node name="CanvasRenderer" type="Node" parent="MovieInfo/ListContent"]
+
+[node name="MovieInfoItem" type="Node3D" parent="MovieInfo/ListContent"]
+
+[node name="CanvasRenderer" type="Node" parent="MovieInfo/ListContent/MovieInfoItem"]
+
+[node name="BG" type="Node3D" parent="MovieInfo/ListContent/MovieInfoItem"]
+
+[node name="CanvasRenderer" type="Node" parent="MovieInfo/ListContent/MovieInfoItem/BG"]
+
+[node name="TitleInfo" type="Node3D" parent="MovieInfo/ListContent/MovieInfoItem"]
+
+[node name="CanvasRenderer" type="Node" parent="MovieInfo/ListContent/MovieInfoItem/TitleInfo"]
+
+[node name="Mask" type="Node3D" parent="MovieInfo/ListContent/MovieInfoItem"]
+
+[node name="CanvasRenderer" type="Node" parent="MovieInfo/ListContent/MovieInfoItem/Mask"]
+
+[node name="Image" type="Node3D" parent="MovieInfo/ListContent/MovieInfoItem/Mask"]
+
+[node name="CanvasRenderer" type="Node" parent="MovieInfo/ListContent/MovieInfoItem/Mask/Image"]
+
+[node name="Video" type="Node3D" parent="MovieInfo/ListContent/MovieInfoItem/Mask"]
+
+[node name="CanvasRenderer" type="Node" parent="MovieInfo/ListContent/MovieInfoItem/Mask/Video"]
+
+[node name="VideoPlayer" type="Node" parent="MovieInfo/ListContent/MovieInfoItem/Mask/Video"]
+
+[node name="Text (TMP)" type="Node3D" parent="MovieInfo/ListContent/MovieInfoItem/Mask/Video"]
+
+[node name="CanvasRenderer" type="Node" parent="MovieInfo/ListContent/MovieInfoItem/Mask/Video/Text (TMP)"]
+
+[node name="Toggle" type="Node3D" parent="MovieInfo/ListContent/MovieInfoItem/Mask/Video"]
+
+[node name="Background" type="Node3D" parent="MovieInfo/ListContent/MovieInfoItem/Mask/Video/Toggle"]
+
+[node name="CanvasRenderer" type="Node" parent="MovieInfo/ListContent/MovieInfoItem/Mask/Video/Toggle/Background"]
+
+[node name="Checkmark" type="Node3D" parent="MovieInfo/ListContent/MovieInfoItem/Mask/Video/Toggle/Background"]
+
+[node name="CanvasRenderer" type="Node" parent="MovieInfo/ListContent/MovieInfoItem/Mask/Video/Toggle/Background/Checkmark"]
+
+[node name="Slider" type="Node3D" parent="MovieInfo/ListContent/MovieInfoItem/Mask/Video"]
+
+[node name="Background" type="Node3D" parent="MovieInfo/ListContent/MovieInfoItem/Mask/Video/Slider"]
+
+[node name="CanvasRenderer" type="Node" parent="MovieInfo/ListContent/MovieInfoItem/Mask/Video/Slider/Background"]
+
+[node name="Fill Area" type="Node3D" parent="MovieInfo/ListContent/MovieInfoItem/Mask/Video/Slider"]
+
+[node name="Fill" type="Node3D" parent="MovieInfo/ListContent/MovieInfoItem/Mask/Video/Slider/Fill Area"]
+
+[node name="CanvasRenderer" type="Node" parent="MovieInfo/ListContent/MovieInfoItem/Mask/Video/Slider/Fill Area/Fill"]
+
+[node name="Handle Slide Area" type="Node3D" parent="MovieInfo/ListContent/MovieInfoItem/Mask/Video/Slider"]
+
+[node name="Handle" type="Node3D" parent="MovieInfo/ListContent/MovieInfoItem/Mask/Video/Slider/Handle Slide Area"]
+
+[node name="CanvasRenderer" type="Node" parent="MovieInfo/ListContent/MovieInfoItem/Mask/Video/Slider/Handle Slide Area/Handle"]
+
+[node name="Toggle (1)" type="Node3D" parent="MovieInfo/ListContent/MovieInfoItem/Mask/Video"]
+
+[node name="Background" type="Node3D" parent="MovieInfo/ListContent/MovieInfoItem/Mask/Video/Toggle (1)"]
+
+[node name="CanvasRenderer" type="Node" parent="MovieInfo/ListContent/MovieInfoItem/Mask/Video/Toggle (1)/Background"]
+
+[node name="Checkmark" type="Node3D" parent="MovieInfo/ListContent/MovieInfoItem/Mask/Video/Toggle (1)/Background"]
+
+[node name="CanvasRenderer" type="Node" parent="MovieInfo/ListContent/MovieInfoItem/Mask/Video/Toggle (1)/Background/Checkmark"]
+
+[node name="Image" type="Node3D" parent="MovieInfo/ListContent/MovieInfoItem/Mask/Video/Toggle (1)/Background/Checkmark"]
+
+[node name="CanvasRenderer" type="Node" parent="MovieInfo/ListContent/MovieInfoItem/Mask/Video/Toggle (1)/Background/Checkmark/Image"]
+
+[node name="TopMenuBox" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="TopMenuBox"]
+
+[node name="DragBox" parent="TopMenuBox" instance=ExtResource("2_i4d2a")]
+
+[node name="Tilte" type="Node3D" parent="TopMenuBox"]
+
+[node name="CanvasRenderer" type="Node" parent="TopMenuBox/Tilte"]
+
+[node name="Controller" type="Node3D" parent="TopMenuBox"]
+
+[node name="CanvasRenderer" type="Node" parent="TopMenuBox/Controller"]
+
+[node name="CloseButton" type="Node3D" parent="TopMenuBox/Controller"]
+
+[node name="CanvasRenderer" type="Node" parent="TopMenuBox/Controller/CloseButton"]
+
+[node name="CloseButtonTip" parent="TopMenuBox/Controller/CloseButton" instance=ExtResource("3_6tcen")]
+
+[node name="MaxButton" type="Node3D" parent="TopMenuBox/Controller"]
+
+[node name="CanvasRenderer" type="Node" parent="TopMenuBox/Controller/MaxButton"]
+
+[node name="MaxButtonTip" parent="TopMenuBox/Controller/MaxButton" instance=ExtResource("4_bm11o")]
+
+[node name="MinButton" type="Node3D" parent="TopMenuBox/Controller"]
+
+[node name="CanvasRenderer" type="Node" parent="TopMenuBox/Controller/MinButton"]
+
+[editable path="Background"]
+[editable path="TopMenuBox/DragBox"]
+[editable path="TopMenuBox/Controller/CloseButton/CloseButtonTip"]
+[editable path="TopMenuBox/Controller/MaxButton/MaxButtonTip"]

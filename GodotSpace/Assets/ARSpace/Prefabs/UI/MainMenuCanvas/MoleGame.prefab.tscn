@@ -1,0 +1,20 @@
+[gd_scene format=3]
+
+[node name="MoleGame" type="Node3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 5.7742e-05)
+
+[node name="CanvasRenderer" type="Node" parent="."]
+
+[node name="Name" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="Name"]
+
+[node name="Image (3)" type="Node3D" parent="."]
+transform = Transform3D(0.85858, 0, 0, 0, 0.85858, 0, 0, 0, 0.85858, 0, 0, 0)
+
+[node name="CanvasRenderer" type="Node" parent="Image (3)"]
+
+[node name="Image (4)" type="Node3D" parent="Image (3)"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.000123659)
+
+[node name="CanvasRenderer" type="Node" parent="Image (3)/Image (4)"]

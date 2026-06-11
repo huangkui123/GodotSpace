@@ -1,0 +1,23 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://Assets/ARSpace/Scripts/PictureCanvas/PicutreInfoItem.gd" id="1_dogv7"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Frame 15613.png" id="2_qwobm"]
+
+[node name="PictureInfo" type="Button"]
+offset_right = 472.0
+offset_bottom = 339.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+flat = true
+script = ExtResource("1_dogv7")
+
+[node name="BannerImg" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 9.0
+offset_top = 10.0
+offset_right = 5634.0
+offset_bottom = 3260.0
+scale = Vector2(0.08, 0.1)
+texture = ExtResource("2_qwobm")
+
+[node name="CanvasRenderer" type="Node" parent="."]

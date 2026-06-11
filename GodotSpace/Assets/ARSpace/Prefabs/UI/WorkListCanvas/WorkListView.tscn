@@ -1,0 +1,92 @@
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://Assets/ARSpace/Scripts/WorkListCanvas/WorkListUIView.gd" id="1_xdlsk"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/UIWindow/Rectangle 1385.png" id="2_1mkqx"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Frame 15580.png" id="3_mylig"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Frame 15578.png" id="4_jowu6"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Frame 15579.png" id="5_6u5jm"]
+[ext_resource type="FontFile" path="res://scenes/shared/fonts/lato/Lato-Regular.ttf" id="6_tpy6h"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/WorkListCanvas/WorkItem.tscn" id="7_jque1"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155621.png" id="8_ef0e2"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155614.png" id="9_4uiiu"]
+
+[node name="WorkListView" type="Control" node_paths=PackedStringArray("info_")]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 509.0
+offset_bottom = 354.0
+script = ExtResource("1_xdlsk")
+info_ = [NodePath("ListContent/WorkItem"), NodePath("ListContent/WorkItem2"), NodePath("ListContent/WorkItem3"), NodePath("ListContent/WorkItem4"), NodePath("ListContent/WorkItem5")]
+
+[node name="Background" type="TextureRect" parent="."]
+layout_mode = 0
+offset_right = 446.0
+offset_bottom = 348.0
+texture = ExtResource("2_1mkqx")
+expand_mode = 1
+
+[node name="BackButton" type="TextureButton" parent="."]
+layout_mode = 0
+offset_left = 5.0
+offset_top = 45.0
+offset_right = 46.0
+offset_bottom = 86.0
+rotation = -1.5708
+scale = Vector2(0.8, 0.8)
+texture_normal = ExtResource("3_mylig")
+texture_pressed = ExtResource("4_jowu6")
+texture_hover = ExtResource("5_6u5jm")
+
+[node name="Title" type="Label" parent="."]
+layout_mode = 0
+offset_left = 55.0
+offset_top = 14.0
+offset_right = 135.0
+offset_bottom = 42.0
+theme_override_colors/font_color = Color(0.523212, 0.618929, 0.944913, 1)
+theme_override_fonts/font = ExtResource("6_tpy6h")
+theme_override_font_sizes/font_size = 20
+text = "工作清单"
+
+[node name="ListContent" type="GridContainer" parent="."]
+layout_mode = 0
+offset_left = 13.0
+offset_top = 49.0
+offset_right = 432.0
+offset_bottom = 341.0
+
+[node name="WorkItem" parent="ListContent" instance=ExtResource("7_jque1")]
+layout_mode = 2
+
+[node name="WorkItem2" parent="ListContent" instance=ExtResource("7_jque1")]
+layout_mode = 2
+
+[node name="WorkItem3" parent="ListContent" instance=ExtResource("7_jque1")]
+layout_mode = 2
+
+[node name="WorkItem4" parent="ListContent" instance=ExtResource("7_jque1")]
+layout_mode = 2
+
+[node name="WorkItem5" parent="ListContent" instance=ExtResource("7_jque1")]
+layout_mode = 2
+
+[node name="Back" type="Button" parent="."]
+layout_mode = 0
+offset_left = 449.0
+offset_top = 248.0
+offset_right = 558.0
+offset_bottom = 356.0
+scale = Vector2(0.4, 0.4)
+icon = ExtResource("8_ef0e2")
+
+[node name="Next" type="Button" parent="."]
+layout_mode = 0
+offset_left = 449.0
+offset_top = 289.0
+offset_right = 658.0
+offset_bottom = 497.0
+scale = Vector2(0.21, 0.21)
+icon = ExtResource("9_4uiiu")
+
+[connection signal="pressed" from="Back" to="." method="_on_back_pressed"]
+[connection signal="pressed" from="Next" to="." method="_on_next_pressed"]

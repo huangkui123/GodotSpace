@@ -1,0 +1,136 @@
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://Assets/ARSpace/Scripts/PictureCanvas/PictureUIView.gd" id="1_l4ctk"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/UIWindow/TopMenuBox.png" id="2_jgvou"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/DragBox.prefab.tscn" id="3_ggwct"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/UIWindow/Pictrue.png" id="4_jdknl"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155655.png" id="5_vnriy"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155657.png" id="6_4b2fa"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/PictureCanvas/PictureIntem.prefab.tscn" id="7_e2prw"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155621.png" id="8_2lshs"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155614.png" id="9_420t6"]
+
+[node name="PictureCanvas" type="CanvasLayer"]
+
+[node name="Canvas" type="Control" parent="." node_paths=PackedStringArray("info_")]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 571.0
+offset_bottom = 504.0
+script = ExtResource("1_l4ctk")
+info_ = [NodePath("GridContainer/PictureIntem"), NodePath("GridContainer/PictureIntem2"), NodePath("GridContainer/PictureIntem3"), NodePath("GridContainer/PictureIntem4"), NodePath("GridContainer/PictureIntem5"), NodePath("GridContainer/PictureIntem6"), NodePath("GridContainer/PictureIntem7"), NodePath("GridContainer/PictureIntem8"), NodePath("GridContainer/PictureIntem9")]
+
+[node name="CanvasRenderer" type="ColorRect" parent="Canvas"]
+layout_mode = 0
+offset_left = 1.0
+offset_top = 54.0
+offset_right = 159.0
+offset_bottom = 191.0
+scale = Vector2(3.255, 3.255)
+color = Color(0.117647, 0.223529, 0.45098, 0.403922)
+
+[node name="TopMenuBox" type="Sprite2D" parent="Canvas"]
+position = Vector2(260, 33)
+scale = Vector2(0.852941, 0.852941)
+texture = ExtResource("2_jgvou")
+
+[node name="CanvasRenderer" type="Node" parent="Canvas/TopMenuBox"]
+
+[node name="DragBox" parent="Canvas/TopMenuBox" instance=ExtResource("3_ggwct")]
+position = Vector2(-177.224, 2.63793)
+scale = Vector2(0.994889, 1.1245)
+texture = ExtResource("4_jdknl")
+
+[node name="Controller" type="Control" parent="Canvas/TopMenuBox"]
+layout_mode = 3
+anchors_preset = 0
+
+[node name="CanvasRenderer" type="Node" parent="Canvas/TopMenuBox/Controller"]
+
+[node name="CloseButton" type="Button" parent="Canvas/TopMenuBox/Controller"]
+layout_mode = 0
+offset_left = 197.948
+offset_top = -25.5
+offset_right = 250.948
+offset_bottom = 26.5
+icon = ExtResource("5_vnriy")
+flat = true
+
+[node name="MaxButton" type="Button" parent="Canvas/TopMenuBox/Controller"]
+layout_mode = 0
+offset_left = 243.672
+offset_top = -24.3276
+offset_right = 296.672
+offset_bottom = 27.6724
+icon = ExtResource("6_4b2fa")
+flat = true
+
+[node name="GridContainer" type="GridContainer" parent="Canvas"]
+layout_mode = 1
+anchors_preset = -1
+anchor_top = 0.12
+anchor_bottom = 0.12
+offset_top = -0.480003
+offset_right = 517.0
+offset_bottom = 429.52
+columns = 3
+
+[node name="PictureIntem" parent="Canvas/GridContainer" instance=ExtResource("7_e2prw")]
+layout_mode = 2
+
+[node name="PictureIntem2" parent="Canvas/GridContainer" instance=ExtResource("7_e2prw")]
+layout_mode = 2
+
+[node name="PictureIntem3" parent="Canvas/GridContainer" instance=ExtResource("7_e2prw")]
+layout_mode = 2
+
+[node name="PictureIntem4" parent="Canvas/GridContainer" instance=ExtResource("7_e2prw")]
+layout_mode = 2
+
+[node name="PictureIntem5" parent="Canvas/GridContainer" instance=ExtResource("7_e2prw")]
+layout_mode = 2
+
+[node name="PictureIntem6" parent="Canvas/GridContainer" instance=ExtResource("7_e2prw")]
+layout_mode = 2
+
+[node name="PictureIntem7" parent="Canvas/GridContainer" instance=ExtResource("7_e2prw")]
+layout_mode = 2
+
+[node name="PictureIntem8" parent="Canvas/GridContainer" instance=ExtResource("7_e2prw")]
+layout_mode = 2
+
+[node name="PictureIntem9" parent="Canvas/GridContainer" instance=ExtResource("7_e2prw")]
+layout_mode = 2
+
+[node name="Back" type="Button" parent="Canvas"]
+layout_mode = 0
+offset_left = 528.0
+offset_top = 413.0
+offset_right = 637.0
+offset_bottom = 521.0
+scale = Vector2(0.4, 0.4)
+icon = ExtResource("8_2lshs")
+
+[node name="Next" type="Button" parent="Canvas"]
+layout_mode = 0
+offset_left = 527.0
+offset_top = 454.0
+offset_right = 736.0
+offset_bottom = 662.0
+scale = Vector2(0.21, 0.21)
+icon = ExtResource("9_420t6")
+
+[connection signal="pressed" from="Canvas/TopMenuBox/Controller/CloseButton" to="Canvas" method="_on_close_button_pressed"]
+[connection signal="pressed" from="Canvas/Back" to="Canvas" method="_on_back_pressed"]
+[connection signal="pressed" from="Canvas/Next" to="Canvas" method="_on_next_pressed"]
+
+[editable path="Canvas/TopMenuBox/DragBox"]
+[editable path="Canvas/GridContainer/PictureIntem"]
+[editable path="Canvas/GridContainer/PictureIntem2"]
+[editable path="Canvas/GridContainer/PictureIntem3"]
+[editable path="Canvas/GridContainer/PictureIntem4"]
+[editable path="Canvas/GridContainer/PictureIntem5"]
+[editable path="Canvas/GridContainer/PictureIntem6"]
+[editable path="Canvas/GridContainer/PictureIntem7"]
+[editable path="Canvas/GridContainer/PictureIntem8"]
+[editable path="Canvas/GridContainer/PictureIntem9"]

@@ -1,0 +1,37 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://Assets/ARSpace/Scripts/PictureCanvas/PictureListItem.gd" id="1_bg4sb"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Frame 15613.png" id="2_3lovg"]
+
+[node name="PictureIntem" type="Button"]
+offset_right = 171.0
+offset_bottom = 143.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+flat = true
+script = ExtResource("1_bg4sb")
+
+[node name="BannerImg" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 9.0
+offset_top = 10.0
+offset_right = 1930.0
+offset_bottom = 1120.0
+scale = Vector2(0.08, 0.1)
+texture = ExtResource("2_3lovg")
+expand_mode = 1
+
+[node name="CanvasRenderer" type="Node" parent="."]
+
+[node name="Title" type="Label" parent="."]
+modulate = Color(0.710791, 0.712823, 1, 1)
+layout_mode = 1
+offset_left = 10.0
+offset_top = 121.0
+offset_right = 162.0
+offset_bottom = 151.0
+text = "图片"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="CanvasRenderer" type="Node" parent="Title"]

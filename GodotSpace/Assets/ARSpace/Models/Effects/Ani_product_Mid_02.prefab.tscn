@@ -1,0 +1,81 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="AnimationLibrary" path="res://Assets/ARSpace/Models/Effects/Ani/Ani_product_00002.library.res" id="1_tt1jq"]
+[ext_resource type="AnimationNodeBlendTree" path="res://Assets/ARSpace/Models/Effects/Ani/Ani_product_00002.controller.res" id="2_ar8mv"]
+[ext_resource type="Script" path="res://addons/unidot/runtime/anim_tree.gd" id="3_ckmox"]
+
+[node name="Ani_product_Mid_02" type="Node3D"]
+transform = Transform3D(-0.086824, 0, -0.492404, 0, 0.5, 0, 0.492404, 0, -0.086824, -0.604, 0.42, -1.498)
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+libraries = {
+&"": ExtResource("1_tt1jq")
+}
+
+[node name="AnimationTree" type="AnimationTree" parent="."]
+deterministic = false
+root_motion_track = NodePath("%GeneralSkeleton:Root")
+root_motion_local = false
+tree_root = ExtResource("2_ar8mv")
+anim_player = NodePath("../AnimationPlayer")
+script = ExtResource("3_ckmox")
+metadata/guid_fileid_to_animation_name = {
+"04803ddea1e764c4189c61a54a7b2e42:7400000": "Ani_UI_Product_00002",
+"3000178d47706a949a4a6d6df0d89ecf:7400000": "Ani_UI_Product_00001",
+"3848d8c93a620fb40be61cd8bedad5fd:7400000": "Ani_UI_Product_00003_mid"
+}
+
+[node name="Ani_effect" type="Node3D" parent="."]
+
+[node name="00004_5X2" type="Node3D" parent="Ani_effect"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.39, 0)
+
+[node name="ParticleSystem" type="Node" parent="Ani_effect/00004_5X2"]
+
+[node name="ParticleSystemRenderer" type="Node" parent="Ani_effect/00004_5X2"]
+
+[node name="00004_5X2_2" type="Node3D" parent="Ani_effect/00004_5X2"]
+
+[node name="ParticleSystem" type="Node" parent="Ani_effect/00004_5X2/00004_5X2_2"]
+
+[node name="ParticleSystemRenderer" type="Node" parent="Ani_effect/00004_5X2/00004_5X2_2"]
+
+[node name="00004_5X2_3" type="Node3D" parent="Ani_effect"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.39, 0)
+
+[node name="ParticleSystem" type="Node" parent="Ani_effect/00004_5X2_3"]
+
+[node name="ParticleSystemRenderer" type="Node" parent="Ani_effect/00004_5X2_3"]
+
+[node name="00004_2X5" type="Node3D" parent="Ani_effect"]
+
+[node name="ParticleSystem" type="Node" parent="Ani_effect/00004_2X5"]
+
+[node name="ParticleSystemRenderer" type="Node" parent="Ani_effect/00004_2X5"]
+
+[node name="00004_2X5_2" type="Node3D" parent="Ani_effect/00004_2X5"]
+
+[node name="ParticleSystem" type="Node" parent="Ani_effect/00004_2X5/00004_2X5_2"]
+
+[node name="ParticleSystemRenderer" type="Node" parent="Ani_effect/00004_2X5/00004_2X5_2"]
+
+[node name="00004_2X5_3" type="Node3D" parent="Ani_effect"]
+
+[node name="ParticleSystem" type="Node" parent="Ani_effect/00004_2X5_3"]
+
+[node name="ParticleSystemRenderer" type="Node" parent="Ani_effect/00004_2X5_3"]
+
+[node name="T_product_dot" type="Node3D" parent="Ani_effect"]
+transform = Transform3D(1e-07, 0, 0, 0, 1e-07, 0, 0, 0, 1e-07, 0, -0.68, 0)
+
+[node name="SpriteRenderer" type="Node" parent="Ani_effect/T_product_dot"]
+
+[node name="T_product_Left_bg" type="Node3D" parent="Ani_effect"]
+transform = Transform3D(0.2, 0, 0, 0, 1e-07, 0, 0, 0, 0.2, 0, 0, 0.12)
+
+[node name="SpriteRenderer" type="Node" parent="Ani_effect/T_product_Left_bg"]
+
+[node name="T_product_word1" type="Node3D" parent="Ani_effect"]
+transform = Transform3D(0.1, 0, 0, 0, 0.1, 0, 0, 0, 0.1, 0, 0, 0.1)
+
+[node name="SpriteRenderer" type="Node" parent="Ani_effect/T_product_word1"]

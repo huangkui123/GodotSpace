@@ -1,0 +1,46 @@
+[gd_scene format=3]
+
+[node name="PopUpDefaultSTUICanvas" type="Node3D"]
+
+[node name="CanvasRenderer" type="Node" parent="."]
+
+[node name="Canvas" type="Node" parent="."]
+
+[node name="AudioSource" type="AudioStreamPlayer" parent="."]
+autoplay = true
+
+[node name="Text_Title" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="Text_Title"]
+
+[node name="Text_Content" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="Text_Content"]
+
+[node name="ButtonPanel" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="ButtonPanel"]
+
+[node name="Button_Confirm" type="Node3D" parent="ButtonPanel"]
+
+[node name="CanvasRenderer" type="Node" parent="ButtonPanel/Button_Confirm"]
+
+[node name="Text_Btn_Confirm" type="Node3D" parent="ButtonPanel/Button_Confirm"]
+
+[node name="CanvasRenderer" type="Node" parent="ButtonPanel/Button_Confirm/Text_Btn_Confirm"]
+
+[node name="Button_Cancel" type="Node3D" parent="ButtonPanel"]
+
+[node name="CanvasRenderer" type="Node" parent="ButtonPanel/Button_Cancel"]
+
+[node name="Text_Btn_Cancel" type="Node3D" parent="ButtonPanel/Button_Cancel"]
+
+[node name="CanvasRenderer" type="Node" parent="ButtonPanel/Button_Cancel/Text_Btn_Cancel"]
+
+[node name="Button_ConfirmAlone" type="Node3D" parent="ButtonPanel"]
+
+[node name="CanvasRenderer" type="Node" parent="ButtonPanel/Button_ConfirmAlone"]
+
+[node name="Text_ConfirmAlone" type="Node3D" parent="ButtonPanel/Button_ConfirmAlone"]
+
+[node name="CanvasRenderer" type="Node" parent="ButtonPanel/Button_ConfirmAlone/Text_ConfirmAlone"]

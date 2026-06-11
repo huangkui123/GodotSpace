@@ -1,0 +1,146 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/DragBox.prefab.tscn" id="1_jdhns"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/MainMenuCanvas/LifeTabView.prefab.tscn" id="2_ar13y"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/MainMenuCanvas/WorkTabView.prefab.tscn" id="3_fdgov"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/MailCanvas/MailListView.prefab.tscn" id="4_lycd1"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/WorkListCanvas/WorkListView.tscn" id="5_lr5f3"]
+
+[node name="MainMenuCanvas" type="Node3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.991)
+
+[node name="Canvas" type="Node" parent="."]
+
+[node name="AudioSource" type="AudioStreamPlayer" parent="."]
+autoplay = true
+
+[node name="TopMenuBox" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="TopMenuBox"]
+
+[node name="DragBox" parent="TopMenuBox" instance=ExtResource("1_jdhns")]
+
+[node name="Controller" type="Node3D" parent="TopMenuBox"]
+
+[node name="CanvasRenderer" type="Node" parent="TopMenuBox/Controller"]
+
+[node name="CloseButton" type="Node3D" parent="TopMenuBox/Controller"]
+
+[node name="CanvasRenderer" type="Node" parent="TopMenuBox/Controller/CloseButton"]
+
+[node name="MaxButton" type="Node3D" parent="TopMenuBox/Controller"]
+
+[node name="CanvasRenderer" type="Node" parent="TopMenuBox/Controller/MaxButton"]
+
+[node name="MinButton" type="Node3D" parent="TopMenuBox/Controller"]
+
+[node name="CanvasRenderer" type="Node" parent="TopMenuBox/Controller/MinButton"]
+
+[node name="Navcation" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="Navcation"]
+
+[node name="ModeLayout" type="Node3D" parent="Navcation"]
+
+[node name="CanvasRenderer" type="Node" parent="Navcation/ModeLayout"]
+
+[node name="LifeModeTab" type="Node3D" parent="Navcation/ModeLayout"]
+
+[node name="CanvasRenderer" type="Node" parent="Navcation/ModeLayout/LifeModeTab"]
+
+[node name="Check" type="Node3D" parent="Navcation/ModeLayout/LifeModeTab"]
+
+[node name="CanvasRenderer" type="Node" parent="Navcation/ModeLayout/LifeModeTab/Check"]
+
+[node name="Image" type="Node3D" parent="Navcation/ModeLayout/LifeModeTab"]
+
+[node name="CanvasRenderer" type="Node" parent="Navcation/ModeLayout/LifeModeTab/Image"]
+
+[node name="WorkModeTab" type="Node3D" parent="Navcation/ModeLayout"]
+
+[node name="CanvasRenderer" type="Node" parent="Navcation/ModeLayout/WorkModeTab"]
+
+[node name="Check" type="Node3D" parent="Navcation/ModeLayout/WorkModeTab"]
+
+[node name="CanvasRenderer" type="Node" parent="Navcation/ModeLayout/WorkModeTab/Check"]
+
+[node name="Image" type="Node3D" parent="Navcation/ModeLayout/WorkModeTab"]
+
+[node name="CanvasRenderer" type="Node" parent="Navcation/ModeLayout/WorkModeTab/Image"]
+
+[node name="CaptureButton" type="Node3D" parent="Navcation"]
+
+[node name="CanvasRenderer" type="Node" parent="Navcation/CaptureButton"]
+
+[node name="Image" type="Node3D" parent="Navcation/CaptureButton"]
+
+[node name="CanvasRenderer" type="Node" parent="Navcation/CaptureButton/Image"]
+
+[node name="LifeTabView" parent="." instance=ExtResource("2_ar13y")]
+visible = false
+
+[node name="WorkTabView" parent="." instance=ExtResource("3_fdgov")]
+
+[node name="MailListView2" parent="WorkTabView" instance=ExtResource("4_lycd1")]
+visible = false
+
+[node name="WorkListView2" parent="WorkTabView" instance=ExtResource("5_lr5f3")]
+visible = false
+
+[node name="TimeLayout" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="TimeLayout"]
+
+[node name="TimeText" type="Node3D" parent="TimeLayout"]
+
+[node name="CanvasRenderer" type="Node" parent="TimeLayout/TimeText"]
+
+[node name="PowerLayout" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="PowerLayout"]
+
+[node name="PowerText" type="Node3D" parent="PowerLayout"]
+
+[node name="CanvasRenderer" type="Node" parent="PowerLayout/PowerText"]
+
+[node name="PowerProgress" type="Node3D" parent="PowerLayout"]
+
+[node name="CanvasRenderer" type="Node" parent="PowerLayout/PowerProgress"]
+
+[node name="ChildWindowPivot" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="ChildWindowPivot"]
+
+[editable path="TopMenuBox/DragBox"]
+[editable path="LifeTabView"]
+[editable path="LifeTabView/Scroll View/Viewport/Content/Photo"]
+[editable path="LifeTabView/Scroll View/Viewport/Content/Movie"]
+[editable path="LifeTabView/Scroll View/Viewport/Content/Model"]
+[editable path="LifeTabView/Scroll View/Viewport/Content/Weather"]
+[editable path="LifeTabView/Scroll View/Viewport/Content/MoleGame"]
+[editable path="WorkTabView"]
+[editable path="WorkTabView/WorkListView"]
+[editable path="WorkTabView/WorkListView/ListContent/WorkItem"]
+[editable path="WorkTabView/WorkListView/ListContent/WorkItem (1)"]
+[editable path="WorkTabView/WorkListView/ListContent/WorkItem (2)"]
+[editable path="WorkTabView/WorkListView/ListContent/WorkItem (3)"]
+[editable path="WorkTabView/WorkListView/ListContent/WorkItem (4)"]
+[editable path="WorkTabView/MailListView"]
+[editable path="WorkTabView/MailListView/ListContent/MailItem"]
+[editable path="WorkTabView/MailListView/ListContent/MailItem (1)"]
+[editable path="WorkTabView/MailListView/ListContent/MailItem (2)"]
+[editable path="WorkTabView/MailListView/ListContent/MailItem (3)"]
+[editable path="WorkTabView/MailListView/ListContent/MailItem (4)"]
+[editable path="WorkTabView/BrushView"]
+[editable path="WorkTabView/MailListView2"]
+[editable path="WorkTabView/MailListView2/ListContent/MailItem"]
+[editable path="WorkTabView/MailListView2/ListContent/MailItem (1)"]
+[editable path="WorkTabView/MailListView2/ListContent/MailItem (2)"]
+[editable path="WorkTabView/MailListView2/ListContent/MailItem (3)"]
+[editable path="WorkTabView/MailListView2/ListContent/MailItem (4)"]
+[editable path="WorkTabView/WorkListView2"]
+[editable path="WorkTabView/WorkListView2/ListContent/WorkItem"]
+[editable path="WorkTabView/WorkListView2/ListContent/WorkItem (1)"]
+[editable path="WorkTabView/WorkListView2/ListContent/WorkItem (2)"]
+[editable path="WorkTabView/WorkListView2/ListContent/WorkItem (3)"]
+[editable path="WorkTabView/WorkListView2/ListContent/WorkItem (4)"]

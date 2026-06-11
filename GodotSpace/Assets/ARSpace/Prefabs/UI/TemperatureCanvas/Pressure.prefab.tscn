@@ -1,0 +1,21 @@
+[gd_scene format=3]
+
+[node name="Pressure" type="Node3D"]
+
+[node name="CanvasRenderer" type="Node" parent="."]
+
+[node name="PressureIcon" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="PressureIcon"]
+
+[node name="PressureLabel" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="PressureLabel"]
+
+[node name="PressureValue" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="PressureValue"]
+
+[node name="PressureState" type="Node3D" parent="PressureValue"]
+
+[node name="CanvasRenderer" type="Node" parent="PressureValue/PressureState"]

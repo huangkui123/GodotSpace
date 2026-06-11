@@ -1,0 +1,11 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="ArrayMesh" path="res://Assets/Whack-A-Mole/Models/extracted/tree2.ICO球_002.mesh" id="1_qrhcl"]
+[ext_resource type="Material" path="res://Assets/DisolveMat/livingRoom/treetex.material" id="2_6wxef"]
+
+[node name="tree2" type="Node3D"]
+transform = Transform3D(-0.525318, 0, 0.13839, 0, 0.54324, 0, -0.13839, 0, -0.525318, -6.03, 3.67382, 1.5412)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="."]
+mesh = ExtResource("1_qrhcl")
+surface_material_override/0 = ExtResource("2_6wxef")

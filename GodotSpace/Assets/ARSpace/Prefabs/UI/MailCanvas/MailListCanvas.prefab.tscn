@@ -1,0 +1,76 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/Background.prefab.tscn" id="1_0uskg"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/MailCanvas/MailItem.prefab.tscn" id="2_28a7u"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/DragBox.prefab.tscn" id="3_hsqqb"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/CloseButtonTip.prefab.tscn" id="4_gu2i0"]
+
+[node name="MailListCanvas" type="Node3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.991)
+
+[node name="Canvas" type="Node" parent="."]
+
+[node name="AudioSource" type="AudioStreamPlayer" parent="."]
+autoplay = true
+
+[node name="Background" parent="." instance=ExtResource("1_0uskg")]
+
+[node name="ChildWindowPivot" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="ChildWindowPivot"]
+
+[node name="MailListView" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="MailListView"]
+
+[node name="BackButton" type="Node3D" parent="MailListView"]
+transform = Transform3D(-4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0, 0, 1, 0, 0, 0.991)
+
+[node name="CanvasRenderer" type="Node" parent="MailListView/BackButton"]
+
+[node name="Title" type="Node3D" parent="MailListView"]
+
+[node name="CanvasRenderer" type="Node" parent="MailListView/Title"]
+
+[node name="ListContent" type="Node3D" parent="MailListView"]
+
+[node name="CanvasRenderer" type="Node" parent="MailListView/ListContent"]
+
+[node name="MailItem" parent="MailListView/ListContent" instance=ExtResource("2_28a7u")]
+
+[node name="MailItem (1)" parent="MailListView/ListContent" instance=ExtResource("2_28a7u")]
+
+[node name="MailItem (2)" parent="MailListView/ListContent" instance=ExtResource("2_28a7u")]
+
+[node name="MailItem (3)" parent="MailListView/ListContent" instance=ExtResource("2_28a7u")]
+
+[node name="MailItem (4)" parent="MailListView/ListContent" instance=ExtResource("2_28a7u")]
+
+[node name="Back" type="Node3D" parent="MailListView"]
+
+[node name="CanvasRenderer" type="Node" parent="MailListView/Back"]
+
+[node name="Next" type="Node3D" parent="MailListView"]
+
+[node name="CanvasRenderer" type="Node" parent="MailListView/Next"]
+
+[node name="TopMenuBox" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="TopMenuBox"]
+
+[node name="DragBox" parent="TopMenuBox" instance=ExtResource("3_hsqqb")]
+
+[node name="CloseButton" type="Node3D" parent="TopMenuBox"]
+
+[node name="CanvasRenderer" type="Node" parent="TopMenuBox/CloseButton"]
+
+[node name="CloseButtonTip" parent="TopMenuBox/CloseButton" instance=ExtResource("4_gu2i0")]
+
+[editable path="Background"]
+[editable path="MailListView/ListContent/MailItem"]
+[editable path="MailListView/ListContent/MailItem (1)"]
+[editable path="MailListView/ListContent/MailItem (2)"]
+[editable path="MailListView/ListContent/MailItem (3)"]
+[editable path="MailListView/ListContent/MailItem (4)"]
+[editable path="TopMenuBox/DragBox"]
+[editable path="TopMenuBox/CloseButton/CloseButtonTip"]

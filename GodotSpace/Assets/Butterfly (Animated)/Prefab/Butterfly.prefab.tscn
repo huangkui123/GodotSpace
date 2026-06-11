@@ -1,0 +1,233 @@
+[gd_scene load_steps=27 format=3]
+
+[ext_resource type="ArrayMesh" path="res://Assets/Butterfly (Animated)/FBX/extracted/butterfly.auge_links.mesh" id="1_142dj"]
+[ext_resource type="Material" path="res://Assets/Butterfly (Animated)/FBX/Materials/butterfly_Albedo.material" id="2_iud3e"]
+[ext_resource type="ArrayMesh" path="res://Assets/Butterfly (Animated)/FBX/extracted/butterfly.auge_links001.mesh" id="3_lblap"]
+[ext_resource type="ArrayMesh" path="res://Assets/Butterfly (Animated)/FBX/extracted/butterfly.haar_01.mesh" id="4_10o1n"]
+[ext_resource type="Material" path="res://Assets/Butterfly (Animated)/FBX/Materials/hair_unity.material" id="5_h34fk"]
+[ext_resource type="ArrayMesh" path="res://Assets/Butterfly (Animated)/FBX/extracted/butterfly.haar_02.mesh" id="6_wi4s4"]
+[ext_resource type="ArrayMesh" path="res://Assets/Butterfly (Animated)/FBX/extracted/butterfly.haar_03.mesh" id="7_v1e3j"]
+[ext_resource type="ArrayMesh" path="res://Assets/Butterfly (Animated)/FBX/extracted/butterfly.haar_04.mesh" id="8_qc6sv"]
+[ext_resource type="ArrayMesh" path="res://Assets/Butterfly (Animated)/FBX/extracted/butterfly.haar_05.mesh" id="9_qa08b"]
+[ext_resource type="ArrayMesh" path="res://Assets/Butterfly (Animated)/FBX/extracted/butterfly.haar_06.mesh" id="10_qouvv"]
+[ext_resource type="ArrayMesh" path="res://Assets/Butterfly (Animated)/FBX/extracted/butterfly.haar_07.mesh" id="11_f2dql"]
+[ext_resource type="ArrayMesh" path="res://Assets/Butterfly (Animated)/FBX/extracted/butterfly.haar_08.mesh" id="12_1o120"]
+[ext_resource type="ArrayMesh" path="res://Assets/Butterfly (Animated)/FBX/extracted/butterfly.haar_09.mesh" id="13_duu5a"]
+[ext_resource type="ArrayMesh" path="res://Assets/Butterfly (Animated)/FBX/extracted/butterfly.haar_10.mesh" id="14_mp4q3"]
+[ext_resource type="ArrayMesh" path="res://Assets/Butterfly (Animated)/FBX/extracted/butterfly.fuehler_links.mesh" id="15_q8mo1"]
+[ext_resource type="ArrayMesh" path="res://Assets/Butterfly (Animated)/FBX/extracted/butterfly.hinterbein.mesh" id="16_oo3pe"]
+[ext_resource type="ArrayMesh" path="res://Assets/Butterfly (Animated)/FBX/extracted/butterfly.koerper.mesh" id="17_7u0xm"]
+[ext_resource type="ArrayMesh" path="res://Assets/Butterfly (Animated)/FBX/extracted/butterfly.mittelbein.mesh" id="18_kkaea"]
+[ext_resource type="ArrayMesh" path="res://Assets/Butterfly (Animated)/FBX/extracted/butterfly.ruessel.mesh" id="19_gqfx0"]
+[ext_resource type="ArrayMesh" path="res://Assets/Butterfly (Animated)/FBX/extracted/butterfly.schutzpanzer.mesh" id="20_wwdjj"]
+[ext_resource type="ArrayMesh" path="res://Assets/Butterfly (Animated)/FBX/extracted/butterfly.vorderbein.mesh" id="21_edgqy"]
+[ext_resource type="ArrayMesh" path="res://Assets/Butterfly (Animated)/FBX/extracted/butterfly.left_wing_low.mesh" id="22_51bq6"]
+[ext_resource type="ArrayMesh" path="res://Assets/Butterfly (Animated)/FBX/extracted/butterfly.left_wing_up.mesh" id="23_siqkq"]
+[ext_resource type="ArrayMesh" path="res://Assets/Butterfly (Animated)/FBX/extracted/butterfly.right_wing_low.mesh" id="24_w5oyk"]
+[ext_resource type="ArrayMesh" path="res://Assets/Butterfly (Animated)/FBX/extracted/butterfly.right_wing_up.mesh" id="25_wkwyk"]
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_nmqdl"]
+
+[node name="Butterfly" type="Node3D"]
+transform = Transform3D(0.01, 0, 0, 0, -4.37114e-10, 0.01, 0, -0.01, -4.37114e-10, 0.821234, 0.504247, 0.0981519)
+
+[node name="Animation" type="AnimationPlayer" parent="."]
+libraries = {
+&"": SubResource("AnimationLibrary_nmqdl")
+}
+
+[node name="butterfly_gruppe" type="Node3D" parent="."]
+transform = Transform3D(-4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0, 1, -1.53302, 0.0524292, 4.14856)
+
+[node name="auge_links" type="Node3D" parent="butterfly_gruppe"]
+transform = Transform3D(-0.551145, 0.0448516, 0.1929, 0.0382222, 0.668028, -0.00657149, 0.142647, -0.00570487, 0.747068, -0.520615, 2.87915, 1.13742)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="butterfly_gruppe/auge_links"]
+gi_mode = 2
+mesh = ExtResource("1_142dj")
+surface_material_override/0 = ExtResource("2_iud3e")
+
+[node name="auge_links001" type="Node3D" parent="butterfly_gruppe"]
+transform = Transform3D(0.551145, -0.0448517, -0.1929, 0.0382221, 0.668029, -0.00657198, 0.142647, -0.00570444, 0.747068, 0.519394, 2.87915, 1.13742)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="butterfly_gruppe/auge_links001"]
+gi_mode = 2
+mesh = ExtResource("3_lblap")
+surface_material_override/0 = ExtResource("2_iud3e")
+
+[node name="butterfly_fell" type="Node3D" parent="butterfly_gruppe"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0114288, -0.120087, 1.17977)
+
+[node name="haar_01" type="Node3D" parent="butterfly_gruppe/butterfly_fell"]
+transform = Transform3D(0.534494, 0.0947702, 0.0122481, -0.0934421, 0.532912, -0.0457104, -0.0199995, 0.0428891, 0.540903, -0.0464249, -0.49794, 0.275887)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="butterfly_gruppe/butterfly_fell/haar_01"]
+gi_mode = 2
+mesh = ExtResource("4_10o1n")
+surface_material_override/0 = ExtResource("5_h34fk")
+
+[node name="haar_02" type="Node3D" parent="butterfly_gruppe/butterfly_fell"]
+transform = Transform3D(0.492839, 0.140531, -0.179379, -0.132056, 0.524468, 0.0480643, 0.185706, 0, 0.510224, -0.836327, 0.827255, 0.236519)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="butterfly_gruppe/butterfly_fell/haar_02"]
+gi_mode = 2
+mesh = ExtResource("6_wi4s4")
+surface_material_override/0 = ExtResource("5_h34fk")
+
+[node name="haar_03" type="Node3D" parent="butterfly_gruppe/butterfly_fell"]
+transform = Transform3D(0.542969, 0, 0, 0, 0.540903, 0.0473229, 0, -0.0473229, 0.540903, -0.0536118, 0.827255, 0.535652)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="butterfly_gruppe/butterfly_fell/haar_03"]
+gi_mode = 2
+mesh = ExtResource("7_v1e3j")
+surface_material_override/0 = ExtResource("5_h34fk")
+
+[node name="haar_04" type="Node3D" parent="butterfly_gruppe/butterfly_fell"]
+transform = Transform3D(0.383937, 0.383937, -4.85452e-08, -0.347965, 0.347965, 0.229469, 0.162259, -0.162259, 0.492097, -0.578133, 1.27132, 0.736275)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="butterfly_gruppe/butterfly_fell/haar_04"]
+gi_mode = 2
+mesh = ExtResource("8_qc6sv")
+surface_material_override/0 = ExtResource("5_h34fk")
+
+[node name="haar_05" type="Node3D" parent="butterfly_gruppe/butterfly_fell"]
+transform = Transform3D(0.424076, -0.162169, 0.297786, 0.0439553, 0.499113, 0.209212, -0.336219, -0.139294, 0.402951, 1.05187, 0.995834, 0.375923)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="butterfly_gruppe/butterfly_fell/haar_05"]
+gi_mode = 2
+mesh = ExtResource("9_qa08b")
+surface_material_override/0 = ExtResource("5_h34fk")
+
+[node name="haar_06" type="Node3D" parent="butterfly_gruppe/butterfly_fell"]
+transform = Transform3D(-0.193412, -0.158419, -0.0250235, -0.158011, 0.194935, -0.0127978, -0.0274831, -0.00588535, 0.249681, 0.723038, -0.0910187, 0.429436)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="butterfly_gruppe/butterfly_fell/haar_06"]
+gi_mode = 2
+mesh = ExtResource("10_qouvv")
+surface_material_override/0 = ExtResource("5_h34fk")
+
+[node name="haar_07" type="Node3D" parent="butterfly_gruppe/butterfly_fell"]
+transform = Transform3D(-0.161506, 0.157666, -0.110399, -2.17609e-08, 0.144116, 0.205819, -0.192475, -0.132298, 0.0926359, -0.806923, 1.90352, 0.514019)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="butterfly_gruppe/butterfly_fell/haar_07"]
+gi_mode = 2
+mesh = ExtResource("11_f2dql")
+surface_material_override/0 = ExtResource("5_h34fk")
+
+[node name="haar_08" type="Node3D" parent="butterfly_gruppe/butterfly_fell"]
+transform = Transform3D(-0.193353, -0.236442, 0.172797, -0.244372, 0.244372, 0.0609377, 0.161388, 0.0867547, 0.299294, 1.20919, 0.232498, 0.0660934)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="butterfly_gruppe/butterfly_fell/haar_08"]
+gi_mode = 2
+mesh = ExtResource("12_1o120")
+surface_material_override/0 = ExtResource("5_h34fk")
+
+[node name="haar_09" type="Node3D" parent="butterfly_gruppe/butterfly_fell"]
+transform = Transform3D(0.523907, -0.139327, 0.0304186, 0.142528, 0.50764, -0.129628, 0.00482339, 0.133061, 0.526391, 0.845604, -1.05544, -0.0851364)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="butterfly_gruppe/butterfly_fell/haar_09"]
+gi_mode = 2
+mesh = ExtResource("13_duu5a")
+surface_material_override/0 = ExtResource("5_h34fk")
+
+[node name="haar_10" type="Node3D" parent="butterfly_gruppe/butterfly_fell"]
+transform = Transform3D(0.229733, 0.383937, 0, -0.229733, 0.383937, 0, 0, 0, 0.542969, -1.03475, -0.759628, -0.145988)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="butterfly_gruppe/butterfly_fell/haar_10"]
+gi_mode = 2
+mesh = ExtResource("14_mp4q3")
+surface_material_override/0 = ExtResource("5_h34fk")
+
+[node name="fuehler_links" type="Node3D" parent="butterfly_gruppe"]
+transform = Transform3D(-1, 0, 0, 0, 0.999628, 0.0272692, 0, -0.0272692, 0.999628, -0.150452, 2.54097, 1.58281)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="butterfly_gruppe/fuehler_links"]
+gi_mode = 2
+mesh = ExtResource("15_q8mo1")
+surface_material_override/0 = ExtResource("2_iud3e")
+
+[node name="hinterbein" type="Node3D" parent="butterfly_gruppe"]
+transform = Transform3D(-1.19209e-07, -4.37114e-08, 1, -1, 4.37114e-08, -1.19209e-07, 4.37114e-08, 1, 4.37114e-08, -1.45026, -0.350525, -0.96236)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="butterfly_gruppe/hinterbein"]
+gi_mode = 2
+mesh = ExtResource("16_oo3pe")
+surface_material_override/0 = ExtResource("2_iud3e")
+
+[node name="koerper" type="Node3D" parent="butterfly_gruppe"]
+transform = Transform3D(1.21055, 0, 0, 0, -5.29147e-08, 1.21055, 0, -1.21055, -5.29147e-08, 0.0142059, 2.85049, 0.984982)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="butterfly_gruppe/koerper"]
+gi_mode = 2
+mesh = ExtResource("17_7u0xm")
+surface_material_override/0 = ExtResource("2_iud3e")
+
+[node name="mittelbein" type="Node3D" parent="butterfly_gruppe"]
+transform = Transform3D(-1.91069e-15, 4.37114e-08, -1, 1, 4.37114e-08, 0, -4.37114e-08, 1, 4.37114e-08, -1.45027, 0.667175, -0.888779)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="butterfly_gruppe/mittelbein"]
+gi_mode = 2
+mesh = ExtResource("18_kkaea")
+surface_material_override/0 = ExtResource("2_iud3e")
+
+[node name="ruessel" type="Node3D" parent="butterfly_gruppe"]
+transform = Transform3D(2.15933e-08, 1.87151e-15, 0.238924, 1.15869e-08, -0.132539, -2.92597e-17, 0.132539, 1.15869e-08, -3.89257e-08, -0.00143433, 3.03296, 0.0910912)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="butterfly_gruppe/ruessel"]
+gi_mode = 2
+mesh = ExtResource("19_gqfx0")
+surface_material_override/0 = ExtResource("2_iud3e")
+
+[node name="schutzpanzer" type="Node3D" parent="butterfly_gruppe"]
+transform = Transform3D(1, 0, 0, 0, 0.996195, 0.0871557, 0, -0.0871557, 0.996195, 0.04422, 3.39426, 1.71708)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="butterfly_gruppe/schutzpanzer"]
+gi_mode = 2
+mesh = ExtResource("20_wwdjj")
+surface_material_override/0 = ExtResource("2_iud3e")
+
+[node name="vorderbein" type="Node3D" parent="butterfly_gruppe"]
+transform = Transform3D(-1.91069e-15, 4.37114e-08, -1, 1, 4.37114e-08, 0, -4.37114e-08, 1, 4.37114e-08, -1.65599, 1.76102, -0.311359)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="butterfly_gruppe/vorderbein"]
+gi_mode = 2
+mesh = ExtResource("21_edgqy")
+surface_material_override/0 = ExtResource("2_iud3e")
+
+[node name="left_wing" type="Node3D" parent="."]
+transform = Transform3D(-0.296199, -0.939693, 0.171009, 0.5, -9.15925e-07, 0.866026, -0.813798, 0.34202, 0.469846, -1.92004, -1.27518, 5.10627)
+
+[node name="left_wing_low" type="Node3D" parent="left_wing"]
+transform = Transform3D(1, -5.96047e-08, -2.98023e-08, 5.96047e-08, 1, -1.77636e-15, 2.98023e-08, 0, 1, -5.33333, -6.7641, -2.60962)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="left_wing/left_wing_low"]
+gi_mode = 2
+mesh = ExtResource("22_51bq6")
+surface_material_override/0 = ExtResource("2_iud3e")
+
+[node name="left_wing_up" type="Node3D" parent="left_wing"]
+transform = Transform3D(1, -5.96047e-08, -2.98023e-08, 5.96047e-08, 1, -1.77636e-15, 2.98023e-08, 0, 1, -8.77852, 5.21017, 2.25639)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="left_wing/left_wing_up"]
+gi_mode = 2
+mesh = ExtResource("23_siqkq")
+surface_material_override/0 = ExtResource("2_iud3e")
+
+[node name="right_wing" type="Node3D" parent="."]
+transform = Transform3D(0.23457, -0.965926, 0.109382, 0.422618, 1.32667e-07, -0.906308, 0.875426, 0.258819, 0.408218, -1.52991, 1.44534, 5.27637)
+
+[node name="right_wing_low" type="Node3D" parent="right_wing"]
+transform = Transform3D(1, -1.49012e-08, -2.98023e-08, 1.49012e-08, 1, 2.98023e-08, 2.98023e-08, -2.98023e-08, 1, -8.05383, -6.37398, -2.77971)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="right_wing/right_wing_low"]
+gi_mode = 2
+mesh = ExtResource("24_w5oyk")
+surface_material_override/0 = ExtResource("2_iud3e")
+
+[node name="right_wing_up" type="Node3D" parent="right_wing"]
+transform = Transform3D(1, -1.49012e-08, -2.98023e-08, 1.49012e-08, 1, 2.98023e-08, 2.98023e-08, -2.98023e-08, 1, -11.499, 5.6003, 2.08629)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="right_wing/right_wing_up"]
+gi_mode = 2
+mesh = ExtResource("25_wkwyk")
+surface_material_override/0 = ExtResource("2_iud3e")

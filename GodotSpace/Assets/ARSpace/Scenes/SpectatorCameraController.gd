@@ -10,7 +10,7 @@ extends Camera3D
 var pitch_degrees: float = 0.0
 # 鼠标点击射线长度
 @export var ray_length = 1000.0
-@export var marker_scene = preload("res://Assets/ARSpace/Prefabs/Marker.prefab.scn")
+@export var marker_scene = preload("res://Assets/ARSpace/Prefabs/Marker.prefab.tscn")
 
 func _ready():
 	# 游戏开始时，让鼠标可见并可以在屏幕上自由移动

@@ -1,0 +1,113 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/Background.prefab.tscn" id="1_j38gs"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/DragBox.prefab.tscn" id="2_vk37c"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/CloseButtonTip.prefab.tscn" id="3_ifjej"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/MaxButtonTip.prefab.tscn" id="4_j27o6"]
+
+[node name="PictureInfoCanvas" type="Node3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.991)
+
+[node name="Canvas" type="Node" parent="."]
+
+[node name="AudioSource" type="AudioStreamPlayer" parent="."]
+autoplay = true
+
+[node name="Background" parent="." instance=ExtResource("1_j38gs")]
+
+[node name="PictureInfo" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="PictureInfo"]
+
+[node name="ListContent" type="Node3D" parent="PictureInfo"]
+
+[node name="CanvasRenderer" type="Node" parent="PictureInfo/ListContent"]
+
+[node name="PictureInfoItem" type="Node3D" parent="PictureInfo/ListContent"]
+
+[node name="CanvasRenderer" type="Node" parent="PictureInfo/ListContent/PictureInfoItem"]
+
+[node name="BG" type="Node3D" parent="PictureInfo/ListContent/PictureInfoItem"]
+
+[node name="CanvasRenderer" type="Node" parent="PictureInfo/ListContent/PictureInfoItem/BG"]
+
+[node name="TitleInfo" type="Node3D" parent="PictureInfo/ListContent/PictureInfoItem"]
+
+[node name="CanvasRenderer" type="Node" parent="PictureInfo/ListContent/PictureInfoItem/TitleInfo"]
+
+[node name="Mask" type="Node3D" parent="PictureInfo/ListContent/PictureInfoItem"]
+
+[node name="CanvasRenderer" type="Node" parent="PictureInfo/ListContent/PictureInfoItem/Mask"]
+
+[node name="Image" type="Node3D" parent="PictureInfo/ListContent/PictureInfoItem/Mask"]
+
+[node name="CanvasRenderer" type="Node" parent="PictureInfo/ListContent/PictureInfoItem/Mask/Image"]
+
+[node name="Video" type="Node3D" parent="PictureInfo/ListContent/PictureInfoItem/Mask"]
+
+[node name="CanvasRenderer" type="Node" parent="PictureInfo/ListContent/PictureInfoItem/Mask/Video"]
+
+[node name="VideoPlayer" type="Node" parent="PictureInfo/ListContent/PictureInfoItem/Mask/Video"]
+
+[node name="Text (TMP)" type="Node3D" parent="PictureInfo/ListContent/PictureInfoItem/Mask/Video"]
+
+[node name="CanvasRenderer" type="Node" parent="PictureInfo/ListContent/PictureInfoItem/Mask/Video/Text (TMP)"]
+
+[node name="Toggle" type="Node3D" parent="PictureInfo/ListContent/PictureInfoItem/Mask/Video"]
+
+[node name="Background" type="Node3D" parent="PictureInfo/ListContent/PictureInfoItem/Mask/Video/Toggle"]
+
+[node name="CanvasRenderer" type="Node" parent="PictureInfo/ListContent/PictureInfoItem/Mask/Video/Toggle/Background"]
+
+[node name="Checkmark" type="Node3D" parent="PictureInfo/ListContent/PictureInfoItem/Mask/Video/Toggle/Background"]
+
+[node name="CanvasRenderer" type="Node" parent="PictureInfo/ListContent/PictureInfoItem/Mask/Video/Toggle/Background/Checkmark"]
+
+[node name="Slider" type="Node3D" parent="PictureInfo/ListContent/PictureInfoItem/Mask/Video"]
+
+[node name="Background" type="Node3D" parent="PictureInfo/ListContent/PictureInfoItem/Mask/Video/Slider"]
+
+[node name="CanvasRenderer" type="Node" parent="PictureInfo/ListContent/PictureInfoItem/Mask/Video/Slider/Background"]
+
+[node name="Fill Area" type="Node3D" parent="PictureInfo/ListContent/PictureInfoItem/Mask/Video/Slider"]
+
+[node name="Fill" type="Node3D" parent="PictureInfo/ListContent/PictureInfoItem/Mask/Video/Slider/Fill Area"]
+
+[node name="CanvasRenderer" type="Node" parent="PictureInfo/ListContent/PictureInfoItem/Mask/Video/Slider/Fill Area/Fill"]
+
+[node name="Handle Slide Area" type="Node3D" parent="PictureInfo/ListContent/PictureInfoItem/Mask/Video/Slider"]
+
+[node name="Handle" type="Node3D" parent="PictureInfo/ListContent/PictureInfoItem/Mask/Video/Slider/Handle Slide Area"]
+
+[node name="CanvasRenderer" type="Node" parent="PictureInfo/ListContent/PictureInfoItem/Mask/Video/Slider/Handle Slide Area/Handle"]
+
+[node name="TopMenuBox" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="TopMenuBox"]
+
+[node name="DragBox" parent="TopMenuBox" instance=ExtResource("2_vk37c")]
+
+[node name="Controller" type="Node3D" parent="TopMenuBox"]
+
+[node name="CanvasRenderer" type="Node" parent="TopMenuBox/Controller"]
+
+[node name="CloseButton" type="Node3D" parent="TopMenuBox/Controller"]
+
+[node name="CanvasRenderer" type="Node" parent="TopMenuBox/Controller/CloseButton"]
+
+[node name="CloseButtonTip" parent="TopMenuBox/Controller/CloseButton" instance=ExtResource("3_ifjej")]
+
+[node name="MaxButton" type="Node3D" parent="TopMenuBox/Controller"]
+
+[node name="CanvasRenderer" type="Node" parent="TopMenuBox/Controller/MaxButton"]
+
+[node name="MaxButtonTip" parent="TopMenuBox/Controller/MaxButton" instance=ExtResource("4_j27o6")]
+
+[node name="MinButton" type="Node3D" parent="TopMenuBox/Controller"]
+
+[node name="CanvasRenderer" type="Node" parent="TopMenuBox/Controller/MinButton"]
+
+[editable path="Background"]
+[editable path="TopMenuBox/DragBox"]
+[editable path="TopMenuBox/Controller/CloseButton/CloseButtonTip"]
+[editable path="TopMenuBox/Controller/MaxButton/MaxButtonTip"]

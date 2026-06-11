@@ -1,0 +1,137 @@
+[gd_scene load_steps=14 format=3]
+
+[ext_resource type="PackedScene" path="res://Assets/VRIK/Editor/CoreRes/Char/PlayerM/PlayerM.fbx" id="1_24s5o"]
+[ext_resource type="Material" path="res://Assets/VRIK/Editor/CoreRes/Char/PlayerM/Textures/PlayerM_Body.material" id="2_qk7yt"]
+[ext_resource type="Material" path="res://Assets/VRIK/Editor/CoreRes/Char/PlayerM/Textures/PlayerM_Clothes.material" id="3_n86gn"]
+[ext_resource type="Material" path="res://Assets/VRIK/Editor/CoreRes/Char/PlayerM/Textures/PlayerM_Hair.material" id="4_nhlkl"]
+[ext_resource type="Material" path="res://Assets/VRIK/Editor/CoreRes/Char/PlayerM/Textures/PlayerM_Brow.material" id="5_6tb16"]
+[ext_resource type="Material" path="res://Assets/VRIK/Editor/CoreRes/Char/PlayerM/Textures/PlayerM_Eye.material" id="6_bp6yp"]
+[ext_resource type="Material" path="res://Assets/VRIK/Editor/CoreRes/Char/PlayerM/Textures/PlayerM_Head.material" id="7_hgsrg"]
+[ext_resource type="Material" path="res://Assets/VRIK/Editor/CoreRes/Char/PlayerM/Textures/PlayerM_Mouth.material" id="8_qqvg3"]
+[ext_resource type="AnimationLibrary" path="res://Assets/VRIK/Prefabs/PlayerAni_1.library.res" id="9_2r6iy"]
+[ext_resource type="AnimationNodeBlendTree" path="res://Assets/VRIK/Prefabs/PlayerAni_1.controller.res" id="10_4de6b"]
+[ext_resource type="Script" path="res://addons/unidot/runtime/anim_tree.gd" id="11_uv7hn"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/Marker.prefab.tscn" id="12_1pbua"]
+[ext_resource type="PackedScene" path="res://Assets/Model/Prefabs/PlayerM_Prefab.prefab.tscn" id="13_2cgwk"]
+
+[node name="AstronautSync-Sender" type="Node3D"]
+
+[node name="PlayerM" parent="." instance=ExtResource("1_24s5o")]
+visible = false
+
+[node name="PlayerM_Body" parent="PlayerM/GeneralSkeleton" index="0"]
+surface_material_override/0 = ExtResource("2_qk7yt")
+surface_material_override/1 = ExtResource("3_n86gn")
+
+[node name="PlayerM_Hair" parent="PlayerM/GeneralSkeleton" index="1"]
+surface_material_override/0 = ExtResource("4_nhlkl")
+
+[node name="PlayerM_Head" parent="PlayerM/GeneralSkeleton" index="2"]
+surface_material_override/0 = ExtResource("5_6tb16")
+surface_material_override/1 = ExtResource("6_bp6yp")
+surface_material_override/2 = ExtResource("7_hgsrg")
+surface_material_override/3 = ExtResource("8_qqvg3")
+
+[node name="AnimationPlayer" parent="PlayerM" index="1"]
+root_motion_track = NodePath("%GeneralSkeleton:Root")
+root_motion_local = false
+libraries = {
+&"": ExtResource("9_2r6iy")
+}
+
+[node name="AnimationTree" type="AnimationTree" parent="PlayerM"]
+deterministic = false
+root_motion_track = NodePath("%GeneralSkeleton:Root")
+root_motion_local = false
+tree_root = ExtResource("10_4de6b")
+anim_player = NodePath("../AnimationPlayer")
+parameters/Blend/add_amount = 1
+script = ExtResource("11_uv7hn")
+metadata/L_Default = false
+metadata/L_ElectroDrill = false
+metadata/L_Gun = false
+metadata/L_NoloController = false
+metadata/L_SonicHeadset = false
+metadata/R_Default = false
+metadata/R_ElectroDrill = false
+metadata/R_Gun = false
+metadata/R_NoloController = false
+metadata/R_SonicHeadset = false
+metadata/guid_fileid_to_animation_name = {
+"56292d345882c8141bf64de4399b8a22:-3100369314251171874": "Idle",
+"56292d345882c8141bf64de4399b8a22:1827226128182048838": "ElectroDrill",
+"56292d345882c8141bf64de4399b8a22:1975693946894946697": "SonicHeadset",
+"56292d345882c8141bf64de4399b8a22:5018551439993331979": "NoloController",
+"56292d345882c8141bf64de4399b8a22:6145234775231182873": "Gun"
+}
+
+[node name="CenterEyeAnchor" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.797, 0.072)
+
+[node name="LeftHandAnchor" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, 0, 0.121)
+
+[node name="RightHandAnchor" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.3, 0, 0.121)
+
+[node name="Marker Origin" type="Node3D" parent="RightHandAnchor"]
+transform = Transform3D(1, 0, 0, 0, 0.766044, -0.642788, 0, 0.642788, 0.766044, 0, -0.037, 0.0476)
+
+[node name="Marker" parent="RightHandAnchor/Marker Origin" instance=ExtResource("12_1pbua")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+visible = false
+
+[node name="MeshRenderer" parent="RightHandAnchor/Marker Origin/Marker/Visual" index="0"]
+layers = 32
+
+[node name="PlayerM_Prefab" parent="." instance=ExtResource("13_2cgwk")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="GeneralSkeleton" parent="PlayerM_Prefab" index="2"]
+bones/0/rotation = Quaternion(0, 0, 0, 1)
+bones/1/rotation = Quaternion(-7.45058e-08, 5.96046e-08, -1.51992e-06, 1)
+bones/2/rotation = Quaternion(0, 0, 0, 1)
+bones/3/rotation = Quaternion(0.528928, 0.469292, 0.528928, -0.469293)
+bones/8/rotation = Quaternion(0.528928, -0.469292, -0.528929, -0.469291)
+bones/11/rotation = Quaternion(-5.96046e-08, -2.98023e-08, 2.98023e-08, 1)
+bones/12/rotation = Quaternion(0.0848614, -0.701996, 0.0743529, 0.703187)
+bones/13/rotation = Quaternion(-0.0521589, 0.706241, -0.0349745, 0.70518)
+bones/14/rotation = Quaternion(-0.14531, 0.692015, 0.283985, 0.647574)
+bones/16/rotation = Quaternion(-4.47035e-08, 0.000121996, -6.51628e-05, 1)
+bones/17/rotation = Quaternion(1.04308e-07, 1.19209e-07, -2.38419e-07, 1)
+bones/18/rotation = Quaternion(0.0704566, 0.000559092, -0.00791457, 0.997483)
+bones/19/rotation = Quaternion(4.47035e-08, 1.19209e-07, -1.19209e-07, 1)
+bones/20/rotation = Quaternion(1.63913e-07, 2.98023e-08, -2.68221e-07, 1)
+bones/21/rotation = Quaternion(0.0765846, 0.00164783, -0.0214467, 0.996831)
+bones/23/rotation = Quaternion(0.0261161, -0.00146058, -0.0558178, 0.998098)
+bones/24/rotation = Quaternion(0.0697593, 0.000325918, -0.00465952, 0.997553)
+bones/25/rotation = Quaternion(1.49012e-08, -8.9407e-08, -8.9407e-08, 1)
+bones/26/rotation = Quaternion(0.0370212, -0.00391355, -0.105056, 0.993769)
+bones/27/rotation = Quaternion(0.0355037, 8.25822e-05, -0.0023267, 0.999367)
+bones/28/rotation = Quaternion(1.19209e-07, 5.96046e-08, -1.19209e-07, 1)
+bones/29/rotation = Quaternion(-5.96047e-08, 0.0499786, 0.99875, 6.85453e-07)
+bones/35/rotation = Quaternion(0, 0.0499786, 0.99875, 6.55651e-07)
+bones/37/rotation = Quaternion(0, 0.707107, -0.707107, -1.19209e-07)
+bones/38/rotation = Quaternion(0, 1, 5.96046e-08, 1.19209e-07)
+bones/41/rotation = Quaternion(0.0848612, 0.701996, -0.074353, 0.703187)
+bones/42/rotation = Quaternion(-0.0463453, -0.705921, 0.0409381, 0.705586)
+bones/43/rotation = Quaternion(-0.146581, -0.691747, -0.282962, 0.648022)
+bones/44/rotation = Quaternion(0.0999541, 0.00586686, -0.0596171, 0.993187)
+bones/45/rotation = Quaternion(2.98023e-08, -0.000131071, 7.25091e-05, 1)
+bones/48/rotation = Quaternion(0, -1.04308e-07, 0, 1)
+bones/52/rotation = Quaternion(0.0264731, 0.00149256, 0.0562696, 0.998064)
+bones/55/rotation = Quaternion(0.0373882, 0.00396959, 0.105504, 0.993708)
+bones/56/rotation = Quaternion(0.0355045, -8.2463e-05, 0.00231978, 0.999367)
+
+[node name="PlayerM_Body" parent="PlayerM_Prefab/GeneralSkeleton" index="0"]
+layers = 256
+
+[node name="PlayerM_Hair" parent="PlayerM_Prefab/GeneralSkeleton" index="1"]
+layers = 256
+
+[node name="PlayerM_Head" parent="PlayerM_Prefab/GeneralSkeleton" index="2"]
+layers = 256
+
+[editable path="PlayerM"]
+[editable path="RightHandAnchor/Marker Origin/Marker"]
+[editable path="PlayerM_Prefab"]

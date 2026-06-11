@@ -1,0 +1,11 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="ArrayMesh" path="res://Assets/Whack-A-Mole/Models/extracted/hole.Grid_010.mesh" id="1_rfb53"]
+[ext_resource type="Material" path="res://Assets/DisolveMat/livingRoom/moguratex.material" id="2_rvkg5"]
+
+[node name="hole" type="Node3D"]
+transform = Transform3D(-22.5761, -97.4182, -4.25829e-06, 0, -4.37114e-06, 100, -97.4183, 22.5761, 9.86833e-07, -0.959019, -1.03629, -7.77839)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="."]
+mesh = ExtResource("1_rfb53")
+surface_material_override/0 = ExtResource("2_rvkg5")

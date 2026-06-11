@@ -1,0 +1,33 @@
+[gd_scene format=3]
+
+[node name="Weather" type="Node3D"]
+
+[node name="CanvasRenderer" type="Node" parent="."]
+
+[node name="TemperatureValue" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="TemperatureValue"]
+
+[node name="Image" type="Node3D" parent="TemperatureValue"]
+
+[node name="CanvasRenderer" type="Node" parent="TemperatureValue/Image"]
+
+[node name="TemperatureState" type="Node3D" parent="TemperatureValue"]
+
+[node name="CanvasRenderer" type="Node" parent="TemperatureValue/TemperatureState"]
+
+[node name="MaxLabel" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="MaxLabel"]
+
+[node name="TemperatureMaxValue" type="Node3D" parent="MaxLabel"]
+
+[node name="CanvasRenderer" type="Node" parent="MaxLabel/TemperatureMaxValue"]
+
+[node name="MinLabel" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="MinLabel"]
+
+[node name="TemperatureMinValue" type="Node3D" parent="MinLabel"]
+
+[node name="CanvasRenderer" type="Node" parent="MinLabel/TemperatureMinValue"]

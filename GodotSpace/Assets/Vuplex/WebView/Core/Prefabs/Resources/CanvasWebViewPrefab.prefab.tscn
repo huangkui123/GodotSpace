@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[node name="CanvasWebViewPrefab" type="Node3D"]
+
+[node name="CanvasRenderer" type="Node" parent="."]
+
+[node name="VideoLayer" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="VideoLayer"]
+
+[node name="CanvasWebViewPrefabView" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="CanvasWebViewPrefabView"]

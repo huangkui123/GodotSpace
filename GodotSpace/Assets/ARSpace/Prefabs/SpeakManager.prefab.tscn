@@ -1,0 +1,16 @@
+[gd_scene format=3]
+
+[node name="SpeakManager" type="Node3D"]
+
+[node name="Canvas" type="Node3D" parent="."]
+transform = Transform3D(0.001, 0, 0, 0, 0.001, 0, 0, 0, 0.001, 0, 0, 1)
+
+[node name="Canvas" type="Node" parent="Canvas"]
+
+[node name="Panel" type="Node3D" parent="Canvas"]
+
+[node name="CanvasRenderer" type="Node" parent="Canvas/Panel"]
+
+[node name="Text (TMP)" type="Node3D" parent="Canvas/Panel"]
+
+[node name="CanvasRenderer" type="Node" parent="Canvas/Panel/Text (TMP)"]

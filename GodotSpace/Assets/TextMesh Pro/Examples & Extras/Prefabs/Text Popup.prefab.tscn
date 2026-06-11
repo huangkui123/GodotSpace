@@ -1,0 +1,11 @@
+[gd_scene format=3]
+
+[node name="Text Popup" type="Node3D"]
+
+[node name="CanvasRenderer" type="Node" parent="."]
+
+[node name="CanvasGroup" type="Node" parent="."]
+
+[node name="TextMeshPro Text" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="TextMeshPro Text"]

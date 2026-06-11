@@ -1,0 +1,50 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="AnimationLibrary" path="res://Assets/Modern UI Pack/Animations/Switch/Switch.library.res" id="1_jctkv"]
+[ext_resource type="AnimationNodeBlendTree" path="res://Assets/Modern UI Pack/Animations/Switch/Switch.controller.res" id="2_emwig"]
+[ext_resource type="Script" path="res://addons/unidot/runtime/anim_tree.gd" id="3_r4tyw"]
+
+[node name="Switch - Standard" type="Node3D"]
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+libraries = {
+&"": ExtResource("1_jctkv")
+}
+
+[node name="AnimationTree" type="AnimationTree" parent="."]
+deterministic = false
+root_motion_track = NodePath("%GeneralSkeleton:Root")
+root_motion_local = false
+tree_root = ExtResource("2_emwig")
+anim_player = NodePath("../AnimationPlayer")
+script = ExtResource("3_r4tyw")
+metadata/guid_fileid_to_animation_name = {
+"23380583922bb2840997b655e6973111:7400000": "Switch Off",
+"6d4f20dd1e6eae14daf3a76d9e63b227:7400000": "On Instant",
+"6d603f82b23f9e34cbc7549a4e47efba:7400000": "Off Instant",
+"b76fba313c8c3d8468acef9ae7abc7f9:7400000": "Switch On"
+}
+
+[node name="Border" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="Border"]
+
+[node name="Background" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="Background"]
+
+[node name="Highlighted" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="Highlighted"]
+
+[node name="Handler" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="Handler"]
+
+[node name="On" type="Node3D" parent="Handler"]
+
+[node name="CanvasRenderer" type="Node" parent="Handler/On"]
+
+[node name="Off" type="Node3D" parent="Handler"]
+
+[node name="CanvasRenderer" type="Node" parent="Handler/Off"]

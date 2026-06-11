@@ -1,0 +1,288 @@
+[gd_scene load_steps=20 format=3]
+
+[ext_resource type="Script" path="res://Assets/ARSpace/Prefabs/UI/MainMenuCanvas/canvas.gd" id="1_nqjmq"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/MainMenuCanvas/LifeTabView.prefab.tscn" id="2_alcmm"]
+[ext_resource type="Script" path="res://Assets/ARSpace/Prefabs/UI/MainMenuCanvas/photo.prefab.gd" id="3_dfvio"]
+[ext_resource type="Script" path="res://Assets/ARSpace/Prefabs/UI/MainMenuCanvas/movie.prefab.gd" id="4_itd7v"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/MainMenuCanvas/WorkTabView.prefab.tscn" id="5_38qjv"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/MainMenuCanvas/WorkList.prefab.tscn" id="6_2boyx"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/WorkListCanvas/WorkListView.tscn" id="7_0jeco"]
+[ext_resource type="Script" path="res://Assets/ARSpace/Prefabs/UI/MainMenuCanvas/SwitchWorkLife.gd" id="8_27xd4"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155626.png" id="9_c3tev"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/生活模式-2.png" id="10_qaogi"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/工作-2.png" id="11_vbbh4"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/UIWindow/TopMenuBox.png" id="12_rgyp6"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/DragBox.prefab.tscn" id="13_7eyah"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155655.png" id="14_e6sp6"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155657.png" id="15_x6sas"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/UIWindow/Clock.png" id="16_fu0gs"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/UIWindow/Vector.png" id="17_jin7b"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/UIWindow/Vector (1).png" id="18_k678q"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/拉伸.png" id="19_gv5p4"]
+
+[node name="MainMenuCanvasAR" type="CanvasLayer"]
+
+[node name="Canvas" type="Control" parent="."]
+layout_mode = 3
+anchor_right = 0.568
+anchor_bottom = 0.747
+offset_right = -654.336
+offset_bottom = -484.056
+script = ExtResource("1_nqjmq")
+
+[node name="LifeTabView" parent="Canvas" instance=ExtResource("2_alcmm")]
+layout_mode = 1
+anchors_preset = 0
+anchor_right = 0.0
+anchor_bottom = 0.0
+offset_left = 117.162
+offset_top = 96.75
+offset_right = 117.162
+offset_bottom = 96.75
+
+[node name="CanvasRenderer" parent="Canvas/LifeTabView" index="0"]
+offset_bottom = 107.0
+
+[node name="Content" parent="Canvas/LifeTabView/Scroll View/Viewport" index="0"]
+offset_right = 413.0
+
+[node name="Photo" parent="Canvas/LifeTabView/Scroll View/Viewport/Content" index="0"]
+offset_left = 18.0
+offset_top = 42.0
+offset_right = 295.0
+offset_bottom = 238.0
+script = ExtResource("3_dfvio")
+
+[node name="Movie" parent="Canvas/LifeTabView/Scroll View/Viewport/Content" index="1"]
+offset_left = 204.0
+offset_top = 173.0
+offset_right = 481.0
+offset_bottom = 369.0
+script = ExtResource("4_itd7v")
+
+[node name="Model" parent="Canvas/LifeTabView/Scroll View/Viewport/Content" index="2"]
+offset_left = 20.0
+offset_top = 176.0
+offset_right = 297.0
+offset_bottom = 372.0
+
+[node name="Weather" parent="Canvas/LifeTabView/Scroll View/Viewport/Content" index="3"]
+offset_left = 206.0
+offset_top = 43.0
+offset_right = 483.0
+offset_bottom = 239.0
+
+[node name="MoleGame" parent="Canvas/LifeTabView/Scroll View/Viewport/Content" index="4"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="StyleSceen" parent="Canvas/LifeTabView/Scroll View/Viewport/Content" index="5"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="WorkTabView" parent="Canvas" instance=ExtResource("5_38qjv")]
+offset_left = 117.162
+offset_top = 96.75
+offset_right = 117.162
+offset_bottom = 96.75
+
+[node name="GridContainer" type="GridContainer" parent="Canvas/WorkTabView"]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 54.0
+offset_right = 609.0
+offset_bottom = 450.0
+scale = Vector2(0.7, 0.7)
+columns = 3
+
+[node name="WorkList" parent="Canvas/WorkTabView/GridContainer" instance=ExtResource("6_2boyx")]
+layout_mode = 2
+
+[node name="WorkListView" parent="Canvas/WorkTabView" instance=ExtResource("7_0jeco")]
+visible = false
+offset_right = 0.0
+offset_bottom = 0.0
+
+[node name="Navcation" type="ColorRect" parent="Canvas"]
+layout_mode = 0
+offset_left = 49.0
+offset_top = 97.0
+offset_right = 97.0
+offset_bottom = 382.0
+scale = Vector2(1.22, 1.22)
+color = Color(0.035555, 0.0694798, 0.222693, 1)
+metadata/_edit_group_ = true
+
+[node name="ModeLayout" type="VBoxContainer" parent="Canvas/Navcation" node_paths=PackedStringArray("life_tab", "work_tab", "life_view", "work_view")]
+layout_mode = 1
+anchors_preset = -1
+anchor_right = 0.869
+anchor_bottom = 0.352
+offset_left = 6.0
+offset_top = 8.0
+offset_right = 162.288
+offset_bottom = 362.368
+grow_horizontal = 2
+scale = Vector2(0.18, 0.18)
+script = ExtResource("8_27xd4")
+life_tab = NodePath("LifeModeTab")
+work_tab = NodePath("WorkModeTab")
+life_view = NodePath("../../LifeTabView")
+work_view = NodePath("../../WorkTabView")
+
+[node name="LifeModeTab" type="Button" parent="Canvas/Navcation/ModeLayout"]
+layout_mode = 2
+icon = ExtResource("9_c3tev")
+flat = true
+icon_alignment = 1
+
+[node name="CanvasRenderer" type="Node" parent="Canvas/Navcation/ModeLayout/LifeModeTab"]
+
+[node name="Image" type="Sprite2D" parent="Canvas/Navcation/ModeLayout/LifeModeTab"]
+position = Vector2(45, 45)
+scale = Vector2(3, 3)
+texture = ExtResource("10_qaogi")
+centered = false
+
+[node name="CanvasRenderer" type="Node" parent="Canvas/Navcation/ModeLayout/LifeModeTab/Image"]
+
+[node name="Text (TMP) (1)" type="Node3D" parent="Canvas/Navcation/ModeLayout/LifeModeTab"]
+
+[node name="CanvasRenderer" type="Node" parent="Canvas/Navcation/ModeLayout/LifeModeTab/Text (TMP) (1)"]
+
+[node name="WorkModeTab" type="Button" parent="Canvas/Navcation/ModeLayout"]
+layout_mode = 2
+size_flags_vertical = 10
+icon = ExtResource("9_c3tev")
+flat = true
+
+[node name="CanvasRenderer" type="Node" parent="Canvas/Navcation/ModeLayout/WorkModeTab"]
+
+[node name="Image" type="Sprite2D" parent="Canvas/Navcation/ModeLayout/WorkModeTab"]
+position = Vector2(100, 95)
+scale = Vector2(3, 3)
+texture = ExtResource("11_vbbh4")
+
+[node name="CanvasRenderer" type="Node" parent="Canvas/Navcation/ModeLayout/WorkModeTab/Image"]
+
+[node name="Text (TMP)" type="Node3D" parent="Canvas/Navcation/ModeLayout/WorkModeTab"]
+
+[node name="CanvasRenderer" type="Node" parent="Canvas/Navcation/ModeLayout/WorkModeTab/Text (TMP)"]
+
+[node name="TopMenuBox" type="Sprite2D" parent="Canvas"]
+position = Vector2(305.162, 71.75)
+scale = Vector2(0.852941, 0.852941)
+texture = ExtResource("12_rgyp6")
+
+[node name="CanvasRenderer" type="Node" parent="Canvas/TopMenuBox"]
+
+[node name="DragBox" parent="Canvas/TopMenuBox" instance=ExtResource("13_7eyah")]
+position = Vector2(-177.224, 2.63793)
+scale = Vector2(0.994889, 1.1245)
+
+[node name="Controller" type="Control" parent="Canvas/TopMenuBox"]
+layout_mode = 3
+anchors_preset = 0
+
+[node name="CanvasRenderer" type="Node" parent="Canvas/TopMenuBox/Controller"]
+
+[node name="CloseButton" type="Button" parent="Canvas/TopMenuBox/Controller"]
+layout_mode = 0
+offset_left = 197.948
+offset_top = -25.5
+offset_right = 250.948
+offset_bottom = 26.5
+icon = ExtResource("14_e6sp6")
+flat = true
+
+[node name="MaxButton" type="Button" parent="Canvas/TopMenuBox/Controller"]
+layout_mode = 0
+offset_left = 243.672
+offset_top = -24.3276
+offset_right = 296.672
+offset_bottom = 27.6724
+icon = ExtResource("15_x6sas")
+flat = true
+
+[node name="AudioSource" type="AudioStreamPlayer" parent="Canvas"]
+autoplay = true
+
+[node name="TimeLayout" type="Sprite2D" parent="Canvas"]
+position = Vector2(57, 39)
+texture = ExtResource("16_fu0gs")
+
+[node name="CanvasRenderer" type="Node" parent="Canvas/TimeLayout"]
+
+[node name="TimeText" type="Label" parent="Canvas/TimeLayout"]
+offset_left = 18.0
+offset_top = -15.0
+offset_right = 147.0
+offset_bottom = 8.0
+text = "2024-02-06 17:23"
+
+[node name="CanvasRenderer" type="Node" parent="Canvas/TimeLayout/TimeText"]
+
+[node name="PowerLayout" type="Sprite2D" parent="Canvas"]
+position = Vector2(515, 37)
+texture = ExtResource("17_jin7b")
+
+[node name="CanvasRenderer" type="Node" parent="Canvas/PowerLayout"]
+
+[node name="PowerText" type="Label" parent="Canvas/PowerLayout"]
+offset_left = 12.0
+offset_top = -14.0
+offset_right = 45.0
+offset_bottom = 9.0
+text = "95%"
+
+[node name="CanvasRenderer" type="Node" parent="Canvas/PowerLayout/PowerText"]
+
+[node name="PowerProgress" type="Sprite2D" parent="Canvas/PowerLayout"]
+position = Vector2(-2.31711, 0.61264)
+texture = ExtResource("18_k678q")
+
+[node name="CanvasRenderer" type="Node" parent="Canvas/PowerLayout/PowerProgress"]
+
+[node name="LeftUp" type="Sprite2D" parent="Canvas"]
+position = Vector2(27, 27)
+rotation = -3.14159
+scale = Vector2(0.3, 0.3)
+texture = ExtResource("19_gv5p4")
+
+[node name="CanvasRenderer" type="Node" parent="Canvas/LeftUp"]
+
+[node name="LeftDown" type="Sprite2D" parent="Canvas"]
+position = Vector2(581, 25)
+rotation = -1.5708
+scale = Vector2(0.3, 0.3)
+texture = ExtResource("19_gv5p4")
+
+[node name="CanvasRenderer" type="Node" parent="Canvas/LeftDown"]
+
+[node name="RightUp" type="Sprite2D" parent="Canvas"]
+position = Vector2(27, 456)
+rotation = 1.5708
+scale = Vector2(0.3, 0.3)
+texture = ExtResource("19_gv5p4")
+
+[node name="CanvasRenderer" type="Node" parent="Canvas/RightUp"]
+
+[node name="RightDown" type="Sprite2D" parent="Canvas"]
+position = Vector2(580, 456)
+scale = Vector2(0.3, 0.3)
+texture = ExtResource("19_gv5p4")
+
+[node name="CanvasRenderer" type="Node" parent="Canvas/RightDown"]
+
+[connection signal="pressed" from="Canvas/LifeTabView/Scroll View/Viewport/Content/Photo" to="Canvas" method="_on_photo_pressed"]
+[connection signal="pressed" from="Canvas/LifeTabView/Scroll View/Viewport/Content/Movie" to="Canvas" method="_on_movie_pressed"]
+[connection signal="pressed" from="Canvas/WorkTabView/GridContainer/WorkList" to="Canvas" method="_on_work_list_pressed"]
+[connection signal="pressed" from="Canvas/WorkTabView/WorkListView/BackButton" to="Canvas" method="_on_back_button_pressed"]
+[connection signal="pressed" from="Canvas/TopMenuBox/Controller/CloseButton" to="Canvas" method="_on_close_button_pressed"]
+
+[editable path="Canvas/LifeTabView"]
+[editable path="Canvas/LifeTabView/Scroll View/Viewport/Content/Photo"]
+[editable path="Canvas/LifeTabView/Scroll View/Viewport/Content/Movie"]
+[editable path="Canvas/LifeTabView/Scroll View/Viewport/Content/Model"]
+[editable path="Canvas/LifeTabView/Scroll View/Viewport/Content/Weather"]
+[editable path="Canvas/LifeTabView/Scroll View/Viewport/Content/MoleGame"]
+[editable path="Canvas/WorkTabView/WorkListView"]
+[editable path="Canvas/TopMenuBox/DragBox"]

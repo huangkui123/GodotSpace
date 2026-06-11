@@ -1,0 +1,71 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/工作-2.png" id="1_f16jv"]
+[ext_resource type="FontFile" path="res://scenes/shared/fonts/lato/Lato-Bold.ttf" id="2_uye4f"]
+
+[sub_resource type="StyleBoxLine" id="StyleBoxLine_edst3"]
+color = Color(0.148438, 0.175781, 0.253906, 1)
+thickness = 0
+vertical = true
+
+[node name="WorkTabView" type="Control"]
+layout_mode = 3
+anchors_preset = 0
+
+[node name="CanvasRenderer" type="ColorRect" parent="."]
+layout_mode = 0
+offset_right = 137.0
+offset_bottom = 99.0
+scale = Vector2(3.255, 3.255)
+color = Color(0.111301, 0.21437, 0.430628, 1)
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = 445.0
+offset_bottom = 324.0
+grow_horizontal = 2
+grow_vertical = 2
+alignment = 1
+
+[node name="HSeparator" type="HSeparator" parent="VBoxContainer"]
+custom_minimum_size = Vector2(0, 13)
+layout_mode = 2
+size_flags_vertical = 2
+theme_override_styles/separator = SubResource("StyleBoxLine_edst3")
+
+[node name="HBoxContainer3" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 2
+size_flags_stretch_ratio = 39.65
+
+[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer/HBoxContainer3"]
+layout_mode = 2
+theme_override_constants/separation = 15
+
+[node name="VSeparator" type="VSeparator" parent="VBoxContainer/HBoxContainer3/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 10
+theme_override_styles/separator = SubResource("StyleBoxLine_edst3")
+
+[node name="TextureRect" type="TextureRect" parent="VBoxContainer/HBoxContainer3/HBoxContainer"]
+custom_minimum_size = Vector2(0, 35)
+layout_mode = 2
+texture = ExtResource("1_f16jv")
+expand_mode = 3
+stretch_mode = 5
+
+[node name="VBoxContainer" type="VBoxContainer" parent="VBoxContainer/HBoxContainer3/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 2
+theme_override_constants/separation = 0
+alignment = 1
+
+[node name="Label2" type="Label" parent="VBoxContainer/HBoxContainer3/HBoxContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.484792, 0.541158, 0.887534, 1)
+theme_override_fonts/font = ExtResource("2_uye4f")
+theme_override_font_sizes/font_size = 15
+text = "工作模式"

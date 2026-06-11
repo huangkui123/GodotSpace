@@ -1,0 +1,23 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://Assets/ARSpace/Scripts/MovieCanvas/MovieInfoItem.gd" id="1_dpid3"]
+[ext_resource type="VideoStream" path="res://Assets/StreamingAssets/Videos/Demo1.mp4" id="2_ndovo"]
+
+[node name="MovieInfo" type="Button"]
+offset_right = 472.0
+offset_bottom = 339.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+flat = true
+script = ExtResource("1_dpid3")
+
+[node name="BannerVideo" type="VideoStreamPlayer" parent="."]
+layout_mode = 0
+offset_right = 926.0
+offset_bottom = 704.0
+scale = Vector2(0.5, 0.5)
+stream = ExtResource("2_ndovo")
+autoplay = true
+expand = true
+
+[node name="CanvasRenderer" type="Node" parent="."]

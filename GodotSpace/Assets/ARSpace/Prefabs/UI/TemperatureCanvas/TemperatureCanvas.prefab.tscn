@@ -1,0 +1,102 @@
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/Background.prefab.tscn" id="1_gbqdu"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/TemperatureCanvas/Weather.prefab.tscn" id="2_udpow"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/TemperatureCanvas/Humidity.prefab.tscn" id="3_fmdw1"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/TemperatureCanvas/Apparent temperature.prefab.tscn" id="4_vu8rd"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/TemperatureCanvas/Pressure.prefab.tscn" id="5_4jf5c"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/TemperatureCanvas/Station temperature.prefab.tscn" id="6_uqfu7"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/TemperatureCanvas/AirQuality.prefab.tscn" id="7_k5ir6"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/DragBox.prefab.tscn" id="8_pgg1y"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/CloseButtonTip.prefab.tscn" id="9_j05tx"]
+
+[node name="TemperatureCanvas" type="Node3D"]
+transform = Transform3D(0.001, 0, 0, 0, 0.001, 0, 0, 0, 0.001, 0, 0, 0.5209)
+
+[node name="Canvas" type="Node" parent="."]
+
+[node name="AudioSource" type="AudioStreamPlayer" parent="."]
+autoplay = true
+
+[node name="Background" parent="." instance=ExtResource("1_gbqdu")]
+
+[node name="Panel (1)" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="Panel (1)"]
+
+[node name="LocationIcon" type="Node3D" parent="Panel (1)"]
+
+[node name="CanvasRenderer" type="Node" parent="Panel (1)/LocationIcon"]
+
+[node name="LocationName" type="Node3D" parent="Panel (1)"]
+
+[node name="CanvasRenderer" type="Node" parent="Panel (1)/LocationName"]
+
+[node name="GridGroup" type="Node3D" parent="Panel (1)"]
+
+[node name="CanvasRenderer" type="Node" parent="Panel (1)/GridGroup"]
+
+[node name="Weather" parent="Panel (1)/GridGroup" instance=ExtResource("2_udpow")]
+
+[node name="Humidity" parent="Panel (1)/GridGroup" instance=ExtResource("3_fmdw1")]
+
+[node name="Apparent temperature" parent="Panel (1)/GridGroup" instance=ExtResource("4_vu8rd")]
+
+[node name="Pressure" parent="Panel (1)/GridGroup" instance=ExtResource("5_4jf5c")]
+
+[node name="Panel (2)" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="Panel (2)"]
+
+[node name="LocationIcon" type="Node3D" parent="Panel (2)"]
+
+[node name="CanvasRenderer" type="Node" parent="Panel (2)/LocationIcon"]
+
+[node name="LocationName" type="Node3D" parent="Panel (2)"]
+
+[node name="CanvasRenderer" type="Node" parent="Panel (2)/LocationName"]
+
+[node name="GridGroup" type="Node3D" parent="Panel (2)"]
+
+[node name="CanvasRenderer" type="Node" parent="Panel (2)/GridGroup"]
+
+[node name="Station temperature" parent="Panel (2)/GridGroup" instance=ExtResource("6_uqfu7")]
+
+[node name="Humidity" parent="Panel (2)/GridGroup" instance=ExtResource("3_fmdw1")]
+
+[node name="AirQuality" parent="Panel (2)/GridGroup" instance=ExtResource("7_k5ir6")]
+
+[node name="Pressure" parent="Panel (2)/GridGroup" instance=ExtResource("5_4jf5c")]
+
+[node name="Back" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="Back"]
+
+[node name="Next" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="Next"]
+
+[node name="TopMenuBox" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="TopMenuBox"]
+
+[node name="DragBox" parent="TopMenuBox" instance=ExtResource("8_pgg1y")]
+
+[node name="CloseButton" type="Node3D" parent="TopMenuBox"]
+
+[node name="CanvasRenderer" type="Node" parent="TopMenuBox/CloseButton"]
+
+[node name="CloseButtonTip" parent="TopMenuBox/CloseButton" instance=ExtResource("9_j05tx")]
+visible = false
+
+[editable path="Background"]
+[editable path="Panel (1)/GridGroup/Weather"]
+[editable path="Panel (1)/GridGroup/Humidity"]
+[editable path="Panel (1)/GridGroup/Apparent temperature"]
+[editable path="Panel (1)/GridGroup/Pressure"]
+[editable path="Panel (2)/GridGroup/Station temperature"]
+[editable path="Panel (2)/GridGroup/Humidity"]
+[editable path="Panel (2)/GridGroup/AirQuality"]
+[editable path="Panel (2)/GridGroup/Pressure"]
+[editable path="TopMenuBox/DragBox"]
+[editable path="TopMenuBox/CloseButton/CloseButtonTip"]

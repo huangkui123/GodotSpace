@@ -1,0 +1,21 @@
+[gd_scene format=3]
+
+[node name="Humidity" type="Node3D"]
+
+[node name="CanvasRenderer" type="Node" parent="."]
+
+[node name="HumidityIcon" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="HumidityIcon"]
+
+[node name="HumidityLabel" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="HumidityLabel"]
+
+[node name="HumidityValue" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="HumidityValue"]
+
+[node name="HumidityPasentLablel" type="Node3D" parent="HumidityValue"]
+
+[node name="CanvasRenderer" type="Node" parent="HumidityValue/HumidityPasentLablel"]

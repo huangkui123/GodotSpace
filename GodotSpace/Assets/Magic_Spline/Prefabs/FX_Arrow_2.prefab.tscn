@@ -1,0 +1,9 @@
+[gd_scene format=3]
+
+[node name="FX_Arrow_2" type="Node3D"]
+
+[node name="FX_direction_1" type="Node3D" parent="."]
+
+[node name="ParticleSystem" type="Node" parent="FX_direction_1"]
+
+[node name="ParticleSystemRenderer" type="Node" parent="FX_direction_1"]

@@ -1,0 +1,78 @@
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="ArrayMesh" path="res://Assets/Whack-A-Mole/Models/extracted/mole_pickaxe.Icosphere.mesh" id="1_i8qg6"]
+[ext_resource type="Material" path="res://Assets/DisolveMat/livingRoom/moguratex.material" id="2_gxlhc"]
+[ext_resource type="ArrayMesh" path="res://Assets/Whack-A-Mole/Models/extracted/mole_pickaxe.Icosphere_001.mesh" id="3_xvv5n"]
+[ext_resource type="ArrayMesh" path="res://Assets/Whack-A-Mole/Models/extracted/mole_pickaxe.Cube_006.mesh" id="4_otpub"]
+[ext_resource type="ArrayMesh" path="res://Assets/Whack-A-Mole/Models/extracted/mole_pickaxe.Icosphere_002.mesh" id="5_gmjje"]
+[ext_resource type="ArrayMesh" path="res://Assets/Whack-A-Mole/Models/extracted/mole_pickaxe.円柱_001.mesh" id="6_qeb5n"]
+[ext_resource type="ArrayMesh" path="res://Assets/Whack-A-Mole/Models/extracted/mole_pickaxe.Cube_005.mesh" id="7_34fa3"]
+[ext_resource type="ArrayMesh" path="res://Assets/Whack-A-Mole/Models/extracted/mole_pickaxe.Cube_004.mesh" id="8_wwi6d"]
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_3xg0g"]
+radius = 1.5
+
+[node name="mole_pickaxe" type="Node3D"]
+transform = Transform3D(0.6, 0, 0, 0, 0.6, 0, 0, 0, 0.6, 412.59, -96.6067, -274.293)
+
+[node name="SphereCollider" type="StaticBody3D" parent="."]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="SphereCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
+shape = SubResource("SphereShape3D_3xg0g")
+
+[node name="body" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.00528283, 0)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="body"]
+gi_mode = 2
+mesh = ExtResource("1_i8qg6")
+surface_material_override/0 = ExtResource("2_gxlhc")
+
+[node name="eye" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.00528283, 0)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="eye"]
+gi_mode = 2
+mesh = ExtResource("3_xvv5n")
+surface_material_override/0 = ExtResource("2_gxlhc")
+
+[node name="leftHand" type="Node3D" parent="."]
+transform = Transform3D(0.117651, -0.059679, 0.213272, 0.109172, 0.225745, 0.00294484, -0.192686, 0.0914641, 0.131889, 0, -0.00528283, 0)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="leftHand"]
+gi_mode = 2
+mesh = ExtResource("4_otpub")
+surface_material_override/0 = ExtResource("2_gxlhc")
+
+[node name="nose" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.00528283, 0)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="nose"]
+gi_mode = 2
+mesh = ExtResource("5_gmjje")
+surface_material_override/0 = ExtResource("2_gxlhc")
+
+[node name="pickaxe" type="Node3D" parent="."]
+transform = Transform3D(0.0587663, 0.0197699, 0.000366657, -0.0197687, 0.0587673, -0.000244938, -0.000425617, 0.000115247, 0.0620021, 0, -0.00528283, 0)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="pickaxe"]
+gi_mode = 2
+mesh = ExtResource("6_qeb5n")
+surface_material_override/0 = ExtResource("2_gxlhc")
+
+[node name="rightHand" type="Node3D" parent="."]
+transform = Transform3D(0.190053, 0, -0.179445, 0, 0.261382, 0, 0.179445, 0, 0.190053, 0, -0.00528283, 0)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="rightHand"]
+gi_mode = 2
+mesh = ExtResource("7_34fa3")
+surface_material_override/0 = ExtResource("2_gxlhc")
+
+[node name="whisker" type="Node3D" parent="."]
+transform = Transform3D(-0.152842, 0.0148494, 0, -0.0685134, -0.0331265, 0, 0, 0, -0.0363024, 0, -0.00528283, 0)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="whisker"]
+gi_mode = 2
+mesh = ExtResource("8_wwi6d")
+surface_material_override/0 = ExtResource("2_gxlhc")

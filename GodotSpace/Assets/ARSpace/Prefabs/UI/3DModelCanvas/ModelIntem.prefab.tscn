@@ -1,0 +1,21 @@
+[gd_scene format=3]
+
+[node name="ModelIntem" type="Node3D"]
+
+[node name="CanvasRenderer" type="Node" parent="."]
+
+[node name="Mask" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="Mask"]
+
+[node name="Image" type="Node3D" parent="Mask"]
+
+[node name="CanvasRenderer" type="Node" parent="Mask/Image"]
+
+[node name="Image" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="Image"]
+
+[node name="Name" type="Node3D" parent="."]
+
+[node name="CanvasRenderer" type="Node" parent="Name"]

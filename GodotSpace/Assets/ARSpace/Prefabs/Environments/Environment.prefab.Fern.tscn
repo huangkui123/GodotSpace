@@ -1,0 +1,33 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://addons/unidot/runtime/anim_tree.gd" id="1_ofkog"]
+
+[sub_resource type="Animation" id="Animation_sq6np"]
+
+[sub_resource type="Animation" id="Animation_s626k"]
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_lefoa"]
+_data = {
+&"RESET": SubResource("Animation_s626k"),
+&"_T-Pose_": SubResource("Animation_sq6np")
+}
+
+[node name="Fern2" type="Node3D"]
+transform = Transform3D(0.225591, -0.0143285, -0.40782, -0.0409508, 0.462841, -0.0389142, 0.406011, 0.0546441, 0.222671, 0.61, 0.0720001, 2.88)
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+libraries = {
+&"": SubResource("AnimationLibrary_lefoa")
+}
+
+[node name="AnimationTree" type="AnimationTree" parent="."]
+deterministic = false
+root_motion_track = NodePath("%GeneralSkeleton:Root")
+root_motion_local = false
+anim_player = NodePath("../AnimationPlayer")
+script = ExtResource("1_ofkog")
+
+[node name="Fern_Var0_LOD2" type="Node3D" parent="."]
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="Fern_Var0_LOD2"]
+gi_mode = 2

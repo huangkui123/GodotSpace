@@ -1,0 +1,2373 @@
+[gd_scene load_steps=62 format=3]
+
+[ext_resource type="Material" path="res://Assets/Magic_Spline/Material/M_Particles_UniversalPremultiplitedFlipbookDistortion 1.material" id="1_05g3n"]
+[ext_resource type="Material" path="res://Assets/Magic_Spline/Material/M_Circle.material" id="2_nw30h"]
+[ext_resource type="Material" path="res://Assets/Magic_Spline/Material/M_Arrow.material" id="3_pnqx1"]
+[ext_resource type="Material" path="res://Assets/Magic_Spline/Material/M_Arrow_Big.material" id="4_n1fsk"]
+[ext_resource type="Material" path="res://Assets/Magic_Spline/Material/M_Arrow_L.material" id="5_8h828"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_kvpoh"]
+size = Vector3(0.6, 3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_sp1i4"]
+size = Vector3(0.6, 3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_uwwiw"]
+size = Vector3(0.6, 3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_ipjx4"]
+size = Vector3(0.6, 3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_ont33"]
+size = Vector3(0.6, 3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_afnwa"]
+size = Vector3(0.6, 3, 0.5)
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_kvpoh"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_petc8"]
+size = Vector3(2, 3, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_q5w4f"]
+size = Vector3(0.6, 3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_07b6u"]
+size = Vector3(0.6, 3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_ypr2y"]
+size = Vector3(2, 3, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_tq1dy"]
+size = Vector3(0.6, 3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_v4hj7"]
+size = Vector3(2, 3, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_svj11"]
+size = Vector3(0.6, 3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_r8pfy"]
+size = Vector3(0.6, 3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_8xa7d"]
+size = Vector3(2, 3, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_koa2o"]
+size = Vector3(0.6, 3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_0yo4i"]
+size = Vector3(0.6, 3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_lva7a"]
+size = Vector3(2, 3, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_dn1nm"]
+size = Vector3(0.6, 3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_rk17c"]
+size = Vector3(2, 3, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_rl501"]
+size = Vector3(0.6, 3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_r5dj3"]
+size = Vector3(0.6, 3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_4jhk8"]
+size = Vector3(2, 3, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_7ux4v"]
+size = Vector3(0.6, 3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_ba8bb"]
+size = Vector3(0.6, 3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_nl33h"]
+size = Vector3(2, 3, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_5shmu"]
+size = Vector3(0.6, 3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_fyctp"]
+size = Vector3(0.6, 3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_w1yy3"]
+size = Vector3(2, 3, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_jx4cj"]
+size = Vector3(0.6, 3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_vk850"]
+size = Vector3(2, 3, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_kh04f"]
+size = Vector3(0.6, 3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_t8omm"]
+size = Vector3(0.6, 3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_kaq5t"]
+size = Vector3(2, 3, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_qa24i"]
+size = Vector3(0.6, 3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_8bic8"]
+size = Vector3(0.6, 3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_n0d6q"]
+size = Vector3(2, 3, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_iq5pt"]
+size = Vector3(0.6, 3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_heejm"]
+size = Vector3(2, 3, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_gb4qx"]
+size = Vector3(0.6, 3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_aojv8"]
+size = Vector3(2, 3, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_1ctxc"]
+size = Vector3(0.6, 3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_8kknl"]
+size = Vector3(0.6, 3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_jmdik"]
+size = Vector3(2, 3, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_52b1g"]
+size = Vector3(0.6, 3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_e88d5"]
+size = Vector3(0.6, 3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_jb3sc"]
+size = Vector3(2, 3, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_p6fee"]
+size = Vector3(0.6, 3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_5of2n"]
+size = Vector3(0.6, 3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_it22q"]
+size = Vector3(2, 3, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_ys7fh"]
+size = Vector3(0.6, 3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_a0tav"]
+size = Vector3(0.6, 3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_hom2f"]
+size = Vector3(2, 3, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_1uum5"]
+size = Vector3(0.6, 3, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_fkfff"]
+size = Vector3(0.6, 3, 0.5)
+
+[node name="WorkEffect" type="Node3D"]
+
+[node name="WorkList1" type="Node3D" parent="."]
+
+[node name="WorkInfo1" type="Node3D" parent="WorkList1"]
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo1"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo1/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01, 1.4, 0.1)
+shape = SubResource("BoxShape3D_kvpoh")
+
+[node name="Sound" type="Node3D" parent="WorkList1/WorkInfo1"]
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo1/Sound"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo1/Sound/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01, 1.4, 0.1)
+shape = SubResource("BoxShape3D_sp1i4")
+
+[node name="WaySpline" type="Node3D" parent="WorkList1/WorkInfo1"]
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo1/WaySpline"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo1/WaySpline/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01, 1.4, 0.1)
+shape = SubResource("BoxShape3D_uwwiw")
+
+[node name="Spline" type="Node3D" parent="WorkList1/WorkInfo1/WaySpline"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.89, 0.1, 5.53)
+
+[node name="Spline0" type="Node3D" parent="WorkList1/WorkInfo1/WaySpline/Spline"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.886, 0, 0.025)
+
+[node name="Handle1" type="Node3D" parent="WorkList1/WorkInfo1/WaySpline/Spline/Spline0"]
+
+[node name="Handle2" type="Node3D" parent="WorkList1/WorkInfo1/WaySpline/Spline/Spline0"]
+
+[node name="Spline1" type="Node3D" parent="WorkList1/WorkInfo1/WaySpline/Spline"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.846, 0, -2.949)
+
+[node name="Handle1" type="Node3D" parent="WorkList1/WorkInfo1/WaySpline/Spline/Spline1"]
+
+[node name="Handle2" type="Node3D" parent="WorkList1/WorkInfo1/WaySpline/Spline/Spline1"]
+
+[node name="Spline2" type="Node3D" parent="WorkList1/WorkInfo1/WaySpline/Spline"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.011, 0, -2.963)
+
+[node name="Handle1" type="Node3D" parent="WorkList1/WorkInfo1/WaySpline/Spline/Spline2"]
+
+[node name="Handle2" type="Node3D" parent="WorkList1/WorkInfo1/WaySpline/Spline/Spline2"]
+
+[node name="Spline3" type="Node3D" parent="WorkList1/WorkInfo1/WaySpline/Spline"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.005, 0.461, -2.961)
+
+[node name="Handle1" type="Node3D" parent="WorkList1/WorkInfo1/WaySpline/Spline/Spline3"]
+
+[node name="Handle2" type="Node3D" parent="WorkList1/WorkInfo1/WaySpline/Spline/Spline3"]
+
+[node name="FX_Geo_2" type="Node3D" parent="WorkList1/WorkInfo1/WaySpline/Spline"]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 0.006, 0.613, -2.964)
+
+[node name="ParticleSystem" type="Node" parent="WorkList1/WorkInfo1/WaySpline/Spline/FX_Geo_2"]
+
+[node name="ParticleSystemRenderer" type="Node" parent="WorkList1/WorkInfo1/WaySpline/Spline/FX_Geo_2"]
+
+[node name="New Text" type="Node3D" parent="WorkList1/WorkInfo1/WaySpline/Spline"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.037, 0.832, -2.937)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo1/WaySpline/Spline/New Text"]
+gi_mode = 2
+
+[node name="Label3D" type="Label3D" parent="WorkList1/WorkInfo1/WaySpline/Spline/New Text"]
+modulate = Color(1, 0, 0.835294, 1)
+text = "应用系统综合包"
+font_size = 100
+outline_size = 4
+horizontal_alignment = 0
+
+[node name="New Text (1)" type="Node3D" parent="WorkList1/WorkInfo1/WaySpline/Spline"]
+transform = Transform3D(-4.10554e-10, 0.00939239, -4.10554e-10, 0, -4.10554e-10, -0.00939239, -0.00939239, -4.10554e-10, 1.79459e-17, -0.478, -0.085, -2.937)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo1/WaySpline/Spline/New Text (1)"]
+gi_mode = 2
+
+[node name="Label3D" type="Label3D" parent="WorkList1/WorkInfo1/WaySpline/Spline/New Text (1)"]
+modulate = Color(1, 0, 0.835294, 1)
+text = "TZ3货船D区III象限"
+font_size = 100
+outline_size = 4
+horizontal_alignment = 0
+
+[node name="ZonePoint" type="Node3D" parent="WorkList1/WorkInfo1"]
+
+[node name="Containerless" type="Node3D" parent="WorkList1/WorkInfo1"]
+
+[node name="WorkInfo2" type="Node3D" parent="WorkList1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.759, 0, 0.967)
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo2"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo2/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01, 1.4, 0.1)
+shape = SubResource("BoxShape3D_ipjx4")
+
+[node name="Sound" type="Node3D" parent="WorkList1/WorkInfo2"]
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo2/Sound"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo2/Sound/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01, 1.4, 0.1)
+shape = SubResource("BoxShape3D_ont33")
+
+[node name="WaySpline" type="Node3D" parent="WorkList1/WorkInfo2"]
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo2/WaySpline"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo2/WaySpline/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01, 1.4, 0.1)
+shape = SubResource("BoxShape3D_afnwa")
+
+[node name="Spline" type="Node3D" parent="WorkList1/WorkInfo2/WaySpline"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 1.538)
+
+[node name="Spline0" type="Node3D" parent="WorkList1/WorkInfo2/WaySpline/Spline"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.761, 0, 0)
+
+[node name="Handle1" type="Node3D" parent="WorkList1/WorkInfo2/WaySpline/Spline/Spline0"]
+
+[node name="Handle2" type="Node3D" parent="WorkList1/WorkInfo2/WaySpline/Spline/Spline0"]
+
+[node name="Spline1" type="Node3D" parent="WorkList1/WorkInfo2/WaySpline/Spline"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.767, 0, 3.061)
+
+[node name="Handle1" type="Node3D" parent="WorkList1/WorkInfo2/WaySpline/Spline/Spline1"]
+
+[node name="Handle2" type="Node3D" parent="WorkList1/WorkInfo2/WaySpline/Spline/Spline1"]
+
+[node name="Spline2" type="Node3D" parent="WorkList1/WorkInfo2/WaySpline/Spline"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.045, 0, 3.003)
+
+[node name="Handle1" type="Node3D" parent="WorkList1/WorkInfo2/WaySpline/Spline/Spline2"]
+
+[node name="Handle2" type="Node3D" parent="WorkList1/WorkInfo2/WaySpline/Spline/Spline2"]
+
+[node name="Spline3" type="Node3D" parent="WorkList1/WorkInfo2/WaySpline/Spline"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.042, 0.312, 2.998)
+
+[node name="Handle1" type="Node3D" parent="WorkList1/WorkInfo2/WaySpline/Spline/Spline3"]
+
+[node name="Handle2" type="Node3D" parent="WorkList1/WorkInfo2/WaySpline/Spline/Spline3"]
+
+[node name="FX_Geo_2" type="Node3D" parent="WorkList1/WorkInfo2/WaySpline/Spline"]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 0.042, 0.472, 2.991)
+
+[node name="ParticleSystem" type="Node" parent="WorkList1/WorkInfo2/WaySpline/Spline/FX_Geo_2"]
+
+[node name="ParticleSystemRenderer" type="Node" parent="WorkList1/WorkInfo2/WaySpline/Spline/FX_Geo_2"]
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo2/WaySpline/Spline/FX_Geo_2"]
+transform = Transform3D(0.25, 0, 0, 0, -1.09278e-08, -0.25, 0, 0.25, -1.09278e-08, 0, 0, 0)
+gi_mode = 2
+mesh = SubResource("PlaneMesh_kvpoh")
+surface_material_override/0 = ExtResource("1_05g3n")
+
+[node name="New Text" type="Node3D" parent="WorkList1/WorkInfo2/WaySpline/Spline"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.042, 0.691, 2.971)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo2/WaySpline/Spline/New Text"]
+gi_mode = 2
+
+[node name="Label3D" type="Label3D" parent="WorkList1/WorkInfo2/WaySpline/Spline/New Text"]
+modulate = Color(1, 0, 0.835294, 1)
+text = "准备工具"
+font_size = 100
+outline_size = 4
+horizontal_alignment = 0
+
+[node name="New Text (1)" type="Node3D" parent="WorkList1/WorkInfo2/WaySpline/Spline"]
+transform = Transform3D(-4.10554e-10, 0.00939239, -4.10554e-10, 0, -4.10554e-10, -0.00939239, -0.00939239, -4.10554e-10, 1.79459e-17, -0.478, -0.085, 2.971)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo2/WaySpline/Spline/New Text (1)"]
+gi_mode = 2
+
+[node name="Label3D" type="Label3D" parent="WorkList1/WorkInfo2/WaySpline/Spline/New Text (1)"]
+modulate = Color(1, 0, 0.835294, 1)
+text = "A区III象限"
+font_size = 100
+outline_size = 4
+horizontal_alignment = 0
+
+[node name="ZonePoint" type="Node3D" parent="WorkList1/WorkInfo2"]
+
+[node name="Containerless" type="Node3D" parent="WorkList1/WorkInfo2"]
+
+[node name="WorkInfo3" type="Node3D" parent="WorkList1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.759, 0, 5.45)
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo3"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo3/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 1.4, 0)
+shape = SubResource("BoxShape3D_petc8")
+
+[node name="Sound" type="Node3D" parent="WorkList1/WorkInfo3"]
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo3/Sound"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo3/Sound/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01, 1.4, 0.1)
+visible = false
+shape = SubResource("BoxShape3D_q5w4f")
+
+[node name="WaySpline" type="Node3D" parent="WorkList1/WorkInfo3"]
+
+[node name="ZonePoint" type="Node3D" parent="WorkList1/WorkInfo3"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.097)
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo3/ZonePoint"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo3/ZonePoint/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01, 1.4, 0.1)
+visible = false
+shape = SubResource("BoxShape3D_07b6u")
+
+[node name="Model" type="Node3D" parent="WorkList1/WorkInfo3/ZonePoint"]
+
+[node name="Canvas" type="Node3D" parent="WorkList1/WorkInfo3/ZonePoint/Model"]
+transform = Transform3D(-1.7067e-05, 0, 0.05, 0, 0.05, 0, -0.05, 0, -1.7067e-05, 0.21, 1.952, -0.563)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo3/ZonePoint/Model/Canvas"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo3/ZonePoint/Model/Canvas"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo3/ZonePoint/Model/Canvas/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo3/ZonePoint/Model/Canvas/Image"]
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo3/ZonePoint/Model/Canvas"]
+transform = Transform3D(1, 0, -7.62907e-11, 7.62907e-11, -4.37113e-08, 1, 0, -1, -4.37113e-08, 0, 0, 0)
+gi_mode = 2
+mesh = SubResource("PlaneMesh_kvpoh")
+surface_material_override/0 = ExtResource("2_nw30h")
+
+[node name="Canvas (1)" type="Node3D" parent="WorkList1/WorkInfo3/ZonePoint/Model"]
+transform = Transform3D(-1.7067e-05, 0, 0.05, 0, 0.05, 0, -0.05, 0, -1.7067e-05, 0.21, 1.952, 0.438)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo3/ZonePoint/Model/Canvas (1)"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo3/ZonePoint/Model/Canvas (1)"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo3/ZonePoint/Model/Canvas (1)/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo3/ZonePoint/Model/Canvas (1)/Image"]
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo3/ZonePoint/Model/Canvas (1)"]
+transform = Transform3D(1, 0, -7.62907e-11, 7.62907e-11, -4.37113e-08, 1, 0, -1, -4.37113e-08, 0, 0, 0)
+gi_mode = 2
+mesh = SubResource("PlaneMesh_kvpoh")
+surface_material_override/0 = ExtResource("2_nw30h")
+
+[node name="Canvas (2)" type="Node3D" parent="WorkList1/WorkInfo3/ZonePoint/Model"]
+transform = Transform3D(-1.7067e-05, 0, 0.05, 0, 0.05, 0, -0.05, 0, -1.7067e-05, 0.21, 0.214, -0.563)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo3/ZonePoint/Model/Canvas (2)"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo3/ZonePoint/Model/Canvas (2)"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo3/ZonePoint/Model/Canvas (2)/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo3/ZonePoint/Model/Canvas (2)/Image"]
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo3/ZonePoint/Model/Canvas (2)"]
+transform = Transform3D(1, 0, -7.62907e-11, 7.62907e-11, -4.37113e-08, 1, 0, -1, -4.37113e-08, 0, 0, 0)
+gi_mode = 2
+mesh = SubResource("PlaneMesh_kvpoh")
+surface_material_override/0 = ExtResource("2_nw30h")
+
+[node name="Canvas (3)" type="Node3D" parent="WorkList1/WorkInfo3/ZonePoint/Model"]
+transform = Transform3D(-1.7067e-05, 0, 0.05, 0, 0.05, 0, -0.05, 0, -1.7067e-05, 0.21, 0.215, 0.435)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo3/ZonePoint/Model/Canvas (3)"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo3/ZonePoint/Model/Canvas (3)"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo3/ZonePoint/Model/Canvas (3)/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo3/ZonePoint/Model/Canvas (3)/Image"]
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo3/ZonePoint/Model/Canvas (3)"]
+transform = Transform3D(1, 0, -7.62907e-11, 7.62907e-11, -4.37113e-08, 1, 0, -1, -4.37113e-08, 0, 0, 0)
+gi_mode = 2
+mesh = SubResource("PlaneMesh_kvpoh")
+surface_material_override/0 = ExtResource("2_nw30h")
+
+[node name="Containerless" type="Node3D" parent="WorkList1/WorkInfo3"]
+
+[node name="WorkInfo4" type="Node3D" parent="WorkList1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.759, 0, 5.45)
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo4"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo4/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 1.4, 0)
+shape = SubResource("BoxShape3D_ypr2y")
+
+[node name="Sound" type="Node3D" parent="WorkList1/WorkInfo4"]
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo4/Sound"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo4/Sound/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01, 1.4, 0.1)
+visible = false
+shape = SubResource("BoxShape3D_tq1dy")
+
+[node name="WaySpline" type="Node3D" parent="WorkList1/WorkInfo4"]
+
+[node name="ZonePoint" type="Node3D" parent="WorkList1/WorkInfo4"]
+
+[node name="Containerless" type="Node3D" parent="WorkList1/WorkInfo4"]
+
+[node name="WorkInfo5" type="Node3D" parent="WorkList1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.759, 0, 5.45)
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo5"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo5/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 1.4, 0)
+shape = SubResource("BoxShape3D_v4hj7")
+
+[node name="Sound" type="Node3D" parent="WorkList1/WorkInfo5"]
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo5/Sound"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo5/Sound/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01, 1.4, 0.1)
+visible = false
+shape = SubResource("BoxShape3D_svj11")
+
+[node name="WaySpline" type="Node3D" parent="WorkList1/WorkInfo5"]
+
+[node name="ZonePoint" type="Node3D" parent="WorkList1/WorkInfo5"]
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo5/ZonePoint"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo5/ZonePoint/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01, 1.4, 0.1)
+visible = false
+shape = SubResource("BoxShape3D_r8pfy")
+
+[node name="Model" type="Node3D" parent="WorkList1/WorkInfo5/ZonePoint"]
+
+[node name="Canvas" type="Node3D" parent="WorkList1/WorkInfo5/ZonePoint/Model"]
+transform = Transform3D(-3.4134e-05, 0, 0.1, 0, 0.1, 0, -0.1, 0, -3.4134e-05, 0.24, 1.686, -0.21)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo5/ZonePoint/Model/Canvas"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo5/ZonePoint/Model/Canvas"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo5/ZonePoint/Model/Canvas/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo5/ZonePoint/Model/Canvas/Image"]
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo5/ZonePoint/Model/Canvas"]
+transform = Transform3D(1.2495, 2.91038e-11, -6.01664e-11, 9.53252e-11, -4.37061e-08, 0.788645, 0, -0.999879, -3.44727e-08, 0.0454369, 0.0981159, -0.0723639)
+gi_mode = 2
+mesh = SubResource("PlaneMesh_kvpoh")
+surface_material_override/0 = ExtResource("2_nw30h")
+
+[node name="New Text" type="Node3D" parent="WorkList1/WorkInfo5/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.224, 1.546, 0.042)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo5/ZonePoint/Model/New Text"]
+gi_mode = 2
+
+[node name="Label3D" type="Label3D" parent="WorkList1/WorkInfo5/ZonePoint/Model/New Text"]
+transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 15.6219, 0, 0)
+pixel_size = 0.11
+modulate = Color(0.870588, 0.839216, 0, 1)
+text = "科学实验操作盖"
+font_size = 40
+outline_size = 4
+horizontal_alignment = 0
+
+[node name="Containerless" type="Node3D" parent="WorkList1/WorkInfo5"]
+
+[node name="WorkInfo6" type="Node3D" parent="WorkList1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.759, 0, 5.45)
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo6"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo6/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 1.4, 0)
+shape = SubResource("BoxShape3D_8xa7d")
+
+[node name="Sound" type="Node3D" parent="WorkList1/WorkInfo6"]
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo6/Sound"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo6/Sound/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01, 1.4, 0.1)
+visible = false
+shape = SubResource("BoxShape3D_koa2o")
+
+[node name="WaySpline" type="Node3D" parent="WorkList1/WorkInfo6"]
+
+[node name="ZonePoint" type="Node3D" parent="WorkList1/WorkInfo6"]
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo6/ZonePoint"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo6/ZonePoint/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01, 1.4, 0.1)
+visible = false
+shape = SubResource("BoxShape3D_0yo4i")
+
+[node name="Model" type="Node3D" parent="WorkList1/WorkInfo6/ZonePoint"]
+
+[node name="Canvas" type="Node3D" parent="WorkList1/WorkInfo6/ZonePoint/Model"]
+transform = Transform3D(-3.4134e-07, 0, 0.001, 0, 0.001, 0, -0.001, 0, -3.4134e-07, 0, 0, -0.0525)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo6/ZonePoint/Model/Canvas"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo6/ZonePoint/Model/Canvas"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo6/ZonePoint/Model/Canvas/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo6/ZonePoint/Model/Canvas/Image"]
+
+[node name="Canvas (1)" type="Node3D" parent="WorkList1/WorkInfo6/ZonePoint/Model"]
+transform = Transform3D(-3.4134e-07, 0, 0.001, 0, 0.001, 0, -0.001, 0, -3.4134e-07, 0, 0, 0.1337)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo6/ZonePoint/Model/Canvas (1)"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo6/ZonePoint/Model/Canvas (1)"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo6/ZonePoint/Model/Canvas (1)/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo6/ZonePoint/Model/Canvas (1)/Image"]
+
+[node name="Canvas (2)" type="Node3D" parent="WorkList1/WorkInfo6/ZonePoint/Model"]
+transform = Transform3D(-3.4134e-07, 0, 0.001, 0, 0.001, 0, -0.001, 0, -3.4134e-07, 0, 0, 0.2261)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo6/ZonePoint/Model/Canvas (2)"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo6/ZonePoint/Model/Canvas (2)"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo6/ZonePoint/Model/Canvas (2)/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo6/ZonePoint/Model/Canvas (2)/Image"]
+
+[node name="Canvas (3)" type="Node3D" parent="WorkList1/WorkInfo6/ZonePoint/Model"]
+transform = Transform3D(-3.4134e-07, 0, 0.001, 0, 0.001, 0, -0.001, 0, -3.4134e-07, 0, 0, 0.229)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo6/ZonePoint/Model/Canvas (3)"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo6/ZonePoint/Model/Canvas (3)"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo6/ZonePoint/Model/Canvas (3)/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo6/ZonePoint/Model/Canvas (3)/Image"]
+
+[node name="Canvas (4)" type="Node3D" parent="WorkList1/WorkInfo6/ZonePoint/Model"]
+transform = Transform3D(-3.4134e-07, 0, 0.001, 0, 0.001, 0, -0.001, 0, -3.4134e-07, 0, 0, 0.137)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo6/ZonePoint/Model/Canvas (4)"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo6/ZonePoint/Model/Canvas (4)"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo6/ZonePoint/Model/Canvas (4)/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo6/ZonePoint/Model/Canvas (4)/Image"]
+
+[node name="Canvas (5)" type="Node3D" parent="WorkList1/WorkInfo6/ZonePoint/Model"]
+transform = Transform3D(-3.4134e-07, 0, 0.001, 0, 0.001, 0, -0.001, 0, -3.4134e-07, 0, 0, -0.047)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo6/ZonePoint/Model/Canvas (5)"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo6/ZonePoint/Model/Canvas (5)"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo6/ZonePoint/Model/Canvas (5)/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo6/ZonePoint/Model/Canvas (5)/Image"]
+
+[node name="Canvas (6)" type="Node3D" parent="WorkList1/WorkInfo6/ZonePoint/Model"]
+transform = Transform3D(-3.4134e-07, 0, 0.001, 0, 0.001, 0, -0.001, 0, -3.4134e-07, 0, 0, -0.13)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo6/ZonePoint/Model/Canvas (6)"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo6/ZonePoint/Model/Canvas (6)"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo6/ZonePoint/Model/Canvas (6)/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo6/ZonePoint/Model/Canvas (6)/Image"]
+
+[node name="Canvas (7)" type="Node3D" parent="WorkList1/WorkInfo6/ZonePoint/Model"]
+transform = Transform3D(-3.4134e-07, 0, 0.001, 0, 0.001, 0, -0.001, 0, -3.4134e-07, 0, 0, -0.14)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo6/ZonePoint/Model/Canvas (7)"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo6/ZonePoint/Model/Canvas (7)"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo6/ZonePoint/Model/Canvas (7)/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo6/ZonePoint/Model/Canvas (7)/Image"]
+
+[node name="New Text" type="Node3D" parent="WorkList1/WorkInfo6/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.236, 1.731, -0.134)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo6/ZonePoint/Model/New Text"]
+gi_mode = 2
+
+[node name="New Text (1)" type="Node3D" parent="WorkList1/WorkInfo6/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.236, 1.734, 0.221)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo6/ZonePoint/Model/New Text (1)"]
+gi_mode = 2
+
+[node name="New Text (2)" type="Node3D" parent="WorkList1/WorkInfo6/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.236, 1.623, 0.318)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo6/ZonePoint/Model/New Text (2)"]
+gi_mode = 2
+
+[node name="New Text (3)" type="Node3D" parent="WorkList1/WorkInfo6/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.236, 1.458, 0.324)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo6/ZonePoint/Model/New Text (3)"]
+gi_mode = 2
+
+[node name="New Text (4)" type="Node3D" parent="WorkList1/WorkInfo6/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.236, 1.344, 0.237)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo6/ZonePoint/Model/New Text (4)"]
+gi_mode = 2
+
+[node name="New Text (5)" type="Node3D" parent="WorkList1/WorkInfo6/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.236, 1.346, -0.145)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo6/ZonePoint/Model/New Text (5)"]
+gi_mode = 2
+
+[node name="New Text (6)" type="Node3D" parent="WorkList1/WorkInfo6/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.236, 1.44, -0.222)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo6/ZonePoint/Model/New Text (6)"]
+gi_mode = 2
+
+[node name="New Text (7)" type="Node3D" parent="WorkList1/WorkInfo6/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.236, 1.614, -0.235)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo6/ZonePoint/Model/New Text (7)"]
+gi_mode = 2
+
+[node name="Containerless" type="Node3D" parent="WorkList1/WorkInfo6"]
+
+[node name="WorkInfo7" type="Node3D" parent="WorkList1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.759, 0, 5.45)
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo7"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo7/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 1.4, 0)
+shape = SubResource("BoxShape3D_lva7a")
+
+[node name="Sound" type="Node3D" parent="WorkList1/WorkInfo7"]
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo7/Sound"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo7/Sound/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01, 1.4, 0.1)
+visible = false
+shape = SubResource("BoxShape3D_dn1nm")
+
+[node name="WaySpline" type="Node3D" parent="WorkList1/WorkInfo7"]
+
+[node name="ZonePoint" type="Node3D" parent="WorkList1/WorkInfo7"]
+
+[node name="Containerless" type="Node3D" parent="WorkList1/WorkInfo7"]
+
+[node name="WorkInfo8" type="Node3D" parent="WorkList1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.759, 0, 5.45)
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo8"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo8/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 1.4, 0)
+shape = SubResource("BoxShape3D_rk17c")
+
+[node name="Sound" type="Node3D" parent="WorkList1/WorkInfo8"]
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo8/Sound"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo8/Sound/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01, 1.4, 0.1)
+visible = false
+shape = SubResource("BoxShape3D_rl501")
+
+[node name="WaySpline" type="Node3D" parent="WorkList1/WorkInfo8"]
+
+[node name="ZonePoint" type="Node3D" parent="WorkList1/WorkInfo8"]
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo8/ZonePoint"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo8/ZonePoint/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01, 1.4, 0.1)
+visible = false
+shape = SubResource("BoxShape3D_r5dj3")
+
+[node name="Model" type="Node3D" parent="WorkList1/WorkInfo8/ZonePoint"]
+
+[node name="Canvas" type="Node3D" parent="WorkList1/WorkInfo8/ZonePoint/Model"]
+transform = Transform3D(-1.36536e-05, 0, 0.04, 0, 0.04, 0, -0.04, 0, -1.36536e-05, 0.318, 1.576, -0.012)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo8/ZonePoint/Model/Canvas"]
+transform = Transform3D(1, 0, -7.62907e-11, 7.62907e-11, -4.37113e-08, 1, 2.91038e-11, -1, -4.37113e-08, 0, 0, 0)
+gi_mode = 2
+mesh = SubResource("PlaneMesh_kvpoh")
+skeleton = NodePath("../Image")
+surface_material_override/0 = ExtResource("2_nw30h")
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo8/ZonePoint/Model/Canvas"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo8/ZonePoint/Model/Canvas"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo8/ZonePoint/Model/Canvas/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo8/ZonePoint/Model/Canvas/Image"]
+
+[node name="Canvas (1)" type="Node3D" parent="WorkList1/WorkInfo8/ZonePoint/Model"]
+transform = Transform3D(-1.36536e-05, 0, 0.04, 0, 0.04, 0, -0.04, 0, -1.36536e-05, 0.318, 1.575, 0.094)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo8/ZonePoint/Model/Canvas (1)"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo8/ZonePoint/Model/Canvas (1)"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo8/ZonePoint/Model/Canvas (1)/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo8/ZonePoint/Model/Canvas (1)/Image"]
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo8/ZonePoint/Model/Canvas (1)"]
+transform = Transform3D(1, 0, -7.62907e-11, 7.62907e-11, -4.37113e-08, 1, 2.91038e-11, -1, -4.37113e-08, 0, 0, 0)
+gi_mode = 2
+mesh = SubResource("PlaneMesh_kvpoh")
+skeleton = NodePath("../Image")
+surface_material_override/0 = ExtResource("2_nw30h")
+
+[node name="New Text" type="Node3D" parent="WorkList1/WorkInfo8/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.316, 1.653, -0.011)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo8/ZonePoint/Model/New Text"]
+gi_mode = 2
+
+[node name="Label3D" type="Label3D" parent="WorkList1/WorkInfo8/ZonePoint/Model/New Text"]
+transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 6.61542, 0.0185242, 0.00650024)
+pixel_size = 0.1
+text = "X01"
+font_size = 60
+outline_size = 4
+horizontal_alignment = 0
+
+[node name="New Text (1)" type="Node3D" parent="WorkList1/WorkInfo8/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.316, 1.652, 0.098)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo8/ZonePoint/Model/New Text (1)"]
+gi_mode = 2
+
+[node name="Label3D" type="Label3D" parent="WorkList1/WorkInfo8/ZonePoint/Model/New Text (1)"]
+transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 5.68567, 0, 0)
+pixel_size = 0.1
+text = "X02"
+font_size = 60
+outline_size = 4
+horizontal_alignment = 0
+
+[node name="Containerless" type="Node3D" parent="WorkList1/WorkInfo8"]
+
+[node name="WorkInfo9" type="Node3D" parent="WorkList1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.759, 0, 5.45)
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo9"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo9/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 1.4, 0)
+shape = SubResource("BoxShape3D_4jhk8")
+
+[node name="Sound" type="Node3D" parent="WorkList1/WorkInfo9"]
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo9/Sound"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo9/Sound/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01, 1.4, 0.1)
+visible = false
+shape = SubResource("BoxShape3D_7ux4v")
+
+[node name="WaySpline" type="Node3D" parent="WorkList1/WorkInfo9"]
+
+[node name="ZonePoint" type="Node3D" parent="WorkList1/WorkInfo9"]
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo9/ZonePoint"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo9/ZonePoint/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01, 1.4, 0.1)
+visible = false
+shape = SubResource("BoxShape3D_ba8bb")
+
+[node name="Model" type="Node3D" parent="WorkList1/WorkInfo9/ZonePoint"]
+
+[node name="Canvas" type="Node3D" parent="WorkList1/WorkInfo9/ZonePoint/Model"]
+transform = Transform3D(-3.4134e-07, 0, 0.001, 0, 0.001, 0, -0.001, 0, -3.4134e-07, 0, 0, -0.0112)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo9/ZonePoint/Model/Canvas"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo9/ZonePoint/Model/Canvas"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo9/ZonePoint/Model/Canvas/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo9/ZonePoint/Model/Canvas/Image"]
+
+[node name="Canvas (1)" type="Node3D" parent="WorkList1/WorkInfo9/ZonePoint/Model"]
+transform = Transform3D(-3.4134e-07, 0, 0.001, 0, 0.001, 0, -0.001, 0, -3.4134e-07, 0, 0, 0.0919)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo9/ZonePoint/Model/Canvas (1)"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo9/ZonePoint/Model/Canvas (1)"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo9/ZonePoint/Model/Canvas (1)/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo9/ZonePoint/Model/Canvas (1)/Image"]
+
+[node name="Canvas (2)" type="Node3D" parent="WorkList1/WorkInfo9/ZonePoint/Model"]
+transform = Transform3D(-3.4134e-07, 0, 0.001, 0, 0.001, 0, -0.001, 0, -3.4134e-07, 0, 0, 0.1404)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo9/ZonePoint/Model/Canvas (2)"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo9/ZonePoint/Model/Canvas (2)"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo9/ZonePoint/Model/Canvas (2)/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo9/ZonePoint/Model/Canvas (2)/Image"]
+
+[node name="Canvas (3)" type="Node3D" parent="WorkList1/WorkInfo9/ZonePoint/Model"]
+transform = Transform3D(-3.4134e-07, 0, 0.001, 0, 0.001, 0, -0.001, 0, -3.4134e-07, 0, 0, 0.091)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo9/ZonePoint/Model/Canvas (3)"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo9/ZonePoint/Model/Canvas (3)"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo9/ZonePoint/Model/Canvas (3)/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo9/ZonePoint/Model/Canvas (3)/Image"]
+
+[node name="Canvas (4)" type="Node3D" parent="WorkList1/WorkInfo9/ZonePoint/Model"]
+transform = Transform3D(-3.4134e-07, 0, 0.001, 0, 0.001, 0, -0.001, 0, -3.4134e-07, 0, 0, -0.013)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo9/ZonePoint/Model/Canvas (4)"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo9/ZonePoint/Model/Canvas (4)"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo9/ZonePoint/Model/Canvas (4)/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo9/ZonePoint/Model/Canvas (4)/Image"]
+
+[node name="Canvas (5)" type="Node3D" parent="WorkList1/WorkInfo9/ZonePoint/Model"]
+transform = Transform3D(-3.4134e-07, 0, 0.001, 0, 0.001, 0, -0.001, 0, -3.4134e-07, 0, 0, -0.0645)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo9/ZonePoint/Model/Canvas (5)"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo9/ZonePoint/Model/Canvas (5)"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo9/ZonePoint/Model/Canvas (5)/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo9/ZonePoint/Model/Canvas (5)/Image"]
+
+[node name="New Text" type="Node3D" parent="WorkList1/WorkInfo9/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.32, 1.707, -0.117)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo9/ZonePoint/Model/New Text"]
+gi_mode = 2
+
+[node name="New Text (1)" type="Node3D" parent="WorkList1/WorkInfo9/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.32, 1.707, 0.209)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo9/ZonePoint/Model/New Text (1)"]
+gi_mode = 2
+
+[node name="New Text (2)" type="Node3D" parent="WorkList1/WorkInfo9/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.32, 1.608, 0.291)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo9/ZonePoint/Model/New Text (2)"]
+gi_mode = 2
+
+[node name="New Text (3)" type="Node3D" parent="WorkList1/WorkInfo9/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.32, 1.487, 0.301)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo9/ZonePoint/Model/New Text (3)"]
+gi_mode = 2
+
+[node name="New Text (4)" type="Node3D" parent="WorkList1/WorkInfo9/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.32, 1.395, 0.195)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo9/ZonePoint/Model/New Text (4)"]
+gi_mode = 2
+
+[node name="New Text (5)" type="Node3D" parent="WorkList1/WorkInfo9/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.32, 1.391, -0.117)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo9/ZonePoint/Model/New Text (5)"]
+gi_mode = 2
+
+[node name="Containerless" type="Node3D" parent="WorkList1/WorkInfo9"]
+
+[node name="WorkInfo10" type="Node3D" parent="WorkList1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.759, 0, 5.45)
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo10"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo10/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 1.4, 0)
+shape = SubResource("BoxShape3D_nl33h")
+
+[node name="Sound" type="Node3D" parent="WorkList1/WorkInfo10"]
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo10/Sound"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo10/Sound/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01, 1.4, 0.1)
+visible = false
+shape = SubResource("BoxShape3D_5shmu")
+
+[node name="WaySpline" type="Node3D" parent="WorkList1/WorkInfo10"]
+
+[node name="ZonePoint" type="Node3D" parent="WorkList1/WorkInfo10"]
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo10/ZonePoint"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo10/ZonePoint/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01, 1.4, 0.1)
+visible = false
+shape = SubResource("BoxShape3D_fyctp")
+
+[node name="Model" type="Node3D" parent="WorkList1/WorkInfo10/ZonePoint"]
+
+[node name="Canvas" type="Node3D" parent="WorkList1/WorkInfo10/ZonePoint/Model"]
+transform = Transform3D(-3.4134e-05, 0, 0.1, 0, 0.1, 0, -0.1, 0, -3.4134e-05, 0.332, 1.69716, -0.0209999)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo10/ZonePoint/Model/Canvas"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo10/ZonePoint/Model/Canvas"]
+transform = Transform3D(0.5, -0.866025, 0, 0.866025, 0.5, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo10/ZonePoint/Model/Canvas/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo10/ZonePoint/Model/Canvas/Image"]
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo10/ZonePoint/Model/Canvas"]
+transform = Transform3D(-0.427342, 0.000487169, 0.90409, -0.90409, 0.000308621, -0.427342, -0.000487209, -1, 0.000308558, 0, 0, 0)
+gi_mode = 2
+mesh = SubResource("PlaneMesh_kvpoh")
+surface_material_override/0 = ExtResource("3_pnqx1")
+
+[node name="Canvas (1)" type="Node3D" parent="WorkList1/WorkInfo10/ZonePoint/Model"]
+transform = Transform3D(-3.32164e-05, -1.0699e-05, 0.1, -0.0306526, 0.0951862, 2.32952e-09, -0.0951862, -0.0306526, -3.48969e-05, 0.332, 1.68331, 0.109278)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo10/ZonePoint/Model/Canvas (1)"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo10/ZonePoint/Model/Canvas (1)"]
+transform = Transform3D(-0.5, -0.866025, 0, 0.866025, -0.5, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo10/ZonePoint/Model/Canvas (1)/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo10/ZonePoint/Model/Canvas (1)/Image"]
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo10/ZonePoint/Model/Canvas (1)"]
+transform = Transform3D(0.552752, 0.000239766, 0.833346, -0.833346, 0.000343938, 0.552752, -0.000154088, -1, 0.00038992, 0, 0, 0)
+gi_mode = 2
+mesh = SubResource("PlaneMesh_kvpoh")
+surface_material_override/0 = ExtResource("3_pnqx1")
+
+[node name="Canvas (2)" type="Node3D" parent="WorkList1/WorkInfo10/ZonePoint/Model"]
+transform = Transform3D(-3.45495e-05, 4.996e-06, 0.1, 0.0143147, 0.0989701, 1.11992e-09, -0.0989701, 0.0143147, -3.49089e-05, 0.332, 1.60084, 0.200998)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo10/ZonePoint/Model/Canvas (2)"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo10/ZonePoint/Model/Canvas (2)"]
+transform = Transform3D(-0.766044, -0.642788, 0, 0.642788, -0.766044, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo10/ZonePoint/Model/Canvas (2)/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo10/ZonePoint/Model/Canvas (2)/Image"]
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo10/ZonePoint/Model/Canvas (2)"]
+transform = Transform3D(0.696739, 5.93957e-05, 0.717324, -0.717324, 0.000208495, 0.696739, -0.000108175, -1, 0.000187872, 0, 0, 0)
+gi_mode = 2
+mesh = SubResource("PlaneMesh_kvpoh")
+surface_material_override/0 = ExtResource("3_pnqx1")
+
+[node name="New Text" type="Node3D" parent="WorkList1/WorkInfo10/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.329, 1.715, -0.138)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo10/ZonePoint/Model/New Text"]
+gi_mode = 2
+
+[node name="New Text (1)" type="Node3D" parent="WorkList1/WorkInfo10/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.329, 1.715, 0.188)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo10/ZonePoint/Model/New Text (1)"]
+gi_mode = 2
+
+[node name="New Text (2)" type="Node3D" parent="WorkList1/WorkInfo10/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.329, 1.616, 0.27)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo10/ZonePoint/Model/New Text (2)"]
+gi_mode = 2
+
+[node name="New Text (3)" type="Node3D" parent="WorkList1/WorkInfo10/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.329, 1.495, 0.28)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo10/ZonePoint/Model/New Text (3)"]
+gi_mode = 2
+
+[node name="New Text (4)" type="Node3D" parent="WorkList1/WorkInfo10/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.329, 1.403, 0.174)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo10/ZonePoint/Model/New Text (4)"]
+gi_mode = 2
+
+[node name="New Text (5)" type="Node3D" parent="WorkList1/WorkInfo10/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.329, 1.399, -0.138)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo10/ZonePoint/Model/New Text (5)"]
+gi_mode = 2
+
+[node name="Containerless" type="Node3D" parent="WorkList1/WorkInfo10"]
+
+[node name="WorkInfo11" type="Node3D" parent="WorkList1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.759, 0, 5.45)
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo11"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo11/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 1.4, 0)
+shape = SubResource("BoxShape3D_w1yy3")
+
+[node name="Sound" type="Node3D" parent="WorkList1/WorkInfo11"]
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo11/Sound"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo11/Sound/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01, 1.4, 0.1)
+visible = false
+shape = SubResource("BoxShape3D_jx4cj")
+
+[node name="WaySpline" type="Node3D" parent="WorkList1/WorkInfo11"]
+
+[node name="ZonePoint" type="Node3D" parent="WorkList1/WorkInfo11"]
+
+[node name="Containerless" type="Node3D" parent="WorkList1/WorkInfo11"]
+
+[node name="WorkInfo12" type="Node3D" parent="WorkList1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.759, 0, 5.45)
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo12"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo12/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 1.4, 0)
+shape = SubResource("BoxShape3D_vk850")
+
+[node name="Sound" type="Node3D" parent="WorkList1/WorkInfo12"]
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo12/Sound"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo12/Sound/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01, 1.4, 0.1)
+visible = false
+shape = SubResource("BoxShape3D_kh04f")
+
+[node name="WaySpline" type="Node3D" parent="WorkList1/WorkInfo12"]
+
+[node name="ZonePoint" type="Node3D" parent="WorkList1/WorkInfo12"]
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo12/ZonePoint"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo12/ZonePoint/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01, 1.4, 0.1)
+visible = false
+shape = SubResource("BoxShape3D_t8omm")
+
+[node name="Model" type="Node3D" parent="WorkList1/WorkInfo12/ZonePoint"]
+
+[node name="Canvas" type="Node3D" parent="WorkList1/WorkInfo12/ZonePoint/Model"]
+transform = Transform3D(-3.4134e-07, 0, 0.001, 0, 0.001, 0, -0.001, 0, -3.4134e-07, 0, 0, -0.544)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo12/ZonePoint/Model/Canvas"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo12/ZonePoint/Model/Canvas"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo12/ZonePoint/Model/Canvas/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo12/ZonePoint/Model/Canvas/Image"]
+
+[node name="Canvas (1)" type="Node3D" parent="WorkList1/WorkInfo12/ZonePoint/Model"]
+transform = Transform3D(-3.4134e-07, 0, 0.001, 0, 0.001, 0, -0.001, 0, -3.4134e-07, 0, 0, -0.454)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo12/ZonePoint/Model/Canvas (1)"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo12/ZonePoint/Model/Canvas (1)"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo12/ZonePoint/Model/Canvas (1)/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo12/ZonePoint/Model/Canvas (1)/Image"]
+
+[node name="Canvas (2)" type="Node3D" parent="WorkList1/WorkInfo12/ZonePoint/Model"]
+transform = Transform3D(-3.4134e-07, 0, 0.001, 0, 0.001, 0, -0.001, 0, -3.4134e-07, 0, 0, -0.367)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo12/ZonePoint/Model/Canvas (2)"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo12/ZonePoint/Model/Canvas (2)"]
+transform = Transform3D(-1, 8.74228e-08, 0, -8.74228e-08, -1, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo12/ZonePoint/Model/Canvas (2)/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo12/ZonePoint/Model/Canvas (2)/Image"]
+
+[node name="New Text" type="Node3D" parent="WorkList1/WorkInfo12/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, -0.2295, 1.676, -0.451)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo12/ZonePoint/Model/New Text"]
+gi_mode = 2
+
+[node name="Label3D" type="Label3D" parent="WorkList1/WorkInfo12/ZonePoint/Model/New Text"]
+modulate = Color(1, 0, 0.835294, 1)
+text = "按压解锁"
+font_size = 30
+outline_size = 4
+horizontal_alignment = 0
+
+[node name="New Text (1)" type="Node3D" parent="WorkList1/WorkInfo12/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, -0.2295, 1.722, -0.292)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo12/ZonePoint/Model/New Text (1)"]
+gi_mode = 2
+
+[node name="New Text (2)" type="Node3D" parent="WorkList1/WorkInfo12/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, -0.2295, 1.623, -0.21)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo12/ZonePoint/Model/New Text (2)"]
+gi_mode = 2
+
+[node name="New Text (3)" type="Node3D" parent="WorkList1/WorkInfo12/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, -0.2295, 1.502, -0.2)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo12/ZonePoint/Model/New Text (3)"]
+gi_mode = 2
+
+[node name="New Text (4)" type="Node3D" parent="WorkList1/WorkInfo12/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, -0.2295, 1.41, -0.306)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo12/ZonePoint/Model/New Text (4)"]
+gi_mode = 2
+
+[node name="New Text (5)" type="Node3D" parent="WorkList1/WorkInfo12/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, -0.2295, 1.406, -0.618)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo12/ZonePoint/Model/New Text (5)"]
+gi_mode = 2
+
+[node name="Containerless" type="Node3D" parent="WorkList1/WorkInfo12"]
+
+[node name="WorkInfo13" type="Node3D" parent="WorkList1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.759, 0, 5.45)
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo13"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo13/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 1.4, 0)
+shape = SubResource("BoxShape3D_kaq5t")
+
+[node name="Sound" type="Node3D" parent="WorkList1/WorkInfo13"]
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo13/Sound"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo13/Sound/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01, 1.4, 0.1)
+visible = false
+shape = SubResource("BoxShape3D_qa24i")
+
+[node name="WaySpline" type="Node3D" parent="WorkList1/WorkInfo13"]
+
+[node name="ZonePoint" type="Node3D" parent="WorkList1/WorkInfo13"]
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo13/ZonePoint"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo13/ZonePoint/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01, 1.4, 0.1)
+visible = false
+shape = SubResource("BoxShape3D_8bic8")
+
+[node name="Model" type="Node3D" parent="WorkList1/WorkInfo13/ZonePoint"]
+
+[node name="Canvas (1)" type="Node3D" parent="WorkList1/WorkInfo13/ZonePoint/Model"]
+transform = Transform3D(-3.4134e-07, 0, 0.001, 0, 0.001, 0, -0.001, 0, -3.4134e-07, 0, 0, -0.456)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo13/ZonePoint/Model/Canvas (1)"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo13/ZonePoint/Model/Canvas (1)"]
+transform = Transform3D(0.33755, 9.17721e-08, -1.64635e-07, -5.81255e-08, 0.0896366, -0.995975, -2.58717e-08, 0.995975, 0.0896366, 0, 0, -46.2)
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo13/ZonePoint/Model/Canvas (1)/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo13/ZonePoint/Model/Canvas (1)/Image"]
+
+[node name="Canvas" type="Node3D" parent="WorkList1/WorkInfo13/ZonePoint/Model"]
+transform = Transform3D(-1.36536e-05, 0, 0.04, 0, 0.04, 0, -0.04, 0, -1.36536e-05, -0.203369, 1.75158, -0.309044)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo13/ZonePoint/Model/Canvas"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo13/ZonePoint/Model/Canvas"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo13/ZonePoint/Model/Canvas/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo13/ZonePoint/Model/Canvas/Image"]
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo13/ZonePoint/Model/Canvas"]
+transform = Transform3D(-1, 8.74228e-08, 4.37114e-08, -4.37114e-08, 1.91069e-15, -1, -8.74227e-08, -1, 1.91069e-15, 0, 0, 0)
+gi_mode = 2
+mesh = SubResource("PlaneMesh_kvpoh")
+surface_material_override/0 = ExtResource("4_n1fsk")
+
+[node name="Canvas (1)2" type="Node3D" parent="WorkList1/WorkInfo13/ZonePoint/Model"]
+transform = Transform3D(-3.4134e-07, 0, 0.001, 0, 0.001, 0, -0.001, 0, -3.4134e-07, 0, 0, -0.2122)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo13/ZonePoint/Model/Canvas (1)2"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo13/ZonePoint/Model/Canvas (1)2"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo13/ZonePoint/Model/Canvas (1)2/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo13/ZonePoint/Model/Canvas (1)2/Image"]
+
+[node name="Canvas (2)" type="Node3D" parent="WorkList1/WorkInfo13/ZonePoint/Model"]
+transform = Transform3D(-1.36536e-05, 0, 0.04, 0, 0.04, 0, -0.04, 0, -1.36536e-05, -0.2, 1.74919, -0.116032)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo13/ZonePoint/Model/Canvas (2)"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo13/ZonePoint/Model/Canvas (2)"]
+transform = Transform3D(-1, 8.74228e-08, 0, -8.74228e-08, -1, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo13/ZonePoint/Model/Canvas (2)/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo13/ZonePoint/Model/Canvas (2)/Image"]
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo13/ZonePoint/Model/Canvas (2)"]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0, 0)
+gi_mode = 2
+mesh = SubResource("PlaneMesh_kvpoh")
+surface_material_override/0 = ExtResource("4_n1fsk")
+
+[node name="New Text" type="Node3D" parent="WorkList1/WorkInfo13/ZonePoint/Model"]
+transform = Transform3D(-4.1045e-10, 0, 0.00939, 0, 0.00939, 0, -0.00939, 0, -4.1045e-10, -0.2104, 1.7963, -0.207)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo13/ZonePoint/Model/New Text"]
+gi_mode = 2
+
+[node name="Label3D" type="Label3D" parent="WorkList1/WorkInfo13/ZonePoint/Model/New Text"]
+transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 12.8444, 4.14668, -0.519783)
+pixel_size = 0.2
+modulate = Color(1, 1, 0, 1)
+text = "按压解锁"
+font_size = 30
+outline_size = 4
+horizontal_alignment = 0
+
+[node name="SortingGroup" type="Node" parent="WorkList1/WorkInfo13/ZonePoint/Model/New Text"]
+
+[node name="New Text (1)" type="Node3D" parent="WorkList1/WorkInfo13/ZonePoint/Model"]
+transform = Transform3D(-4.1045e-10, 0, 0.00939, 0, 0.00939, 0, -0.00939, 0, -4.1045e-10, -0.2295, 1.722, -0.292)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo13/ZonePoint/Model/New Text (1)"]
+gi_mode = 2
+
+[node name="New Text (2)" type="Node3D" parent="WorkList1/WorkInfo13/ZonePoint/Model"]
+transform = Transform3D(-4.1045e-10, 0, 0.00939, 0, 0.00939, 0, -0.00939, 0, -4.1045e-10, -0.2295, 1.623, -0.21)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo13/ZonePoint/Model/New Text (2)"]
+gi_mode = 2
+
+[node name="New Text (3)" type="Node3D" parent="WorkList1/WorkInfo13/ZonePoint/Model"]
+transform = Transform3D(-4.1045e-10, 0, 0.00939, 0, 0.00939, 0, -0.00939, 0, -4.1045e-10, -0.2295, 1.502, -0.2)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo13/ZonePoint/Model/New Text (3)"]
+gi_mode = 2
+
+[node name="New Text (4)" type="Node3D" parent="WorkList1/WorkInfo13/ZonePoint/Model"]
+transform = Transform3D(-4.1045e-10, 0, 0.00939, 0, 0.00939, 0, -0.00939, 0, -4.1045e-10, -0.2295, 1.406, -0.618)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo13/ZonePoint/Model/New Text (4)"]
+gi_mode = 2
+
+[node name="New Text (5)" type="Node3D" parent="WorkList1/WorkInfo13/ZonePoint/Model"]
+transform = Transform3D(-4.1045e-10, 0, 0.00939, 0, 0.00939, 0, -0.00939, 0, -4.1045e-10, -0.2295, 1.41, -0.306)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo13/ZonePoint/Model/New Text (5)"]
+gi_mode = 2
+
+[node name="Containerless" type="Node3D" parent="WorkList1/WorkInfo13"]
+
+[node name="WorkInfo14" type="Node3D" parent="WorkList1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.759, 0, 5.45)
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo14"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo14/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 1.4, 0)
+shape = SubResource("BoxShape3D_n0d6q")
+
+[node name="Sound" type="Node3D" parent="WorkList1/WorkInfo14"]
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo14/Sound"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo14/Sound/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01, 1.4, 0.1)
+visible = false
+shape = SubResource("BoxShape3D_iq5pt")
+
+[node name="WaySpline" type="Node3D" parent="WorkList1/WorkInfo14"]
+
+[node name="ZonePoint" type="Node3D" parent="WorkList1/WorkInfo14"]
+
+[node name="Containerless" type="Node3D" parent="WorkList1/WorkInfo14"]
+
+[node name="WorkInfo15" type="Node3D" parent="WorkList1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.759, 0, 5.45)
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo15"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo15/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 1.4, 0)
+shape = SubResource("BoxShape3D_heejm")
+
+[node name="Sound" type="Node3D" parent="WorkList1/WorkInfo15"]
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo15/Sound"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo15/Sound/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01, 1.4, 0.1)
+visible = false
+shape = SubResource("BoxShape3D_gb4qx")
+
+[node name="WaySpline" type="Node3D" parent="WorkList1/WorkInfo15"]
+
+[node name="ZonePoint" type="Node3D" parent="WorkList1/WorkInfo15"]
+
+[node name="Containerless" type="Node3D" parent="WorkList1/WorkInfo15"]
+
+[node name="WorkInfo16" type="Node3D" parent="WorkList1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.759, 0, 5.45)
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo16"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo16/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 1.4, 0)
+shape = SubResource("BoxShape3D_aojv8")
+
+[node name="Sound" type="Node3D" parent="WorkList1/WorkInfo16"]
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo16/Sound"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo16/Sound/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01, 1.4, 0.1)
+visible = false
+shape = SubResource("BoxShape3D_1ctxc")
+
+[node name="WaySpline" type="Node3D" parent="WorkList1/WorkInfo16"]
+
+[node name="ZonePoint" type="Node3D" parent="WorkList1/WorkInfo16"]
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo16/ZonePoint"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo16/ZonePoint/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01, 1.4, 0.1)
+visible = false
+shape = SubResource("BoxShape3D_8kknl")
+
+[node name="Model" type="Node3D" parent="WorkList1/WorkInfo16/ZonePoint"]
+
+[node name="Canvas" type="Node3D" parent="WorkList1/WorkInfo16/ZonePoint/Model"]
+transform = Transform3D(-1.02402e-05, 0, 0.03, 0, 0.03, 0, -0.03, 0, -1.02402e-05, 0.319, 1.63, 0.039)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo16/ZonePoint/Model/Canvas"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo16/ZonePoint/Model/Canvas"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo16/ZonePoint/Model/Canvas/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo16/ZonePoint/Model/Canvas/Image"]
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo16/ZonePoint/Model/Canvas"]
+transform = Transform3D(1, -2.91038e-11, -6.03071e-11, 7.62907e-11, -4.37113e-08, 0.790491, 0, -1, -3.45534e-08, 0, 0.164284, 0)
+gi_mode = 2
+mesh = SubResource("PlaneMesh_kvpoh")
+skeleton = NodePath("../Image")
+surface_material_override/0 = ExtResource("2_nw30h")
+
+[node name="Canvas (1)" type="Node3D" parent="WorkList1/WorkInfo16/ZonePoint/Model"]
+transform = Transform3D(2.18557e-09, -3.30012e-16, 0.05, -7.54979e-09, -0.05, 0, 0.05, -7.54979e-09, -2.18557e-09, 0.316167, 1.63382, 0.126875)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo16/ZonePoint/Model/Canvas (1)"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo16/ZonePoint/Model/Canvas (1)"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo16/ZonePoint/Model/Canvas (1)/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo16/ZonePoint/Model/Canvas (1)/Image"]
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo16/ZonePoint/Model/Canvas (1)"]
+transform = Transform3D(1, -2.91038e-11, -6.03071e-11, 7.62907e-11, -4.37113e-08, 0.790491, 0, -1, -3.45534e-08, 0, 0.164284, 0)
+gi_mode = 2
+mesh = SubResource("PlaneMesh_kvpoh")
+skeleton = NodePath("../Image")
+surface_material_override/0 = ExtResource("5_8h828")
+
+[node name="Canvas (2)" type="Node3D" parent="WorkList1/WorkInfo16/ZonePoint/Model"]
+transform = Transform3D(-3.4134e-07, 0, 0.001, 0, 0.001, 0, -0.001, 0, -3.4134e-07, 0, 0, 0.038)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo16/ZonePoint/Model/Canvas (2)"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo16/ZonePoint/Model/Canvas (2)"]
+transform = Transform3D(1, 1.74642e-07, 1.72906e-07, 7.27283e-08, 0.461749, -0.88701, -2.34748e-07, 0.88701, 0.461749, 0, 0, 4)
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo16/ZonePoint/Model/Canvas (2)/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo16/ZonePoint/Model/Canvas (2)/Image"]
+
+[node name="New Text" type="Node3D" parent="WorkList1/WorkInfo16/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.384, 1.667, 0.137)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo16/ZonePoint/Model/New Text"]
+gi_mode = 2
+
+[node name="Label3D" type="Label3D" parent="WorkList1/WorkInfo16/ZonePoint/Model/New Text"]
+transform = Transform3D(-0.999996, 0, -0.00281009, 0, 1, 0, 0.00281009, 0, -0.999996, 6.23737, 0.556595, -7.62619)
+pixel_size = 0.1535
+modulate = Color(1, 1, 0, 1)
+text = "定位凸耳"
+font_size = 30
+outline_size = 4
+horizontal_alignment = 0
+
+[node name="New Text (1)" type="Node3D" parent="WorkList1/WorkInfo16/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.316, 1.7224, 0.2126)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo16/ZonePoint/Model/New Text (1)"]
+gi_mode = 2
+
+[node name="New Text (2)" type="Node3D" parent="WorkList1/WorkInfo16/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.316, 1.6234, 0.2946)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo16/ZonePoint/Model/New Text (2)"]
+gi_mode = 2
+
+[node name="New Text (3)" type="Node3D" parent="WorkList1/WorkInfo16/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.316, 1.5024, 0.3046)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo16/ZonePoint/Model/New Text (3)"]
+gi_mode = 2
+
+[node name="New Text (4)" type="Node3D" parent="WorkList1/WorkInfo16/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.316, 1.4104, 0.1986)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo16/ZonePoint/Model/New Text (4)"]
+gi_mode = 2
+
+[node name="New Text (5)" type="Node3D" parent="WorkList1/WorkInfo16/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.316, 1.4064, -0.1134)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo16/ZonePoint/Model/New Text (5)"]
+gi_mode = 2
+
+[node name="Containerless" type="Node3D" parent="WorkList1/WorkInfo16"]
+
+[node name="WorkInfo17" type="Node3D" parent="WorkList1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.759, 0, 5.45)
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo17"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo17/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 1.4, 0)
+shape = SubResource("BoxShape3D_jmdik")
+
+[node name="Sound" type="Node3D" parent="WorkList1/WorkInfo17"]
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo17/Sound"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo17/Sound/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01, 1.4, 0.1)
+visible = false
+shape = SubResource("BoxShape3D_52b1g")
+
+[node name="WaySpline" type="Node3D" parent="WorkList1/WorkInfo17"]
+
+[node name="ZonePoint" type="Node3D" parent="WorkList1/WorkInfo17"]
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo17/ZonePoint"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo17/ZonePoint/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01, 1.4, 0.1)
+visible = false
+shape = SubResource("BoxShape3D_e88d5")
+
+[node name="Model" type="Node3D" parent="WorkList1/WorkInfo17/ZonePoint"]
+
+[node name="Canvas" type="Node3D" parent="WorkList1/WorkInfo17/ZonePoint/Model"]
+transform = Transform3D(-3.4134e-07, 0, 0.001, 0, 0.001, 0, -0.001, 0, -3.4134e-07, 0, 0, -0.0136)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo17/ZonePoint/Model/Canvas"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo17/ZonePoint/Model/Canvas"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo17/ZonePoint/Model/Canvas/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo17/ZonePoint/Model/Canvas/Image"]
+
+[node name="Canvas (1)" type="Node3D" parent="WorkList1/WorkInfo17/ZonePoint/Model"]
+transform = Transform3D(-3.4134e-07, 0, 0.001, 0, 0.001, 0, -0.001, 0, -3.4134e-07, 0, 0, 0.0903)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo17/ZonePoint/Model/Canvas (1)"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo17/ZonePoint/Model/Canvas (1)"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo17/ZonePoint/Model/Canvas (1)/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo17/ZonePoint/Model/Canvas (1)/Image"]
+
+[node name="Canvas (2)" type="Node3D" parent="WorkList1/WorkInfo17/ZonePoint/Model"]
+transform = Transform3D(-3.4134e-07, 0, 0.001, 0, 0.001, 0, -0.001, 0, -3.4134e-07, 0, 0, 0.1477)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo17/ZonePoint/Model/Canvas (2)"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo17/ZonePoint/Model/Canvas (2)"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo17/ZonePoint/Model/Canvas (2)/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo17/ZonePoint/Model/Canvas (2)/Image"]
+
+[node name="Canvas (3)" type="Node3D" parent="WorkList1/WorkInfo17/ZonePoint/Model"]
+transform = Transform3D(-3.4134e-07, 0, 0.001, 0, 0.001, 0, -0.001, 0, -3.4134e-07, 0, 0, 0.0914)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo17/ZonePoint/Model/Canvas (3)"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo17/ZonePoint/Model/Canvas (3)"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo17/ZonePoint/Model/Canvas (3)/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo17/ZonePoint/Model/Canvas (3)/Image"]
+
+[node name="Canvas (4)" type="Node3D" parent="WorkList1/WorkInfo17/ZonePoint/Model"]
+transform = Transform3D(-3.4134e-07, 0, 0.001, 0, 0.001, 0, -0.001, 0, -3.4134e-07, 0, 0, -0.015)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo17/ZonePoint/Model/Canvas (4)"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo17/ZonePoint/Model/Canvas (4)"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo17/ZonePoint/Model/Canvas (4)/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo17/ZonePoint/Model/Canvas (4)/Image"]
+
+[node name="Canvas (5)" type="Node3D" parent="WorkList1/WorkInfo17/ZonePoint/Model"]
+transform = Transform3D(-3.4134e-07, 0, 0.001, 0, 0.001, 0, -0.001, 0, -3.4134e-07, 0, 0, -0.0667)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo17/ZonePoint/Model/Canvas (5)"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo17/ZonePoint/Model/Canvas (5)"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo17/ZonePoint/Model/Canvas (5)/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo17/ZonePoint/Model/Canvas (5)/Image"]
+
+[node name="New Text" type="Node3D" parent="WorkList1/WorkInfo17/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.321, 1.706, -0.1236)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo17/ZonePoint/Model/New Text"]
+gi_mode = 2
+
+[node name="New Text (1)" type="Node3D" parent="WorkList1/WorkInfo17/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.321, 1.706, 0.2024)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo17/ZonePoint/Model/New Text (1)"]
+gi_mode = 2
+
+[node name="New Text (2)" type="Node3D" parent="WorkList1/WorkInfo17/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.321, 1.607, 0.2844)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo17/ZonePoint/Model/New Text (2)"]
+gi_mode = 2
+
+[node name="New Text (3)" type="Node3D" parent="WorkList1/WorkInfo17/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.321, 1.486, 0.2944)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo17/ZonePoint/Model/New Text (3)"]
+gi_mode = 2
+
+[node name="New Text (4)" type="Node3D" parent="WorkList1/WorkInfo17/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.321, 1.394, 0.1884)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo17/ZonePoint/Model/New Text (4)"]
+gi_mode = 2
+
+[node name="New Text (5)" type="Node3D" parent="WorkList1/WorkInfo17/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.321, 1.39, -0.1236)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo17/ZonePoint/Model/New Text (5)"]
+gi_mode = 2
+
+[node name="Containerless" type="Node3D" parent="WorkList1/WorkInfo17"]
+
+[node name="WorkInfo18" type="Node3D" parent="WorkList1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.759, 0, 5.45)
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo18"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo18/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 1.4, 0)
+shape = SubResource("BoxShape3D_jb3sc")
+
+[node name="Sound" type="Node3D" parent="WorkList1/WorkInfo18"]
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo18/Sound"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo18/Sound/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01, 1.4, 0.1)
+visible = false
+shape = SubResource("BoxShape3D_p6fee")
+
+[node name="WaySpline" type="Node3D" parent="WorkList1/WorkInfo18"]
+
+[node name="ZonePoint" type="Node3D" parent="WorkList1/WorkInfo18"]
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo18/ZonePoint"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo18/ZonePoint/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01, 1.4, 0.1)
+visible = false
+shape = SubResource("BoxShape3D_5of2n")
+
+[node name="Model" type="Node3D" parent="WorkList1/WorkInfo18/ZonePoint"]
+
+[node name="Canvas" type="Node3D" parent="WorkList1/WorkInfo18/ZonePoint/Model"]
+transform = Transform3D(-1.36536e-05, 0, 0.04, 0, 0.04, 0, -0.04, 0, -1.36536e-05, 0.318, 1.576, -0.012)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo18/ZonePoint/Model/Canvas"]
+transform = Transform3D(1, 0, -7.62907e-11, 7.62907e-11, -4.37113e-08, 1, 2.91038e-11, -1, -4.37113e-08, 0, 0, 0)
+gi_mode = 2
+mesh = SubResource("PlaneMesh_kvpoh")
+skeleton = NodePath("../Image")
+surface_material_override/0 = ExtResource("2_nw30h")
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo18/ZonePoint/Model/Canvas"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo18/ZonePoint/Model/Canvas"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo18/ZonePoint/Model/Canvas/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo18/ZonePoint/Model/Canvas/Image"]
+
+[node name="Canvas (1)" type="Node3D" parent="WorkList1/WorkInfo18/ZonePoint/Model"]
+transform = Transform3D(-1.36536e-05, 0, 0.04, 0, 0.04, 0, -0.04, 0, -1.36536e-05, 0.318, 1.575, 0.094)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo18/ZonePoint/Model/Canvas (1)"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo18/ZonePoint/Model/Canvas (1)"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo18/ZonePoint/Model/Canvas (1)/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo18/ZonePoint/Model/Canvas (1)/Image"]
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo18/ZonePoint/Model/Canvas (1)"]
+transform = Transform3D(1, 0, -7.62907e-11, 7.62907e-11, -4.37113e-08, 1, 2.91038e-11, -1, -4.37113e-08, 0, 0, 0)
+gi_mode = 2
+mesh = SubResource("PlaneMesh_kvpoh")
+skeleton = NodePath("../Image")
+surface_material_override/0 = ExtResource("2_nw30h")
+
+[node name="New Text" type="Node3D" parent="WorkList1/WorkInfo18/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.316, 1.653, -0.011)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo18/ZonePoint/Model/New Text"]
+gi_mode = 2
+
+[node name="Label3D" type="Label3D" parent="WorkList1/WorkInfo18/ZonePoint/Model/New Text"]
+transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 6.61542, 0.0185242, 0.00650024)
+pixel_size = 0.1
+text = "X01"
+font_size = 60
+outline_size = 4
+horizontal_alignment = 0
+
+[node name="New Text (1)" type="Node3D" parent="WorkList1/WorkInfo18/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.316, 1.652, 0.098)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo18/ZonePoint/Model/New Text (1)"]
+gi_mode = 2
+
+[node name="Label3D" type="Label3D" parent="WorkList1/WorkInfo18/ZonePoint/Model/New Text (1)"]
+transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 5.68567, 0, 0)
+pixel_size = 0.1
+text = "X02"
+font_size = 60
+outline_size = 4
+horizontal_alignment = 0
+
+[node name="Containerless" type="Node3D" parent="WorkList1/WorkInfo18"]
+
+[node name="WorkInfo19" type="Node3D" parent="WorkList1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.759, 0, 5.45)
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo19"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo19/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 1.4, 0)
+shape = SubResource("BoxShape3D_it22q")
+
+[node name="Sound" type="Node3D" parent="WorkList1/WorkInfo19"]
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo19/Sound"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo19/Sound/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01, 1.4, 0.1)
+visible = false
+shape = SubResource("BoxShape3D_ys7fh")
+
+[node name="WaySpline" type="Node3D" parent="WorkList1/WorkInfo19"]
+
+[node name="ZonePoint" type="Node3D" parent="WorkList1/WorkInfo19"]
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo19/ZonePoint"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo19/ZonePoint/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01, 1.4, 0.1)
+visible = false
+shape = SubResource("BoxShape3D_a0tav")
+
+[node name="Model" type="Node3D" parent="WorkList1/WorkInfo19/ZonePoint"]
+
+[node name="Canvas" type="Node3D" parent="WorkList1/WorkInfo19/ZonePoint/Model"]
+transform = Transform3D(-3.4134e-07, 0, 0.001, 0, 0.001, 0, -0.001, 0, -3.4134e-07, 0, 0, -0.05)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo19/ZonePoint/Model/Canvas"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo19/ZonePoint/Model/Canvas"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo19/ZonePoint/Model/Canvas/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo19/ZonePoint/Model/Canvas/Image"]
+
+[node name="Canvas (1)" type="Node3D" parent="WorkList1/WorkInfo19/ZonePoint/Model"]
+transform = Transform3D(-3.4134e-07, 0, 0.001, 0, 0.001, 0, -0.001, 0, -3.4134e-07, 0, 0, 0.134)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo19/ZonePoint/Model/Canvas (1)"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo19/ZonePoint/Model/Canvas (1)"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo19/ZonePoint/Model/Canvas (1)/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo19/ZonePoint/Model/Canvas (1)/Image"]
+
+[node name="Canvas (2)" type="Node3D" parent="WorkList1/WorkInfo19/ZonePoint/Model"]
+transform = Transform3D(-3.4134e-07, 0, 0.001, 0, 0.001, 0, -0.001, 0, -3.4134e-07, 0, 0, 0.224)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo19/ZonePoint/Model/Canvas (2)"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo19/ZonePoint/Model/Canvas (2)"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo19/ZonePoint/Model/Canvas (2)/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo19/ZonePoint/Model/Canvas (2)/Image"]
+
+[node name="Canvas (3)" type="Node3D" parent="WorkList1/WorkInfo19/ZonePoint/Model"]
+transform = Transform3D(-3.4134e-07, 0, 0.001, 0, 0.001, 0, -0.001, 0, -3.4134e-07, 0, 0, 0.229)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo19/ZonePoint/Model/Canvas (3)"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo19/ZonePoint/Model/Canvas (3)"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo19/ZonePoint/Model/Canvas (3)/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo19/ZonePoint/Model/Canvas (3)/Image"]
+
+[node name="Canvas (4)" type="Node3D" parent="WorkList1/WorkInfo19/ZonePoint/Model"]
+transform = Transform3D(-3.4134e-07, 0, 0.001, 0, 0.001, 0, -0.001, 0, -3.4134e-07, 0, 0, 0.1366)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo19/ZonePoint/Model/Canvas (4)"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo19/ZonePoint/Model/Canvas (4)"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo19/ZonePoint/Model/Canvas (4)/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo19/ZonePoint/Model/Canvas (4)/Image"]
+
+[node name="Canvas (5)" type="Node3D" parent="WorkList1/WorkInfo19/ZonePoint/Model"]
+transform = Transform3D(-3.4134e-07, 0, 0.001, 0, 0.001, 0, -0.001, 0, -3.4134e-07, 0, 0, -0.047)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo19/ZonePoint/Model/Canvas (5)"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo19/ZonePoint/Model/Canvas (5)"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo19/ZonePoint/Model/Canvas (5)/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo19/ZonePoint/Model/Canvas (5)/Image"]
+
+[node name="Canvas (6)" type="Node3D" parent="WorkList1/WorkInfo19/ZonePoint/Model"]
+transform = Transform3D(-3.4134e-07, 0, 0.001, 0, 0.001, 0, -0.001, 0, -3.4134e-07, 0, 0, -0.13)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo19/ZonePoint/Model/Canvas (6)"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo19/ZonePoint/Model/Canvas (6)"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo19/ZonePoint/Model/Canvas (6)/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo19/ZonePoint/Model/Canvas (6)/Image"]
+
+[node name="Canvas (7)" type="Node3D" parent="WorkList1/WorkInfo19/ZonePoint/Model"]
+transform = Transform3D(-3.4134e-07, 0, 0.001, 0, 0.001, 0, -0.001, 0, -3.4134e-07, 0, 0, -0.142)
+
+[node name="Canvas" type="Node" parent="WorkList1/WorkInfo19/ZonePoint/Model/Canvas (7)"]
+
+[node name="Image" type="Node3D" parent="WorkList1/WorkInfo19/ZonePoint/Model/Canvas (7)"]
+
+[node name="CanvasRenderer" type="Node" parent="WorkList1/WorkInfo19/ZonePoint/Model/Canvas (7)/Image"]
+
+[node name="CanvasGroup" type="Node" parent="WorkList1/WorkInfo19/ZonePoint/Model/Canvas (7)/Image"]
+
+[node name="New Text" type="Node3D" parent="WorkList1/WorkInfo19/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.236, 1.724, -0.14)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo19/ZonePoint/Model/New Text"]
+gi_mode = 2
+
+[node name="New Text (1)" type="Node3D" parent="WorkList1/WorkInfo19/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.236, 1.726, 0.23)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo19/ZonePoint/Model/New Text (1)"]
+gi_mode = 2
+
+[node name="New Text (2)" type="Node3D" parent="WorkList1/WorkInfo19/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.236, 1.627, 0.32)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo19/ZonePoint/Model/New Text (2)"]
+gi_mode = 2
+
+[node name="New Text (3)" type="Node3D" parent="WorkList1/WorkInfo19/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.236, 1.452, 0.327)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo19/ZonePoint/Model/New Text (3)"]
+gi_mode = 2
+
+[node name="New Text (4)" type="Node3D" parent="WorkList1/WorkInfo19/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.236, 1.351, 0.234)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo19/ZonePoint/Model/New Text (4)"]
+gi_mode = 2
+
+[node name="New Text (5)" type="Node3D" parent="WorkList1/WorkInfo19/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.236, 1.343, -0.141)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo19/ZonePoint/Model/New Text (5)"]
+gi_mode = 2
+
+[node name="New Text (6)" type="Node3D" parent="WorkList1/WorkInfo19/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.236, 1.43, -0.22)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo19/ZonePoint/Model/New Text (6)"]
+gi_mode = 2
+
+[node name="New Text (7)" type="Node3D" parent="WorkList1/WorkInfo19/ZonePoint/Model"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.236, 1.619, -0.236)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo19/ZonePoint/Model/New Text (7)"]
+gi_mode = 2
+
+[node name="Containerless" type="Node3D" parent="WorkList1/WorkInfo19"]
+
+[node name="WorkInfo20" type="Node3D" parent="WorkList1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.759, 0, 5.45)
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo20"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo20/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 1.4, 0)
+shape = SubResource("BoxShape3D_hom2f")
+
+[node name="Sound" type="Node3D" parent="WorkList1/WorkInfo20"]
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo20/Sound"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo20/Sound/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01, 1.4, 0.1)
+visible = false
+shape = SubResource("BoxShape3D_1uum5")
+
+[node name="WaySpline" type="Node3D" parent="WorkList1/WorkInfo20"]
+
+[node name="BoxCollider" type="Area3D" parent="WorkList1/WorkInfo20/WaySpline"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WorkList1/WorkInfo20/WaySpline/BoxCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01, 1.4, 0.1)
+visible = false
+shape = SubResource("BoxShape3D_fkfff")
+
+[node name="Spline" type="Node3D" parent="WorkList1/WorkInfo20/WaySpline"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.131, 0.1, 0.0800004)
+
+[node name="Spline0" type="Node3D" parent="WorkList1/WorkInfo20/WaySpline/Spline"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.886, 0, 0.025)
+
+[node name="Handle1" type="Node3D" parent="WorkList1/WorkInfo20/WaySpline/Spline/Spline0"]
+
+[node name="Handle2" type="Node3D" parent="WorkList1/WorkInfo20/WaySpline/Spline/Spline0"]
+
+[node name="Spline1" type="Node3D" parent="WorkList1/WorkInfo20/WaySpline/Spline"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.846, 0, -2.949)
+
+[node name="Handle1" type="Node3D" parent="WorkList1/WorkInfo20/WaySpline/Spline/Spline1"]
+
+[node name="Handle2" type="Node3D" parent="WorkList1/WorkInfo20/WaySpline/Spline/Spline1"]
+
+[node name="Spline2" type="Node3D" parent="WorkList1/WorkInfo20/WaySpline/Spline"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.011, 0, -2.963)
+
+[node name="Handle1" type="Node3D" parent="WorkList1/WorkInfo20/WaySpline/Spline/Spline2"]
+
+[node name="Handle2" type="Node3D" parent="WorkList1/WorkInfo20/WaySpline/Spline/Spline2"]
+
+[node name="FX_Geo_2" type="Node3D" parent="WorkList1/WorkInfo20/WaySpline/Spline"]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 0.006, 0.613, -2.964)
+
+[node name="ParticleSystem" type="Node" parent="WorkList1/WorkInfo20/WaySpline/Spline/FX_Geo_2"]
+
+[node name="ParticleSystemRenderer" type="Node" parent="WorkList1/WorkInfo20/WaySpline/Spline/FX_Geo_2"]
+
+[node name="New Text" type="Node3D" parent="WorkList1/WorkInfo20/WaySpline/Spline"]
+transform = Transform3D(-4.10554e-10, 0, 0.00939239, 0, 0.00939239, 0, -0.00939239, 0, -4.10554e-10, 0.037, 0.832, -2.937)
+
+[node name="MeshRenderer" type="MeshInstance3D" parent="WorkList1/WorkInfo20/WaySpline/Spline/New Text"]
+gi_mode = 2
+
+[node name="Label3D" type="Label3D" parent="WorkList1/WorkInfo20/WaySpline/Spline/New Text"]
+modulate = Color(1, 0, 0.835294, 1)
+text = "撤收工具"
+font_size = 100
+outline_size = 4
+horizontal_alignment = 0
+
+[node name="ZonePoint" type="Node3D" parent="WorkList1/WorkInfo20"]
+
+[node name="Containerless" type="Node3D" parent="WorkList1/WorkInfo20"]
+
+[node name="WorkList2" type="Node3D" parent="."]
+
+[node name="WorkInfo1" type="Node3D" parent="WorkList2"]
+
+[node name="Sound" type="Node3D" parent="WorkList2/WorkInfo1"]
+
+[node name="WaySpline" type="Node3D" parent="WorkList2/WorkInfo1"]
+
+[node name="ZonePoint" type="Node3D" parent="WorkList2/WorkInfo1"]
+
+[node name="WorkInfo2" type="Node3D" parent="WorkList2"]
+
+[node name="WorkInfo3" type="Node3D" parent="WorkList2"]
+
+[node name="WorkInfo4" type="Node3D" parent="WorkList2"]
+
+[node name="WorkInfo5" type="Node3D" parent="WorkList2"]
+
+[node name="WorkInfo6" type="Node3D" parent="WorkList2"]
+
+[node name="WorkInfo7" type="Node3D" parent="WorkList2"]
+
+[node name="WorkInfo8" type="Node3D" parent="WorkList2"]
+
+[node name="WorkInfo9" type="Node3D" parent="WorkList2"]
+
+[node name="WorkInfo10" type="Node3D" parent="WorkList2"]
+
+[node name="WorkInfo11" type="Node3D" parent="WorkList2"]
+
+[node name="WorkInfo12" type="Node3D" parent="WorkList2"]
+
+[node name="WorkInfo13" type="Node3D" parent="WorkList2"]
+
+[node name="WorkInfo14" type="Node3D" parent="WorkList2"]
+
+[node name="WorkInfo15" type="Node3D" parent="WorkList2"]
+
+[node name="WorkInfo16" type="Node3D" parent="WorkList2"]
+
+[node name="WorkInfo17" type="Node3D" parent="WorkList2"]
+
+[node name="WorkInfo18" type="Node3D" parent="WorkList2"]
+
+[node name="WorkInfo19" type="Node3D" parent="WorkList2"]
+
+[node name="WorkInfo20" type="Node3D" parent="WorkList2"]
+
+[node name="WorkList3" type="Node3D" parent="."]
+
+[node name="WorkInfo1" type="Node3D" parent="WorkList3"]
+
+[node name="Sound" type="Node3D" parent="WorkList3/WorkInfo1"]
+
+[node name="WaySpline" type="Node3D" parent="WorkList3/WorkInfo1"]
+
+[node name="ZonePoint" type="Node3D" parent="WorkList3/WorkInfo1"]
+
+[node name="WorkInfo2" type="Node3D" parent="WorkList3"]
+
+[node name="WorkInfo3" type="Node3D" parent="WorkList3"]
+
+[node name="WorkInfo4" type="Node3D" parent="WorkList3"]
+
+[node name="WorkInfo5" type="Node3D" parent="WorkList3"]
+
+[node name="WorkInfo6" type="Node3D" parent="WorkList3"]
+
+[node name="WorkInfo7" type="Node3D" parent="WorkList3"]
+
+[node name="WorkInfo8" type="Node3D" parent="WorkList3"]
+
+[node name="WorkInfo9" type="Node3D" parent="WorkList3"]
+
+[node name="WorkInfo10" type="Node3D" parent="WorkList3"]
+
+[node name="WorkInfo11" type="Node3D" parent="WorkList3"]
+
+[node name="WorkInfo12" type="Node3D" parent="WorkList3"]
+
+[node name="WorkInfo13" type="Node3D" parent="WorkList3"]
+
+[node name="WorkInfo14" type="Node3D" parent="WorkList3"]
+
+[node name="WorkInfo15" type="Node3D" parent="WorkList3"]
+
+[node name="WorkInfo16" type="Node3D" parent="WorkList3"]
+
+[node name="WorkInfo17" type="Node3D" parent="WorkList3"]
+
+[node name="WorkInfo18" type="Node3D" parent="WorkList3"]
+
+[node name="WorkInfo19" type="Node3D" parent="WorkList3"]
+
+[node name="WorkInfo20" type="Node3D" parent="WorkList3"]
+
+[node name="WorkList4" type="Node3D" parent="."]
+
+[node name="WorkInfo1" type="Node3D" parent="WorkList4"]
+
+[node name="Sound" type="Node3D" parent="WorkList4/WorkInfo1"]
+
+[node name="WaySpline" type="Node3D" parent="WorkList4/WorkInfo1"]
+
+[node name="ZonePoint" type="Node3D" parent="WorkList4/WorkInfo1"]
+
+[node name="WorkInfo2" type="Node3D" parent="WorkList4"]
+
+[node name="WorkInfo3" type="Node3D" parent="WorkList4"]
+
+[node name="WorkInfo4" type="Node3D" parent="WorkList4"]
+
+[node name="WorkInfo5" type="Node3D" parent="WorkList4"]
+
+[node name="WorkInfo6" type="Node3D" parent="WorkList4"]
+
+[node name="WorkInfo7" type="Node3D" parent="WorkList4"]
+
+[node name="WorkInfo8" type="Node3D" parent="WorkList4"]
+
+[node name="WorkInfo9" type="Node3D" parent="WorkList4"]
+
+[node name="WorkInfo10" type="Node3D" parent="WorkList4"]
+
+[node name="WorkInfo11" type="Node3D" parent="WorkList4"]
+
+[node name="WorkInfo12" type="Node3D" parent="WorkList4"]
+
+[node name="WorkInfo13" type="Node3D" parent="WorkList4"]
+
+[node name="WorkInfo14" type="Node3D" parent="WorkList4"]
+
+[node name="WorkInfo15" type="Node3D" parent="WorkList4"]
+
+[node name="WorkInfo16" type="Node3D" parent="WorkList4"]
+
+[node name="WorkInfo17" type="Node3D" parent="WorkList4"]
+
+[node name="WorkInfo18" type="Node3D" parent="WorkList4"]
+
+[node name="WorkInfo19" type="Node3D" parent="WorkList4"]
+
+[node name="WorkInfo20" type="Node3D" parent="WorkList4"]
+
+[node name="WorkList5" type="Node3D" parent="."]
+
+[node name="WorkInfo1" type="Node3D" parent="WorkList5"]
+
+[node name="Sound" type="Node3D" parent="WorkList5/WorkInfo1"]
+
+[node name="WaySpline" type="Node3D" parent="WorkList5/WorkInfo1"]
+
+[node name="ZonePoint" type="Node3D" parent="WorkList5/WorkInfo1"]
+
+[node name="WorkInfo2" type="Node3D" parent="WorkList5"]
+
+[node name="WorkInfo3" type="Node3D" parent="WorkList5"]
+
+[node name="WorkInfo4" type="Node3D" parent="WorkList5"]
+
+[node name="WorkInfo5" type="Node3D" parent="WorkList5"]
+
+[node name="WorkInfo6" type="Node3D" parent="WorkList5"]
+
+[node name="WorkInfo7" type="Node3D" parent="WorkList5"]
+
+[node name="WorkInfo8" type="Node3D" parent="WorkList5"]
+
+[node name="WorkInfo9" type="Node3D" parent="WorkList5"]
+
+[node name="WorkInfo10" type="Node3D" parent="WorkList5"]
+
+[node name="WorkInfo11" type="Node3D" parent="WorkList5"]
+
+[node name="WorkInfo12" type="Node3D" parent="WorkList5"]
+
+[node name="WorkInfo13" type="Node3D" parent="WorkList5"]
+
+[node name="WorkInfo14" type="Node3D" parent="WorkList5"]
+
+[node name="WorkInfo15" type="Node3D" parent="WorkList5"]
+
+[node name="WorkInfo16" type="Node3D" parent="WorkList5"]
+
+[node name="WorkInfo17" type="Node3D" parent="WorkList5"]
+
+[node name="WorkInfo18" type="Node3D" parent="WorkList5"]
+
+[node name="WorkInfo19" type="Node3D" parent="WorkList5"]
+
+[node name="WorkInfo20" type="Node3D" parent="WorkList5"]
+
+[node name="WorkList6" type="Node3D" parent="."]
+
+[node name="WorkInfo1" type="Node3D" parent="WorkList6"]
+
+[node name="Sound" type="Node3D" parent="WorkList6/WorkInfo1"]
+
+[node name="WaySpline" type="Node3D" parent="WorkList6/WorkInfo1"]
+
+[node name="ZonePoint" type="Node3D" parent="WorkList6/WorkInfo1"]
+
+[node name="WorkInfo2" type="Node3D" parent="WorkList6"]
+
+[node name="WorkInfo3" type="Node3D" parent="WorkList6"]
+
+[node name="WorkInfo4" type="Node3D" parent="WorkList6"]
+
+[node name="WorkInfo5" type="Node3D" parent="WorkList6"]
+
+[node name="WorkInfo6" type="Node3D" parent="WorkList6"]
+
+[node name="WorkInfo7" type="Node3D" parent="WorkList6"]
+
+[node name="WorkInfo8" type="Node3D" parent="WorkList6"]
+
+[node name="WorkInfo9" type="Node3D" parent="WorkList6"]
+
+[node name="WorkInfo10" type="Node3D" parent="WorkList6"]
+
+[node name="WorkInfo11" type="Node3D" parent="WorkList6"]
+
+[node name="WorkInfo12" type="Node3D" parent="WorkList6"]
+
+[node name="WorkInfo13" type="Node3D" parent="WorkList6"]
+
+[node name="WorkInfo14" type="Node3D" parent="WorkList6"]
+
+[node name="WorkInfo15" type="Node3D" parent="WorkList6"]
+
+[node name="WorkInfo16" type="Node3D" parent="WorkList6"]
+
+[node name="WorkInfo17" type="Node3D" parent="WorkList6"]
+
+[node name="WorkInfo18" type="Node3D" parent="WorkList6"]
+
+[node name="WorkInfo19" type="Node3D" parent="WorkList6"]
+
+[node name="WorkInfo20" type="Node3D" parent="WorkList6"]
+
+[node name="WorkList7" type="Node3D" parent="."]
+
+[node name="WorkInfo1" type="Node3D" parent="WorkList7"]
+
+[node name="Sound" type="Node3D" parent="WorkList7/WorkInfo1"]
+
+[node name="WaySpline" type="Node3D" parent="WorkList7/WorkInfo1"]
+
+[node name="ZonePoint" type="Node3D" parent="WorkList7/WorkInfo1"]
+
+[node name="WorkInfo2" type="Node3D" parent="WorkList7"]
+
+[node name="WorkInfo3" type="Node3D" parent="WorkList7"]
+
+[node name="WorkInfo4" type="Node3D" parent="WorkList7"]
+
+[node name="WorkInfo5" type="Node3D" parent="WorkList7"]
+
+[node name="WorkInfo6" type="Node3D" parent="WorkList7"]
+
+[node name="WorkInfo7" type="Node3D" parent="WorkList7"]
+
+[node name="WorkInfo8" type="Node3D" parent="WorkList7"]
+
+[node name="WorkInfo9" type="Node3D" parent="WorkList7"]
+
+[node name="WorkInfo10" type="Node3D" parent="WorkList7"]
+
+[node name="WorkInfo11" type="Node3D" parent="WorkList7"]
+
+[node name="WorkInfo12" type="Node3D" parent="WorkList7"]
+
+[node name="WorkInfo13" type="Node3D" parent="WorkList7"]
+
+[node name="WorkInfo14" type="Node3D" parent="WorkList7"]
+
+[node name="WorkInfo15" type="Node3D" parent="WorkList7"]
+
+[node name="WorkInfo16" type="Node3D" parent="WorkList7"]
+
+[node name="WorkInfo17" type="Node3D" parent="WorkList7"]
+
+[node name="WorkInfo18" type="Node3D" parent="WorkList7"]
+
+[node name="WorkInfo19" type="Node3D" parent="WorkList7"]
+
+[node name="WorkInfo20" type="Node3D" parent="WorkList7"]

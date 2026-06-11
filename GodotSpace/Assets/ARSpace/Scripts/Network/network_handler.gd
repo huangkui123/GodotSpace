@@ -13,7 +13,7 @@ signal remote_annotation_received(position: Vector3, data: Dictionary)
 
 var peer: ENetMultiplayerPeer
 # 预加载标记场景
-@export var marker_scene = preload("res://Assets/ARSpace/Prefabs/Marker.prefab.scn")
+@export var marker_scene = preload("res://Assets/ARSpace/Prefabs/Marker.prefab.tscn")
 
 func _ready():
 	multiplayer.connected_to_server.connect(_on_connected_to_server)
