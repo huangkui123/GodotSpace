@@ -24,7 +24,7 @@ func set_last_clicked_window(window_node: Node3D):
 	if window_node:
 		last_clicked_window_position = window_node.global_position
 		last_clicked_window_transform = window_node.global_transform
-		print("✅ 记录上一个被点击的窗口位置: ", last_clicked_window_position)
+		# print("Recorded last clicked window position: ", last_clicked_window_position)
 
 # 获取新窗口应该出现的位置（在上一个窗口的右侧）
 func get_new_window_position():
@@ -44,14 +44,13 @@ func get_new_window_position():
 			
 			# 确保新窗口距离相机的距离与上一个窗口相同
 			new_position = camera.global_transform.origin + direction_from_camera * distance_to_camera
-			
-			print("✅ 计算新窗口位置: ", new_position, " 距离相机: ", distance_to_camera)
+			# print("Calculated new window position: ", new_position, " distance to camera: ", distance_to_camera)
 			return new_position
 		else:
 			# 如果找不到相机，使用原来的逻辑
 			var right_direction = last_clicked_window_transform.basis.x
 			var new_position = last_clicked_window_position + right_direction * window_right_offset
-			print("✅ 计算新窗口位置(无相机): ", new_position)
+			# print("Calculated new window position without camera: ", new_position)
 			return new_position
 	else:
 		return Vector3(0, 1.5, -2)
@@ -60,12 +59,12 @@ func get_new_window_position():
 func get_new_window_transform():
 	var new_transform = Transform3D.IDENTITY
 	new_transform.origin = get_new_window_position()
-	
+
 	# 保留原窗口的scale
 	var original_scale = Vector3.ONE
 	if last_clicked_window_transform != Transform3D.IDENTITY:
 		original_scale = last_clicked_window_transform.basis.get_scale()
-	
+
 	# 获取XR相机并让窗口朝向用户
 	var camera = get_tree().root.find_child("XRCamera3D", true, false)
 	if camera:
@@ -79,11 +78,11 @@ func get_new_window_transform():
 		# 保留原来的缩放
 		new_basis = new_basis.scaled(original_scale)
 		new_transform.basis = new_basis
-		print("✅ 新窗口朝向用户, scale: ", original_scale)
+		# print("New window faces user, scale: ", original_scale)
 	else:
 		# 如果找不到相机，使用上一个窗口的朝向
 		if last_clicked_window_transform != Transform3D.IDENTITY:
 			new_transform.basis = last_clicked_window_transform.basis
-			print("✅ 新窗口使用上一个窗口的朝向")
-	
+			# print("New window uses previous window orientation")
+
 	return new_transform

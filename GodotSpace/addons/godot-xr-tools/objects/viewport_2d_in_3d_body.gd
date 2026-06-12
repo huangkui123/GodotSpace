@@ -89,10 +89,10 @@ func server_receive_pointer_event(data: Dictionary):
 		data.get("last_position", Vector3.ZERO),
 	)
 
-	if data.get("event_type") == 2:
-		print("服务器收到来自 %s 的点击事件: %s" % [sender_id, data.get("event_type", "unknown")])
-		print("pointer_node: ", pointer_node) 
-		print("target_node: ", target_node)
+	# if data.get("event_type") == 2:
+	# 	print("服务器收到来自 %s 的点击事件: %s" % [sender_id, data.get("event_type", "unknown")])
+	# 	print("pointer_node: ", pointer_node)
+	# 	print("target_node: ", target_node)
 
 	_handle_pointer_event(sender_id, fake_event)
 
