@@ -5,8 +5,13 @@ const GAME_SCENE_PATH = "res://Assets/ARSpace/Scenes/ARSpace.tscn"
 const XR_CLIENT_ARG = "--xr-client"
 const XR_MODE_ARG = "--xr-mode"
 const VOICE_ROLE_ARG = "--voice-role="
+const SERVER_IP_ARG = "--server-ip="
 
 @onready var mode_label: Label = $VBoxContainer/ModeLabel
+@onready var network_controls: Control = $VBoxContainer/Network
+@onready var server_ip_label: Label = $VBoxContainer/Network/ServerIPLabel
+@onready var client_ip_label: Label = $VBoxContainer/Network/ClientIPLabel
+@onready var server_ip_input: LineEdit = $VBoxContainer/Network/ServerIPInput
 @onready var audio_controls: Control = $VBoxContainer/Audio
 @onready var input_device: OptionButton = $VBoxContainer/Audio/InputDevice
 @onready var output_device: OptionButton = $VBoxContainer/Audio/OutputDevice
@@ -16,6 +21,7 @@ var _changing_scene: bool = false
 func _ready():
 	NetworkHandler.network_ready.connect(_on_network_ready)
 	_update_startup_mode_label()
+	_setup_network_controls()
 	_setup_audio_controls()
 
 func _on_start_pressed():
@@ -79,6 +85,79 @@ func _get_selected_option_text(option: OptionButton) -> String:
 		return "Default"
 	return option.get_item_text(selected)
 
+func _setup_network_controls() -> void:
+	if network_controls == null:
+		return
+
+	var is_client := _is_vr_client_mode()
+	network_controls.visible = true
+
+	if server_ip_label != null:
+		server_ip_label.visible = not is_client
+		server_ip_label.text = "SERVER IP: %s" % _get_local_server_ip()
+
+	if client_ip_label != null:
+		client_ip_label.visible = is_client
+
+	if server_ip_input != null:
+		server_ip_input.visible = is_client
+		server_ip_input.placeholder_text = NetworkHandler.IP_ADDRESS
+		server_ip_input.text = _get_default_server_ip()
+
+func _get_selected_server_ip() -> String:
+	if server_ip_input != null:
+		var value := server_ip_input.text.strip_edges()
+		if value != "":
+			return value
+	return _get_default_server_ip()
+
+func _get_default_server_ip() -> String:
+	var arg_ip := _get_arg_value(SERVER_IP_ARG)
+	if arg_ip != "":
+		return arg_ip
+	return NetworkHandler.IP_ADDRESS
+
+func _get_local_server_ip() -> String:
+	var addresses := IP.get_local_addresses()
+	for address in addresses:
+		var ip := str(address)
+		if _is_preferred_lan_ipv4(ip):
+			return ip
+
+	for address in addresses:
+		var ip := str(address)
+		if _is_usable_ipv4(ip):
+			return ip
+
+	return NetworkHandler.IP_ADDRESS
+
+func _is_preferred_lan_ipv4(ip: String) -> bool:
+	if not _is_usable_ipv4(ip):
+		return false
+	if ip.begins_with("10.") or ip.begins_with("192.168."):
+		return true
+	if ip.begins_with("172."):
+		var parts := ip.split(".")
+		var second_octet := int(parts[1])
+		return second_octet >= 16 and second_octet <= 31
+	return false
+
+func _is_usable_ipv4(ip: String) -> bool:
+	if ip == "" or ip == "0.0.0.0":
+		return false
+	if ip.begins_with("127.") or ip.begins_with("169.254."):
+		return false
+	var parts := ip.split(".")
+	if parts.size() != 4:
+		return false
+	for part in parts:
+		if not part.is_valid_int():
+			return false
+		var octet := int(part)
+		if octet < 0 or octet > 255:
+			return false
+	return true
+
 func _is_vr_client_mode() -> bool:
 	if OS.has_feature("android"):
 		return true
@@ -88,16 +167,22 @@ func _is_vr_client_mode() -> bool:
 		return true
 	if role == "server" or role == "pc":
 		return false
-	return OS.get_cmdline_args().has(XR_CLIENT_ARG) or _has_xr_mode_on_arg()
+	return _get_all_cmdline_args().has(XR_CLIENT_ARG) or _has_xr_mode_on_arg()
 
 func _get_arg_value(prefix: String) -> String:
-	for arg in OS.get_cmdline_args():
+	for arg in _get_all_cmdline_args():
 		if arg.begins_with(prefix):
 			return arg.substr(prefix.length()).strip_edges()
 	return ""
 
+func _get_all_cmdline_args() -> Array:
+	var args := []
+	args.append_array(OS.get_cmdline_args())
+	args.append_array(OS.get_cmdline_user_args())
+	return args
+
 func _has_xr_mode_on_arg() -> bool:
-	var args := OS.get_cmdline_args()
+	var args := _get_all_cmdline_args()
 	for i in range(args.size()):
 		var arg := str(args[i]).to_lower()
 		if arg == XR_MODE_ARG and i + 1 < args.size():
@@ -114,7 +199,7 @@ func _start_vr_client() -> void:
 		mode_label.text = "MODE: VR CLIENT"
 
 	_start_openxr_for_client()
-	if NetworkHandler.start_client():
+	if NetworkHandler.start_client(_get_selected_server_ip()):
 		_go_to_game_scene()
 
 func _start_openxr_for_client() -> void:
