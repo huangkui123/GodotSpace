@@ -3,6 +3,7 @@ extends Node
 
 signal opus_packet_captured(packet: PackedByteArray)
 signal speaking_changed(is_speaking: bool)
+signal pcm_frames_captured(frames: PackedVector2Array)
 
 @export var opus_sample_rate: int = 48000
 @export var opus_frame_size: int = 960
@@ -136,6 +137,7 @@ func _read_microphone_frames(delta: float) -> void:
 
 	frames_read_total += frames.size()
 	_sample_input_peak_from(frames)
+	pcm_frames_captured.emit(frames)
 	if ptt_active:
 		pending_audio_frames.append_array(frames)
 
@@ -156,6 +158,7 @@ func _read_synthetic_frames(delta: float) -> void:
 
 	frames_read_total += frames.size()
 	_sample_input_peak_from(frames)
+	pcm_frames_captured.emit(frames)
 	if ptt_active:
 		pending_audio_frames.append_array(frames)
 

@@ -41,7 +41,10 @@ func _get_configuration_warnings():
 ## The record bus has to have a AudioEffectCapture at index specified by [member audio_effect_capture_index]
 @export var record_bus := "Mic"
 ## The index where the [AudioEffectCapture] is located at in the [member record_bus]
-@export var audio_effect_capture_index := 1
+@export var audio_effect_capture_index := 0
+## When enabled, audio is supplied through [method push_audio_frames] instead of reading an AudioEffectCapture.
+@export var use_external_audio_frames := false
+@export var input_active := true
 
 ## Character to consider when ending a sentence.
 @export var punctuation_characters := ".!?;。；？！"
@@ -72,8 +75,24 @@ var _accumulated_frames: PackedVector2Array
 var _capture_mutex: Mutex
 var _should_capture := false
 
+func set_input_active(active: bool) -> void:
+	input_active = active
+	if not active and _capture_mutex != null:
+		_capture_mutex.lock()
+		_accumulated_frames.clear()
+		_capture_mutex.unlock()
+
+func push_audio_frames(frames: PackedVector2Array) -> void:
+	if !recording || !_should_capture || !input_active:
+		return
+	if frames.is_empty() or _capture_mutex == null:
+		return
+	_capture_mutex.lock()
+	_accumulated_frames.append_array(frames)
+	_capture_mutex.unlock()
+
 func _process(_delta):
-	if !recording || !_should_capture:
+	if !recording || !_should_capture || !input_active || use_external_audio_frames:
 		return
 	
 	# 持续捕获音频，不要等待转录完成
@@ -90,6 +109,10 @@ func transcribe_thread():
 	_should_capture = true
 	
 	while recording:
+		if !input_active:
+			OS.delay_msec(transcribe_interval * 1000)
+			continue
+
 		var start_time = Time.get_ticks_msec()
 		
 		# 等待积累足够的音频数据

@@ -1,16 +1,30 @@
 extends Node3D
 
+const LOCAL_XR_NODE_PATHS: Array[NodePath] = [
+	NodePath("XROrigin3D"),
+	NodePath("XROrigin3D/XRCamera3D"),
+	NodePath("XROrigin3D/LeftHand"),
+	NodePath("XROrigin3D/RightHand"),
+	NodePath("XROrigin3D/PlayerBody"),
+]
+
 @onready var xr_camera = $XROrigin3D/XRCamera3D
 
 func _enter_tree():
-	set_multiplayer_authority(name.to_int())
+	var peer_id := _get_peer_id_from_name()
+	set_multiplayer_authority(peer_id, true)
+	_configure_local_xr_nodes(_is_local_authority())
 
 func _ready():
-	if not multiplayer.is_server() and not OS.get_cmdline_args().has("--testmode"):
+	var peer_id := _get_peer_id_from_name()
+	set_multiplayer_authority(peer_id, true)
+	_configure_local_xr_nodes(_is_local_authority())
+
+	if _is_local_authority() and not multiplayer.is_server() and not OS.get_cmdline_args().has("--testmode"):
 		xr_camera.make_current()
 
 func _process(delta: float):
-	if not is_multiplayer_authority():
+	if not _is_local_authority():
 		# if multiplayer.is_server():
 		# 	print("当前服务器: ", multiplayer.multiplayer_peer.get_packet())
 		# 	# 接收数据包
@@ -84,6 +98,32 @@ func _process(delta: float):
 		multiplayer.multiplayer_peer.put_packet(pkt)
 
 func _physics_process(delta: float):
-	if not is_multiplayer_authority():
+	if not _is_local_authority():
 		return
-		
+
+func _get_peer_id_from_name() -> int:
+	var peer_id := name.to_int()
+	if peer_id <= 0:
+		return 1
+	return peer_id
+
+func _is_local_authority() -> bool:
+	if multiplayer.has_multiplayer_peer():
+		return is_multiplayer_authority()
+	return _get_peer_id_from_name() == 1
+
+func _configure_local_xr_nodes(is_local_authority: bool) -> void:
+	var xr_origin := get_node_or_null("XROrigin3D") as XROrigin3D
+	var camera := get_node_or_null("XROrigin3D/XRCamera3D") as Camera3D
+
+	if xr_origin != null:
+		xr_origin.current = is_local_authority
+
+	if camera != null:
+		camera.current = is_local_authority
+
+	var process_mode_for_nodes := Node.PROCESS_MODE_INHERIT if is_local_authority else Node.PROCESS_MODE_DISABLED
+	for node_path in LOCAL_XR_NODE_PATHS:
+		var local_node := get_node_or_null(node_path)
+		if local_node != null:
+			local_node.process_mode = process_mode_for_nodes

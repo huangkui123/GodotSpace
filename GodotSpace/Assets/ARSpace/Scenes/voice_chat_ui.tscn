@@ -146,4 +146,3 @@ language_model = ExtResource("2_model")
 script = ExtResource("3_capture")
 initial_prompt = "以下是普通话句子。"
 maximum_sentence_time = 10
-audio_effect_capture_index = 0

@@ -24,6 +24,7 @@ func _ready() -> void:
 	transcribe_button.toggled.connect(_on_transcribe_toggled)
 	mic_player.bus = "Mic"
 	_set_transcription_enabled(false)
+	_configure_transcription_audio_source()
 
 	if speech_to_text.has_signal("transcribed_msg"):
 		speech_to_text.transcribed_msg.connect(_on_transcribed_msg)
@@ -65,6 +66,7 @@ func _on_network_changed() -> void:
 
 
 func _on_network_role_selected(_is_server: bool, _context: String = "") -> void:
+	_configure_transcription_audio_source()
 	_update_ui()
 
 
@@ -90,16 +92,44 @@ func _on_transcribed_msg(is_partial: Variant, new_text: Variant) -> void:
 
 
 func _set_transcription_enabled(enabled: bool) -> void:
+	_configure_transcription_audio_source()
 	transcribe_button.button_pressed = enabled
 	transcribe_button.text = "转写开启" if enabled else "转写关闭"
 	transcribe_button.modulate = Color(0.3, 1.0, 0.45) if enabled else Color(1.0, 0.35, 0.35)
+	speech_to_text.set("use_external_audio_frames", true)
+	speech_to_text.set("input_active", enabled)
 	speech_to_text.set("recording", enabled)
-	if enabled:
-		mic_player.play()
-	else:
+	if speech_to_text.has_method("set_input_active"):
+		speech_to_text.set_input_active(enabled)
+	if mic_player.playing:
 		mic_player.stop()
+	if not enabled:
 		partial_transcript = ""
 	_update_transcript_text()
+
+
+func _configure_transcription_audio_source() -> void:
+	if speech_to_text != null:
+		speech_to_text.set("use_external_audio_frames", true)
+
+	if VoiceChat.capture == null:
+		return
+	if not VoiceChat.capture.has_signal("pcm_frames_captured"):
+		return
+
+	var callback := Callable(self, "_on_voice_pcm_frames_captured")
+	if VoiceChat.capture.pcm_frames_captured.is_connected(callback):
+		return
+
+	VoiceChat.capture.pcm_frames_captured.connect(callback)
+
+
+func _on_voice_pcm_frames_captured(frames: PackedVector2Array) -> void:
+	if not transcribe_button.button_pressed:
+		return
+	if speech_to_text == null or not speech_to_text.has_method("push_audio_frames"):
+		return
+	speech_to_text.push_audio_frames(frames)
 
 
 func _update_transcript_text() -> void:
