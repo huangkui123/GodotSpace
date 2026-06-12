@@ -8,12 +8,18 @@ const LOCAL_XR_NODE_PATHS: Array[NodePath] = [
 	NodePath("XROrigin3D/PlayerBody"),
 ]
 
+const REMOTE_INHERIT_TRANSFORM_PATHS: Array[NodePath] = [
+	NodePath("XROrigin3D/LeftHand/LeftHand"),
+	NodePath("XROrigin3D/RightHand/RightHand"),
+]
+
 @onready var xr_camera = $XROrigin3D/XRCamera3D
 
 func _enter_tree():
 	var peer_id := _get_peer_id_from_name()
 	set_multiplayer_authority(peer_id, true)
 	_configure_local_xr_nodes(_is_local_authority())
+	call_deferred("_refresh_authority_configuration")
 
 func _ready():
 	var peer_id := _get_peer_id_from_name()
@@ -115,6 +121,7 @@ func _is_local_authority() -> bool:
 func _configure_local_xr_nodes(is_local_authority: bool) -> void:
 	var xr_origin := get_node_or_null("XROrigin3D") as XROrigin3D
 	var camera := get_node_or_null("XROrigin3D/XRCamera3D") as Camera3D
+	var player_body := get_node_or_null("XROrigin3D/PlayerBody")
 
 	if xr_origin != null:
 		xr_origin.current = is_local_authority
@@ -127,3 +134,20 @@ func _configure_local_xr_nodes(is_local_authority: bool) -> void:
 		var local_node := get_node_or_null(node_path)
 		if local_node != null:
 			local_node.process_mode = process_mode_for_nodes
+
+	for node_path in REMOTE_INHERIT_TRANSFORM_PATHS:
+		var remote_visual := get_node_or_null(node_path) as Node3D
+		if remote_visual != null:
+			remote_visual.top_level = is_local_authority
+
+	if player_body != null:
+		player_body.set("enabled", is_local_authority)
+		if player_body is CollisionObject3D:
+			var collision_body := player_body as CollisionObject3D
+			collision_body.collision_layer = 524288 if is_local_authority else 0
+			collision_body.collision_mask = 1023 if is_local_authority else 0
+
+func _refresh_authority_configuration() -> void:
+	var peer_id := _get_peer_id_from_name()
+	set_multiplayer_authority(peer_id, true)
+	_configure_local_xr_nodes(_is_local_authority())
