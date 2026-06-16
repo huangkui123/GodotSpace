@@ -4,6 +4,50 @@ const SERVER_PEER_ID := 1
 const VOICE_LEVEL_STALE_SECONDS := 1.5
 const VOICE_LEVEL_MIN_DB := -60.0
 const VOICE_LEVEL_MAX_DB := 0.0
+const GROUND_COLOR := "#65D8FF"
+const ASTRONAUT_COLOR := "#FFD166"
+const PARTIAL_CURSOR_COLOR := "#D7DEE8"
+const DEMO_TRANSCRIPT_LINES := [
+	{
+		"speaker": "server",
+		"final": "神舟飞船，这里是北京航天飞行控制中心，听到请回答",
+		"partials": [
+			"神舟飞船，这里是北京航天飞控中心",
+			"神舟飞船，这里是北京航天飞行控制中心，听到请回",
+			"神舟飞船，这里是北京航天飞行控制中心，听到请回答",
+		],
+	},
+	{
+		"speaker": "client",
+		"final": "北京，神舟飞船收到，声音清晰，状态良好",
+		"partials": [
+			"北京，神舟飞船收到",
+			"北京，神舟飞船收到，声音清西，状态良",
+			"北京，神舟飞船收到，声音清晰，状态良好",
+		],
+	},
+	{
+		"speaker": "server",
+		"final": "收到，当前飞船各系统工作正常，轨道参数符合预期",
+		"partials": [
+			"收到，当前飞船各系统工作正常",
+			"收到，当前飞船各系统工作正常，轨道参数复合预期",
+			"收到，当前飞船各系统工作正常，轨道参数符合预期",
+		],
+	},
+	{
+		"speaker": "client",
+		"final": "明白，我们正在按计划进行在轨检查，舱内环境舒适",
+		"partials": [
+			"明白，我们正在按计划进行在轨检",
+			"明白，我们正在按计划进行在轨检查，舱内环境舒",
+			"明白，我们正在按计划进行在轨检查，舱内环境舒适",
+		],
+	},
+]
+
+@export var demo_transcript_enabled := true
+@export var demo_transcript_start_delay := 4.0
 
 @onready var voice_button: Button = $PanelContainer/MarginContainer/Layout/Header/VoiceButton
 @onready var status_label: Label = $PanelContainer/MarginContainer/Layout/Header/StatusLabel
@@ -17,6 +61,9 @@ const VOICE_LEVEL_MAX_DB := 0.0
 var volume_rows: Dictionary = {}
 var completed_transcript := ""
 var partial_transcript := ""
+var partial_speaker := ""
+var _demo_run_id := 0
+var _demo_transcript_active := false
 
 
 func _ready() -> void:
@@ -79,6 +126,9 @@ func _on_transcribe_toggled(enabled: bool) -> void:
 
 
 func _on_transcribed_msg(is_partial: Variant, new_text: Variant) -> void:
+	if demo_transcript_enabled:
+		return
+
 	var text := str(new_text).strip_edges()
 	if text == "":
 		return
@@ -96,15 +146,22 @@ func _set_transcription_enabled(enabled: bool) -> void:
 	transcribe_button.button_pressed = enabled
 	transcribe_button.text = "转写开启" if enabled else "转写关闭"
 	transcribe_button.modulate = Color(0.3, 1.0, 0.45) if enabled else Color(1.0, 0.35, 0.35)
+	var real_transcription_enabled := enabled and not demo_transcript_enabled
 	speech_to_text.set("use_external_audio_frames", true)
-	speech_to_text.set("input_active", enabled)
-	speech_to_text.set("recording", enabled)
+	speech_to_text.set("input_active", real_transcription_enabled)
+	speech_to_text.set("recording", real_transcription_enabled)
 	if speech_to_text.has_method("set_input_active"):
-		speech_to_text.set_input_active(enabled)
+		speech_to_text.set_input_active(real_transcription_enabled)
 	if mic_player.playing:
 		mic_player.stop()
+	if demo_transcript_enabled:
+		if enabled:
+			_start_demo_transcript()
+		else:
+			_stop_demo_transcript()
 	if not enabled:
 		partial_transcript = ""
+		partial_speaker = ""
 	_update_transcript_text()
 
 
@@ -127,6 +184,8 @@ func _configure_transcription_audio_source() -> void:
 func _on_voice_pcm_frames_captured(frames: PackedVector2Array) -> void:
 	if not transcribe_button.button_pressed:
 		return
+	if demo_transcript_enabled:
+		return
 	if speech_to_text == null or not speech_to_text.has_method("push_audio_frames"):
 		return
 	speech_to_text.push_audio_frames(frames)
@@ -135,10 +194,105 @@ func _on_voice_pcm_frames_captured(frames: PackedVector2Array) -> void:
 func _update_transcript_text() -> void:
 	var body := completed_transcript
 	if partial_transcript != "":
-		body += "[color=green]%s[/color]" % partial_transcript
+		if body != "":
+			body += "\n"
+		body += _format_transcript_line(partial_speaker, partial_transcript, true)
 	if body == "":
 		body = "等待语音输入..."
 	transcript_label.text = body
+
+
+func _start_demo_transcript() -> void:
+	_demo_run_id += 1
+	_demo_transcript_active = true
+	completed_transcript = ""
+	partial_transcript = ""
+	partial_speaker = ""
+	_update_transcript_text()
+	_run_demo_transcript(_demo_run_id)
+
+
+func _stop_demo_transcript() -> void:
+	_demo_run_id += 1
+	_demo_transcript_active = false
+	partial_transcript = ""
+	partial_speaker = ""
+
+
+func _run_demo_transcript(run_id: int) -> void:
+	await get_tree().create_timer(demo_transcript_start_delay).timeout
+	if not _is_demo_run_current(run_id):
+		return
+
+	for line in DEMO_TRANSCRIPT_LINES:
+		var speaker := _get_demo_speaker_label(str(line.get("speaker", "server")))
+		var final_text := str(line.get("final", ""))
+		var partials: Array = line.get("partials", [])
+		for partial in partials:
+			if not _is_demo_run_current(run_id):
+				return
+			partial_speaker = speaker
+			partial_transcript = str(partial)
+			_update_transcript_text()
+			await get_tree().create_timer(_get_demo_partial_delay(str(partial))).timeout
+
+		if not _is_demo_run_current(run_id):
+			return
+		partial_transcript = ""
+		partial_speaker = ""
+		if completed_transcript != "":
+			completed_transcript += "\n"
+		completed_transcript += _format_transcript_line(speaker, final_text, false)
+		_update_transcript_text()
+		await get_tree().create_timer(1.7).timeout
+
+	_demo_transcript_active = false
+
+
+func _is_demo_run_current(run_id: int) -> bool:
+	return _demo_transcript_active and run_id == _demo_run_id and transcribe_button.button_pressed
+
+
+func _get_demo_partial_delay(text: String) -> float:
+	return clampf(1.2 + float(text.length()) * 0.045, 1.7, 3.2)
+
+
+func _format_transcript_line(speaker: String, message: String, is_partial: bool) -> String:
+	var cursor := "[color=%s]|[/color]" % PARTIAL_CURSOR_COLOR if is_partial else ""
+	return "[color=%s]%s：%s%s[/color]" % [_get_transcript_speaker_color(speaker), speaker, message, cursor]
+
+
+func _get_transcript_speaker_color(speaker: String) -> String:
+	if speaker.begins_with("客户端"):
+		return ASTRONAUT_COLOR
+	return GROUND_COLOR
+
+
+func _get_demo_speaker_label(speaker_key: String) -> String:
+	if speaker_key == "client":
+		return _get_voice_panel_peer_label(_get_demo_client_peer_id())
+	return _get_voice_panel_peer_label(SERVER_PEER_ID)
+
+
+func _get_demo_client_peer_id() -> int:
+	var ids := []
+	if multiplayer.has_multiplayer_peer():
+		for peer_id in multiplayer.get_peers():
+			var id := int(peer_id)
+			if id != SERVER_PEER_ID:
+				ids.append(id)
+		if not multiplayer.is_server():
+			var local_id := multiplayer.get_unique_id()
+			if local_id != SERVER_PEER_ID and not ids.has(local_id):
+				ids.append(local_id)
+
+	for peer_id in VoiceChat.voice_level_states.keys():
+		var id := int(peer_id)
+		if id != SERVER_PEER_ID and not ids.has(id):
+			ids.append(id)
+
+	ids.sort()
+	return int(ids[0]) if not ids.is_empty() else 2
 
 
 func _update_ui() -> void:

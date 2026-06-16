@@ -1,0 +1,89 @@
+[gd_scene load_steps=8 format=3 uid="uid://c5lm3bvr8jca1"]
+
+[ext_resource type="Script" uid="uid://ilk2047klx6v" path="res://Assets/ARSpace/Scripts/LLMAssistantCanvas/LLMAssistantUIView.gd" id="1_0gw1m"]
+[ext_resource type="Texture2D" uid="uid://dr7y3pi3l4njr" path="res://Assets/ARSpace/Textures/UIWindow/Rectangle 1385.png" id="2_ryr38"]
+[ext_resource type="Texture2D" uid="uid://cj3vrpnmkwmje" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Frame 15580.png" id="3_r6msa"]
+[ext_resource type="Texture2D" uid="uid://w8s10cnr1xcq" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Frame 15578.png" id="4_xe4yk"]
+[ext_resource type="Texture2D" uid="uid://ddnc3m0wlbyuq" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Frame 15579.png" id="5_vbq7y"]
+[ext_resource type="FontFile" uid="uid://b6nf5k17guhst" path="res://scenes/shared/fonts/lato/Lato-Regular.ttf" id="6_f7lua"]
+[ext_resource type="FontFile" uid="uid://d4imt37tjbuss" path="res://scenes/shared/fonts/lato/Lato-Bold.ttf" id="7_ish2r"]
+
+[node name="LLMAssistantView" type="Control"]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 509.0
+offset_bottom = 354.0
+script = ExtResource("1_0gw1m")
+
+[node name="Background" type="TextureRect" parent="."]
+layout_mode = 0
+offset_right = 446.0
+offset_bottom = 348.0
+texture = ExtResource("2_ryr38")
+expand_mode = 1
+
+[node name="BackButton" type="TextureButton" parent="."]
+layout_mode = 0
+offset_left = 5.0
+offset_top = 45.0
+offset_right = 46.0
+offset_bottom = 86.0
+rotation = -1.5708
+scale = Vector2(0.8, 0.8)
+texture_normal = ExtResource("3_r6msa")
+texture_pressed = ExtResource("4_xe4yk")
+texture_hover = ExtResource("5_vbq7y")
+
+[node name="Title" type="Label" parent="."]
+layout_mode = 0
+offset_left = 55.0
+offset_top = 14.0
+offset_right = 184.0
+offset_bottom = 42.0
+theme_override_colors/font_color = Color(0.523212, 0.618929, 0.944913, 1)
+theme_override_fonts/font = ExtResource("7_ish2r")
+theme_override_font_sizes/font_size = 20
+text = "LLM智能助手"
+
+[node name="StatusLabel" type="Label" parent="."]
+layout_mode = 0
+offset_left = 55.0
+offset_top = 58.0
+offset_right = 427.0
+offset_bottom = 84.0
+theme_override_colors/font_color = Color(0.48, 0.8, 1, 1)
+theme_override_fonts/font = ExtResource("6_f7lua")
+theme_override_font_sizes/font_size = 15
+text = "知识库：航天员手册 / 舱内环境控制 / 专家任务指导"
+
+[node name="PromptLabel" type="Label" parent="."]
+layout_mode = 0
+offset_left = 55.0
+offset_top = 92.0
+offset_right = 427.0
+offset_bottom = 118.0
+theme_override_colors/font_color = Color(0.576471, 0.666667, 0.952941, 1)
+theme_override_fonts/font = ExtResource("6_f7lua")
+theme_override_font_sizes/font_size = 16
+text = "人机对话记录"
+
+[node name="Transcript" type="RichTextLabel" parent="."]
+layout_mode = 0
+offset_left = 55.0
+offset_top = 125.0
+offset_right = 427.0
+offset_bottom = 292.0
+theme_override_font_sizes/normal_font_size = 18
+bbcode_enabled = true
+scroll_following = true
+
+[node name="Footer" type="Label" parent="."]
+layout_mode = 0
+offset_left = 55.0
+offset_top = 306.0
+offset_right = 427.0
+offset_bottom = 333.0
+theme_override_colors/font_color = Color(0.58, 0.64, 0.78, 1)
+theme_override_fonts/font = ExtResource("6_f7lua")
+theme_override_font_sizes/font_size = 13
+text = "在线检索：手册条目 3.2.1 / 4.1.7 / 专家规则库"

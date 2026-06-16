@@ -1,24 +1,25 @@
-[gd_scene load_steps=20 format=3]
+[gd_scene load_steps=21 format=3 uid="uid://cutbiriped32f"]
 
-[ext_resource type="Script" path="res://Assets/ARSpace/Prefabs/UI/MainMenuCanvas/canvas.gd" id="1_nqjmq"]
+[ext_resource type="Script" uid="uid://bg4e433qyo1nv" path="res://Assets/ARSpace/Prefabs/UI/MainMenuCanvas/canvas.gd" id="1_nqjmq"]
 [ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/MainMenuCanvas/LifeTabView.prefab.tscn" id="2_alcmm"]
-[ext_resource type="Script" path="res://Assets/ARSpace/Prefabs/UI/MainMenuCanvas/photo.prefab.gd" id="3_dfvio"]
-[ext_resource type="Script" path="res://Assets/ARSpace/Prefabs/UI/MainMenuCanvas/movie.prefab.gd" id="4_itd7v"]
+[ext_resource type="Script" uid="uid://1o2e0nucym2f" path="res://Assets/ARSpace/Prefabs/UI/MainMenuCanvas/photo.prefab.gd" id="3_dfvio"]
+[ext_resource type="Script" uid="uid://c6av1vufuqfmj" path="res://Assets/ARSpace/Prefabs/UI/MainMenuCanvas/movie.prefab.gd" id="4_itd7v"]
 [ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/MainMenuCanvas/WorkTabView.prefab.tscn" id="5_38qjv"]
 [ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/MainMenuCanvas/WorkList.prefab.tscn" id="6_2boyx"]
 [ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/WorkListCanvas/WorkListView.tscn" id="7_0jeco"]
-[ext_resource type="Script" path="res://Assets/ARSpace/Prefabs/UI/MainMenuCanvas/SwitchWorkLife.gd" id="8_27xd4"]
-[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155626.png" id="9_c3tev"]
-[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/生活模式-2.png" id="10_qaogi"]
-[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/工作-2.png" id="11_vbbh4"]
-[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/UIWindow/TopMenuBox.png" id="12_rgyp6"]
+[ext_resource type="Script" uid="uid://cl2iwdnvi04vx" path="res://Assets/ARSpace/Prefabs/UI/MainMenuCanvas/SwitchWorkLife.gd" id="8_27xd4"]
+[ext_resource type="Texture2D" uid="uid://cdegy7kniq0yu" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155626.png" id="9_c3tev"]
+[ext_resource type="Texture2D" uid="uid://d322nkel82stg" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/生活模式-2.png" id="10_qaogi"]
+[ext_resource type="Texture2D" uid="uid://bcdmtp2dya2c7" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/工作-2.png" id="11_vbbh4"]
+[ext_resource type="Texture2D" uid="uid://c8j03vakdd24j" path="res://Assets/ARSpace/Textures/UIWindow/TopMenuBox.png" id="12_rgyp6"]
 [ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/DragBox.prefab.tscn" id="13_7eyah"]
-[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155655.png" id="14_e6sp6"]
-[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155657.png" id="15_x6sas"]
-[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/UIWindow/Clock.png" id="16_fu0gs"]
-[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/UIWindow/Vector.png" id="17_jin7b"]
-[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/UIWindow/Vector (1).png" id="18_k678q"]
-[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/拉伸.png" id="19_gv5p4"]
+[ext_resource type="Texture2D" uid="uid://bvy7dvhxhiekl" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155655.png" id="14_e6sp6"]
+[ext_resource type="Texture2D" uid="uid://bd5e1iuocxcks" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155657.png" id="15_x6sas"]
+[ext_resource type="Texture2D" uid="uid://bucuc68ug3yaj" path="res://Assets/ARSpace/Textures/UIWindow/Clock.png" id="16_fu0gs"]
+[ext_resource type="Texture2D" uid="uid://oq2uh20ka3mq" path="res://Assets/ARSpace/Textures/UIWindow/Vector.png" id="17_jin7b"]
+[ext_resource type="Texture2D" uid="uid://b3ka13evrqdiy" path="res://Assets/ARSpace/Textures/UIWindow/Vector (1).png" id="18_k678q"]
+[ext_resource type="Texture2D" uid="uid://d2oc1tq2wrwe7" path="res://Assets/ARSpace/Textures/拉伸.png" id="19_gv5p4"]
+[ext_resource type="PackedScene" uid="uid://c5lm3bvr8jca1" path="res://Assets/ARSpace/Prefabs/UI/LLMAssistantCanvas.tscn" id="20_g6gec"]
 
 [node name="MainMenuCanvasAR" type="CanvasLayer"]
 
@@ -96,7 +97,32 @@ columns = 3
 [node name="WorkList" parent="Canvas/WorkTabView/GridContainer" instance=ExtResource("6_2boyx")]
 layout_mode = 2
 
+[node name="LLMAssistant" parent="Canvas/WorkTabView/GridContainer" instance=ExtResource("6_2boyx")]
+layout_mode = 2
+
+[node name="Name" parent="Canvas/WorkTabView/GridContainer/LLMAssistant" index="1"]
+offset_left = 58.0
+offset_right = 150.0
+text = "LLM助手"
+
+[node name="Badge" type="Label" parent="Canvas/WorkTabView/GridContainer/LLMAssistant"]
+layout_mode = 0
+offset_left = 73.0
+offset_top = 58.0
+offset_right = 135.0
+offset_bottom = 106.0
+theme_override_colors/font_color = Color(0.44, 0.84, 1, 1)
+theme_override_font_sizes/font_size = 28
+text = "AI"
+horizontal_alignment = 1
+vertical_alignment = 1
+
 [node name="WorkListView" parent="Canvas/WorkTabView" instance=ExtResource("7_0jeco")]
+visible = false
+offset_right = 0.0
+offset_bottom = 0.0
+
+[node name="LLMAssistantView" parent="Canvas/WorkTabView" instance=ExtResource("20_g6gec")]
 visible = false
 offset_right = 0.0
 offset_bottom = 0.0
@@ -275,7 +301,9 @@ texture = ExtResource("19_gv5p4")
 [connection signal="pressed" from="Canvas/LifeTabView/Scroll View/Viewport/Content/Photo" to="Canvas" method="_on_photo_pressed"]
 [connection signal="pressed" from="Canvas/LifeTabView/Scroll View/Viewport/Content/Movie" to="Canvas" method="_on_movie_pressed"]
 [connection signal="pressed" from="Canvas/WorkTabView/GridContainer/WorkList" to="Canvas" method="_on_work_list_pressed"]
+[connection signal="pressed" from="Canvas/WorkTabView/GridContainer/LLMAssistant" to="Canvas" method="_on_llm_assistant_pressed"]
 [connection signal="pressed" from="Canvas/WorkTabView/WorkListView/BackButton" to="Canvas" method="_on_back_button_pressed"]
+[connection signal="pressed" from="Canvas/WorkTabView/LLMAssistantView/BackButton" to="Canvas" method="_on_llm_back_button_pressed"]
 [connection signal="pressed" from="Canvas/TopMenuBox/Controller/CloseButton" to="Canvas" method="_on_close_button_pressed"]
 
 [editable path="Canvas/LifeTabView"]
@@ -284,5 +312,7 @@ texture = ExtResource("19_gv5p4")
 [editable path="Canvas/LifeTabView/Scroll View/Viewport/Content/Model"]
 [editable path="Canvas/LifeTabView/Scroll View/Viewport/Content/Weather"]
 [editable path="Canvas/LifeTabView/Scroll View/Viewport/Content/MoleGame"]
+[editable path="Canvas/WorkTabView/GridContainer/LLMAssistant"]
 [editable path="Canvas/WorkTabView/WorkListView"]
+[editable path="Canvas/WorkTabView/LLMAssistantView"]
 [editable path="Canvas/TopMenuBox/DragBox"]
