@@ -1,4 +1,4 @@
-[gd_scene load_steps=103 format=4 uid="uid://ca028g0q2kstx"]
+[gd_scene load_steps=104 format=4 uid="uid://ca028g0q2kstx"]
 
 [ext_resource type="Script" uid="uid://d1pt7mdt5llk4" path="res://XR_Main.gd" id="1_g432p"]
 [ext_resource type="Script" uid="uid://bt6aew4asx754" path="res://Assets/ARSpace/Scenes/SpaceBox.gd" id="2_wjh8v"]
@@ -68,6 +68,7 @@
 [ext_resource type="PackedScene" uid="uid://bv8x3yq7hfn1k" path="res://Assets/ARSpace/Scenes/voice_chat_ui.tscn" id="67_ltm1f"]
 [ext_resource type="Script" uid="uid://cgre2apvnqf2e" path="res://Assets/ARSpace/Scripts/SpatialCalibration/spatial_calibration_panel.gd" id="68_spatial"]
 [ext_resource type="Script" uid="uid://dqsqeamwaa1jl" path="res://Assets/ARSpace/Scripts/UI/unified_panel_ui.gd" id="69_control"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Scenes/voice_call_window_3d.tscn" id="70_voice_call"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_m4rif"]
 resource_name = "Default-Skybox"
@@ -272,14 +273,14 @@ metadata/humanoid_rotation_delta = {
 resource_local_to_scene = true
 size = Vector2(620, 460)
 
-[sub_resource type="ViewportTexture" id="ViewportTexture_wjh8v"]
+[sub_resource type="ViewportTexture" id="ViewportTexture_2envh"]
 viewport_path = NodePath("Viewport")
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_wjh8v"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_2envh"]
 transparency = 1
 cull_mode = 2
 shading_mode = 0
-albedo_texture = SubResource("ViewportTexture_wjh8v")
+albedo_texture = SubResource("ViewportTexture_2envh")
 texture_filter = 1
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_6yffd"]
@@ -2282,7 +2283,7 @@ size = Vector2i(620, 460)
 
 [node name="Screen" parent="MainMenuCanvas" index="1"]
 mesh = SubResource("QuadMesh_34xb6")
-surface_material_override/0 = SubResource("StandardMaterial3D_wjh8v")
+surface_material_override/0 = SubResource("StandardMaterial3D_2envh")
 
 [node name="StaticBody3D" parent="MainMenuCanvas" index="2"]
 screen_size = Vector2(620, 460)
@@ -2353,6 +2354,11 @@ transform = Transform3D(-0.00299996, 1.53247e-05, 4.76738e-06, 1.53492e-05, 0.00
 screen_size = Vector2(610, 460)
 scene = ExtResource("61_8h1ek")
 viewport_size = Vector2(610, 500)
+
+[node name="VoiceCallWindow3D" parent="GroupUI" instance=ExtResource("70_voice_call")]
+transform = Transform3D(-0.000815796, -1.07935e-05, 0.00288693, 1.53492e-05, 0.00299992, 1.55533e-05, -0.00288691, 1.90002e-05, -0.00081572, -1.23002, 0.905885, 1.72829)
+scene_properties_keys = PackedStringArray("voice_chat_ui.gd", "is_3d_panel")
+is_3d_panel = true
 
 [node name="MultiplayerSpawner" type="MultiplayerSpawner" parent="."]
 _spawnable_scenes = PackedStringArray("uid://c0oao8sfhry88")

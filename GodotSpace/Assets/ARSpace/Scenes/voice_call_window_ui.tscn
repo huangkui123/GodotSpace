@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" uid="uid://c4jfrx0af71vx" path="res://Assets/ARSpace/Scenes/voice_chat_ui_3d.tscn" id="1_voice_ui"]
+
+[node name="VoiceCallWindowUI" instance=ExtResource("1_voice_ui")]
+is_3d_panel = true

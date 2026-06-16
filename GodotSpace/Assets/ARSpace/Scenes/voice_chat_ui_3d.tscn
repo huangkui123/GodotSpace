@@ -1,0 +1,221 @@
+[gd_scene load_steps=9 format=3 uid="uid://c4jfrx0af71vx"]
+
+[ext_resource type="Script" uid="uid://bbh8uiiah3wtw" path="res://Assets/ARSpace/Scripts/Network/voice_chat_ui.gd" id="1_script"]
+[ext_resource type="Texture2D" uid="uid://dr7y3pi3l4njr" path="res://Assets/ARSpace/Textures/UIWindow/Rectangle 1385.png" id="2_bg"]
+[ext_resource type="Texture2D" uid="uid://c8j03vakdd24j" path="res://Assets/ARSpace/Textures/UIWindow/TopMenuBox.png" id="3_top"]
+[ext_resource type="FontFile" uid="uid://b6nf5k17guhst" path="res://scenes/shared/fonts/lato/Lato-Regular.ttf" id="4_font"]
+[ext_resource type="Texture2D" uid="uid://bvy7dvhxhiekl" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155655.png" id="5_close"]
+[ext_resource type="Texture2D" uid="uid://bd5e1iuocxcks" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155657.png" id="6_max"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_panel"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_transcript"]
+bg_color = Color(0.0352941, 0.0647059, 0.145098, 0.55)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.28, 0.54, 0.95, 0.45)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[node name="VoiceChatUI3D" type="Control"]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 571.0
+offset_bottom = 504.0
+mouse_filter = 2
+script = ExtResource("1_script")
+is_3d_panel = true
+
+[node name="Canvas" type="Control" parent="."]
+anchors_preset = 0
+offset_right = 571.0
+offset_bottom = 504.0
+mouse_filter = 2
+
+[node name="TextureRect" type="TextureRect" parent="Canvas"]
+layout_mode = 0
+offset_left = 2.0
+offset_top = 55.0
+offset_right = 517.0
+offset_bottom = 500.0
+texture = ExtResource("2_bg")
+expand_mode = 1
+
+[node name="TopMenuBox" type="Sprite2D" parent="Canvas"]
+position = Vector2(260, 33)
+scale = Vector2(0.852941, 0.852941)
+texture = ExtResource("3_top")
+
+[node name="Title" type="Label" parent="Canvas/TopMenuBox"]
+anchors_preset = -1
+anchor_left = -127.271
+anchor_top = -25.023
+anchor_right = -126.093
+anchor_bottom = -20.79
+offset_left = 76453.4
+offset_top = 1260.17
+offset_right = 76233.1
+offset_bottom = 1079.29
+theme_override_colors/font_color = Color(0.521569, 0.619608, 0.945098, 1)
+theme_override_fonts/font = ExtResource("4_font")
+theme_override_font_sizes/font_size = 24
+text = "语音通话"
+
+[node name="Controller" type="Control" parent="Canvas/TopMenuBox"]
+layout_mode = 3
+anchors_preset = 0
+
+[node name="CloseButton" type="Button" parent="Canvas/TopMenuBox/Controller"]
+layout_mode = 0
+offset_left = 197.948
+offset_top = -25.5
+offset_right = 250.948
+offset_bottom = 26.5
+disabled = true
+icon = ExtResource("5_close")
+flat = true
+
+[node name="MaxButton" type="Button" parent="Canvas/TopMenuBox/Controller"]
+layout_mode = 0
+offset_left = 243.672
+offset_top = -24.3276
+offset_right = 296.672
+offset_bottom = 27.6724
+disabled = true
+icon = ExtResource("6_max")
+flat = true
+
+[node name="PanelContainer" type="PanelContainer" parent="Canvas"]
+layout_mode = 0
+offset_left = 15.0
+offset_top = 72.0
+offset_right = 505.0
+offset_bottom = 486.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxEmpty_panel")
+
+[node name="MarginContainer" type="MarginContainer" parent="Canvas/PanelContainer"]
+layout_mode = 2
+
+[node name="Layout" type="VBoxContainer" parent="Canvas/PanelContainer/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 9
+
+[node name="Header" type="HBoxContainer" parent="Canvas/PanelContainer/MarginContainer/Layout"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="StatusLabel" type="Label" parent="Canvas/PanelContainer/MarginContainer/Layout/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.574951, 0.665366, 0.953734, 1)
+theme_override_fonts/font = ExtResource("4_font")
+theme_override_font_sizes/font_size = 16
+text = "网络离线"
+vertical_alignment = 1
+
+[node name="VoiceButton" type="Button" parent="Canvas/PanelContainer/MarginContainer/Layout/Header"]
+custom_minimum_size = Vector2(112, 34)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.576471, 0.666667, 0.952941, 1)
+theme_override_fonts/font = ExtResource("4_font")
+text = "开启语音"
+flat = true
+
+[node name="TranscribeSection" type="VBoxContainer" parent="Canvas/PanelContainer/MarginContainer/Layout"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="TranscribeHeader" type="HBoxContainer" parent="Canvas/PanelContainer/MarginContainer/Layout/TranscribeSection"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TranscribeTitle" type="Label" parent="Canvas/PanelContainer/MarginContainer/Layout/TranscribeSection/TranscribeHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.574951, 0.665366, 0.953734, 1)
+theme_override_fonts/font = ExtResource("4_font")
+theme_override_font_sizes/font_size = 18
+text = "实时转写"
+
+[node name="TranscribeButton" type="Button" parent="Canvas/PanelContainer/MarginContainer/Layout/TranscribeSection/TranscribeHeader"]
+custom_minimum_size = Vector2(112, 34)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.576471, 0.666667, 0.952941, 1)
+theme_override_fonts/font = ExtResource("4_font")
+toggle_mode = true
+text = "开启转写"
+flat = true
+
+[node name="TranscriptBox" type="PanelContainer" parent="Canvas/PanelContainer/MarginContainer/Layout/TranscribeSection"]
+custom_minimum_size = Vector2(0, 220)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_transcript")
+
+[node name="TranscriptLabel" type="RichTextLabel" parent="Canvas/PanelContainer/MarginContainer/Layout/TranscribeSection/TranscriptBox"]
+layout_mode = 2
+theme_override_fonts/normal_font = ExtResource("4_font")
+theme_override_font_sizes/normal_font_size = 18
+theme_override_font_sizes/bold_font_size = 18
+bbcode_enabled = true
+text = "等待语音输入..."
+scroll_following = true
+
+[node name="ServerVoiceLevels" type="VBoxContainer" parent="Canvas/PanelContainer/MarginContainer/Layout"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="Title" type="Label" parent="Canvas/PanelContainer/MarginContainer/Layout/ServerVoiceLevels"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.574951, 0.665366, 0.953734, 1)
+theme_override_fonts/font = ExtResource("4_font")
+theme_override_font_sizes/font_size = 16
+text = "服务器语音音量"
+horizontal_alignment = 1
+
+[node name="TableHeader" type="HBoxContainer" parent="Canvas/PanelContainer/MarginContainer/Layout/ServerVoiceLevels"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="PeerLabel" type="Label" parent="Canvas/PanelContainer/MarginContainer/Layout/ServerVoiceLevels/TableHeader"]
+custom_minimum_size = Vector2(96, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.576471, 0.666667, 0.952941, 1)
+theme_override_fonts/font = ExtResource("4_font")
+text = "对象"
+
+[node name="MicLabel" type="Label" parent="Canvas/PanelContainer/MarginContainer/Layout/ServerVoiceLevels/TableHeader"]
+custom_minimum_size = Vector2(68, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.576471, 0.666667, 0.952941, 1)
+theme_override_fonts/font = ExtResource("4_font")
+text = "麦克风"
+horizontal_alignment = 1
+
+[node name="LevelLabel" type="Label" parent="Canvas/PanelContainer/MarginContainer/Layout/ServerVoiceLevels/TableHeader"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.576471, 0.666667, 0.952941, 1)
+theme_override_fonts/font = ExtResource("4_font")
+text = "音量"
+horizontal_alignment = 1
+
+[node name="DbLabel" type="Label" parent="Canvas/PanelContainer/MarginContainer/Layout/ServerVoiceLevels/TableHeader"]
+custom_minimum_size = Vector2(68, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.576471, 0.666667, 0.952941, 1)
+theme_override_fonts/font = ExtResource("4_font")
+text = "dB"
+horizontal_alignment = 2
+
+[node name="Rows" type="VBoxContainer" parent="Canvas/PanelContainer/MarginContainer/Layout/ServerVoiceLevels"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Runtime" type="Node" parent="."]

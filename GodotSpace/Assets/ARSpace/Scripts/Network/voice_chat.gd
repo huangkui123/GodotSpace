@@ -3,6 +3,8 @@ extends Node
 signal voice_enabled_changed(enabled: bool)
 signal remote_speaking_changed(peer_id: int, is_speaking: bool)
 signal voice_level_changed(peer_id: int, state: Dictionary)
+signal voice_transcript_received(data: Dictionary)
+signal transcription_enabled_changed(enabled: bool)
 
 const SERVER_PEER_ID := 1
 const SERVER_SOURCE_ID := 1
@@ -18,9 +20,32 @@ const SERVER_VOLUME_PANEL_UPDATE_INTERVAL := 0.1
 const VOICE_LEVEL_STALE_SECONDS := 1.5
 const VOICE_LEVEL_MIN_DB := -60.0
 const VOICE_LEVEL_MAX_DB := 0.0
+const TRANSCRIPTION_TARGET_SAMPLE_RATE := 16000
+const TRANSCRIPTION_BYTES_PER_SAMPLE := 2
+const TRANSCRIPTION_UPLOAD_CHUNK_MSEC := 200
 const VoiceCaptureScript := preload("res://Assets/ARSpace/Scripts/Network/voice_capture.gd")
 const VoiceTransportScript := preload("res://Assets/ARSpace/Scripts/Network/voice_transport_enet.gd")
 const VoicePlaybackScript := preload("res://Assets/ARSpace/Scripts/Network/voice_playback.gd")
+const TencentAsrTranscriberScript := preload("res://Assets/ARSpace/Scripts/Network/tencent_asr_transcriber.gd")
+const TENCENT_ASR_CONFIG_PROPERTIES := [
+	"app_id",
+	"secret_id",
+	"secret_key",
+	"use_environment_credentials",
+	"engine_model_type",
+	"hotword_list",
+	"need_vad",
+	"vad_silence_time",
+	"max_speak_time",
+	"filter_dirty",
+	"filter_modal",
+	"filter_punc",
+	"convert_num_mode",
+	"word_info",
+	"packet_duration_msec",
+	"max_buffered_audio_msec",
+	"debug_logs",
+]
 const VR_INPUT_DEVICE_HINTS := [
 	"PicoStreamingMicrophone",
 	"PicoStreaming",
@@ -58,6 +83,7 @@ var voice_endpoint_selected: bool = false
 var capture: Node
 var transport: Node
 var playback: Node
+var transcription_config: Node
 
 var _xr_toggle_was_pressed: bool = false
 var selected_input_device: String = "Default"
@@ -85,6 +111,13 @@ var _remote_playback_seconds: float = 0.0
 var _remote_playback_warning_key: String = ""
 var voice_level_states: Dictionary = {}
 var _voice_level_send_accum: float = 0.0
+var voice_transcript_history: Array = []
+var transcription_enabled: bool = true
+var _peer_transcribers: Dictionary = {}
+var _client_transcription_source_sample_rate: int = 48000
+var _client_transcription_resample_read_pos: float = 0.0
+var _client_transcription_mono_buffer := PackedFloat32Array()
+var _client_transcription_pcm_buffer := PackedByteArray()
 
 func _ready() -> void:
 	if _has_cmdline_arg(VOICE_DEBUG_ARG):
@@ -160,6 +193,11 @@ func set_voice_enabled(enabled: bool) -> void:
 			for peer_id in multiplayer.get_peers():
 				transport.send_server_speaking_state_to_peer(peer_id, voice_enabled)
 
+	if multiplayer.is_server():
+		_set_peer_transcription_active(_get_local_voice_peer_id(), voice_enabled)
+	else:
+		_reset_client_transcription_upload()
+
 	voice_enabled_changed.emit(voice_enabled)
 	_log("Voice %s" % ("enabled" if voice_enabled else "disabled"))
 	_update_debug_controls()
@@ -169,6 +207,27 @@ func start_voice_chat() -> void:
 
 func stop_voice_chat() -> void:
 	set_voice_enabled(false)
+
+func toggle_transcription() -> void:
+	set_transcription_enabled(not transcription_enabled)
+
+func set_transcription_enabled(enabled: bool) -> void:
+	if not multiplayer.is_server():
+		return
+	if transcription_enabled == enabled:
+		return
+
+	transcription_enabled = enabled
+	if not transcription_enabled:
+		_stop_all_transcription()
+		_reset_client_transcription_upload()
+	else:
+		for peer_id in _get_open_mic_peer_ids():
+			_set_peer_transcription_active(int(peer_id), true)
+
+	_broadcast_transcription_enabled()
+	transcription_enabled_changed.emit(transcription_enabled)
+	_log("Transcription %s" % ("enabled" if transcription_enabled else "disabled"))
 
 func remove_player(peer_id: int) -> void:
 	if playback != null:
@@ -291,6 +350,7 @@ func get_debug_state() -> Dictionary:
 		"selected_output_device": selected_output_device,
 		"packets_sent": packets_sent,
 		"packets_received": packets_received,
+		"transcription_enabled": transcription_enabled,
 		"voice_level_states": voice_level_states.duplicate(true),
 		"capture": capture.get_debug_state() if capture != null else {},
 		"transport": transport.get_debug_state() if transport != null else {},
@@ -339,6 +399,7 @@ func _setup_components() -> void:
 		add_child(capture)
 	capture.opus_packet_captured.connect(_on_local_opus_packet_captured)
 	capture.speaking_changed.connect(_on_local_speaking_changed)
+	capture.pcm_frames_captured.connect(_on_local_pcm_frames_captured)
 
 	transport = get_node_or_null("VoiceTransportENet")
 	if transport == null:
@@ -349,6 +410,9 @@ func _setup_components() -> void:
 	transport.downlink_voice_packet_received.connect(_on_downlink_voice_packet_received)
 	transport.speaking_state_received.connect(_on_remote_speaking_state_received)
 	transport.voice_level_received.connect(_on_voice_level_received)
+	transport.transcription_pcm_received.connect(_on_transcription_pcm_received)
+	transport.transcript_received.connect(_on_transport_transcript_received)
+	transport.transcription_enabled_received.connect(_on_transport_transcription_enabled_received)
 
 	playback = get_node_or_null("VoicePlayback")
 	if playback == null:
@@ -356,6 +420,8 @@ func _setup_components() -> void:
 		playback.name = "VoicePlayback"
 		add_child(playback)
 	voice_players = playback.players
+
+	transcription_config = get_node_or_null("TencentAsrConfig")
 
 func _connect_multiplayer_signals() -> void:
 	multiplayer.peer_connected.connect(_on_peer_connected)
@@ -393,21 +459,62 @@ func _on_downlink_voice_packet_received(packet: PackedByteArray) -> void:
 	packets_received += 1
 	playback.push_source_packet(SERVER_SOURCE_ID, packet)
 
+func _on_local_pcm_frames_captured(frames: PackedVector2Array) -> void:
+	if not voice_enabled or frames.is_empty():
+		return
+	if not voice_endpoint_selected or not multiplayer.has_multiplayer_peer():
+		return
+	if not transcription_enabled:
+		return
+
+	if multiplayer.is_server():
+		var peer_id := _get_local_voice_peer_id()
+		if _is_peer_mic_open(peer_id):
+			_feed_transcription_frames(peer_id, frames)
+	else:
+		_queue_client_transcription_pcm(frames)
+
 func _on_local_speaking_changed(is_speaking: bool) -> void:
 	var peer_id := _get_local_voice_peer_id()
 	if multiplayer.is_server():
 		_set_voice_level_mic_state(peer_id, is_speaking)
+		_set_peer_transcription_active(peer_id, is_speaking)
 	remote_speaking_changed.emit(peer_id, is_speaking)
 
 func _on_remote_speaking_state_received(peer_id: int, is_speaking: bool) -> void:
 	if multiplayer.is_server():
 		_set_voice_level_mic_state(peer_id, is_speaking)
+		_set_peer_transcription_active(peer_id, is_speaking)
 	remote_speaking_changed.emit(peer_id, is_speaking)
 
 func _on_voice_level_received(peer_id: int, peak: float, peak_db: float, mic_open: bool) -> void:
 	if not multiplayer.is_server():
 		return
 	_store_voice_level_state(peer_id, peak, peak_db, mic_open)
+	_set_peer_transcription_active(peer_id, mic_open)
+
+func _on_transcription_pcm_received(sender_peer_id: int, pcm: PackedByteArray) -> void:
+	if not multiplayer.is_server() or pcm.is_empty():
+		return
+	if not transcription_enabled:
+		return
+	if sender_peer_id <= 0 or sender_peer_id == _get_local_voice_peer_id():
+		return
+	if not _is_peer_mic_open(sender_peer_id):
+		return
+	_feed_transcription_pcm(sender_peer_id, pcm)
+
+func _on_transport_transcript_received(data: Dictionary) -> void:
+	_store_transcript_data(data)
+	voice_transcript_received.emit(data.duplicate(true))
+
+func _on_transport_transcription_enabled_received(enabled: bool) -> void:
+	if multiplayer.is_server():
+		return
+	transcription_enabled = enabled
+	if not transcription_enabled:
+		_reset_client_transcription_upload()
+	transcription_enabled_changed.emit(transcription_enabled)
 
 func _on_network_role_selected(is_server_role: bool, context: String = "") -> void:
 	_set_voice_endpoint_role(is_server_role)
@@ -420,12 +527,15 @@ func _on_network_ready() -> void:
 		_apply_audio_device_profile()
 	if multiplayer.is_server():
 		_set_voice_level_mic_state(SERVER_PEER_ID, voice_enabled)
+		_set_peer_transcription_active(SERVER_PEER_ID, voice_enabled)
+		_broadcast_transcription_enabled()
 	_log("VoiceChat network ready")
 
 func _on_peer_connected(peer_id: int) -> void:
 	_log("Voice peer connected: %d" % peer_id)
 	if multiplayer.is_server() and transport != null:
 		transport.send_server_speaking_state_to_peer(peer_id, voice_enabled)
+		transport.send_transcription_enabled_to_peer(peer_id, transcription_enabled)
 	if multiplayer.is_server():
 		_set_voice_level_mic_state(peer_id, false)
 
@@ -433,6 +543,7 @@ func _on_peer_disconnected(peer_id: int) -> void:
 	_log("Voice peer disconnected: %d" % peer_id)
 	remove_player(peer_id)
 	voice_level_states.erase(peer_id)
+	_stop_peer_transcription(peer_id)
 
 func _on_connected_to_server() -> void:
 	_log("VoiceChat connected to server")
@@ -446,12 +557,15 @@ func _on_connected_to_server() -> void:
 func _on_connection_failed() -> void:
 	_log("VoiceChat connection failed")
 	set_voice_enabled(false)
+	_stop_all_transcription()
 	if playback != null:
 		playback.clear()
 
 func _on_server_disconnected() -> void:
 	_log("VoiceChat server disconnected")
 	set_voice_enabled(false)
+	_stop_all_transcription()
+	_reset_client_transcription_upload()
 	if playback != null:
 		playback.clear()
 
@@ -502,6 +616,208 @@ func _set_voice_level_mic_state(peer_id: int, mic_open: bool) -> void:
 	state["state_updated_msec"] = now
 	voice_level_states[peer_id] = state
 	voice_level_changed.emit(peer_id, state.duplicate(true))
+
+func get_transcript_history() -> Array:
+	return voice_transcript_history.duplicate(true)
+
+func _set_peer_transcription_active(peer_id: int, active: bool) -> void:
+	if not multiplayer.is_server() or peer_id <= 0:
+		return
+	if not transcription_enabled:
+		active = false
+
+	if active:
+		var transcriber := _get_peer_transcriber(peer_id)
+		if transcriber != null and transcriber.has_method("set_input_active"):
+			transcriber.set_input_active(true)
+	else:
+		_stop_peer_transcription(peer_id)
+
+func _get_peer_transcriber(peer_id: int) -> Node:
+	if _peer_transcribers.has(peer_id):
+		var existing := _peer_transcribers[peer_id] as Node
+		if existing != null and is_instance_valid(existing):
+			return existing
+		_peer_transcribers.erase(peer_id)
+
+	var transcriber := TencentAsrTranscriberScript.new()
+	transcriber.name = "TencentAsrPeer_%d" % peer_id
+	_configure_peer_transcriber(transcriber)
+	add_child(transcriber)
+	transcriber.transcribed_msg.connect(Callable(self, "_on_peer_transcribed_msg").bind(peer_id))
+	transcriber.connection_state_changed.connect(Callable(self, "_on_peer_transcription_state_changed").bind(peer_id))
+	transcriber.error_occurred.connect(Callable(self, "_on_peer_transcription_error").bind(peer_id))
+	_peer_transcribers[peer_id] = transcriber
+	return transcriber
+
+func _configure_peer_transcriber(transcriber: Node) -> void:
+	if transcription_config == null:
+		transcription_config = get_node_or_null("TencentAsrConfig")
+	if transcription_config == null:
+		return
+
+	for property_name in TENCENT_ASR_CONFIG_PROPERTIES:
+		transcriber.set(property_name, transcription_config.get(property_name))
+
+func _stop_peer_transcription(peer_id: int) -> void:
+	if not _peer_transcribers.has(peer_id):
+		return
+
+	var transcriber := _peer_transcribers[peer_id] as Node
+	_peer_transcribers.erase(peer_id)
+	if transcriber == null or not is_instance_valid(transcriber):
+		return
+	if transcriber.has_method("stop_transcription"):
+		transcriber.stop_transcription()
+	transcriber.queue_free()
+
+func _stop_all_transcription() -> void:
+	for peer_id in _peer_transcribers.keys().duplicate():
+		_stop_peer_transcription(int(peer_id))
+
+func _feed_transcription_frames(peer_id: int, frames: PackedVector2Array) -> void:
+	var transcriber := _get_peer_transcriber(peer_id)
+	if transcriber == null or not transcriber.has_method("push_audio_frames"):
+		return
+	if transcriber.has_method("set_input_active"):
+		transcriber.set_input_active(true)
+	transcriber.push_audio_frames(frames)
+
+func _feed_transcription_pcm(peer_id: int, pcm: PackedByteArray) -> void:
+	var transcriber := _get_peer_transcriber(peer_id)
+	if transcriber == null or not transcriber.has_method("push_pcm16_audio"):
+		return
+	if transcriber.has_method("set_input_active"):
+		transcriber.set_input_active(true)
+	transcriber.push_pcm16_audio(pcm)
+
+func _on_peer_transcribed_msg(is_final: bool, new_text: String, peer_id: int) -> void:
+	var text := new_text.strip_edges()
+	if text.is_empty() or not multiplayer.is_server():
+		return
+
+	var data := {
+		"speaker_peer_id": peer_id,
+		"speaker_name": _get_transcript_speaker_name(peer_id),
+		"text": text,
+		"is_final": is_final,
+		"timestamp_msec": Time.get_ticks_msec(),
+	}
+	_broadcast_transcript(data)
+
+func _on_peer_transcription_state_changed(state: String, detail: String, peer_id: int) -> void:
+	if state == "error" or state == "closed":
+		_log("Tencent ASR peer=%d state=%s detail=%s" % [peer_id, state, detail])
+	if state == "error" and not detail.strip_edges().is_empty():
+		_broadcast_transcription_system_message("%s转写错误：%s" % [_get_transcript_speaker_name(peer_id), detail])
+
+func _on_peer_transcription_error(code: int, message: String, peer_id: int) -> void:
+	_log("Tencent ASR peer=%d error=%d message=%s" % [peer_id, code, message])
+	if message.strip_edges() != "":
+		_broadcast_transcription_system_message("%s转写错误：%s" % [_get_transcript_speaker_name(peer_id), message])
+
+func _broadcast_transcript(data: Dictionary) -> void:
+	if not multiplayer.is_server():
+		return
+	if transport != null and transport.has_method("broadcast_transcript"):
+		transport.broadcast_transcript(data)
+	else:
+		_on_transport_transcript_received(data)
+
+func _broadcast_transcription_system_message(message: String) -> void:
+	var text := message.strip_edges()
+	if text.is_empty() or not multiplayer.is_server():
+		return
+	_broadcast_transcript({
+		"speaker_peer_id": 0,
+		"speaker_name": "系统",
+		"text": text,
+		"is_final": true,
+		"timestamp_msec": Time.get_ticks_msec(),
+	})
+
+func _broadcast_transcription_enabled() -> void:
+	if not multiplayer.is_server():
+		return
+	if transport != null and transport.has_method("broadcast_transcription_enabled"):
+		transport.broadcast_transcription_enabled(transcription_enabled)
+
+func _store_transcript_data(data: Dictionary) -> void:
+	if bool(data.get("is_final", false)):
+		voice_transcript_history.append(data.duplicate(true))
+		while voice_transcript_history.size() > 80:
+			voice_transcript_history.pop_front()
+
+func _get_transcript_speaker_name(peer_id: int) -> String:
+	return "服务端" if peer_id == SERVER_PEER_ID else "客户端%d" % peer_id
+
+func _is_peer_mic_open(peer_id: int) -> bool:
+	if peer_id == _get_local_voice_peer_id():
+		return voice_enabled
+	var state: Dictionary = voice_level_states.get(peer_id, {})
+	return bool(state.get("mic_open", false))
+
+func _get_open_mic_peer_ids() -> Array:
+	var ids: Array = []
+	var local_peer_id := _get_local_voice_peer_id()
+	if local_peer_id > 0 and voice_enabled:
+		ids.append(local_peer_id)
+	for peer_id in voice_level_states.keys():
+		var id := int(peer_id)
+		var state: Dictionary = voice_level_states.get(peer_id, voice_level_states.get(id, {}))
+		if id > 0 and not ids.has(id) and bool(state.get("mic_open", false)):
+			ids.append(id)
+	return ids
+
+func _queue_client_transcription_pcm(frames: PackedVector2Array) -> void:
+	if transport == null or not transport.has_method("send_transcription_pcm"):
+		return
+
+	_append_client_resampled_pcm(frames)
+	var chunk_bytes := _get_client_transcription_upload_bytes()
+	while _client_transcription_pcm_buffer.size() >= chunk_bytes:
+		var packet := _client_transcription_pcm_buffer.slice(0, chunk_bytes)
+		_client_transcription_pcm_buffer = _client_transcription_pcm_buffer.slice(chunk_bytes)
+		transport.send_transcription_pcm(packet)
+
+func _append_client_resampled_pcm(frames: PackedVector2Array) -> void:
+	if _client_transcription_source_sample_rate <= 0:
+		_client_transcription_source_sample_rate = max(1, int(AudioServer.get_mix_rate()))
+
+	for frame in frames:
+		_client_transcription_mono_buffer.append((frame.x + frame.y) * 0.5)
+
+	var ratio := float(_client_transcription_source_sample_rate) / float(TRANSCRIPTION_TARGET_SAMPLE_RATE)
+	while _client_transcription_resample_read_pos + 1.0 < float(_client_transcription_mono_buffer.size()):
+		var index := int(_client_transcription_resample_read_pos)
+		var fraction := _client_transcription_resample_read_pos - float(index)
+		var sample := lerpf(_client_transcription_mono_buffer[index], _client_transcription_mono_buffer[index + 1], fraction)
+		_append_client_pcm16_sample(sample)
+		_client_transcription_resample_read_pos += ratio
+
+	var consumed := int(_client_transcription_resample_read_pos)
+	if consumed > 0:
+		_client_transcription_mono_buffer = _client_transcription_mono_buffer.slice(consumed)
+		_client_transcription_resample_read_pos -= float(consumed)
+
+func _append_client_pcm16_sample(sample: float) -> void:
+	var clamped := clampf(sample, -1.0, 1.0)
+	var pcm := int(round(clamped * 32767.0))
+	if clamped <= -1.0:
+		pcm = -32768
+	if pcm < 0:
+		pcm += 65536
+	_client_transcription_pcm_buffer.append(pcm & 0xff)
+	_client_transcription_pcm_buffer.append((pcm >> 8) & 0xff)
+
+func _get_client_transcription_upload_bytes() -> int:
+	return int(float(TRANSCRIPTION_TARGET_SAMPLE_RATE * TRANSCRIPTION_BYTES_PER_SAMPLE * TRANSCRIPTION_UPLOAD_CHUNK_MSEC) / 1000.0)
+
+func _reset_client_transcription_upload() -> void:
+	_client_transcription_source_sample_rate = max(1, int(AudioServer.get_mix_rate()))
+	_client_transcription_resample_read_pos = 0.0
+	_client_transcription_mono_buffer.clear()
+	_client_transcription_pcm_buffer.clear()
 
 func _get_local_voice_peer_id() -> int:
 	if multiplayer.has_multiplayer_peer():

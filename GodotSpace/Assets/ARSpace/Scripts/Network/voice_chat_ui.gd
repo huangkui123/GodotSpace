@@ -7,97 +7,84 @@ const VOICE_LEVEL_MAX_DB := 0.0
 const GROUND_COLOR := "#65D8FF"
 const ASTRONAUT_COLOR := "#FFD166"
 const PARTIAL_CURSOR_COLOR := "#D7DEE8"
-const DEMO_TRANSCRIPT_LINES := [
-	{
-		"speaker": "server",
-		"final": "神舟飞船，这里是北京航天飞行控制中心，听到请回答",
-		"partials": [
-			"神舟飞船，这里是北京航天飞控中心",
-			"神舟飞船，这里是北京航天飞行控制中心，听到请回",
-			"神舟飞船，这里是北京航天飞行控制中心，听到请回答",
-		],
-	},
-	{
-		"speaker": "client",
-		"final": "北京，神舟飞船收到，声音清晰，状态良好",
-		"partials": [
-			"北京，神舟飞船收到",
-			"北京，神舟飞船收到，声音清西，状态良",
-			"北京，神舟飞船收到，声音清晰，状态良好",
-		],
-	},
-	{
-		"speaker": "server",
-		"final": "收到，当前飞船各系统工作正常，轨道参数符合预期",
-		"partials": [
-			"收到，当前飞船各系统工作正常",
-			"收到，当前飞船各系统工作正常，轨道参数复合预期",
-			"收到，当前飞船各系统工作正常，轨道参数符合预期",
-		],
-	},
-	{
-		"speaker": "client",
-		"final": "明白，我们正在按计划进行在轨检查，舱内环境舒适",
-		"partials": [
-			"明白，我们正在按计划进行在轨检",
-			"明白，我们正在按计划进行在轨检查，舱内环境舒",
-			"明白，我们正在按计划进行在轨检查，舱内环境舒适",
-		],
-	},
-]
 
-@export var demo_transcript_enabled := true
-@export var demo_transcript_start_delay := 4.0
+@export var is_3d_panel: bool = false
 
-@onready var voice_button: Button = $PanelContainer/MarginContainer/Layout/Header/VoiceButton
-@onready var status_label: Label = $PanelContainer/MarginContainer/Layout/Header/StatusLabel
-@onready var transcribe_button: Button = $PanelContainer/MarginContainer/Layout/TranscribeSection/TranscribeHeader/TranscribeButton
-@onready var transcript_label: RichTextLabel = $PanelContainer/MarginContainer/Layout/TranscribeSection/TranscriptBox/TranscriptLabel
-@onready var server_voice_levels: VBoxContainer = $PanelContainer/MarginContainer/Layout/ServerVoiceLevels
-@onready var rows_container: VBoxContainer = $PanelContainer/MarginContainer/Layout/ServerVoiceLevels/Rows
-@onready var mic_player: AudioStreamPlayer = $Runtime/MicPlayer
-@onready var speech_to_text: Node = $Runtime/CaptureStreamToText
+@onready var voice_button: Button = _get_voice_ui_node("Header/VoiceButton") as Button
+@onready var status_label: Label = _get_voice_ui_node("Header/StatusLabel") as Label
+@onready var transcribe_button: Button = _get_voice_ui_node("TranscribeSection/TranscribeHeader/TranscribeButton") as Button
+@onready var transcript_label: RichTextLabel = _get_voice_ui_node("TranscribeSection/TranscriptBox/TranscriptLabel") as RichTextLabel
+@onready var server_voice_levels: VBoxContainer = _get_voice_ui_node("ServerVoiceLevels") as VBoxContainer
+@onready var rows_container: VBoxContainer = _get_voice_ui_node("ServerVoiceLevels/Rows") as VBoxContainer
 
+var voice_chat: Node
+var network_handler: Node
 var volume_rows: Dictionary = {}
 var completed_transcript := ""
-var partial_transcript := ""
-var partial_speaker := ""
-var _demo_run_id := 0
-var _demo_transcript_active := false
+var partial_transcripts: Dictionary = {}
 
 
 func _ready() -> void:
+	voice_chat = get_node_or_null("/root/VoiceChat")
+	network_handler = get_node_or_null("/root/NetworkHandler")
+
 	voice_button.pressed.connect(_on_voice_button_pressed)
-	transcribe_button.toggled.connect(_on_transcribe_toggled)
-	mic_player.bus = "Mic"
-	_set_transcription_enabled(false)
-	_configure_transcription_audio_source()
+	transcribe_button.toggled.connect(_on_transcribe_button_toggled)
+	transcribe_button.toggle_mode = true
 
-	if speech_to_text.has_signal("transcribed_msg"):
-		speech_to_text.transcribed_msg.connect(_on_transcribed_msg)
-
-	if VoiceChat.has_signal("voice_enabled_changed"):
-		VoiceChat.voice_enabled_changed.connect(_on_voice_enabled_changed)
-	if VoiceChat.has_signal("voice_level_changed"):
-		VoiceChat.voice_level_changed.connect(_on_voice_level_changed)
-	if NetworkHandler.has_signal("network_ready"):
-		NetworkHandler.network_ready.connect(_on_network_changed)
-	if NetworkHandler.has_signal("network_role_selected"):
-		NetworkHandler.network_role_selected.connect(_on_network_role_selected)
+	if voice_chat != null and voice_chat.has_signal("voice_enabled_changed"):
+		voice_chat.connect("voice_enabled_changed", _on_voice_enabled_changed)
+	if voice_chat != null and voice_chat.has_signal("voice_level_changed"):
+		voice_chat.connect("voice_level_changed", _on_voice_level_changed)
+	if voice_chat != null and voice_chat.has_signal("voice_transcript_received"):
+		voice_chat.connect("voice_transcript_received", _on_voice_transcript_received)
+	if voice_chat != null and voice_chat.has_signal("transcription_enabled_changed"):
+		voice_chat.connect("transcription_enabled_changed", _on_transcription_enabled_changed)
+	if network_handler != null and network_handler.has_signal("network_ready"):
+		network_handler.connect("network_ready", _on_network_changed)
+	if network_handler != null and network_handler.has_signal("network_role_selected"):
+		network_handler.connect("network_role_selected", _on_network_role_selected)
 
 	multiplayer.peer_connected.connect(_on_peer_changed)
 	multiplayer.peer_disconnected.connect(_on_peer_changed)
+	_load_transcript_history()
 	_update_ui()
 
 
+func _get_voice_ui_node(relative_path: String) -> Node:
+	var paths := [
+		"Canvas/PanelContainer/MarginContainer/Layout/%s" % relative_path,
+		"PanelContainer/MarginContainer/Layout/%s" % relative_path,
+	]
+	for path in paths:
+		var node := get_node_or_null(path)
+		if node != null:
+			return node
+	push_error("VoiceChatUI missing node: %s" % relative_path)
+	return null
+
+
 func _process(_delta: float) -> void:
+	if not visible:
+		return
 	_update_status()
 	_update_server_volume_panel()
 	_update_transcript_text()
 
 
 func _on_voice_button_pressed() -> void:
-	VoiceChat.toggle_voice()
+	if is_3d_panel and multiplayer.is_server():
+		return
+	if voice_chat != null and voice_chat.has_method("toggle_voice"):
+		voice_chat.call("toggle_voice")
+
+
+func _on_transcribe_button_toggled(enabled: bool) -> void:
+	if not _can_control_transcription():
+		transcribe_button.set_pressed_no_signal(_get_voice_bool("transcription_enabled"))
+		return
+	if voice_chat != null and voice_chat.has_method("set_transcription_enabled"):
+		voice_chat.call("set_transcription_enabled", enabled)
 
 
 func _on_voice_enabled_changed(_enabled: bool) -> void:
@@ -105,7 +92,13 @@ func _on_voice_enabled_changed(_enabled: bool) -> void:
 
 
 func _on_voice_level_changed(_peer_id: int, _state: Dictionary) -> void:
+	if is_3d_panel:
+		_update_ui()
 	_update_server_volume_panel()
+
+
+func _on_transcription_enabled_changed(_enabled: bool) -> void:
+	_update_ui()
 
 
 func _on_network_changed() -> void:
@@ -113,7 +106,6 @@ func _on_network_changed() -> void:
 
 
 func _on_network_role_selected(_is_server: bool, _context: String = "") -> void:
-	_configure_transcription_audio_source()
 	_update_ui()
 
 
@@ -121,140 +113,57 @@ func _on_peer_changed(_peer_id: int) -> void:
 	_update_ui()
 
 
-func _on_transcribe_toggled(enabled: bool) -> void:
-	_set_transcription_enabled(enabled)
-
-
-func _on_transcribed_msg(is_partial: Variant, new_text: Variant) -> void:
-	if demo_transcript_enabled:
+func _on_voice_transcript_received(data: Dictionary) -> void:
+	var peer_id := int(data.get("speaker_peer_id", 0))
+	var speaker := str(data.get("speaker_name", _get_voice_panel_peer_label(peer_id)))
+	var text := str(data.get("text", "")).strip_edges()
+	if text.is_empty():
 		return
 
-	var text := str(new_text).strip_edges()
-	if text == "":
-		return
-
-	if bool(is_partial):
-		completed_transcript += text
-		partial_transcript = ""
+	if bool(data.get("is_final", false)):
+		if completed_transcript != "":
+			completed_transcript += "\n"
+		completed_transcript += _format_transcript_line(speaker, text, false)
+		partial_transcripts.erase(peer_id)
 	else:
-		partial_transcript = text
+		partial_transcripts[peer_id] = {
+			"speaker": speaker,
+			"text": text,
+		}
 	_update_transcript_text()
 
 
-func _set_transcription_enabled(enabled: bool) -> void:
-	_configure_transcription_audio_source()
-	transcribe_button.button_pressed = enabled
-	transcribe_button.text = "转写开启" if enabled else "转写关闭"
-	transcribe_button.modulate = Color(0.3, 1.0, 0.45) if enabled else Color(1.0, 0.35, 0.35)
-	var real_transcription_enabled := enabled and not demo_transcript_enabled
-	speech_to_text.set("use_external_audio_frames", true)
-	speech_to_text.set("input_active", real_transcription_enabled)
-	speech_to_text.set("recording", real_transcription_enabled)
-	if speech_to_text.has_method("set_input_active"):
-		speech_to_text.set_input_active(real_transcription_enabled)
-	if mic_player.playing:
-		mic_player.stop()
-	if demo_transcript_enabled:
-		if enabled:
-			_start_demo_transcript()
-		else:
-			_stop_demo_transcript()
-	if not enabled:
-		partial_transcript = ""
-		partial_speaker = ""
-	_update_transcript_text()
-
-
-func _configure_transcription_audio_source() -> void:
-	if speech_to_text != null:
-		speech_to_text.set("use_external_audio_frames", true)
-
-	if VoiceChat.capture == null:
-		return
-	if not VoiceChat.capture.has_signal("pcm_frames_captured"):
+func _load_transcript_history() -> void:
+	completed_transcript = ""
+	partial_transcripts.clear()
+	if voice_chat == null or not voice_chat.has_method("get_transcript_history"):
 		return
 
-	var callback := Callable(self, "_on_voice_pcm_frames_captured")
-	if VoiceChat.capture.pcm_frames_captured.is_connected(callback):
-		return
-
-	VoiceChat.capture.pcm_frames_captured.connect(callback)
-
-
-func _on_voice_pcm_frames_captured(frames: PackedVector2Array) -> void:
-	if not transcribe_button.button_pressed:
-		return
-	if demo_transcript_enabled:
-		return
-	if speech_to_text == null or not speech_to_text.has_method("push_audio_frames"):
-		return
-	speech_to_text.push_audio_frames(frames)
+	for item in voice_chat.call("get_transcript_history"):
+		if typeof(item) != TYPE_DICTIONARY:
+			continue
+		var data: Dictionary = item
+		var speaker := str(data.get("speaker_name", _get_voice_panel_peer_label(int(data.get("speaker_peer_id", 0)))))
+		var text := str(data.get("text", "")).strip_edges()
+		if text.is_empty():
+			continue
+		if completed_transcript != "":
+			completed_transcript += "\n"
+		completed_transcript += _format_transcript_line(speaker, text, false)
 
 
 func _update_transcript_text() -> void:
 	var body := completed_transcript
-	if partial_transcript != "":
+	var partial_peer_ids := partial_transcripts.keys()
+	partial_peer_ids.sort()
+	for peer_id in partial_peer_ids:
+		var state: Dictionary = partial_transcripts[peer_id]
 		if body != "":
 			body += "\n"
-		body += _format_transcript_line(partial_speaker, partial_transcript, true)
+		body += _format_transcript_line(str(state.get("speaker", "")), str(state.get("text", "")), true)
 	if body == "":
-		body = "等待语音输入..."
+		body = "等待开麦语音..."
 	transcript_label.text = body
-
-
-func _start_demo_transcript() -> void:
-	_demo_run_id += 1
-	_demo_transcript_active = true
-	completed_transcript = ""
-	partial_transcript = ""
-	partial_speaker = ""
-	_update_transcript_text()
-	_run_demo_transcript(_demo_run_id)
-
-
-func _stop_demo_transcript() -> void:
-	_demo_run_id += 1
-	_demo_transcript_active = false
-	partial_transcript = ""
-	partial_speaker = ""
-
-
-func _run_demo_transcript(run_id: int) -> void:
-	await get_tree().create_timer(demo_transcript_start_delay).timeout
-	if not _is_demo_run_current(run_id):
-		return
-
-	for line in DEMO_TRANSCRIPT_LINES:
-		var speaker := _get_demo_speaker_label(str(line.get("speaker", "server")))
-		var final_text := str(line.get("final", ""))
-		var partials: Array = line.get("partials", [])
-		for partial in partials:
-			if not _is_demo_run_current(run_id):
-				return
-			partial_speaker = speaker
-			partial_transcript = str(partial)
-			_update_transcript_text()
-			await get_tree().create_timer(_get_demo_partial_delay(str(partial))).timeout
-
-		if not _is_demo_run_current(run_id):
-			return
-		partial_transcript = ""
-		partial_speaker = ""
-		if completed_transcript != "":
-			completed_transcript += "\n"
-		completed_transcript += _format_transcript_line(speaker, final_text, false)
-		_update_transcript_text()
-		await get_tree().create_timer(1.7).timeout
-
-	_demo_transcript_active = false
-
-
-func _is_demo_run_current(run_id: int) -> bool:
-	return _demo_transcript_active and run_id == _demo_run_id and transcribe_button.button_pressed
-
-
-func _get_demo_partial_delay(text: String) -> float:
-	return clampf(1.2 + float(text.length()) * 0.045, 1.7, 3.2)
 
 
 func _format_transcript_line(speaker: String, message: String, is_partial: bool) -> String:
@@ -268,46 +177,55 @@ func _get_transcript_speaker_color(speaker: String) -> String:
 	return GROUND_COLOR
 
 
-func _get_demo_speaker_label(speaker_key: String) -> String:
-	if speaker_key == "client":
-		return _get_voice_panel_peer_label(_get_demo_client_peer_id())
-	return _get_voice_panel_peer_label(SERVER_PEER_ID)
-
-
-func _get_demo_client_peer_id() -> int:
-	var ids := []
-	if multiplayer.has_multiplayer_peer():
-		for peer_id in multiplayer.get_peers():
-			var id := int(peer_id)
-			if id != SERVER_PEER_ID:
-				ids.append(id)
-		if not multiplayer.is_server():
-			var local_id := multiplayer.get_unique_id()
-			if local_id != SERVER_PEER_ID and not ids.has(local_id):
-				ids.append(local_id)
-
-	for peer_id in VoiceChat.voice_level_states.keys():
-		var id := int(peer_id)
-		if id != SERVER_PEER_ID and not ids.has(id):
-			ids.append(id)
-
-	ids.sort()
-	return int(ids[0]) if not ids.is_empty() else 2
-
-
 func _update_ui() -> void:
-	if VoiceChat.voice_enabled:
-		voice_button.text = "语音开启"
+	_update_panel_visibility()
+	if not visible:
+		return
+
+	if _get_displayed_voice_enabled():
+		voice_button.text = "关闭语音"
 		voice_button.modulate = Color(0.3, 1.0, 0.45)
 	else:
-		voice_button.text = "语音关闭"
+		voice_button.text = "开启语音"
 		voice_button.modulate = Color(1.0, 0.35, 0.35)
 
+	_update_transcription_control()
 	_update_status()
 	_update_server_volume_panel()
 
 
+func _update_panel_visibility() -> void:
+	visible = is_3d_panel or multiplayer.is_server()
+
+
+func _update_transcription_control() -> void:
+	var enabled := _get_voice_bool("transcription_enabled")
+	transcribe_button.set_pressed_no_signal(enabled)
+	transcribe_button.disabled = not _can_control_transcription()
+	if enabled:
+		transcribe_button.text = "关闭转写" if _can_control_transcription() else "转写已开启"
+		transcribe_button.modulate = Color(0.3, 1.0, 0.45)
+	else:
+		transcribe_button.text = "开启转写" if _can_control_transcription() else "转写已关闭"
+		transcribe_button.modulate = Color(1.0, 0.35, 0.35)
+
+
+func _can_control_transcription() -> bool:
+	return not is_3d_panel and multiplayer.is_server()
+
+
 func _update_status() -> void:
+	if is_3d_panel and multiplayer.is_server():
+		var client_peer_id := _get_first_client_peer_id()
+		if client_peer_id > 0:
+			status_label.text = "%s：%s" % [
+				_get_voice_panel_peer_label(client_peer_id),
+				"语音开启" if _get_displayed_voice_enabled() else "语音关闭",
+			]
+		else:
+			status_label.text = "等待客户端"
+		return
+
 	var peer_count := multiplayer.get_peers().size() if multiplayer.has_multiplayer_peer() else 0
 	var role := "服务端" if multiplayer.is_server() else "客户端"
 	if peer_count > 0:
@@ -333,10 +251,10 @@ func _update_server_volume_panel() -> void:
 
 
 func _should_show_server_volume_panel() -> bool:
-	return VoiceChat.voice_endpoint_selected \
-		and not VoiceChat.is_vr_mode \
-		and multiplayer.has_multiplayer_peer() \
-		and multiplayer.is_server()
+	return _get_voice_bool("voice_endpoint_selected") \
+			and not _get_voice_bool("is_vr_mode") \
+			and multiplayer.has_multiplayer_peer() \
+			and multiplayer.is_server()
 
 
 func _get_server_volume_peer_ids() -> Array:
@@ -346,7 +264,7 @@ func _get_server_volume_peer_ids() -> Array:
 			if not ids.has(peer_id):
 				ids.append(peer_id)
 
-	for peer_id in VoiceChat.voice_level_states.keys():
+	for peer_id in _get_voice_level_states().keys():
 		var id := int(peer_id)
 		if id == SERVER_PEER_ID or (multiplayer.has_multiplayer_peer() and multiplayer.get_peers().has(id)):
 			if not ids.has(id):
@@ -432,7 +350,7 @@ func _update_volume_row(peer_id: int, now_msec: int) -> void:
 	var mic_label := row_state.get("mic") as Label
 	var meter := row_state.get("meter") as ProgressBar
 	var db_label := row_state.get("db") as Label
-	var state: Dictionary = VoiceChat.voice_level_states.get(peer_id, {})
+	var state: Dictionary = _get_voice_level_states().get(peer_id, {})
 	var has_state := not state.is_empty()
 	var has_level := bool(state.get("has_level", false))
 	var level_updated_msec := int(state.get("level_updated_msec", 0))
@@ -458,10 +376,48 @@ func _update_volume_row(peer_id: int, now_msec: int) -> void:
 
 
 func _get_voice_panel_peer_label(peer_id: int) -> String:
-	return "服务端" if peer_id == SERVER_PEER_ID else "客户端 %d" % peer_id
+	return "服务端" if peer_id == SERVER_PEER_ID else "客户端%d" % peer_id
+
+
+func _get_displayed_voice_enabled() -> bool:
+	if is_3d_panel and multiplayer.is_server():
+		var client_peer_id := _get_first_client_peer_id()
+		if client_peer_id <= 0:
+			return false
+		var state: Dictionary = _get_voice_level_states().get(client_peer_id, {})
+		return bool(state.get("mic_open", false))
+	return _get_voice_bool("voice_enabled")
+
+
+func _get_first_client_peer_id() -> int:
+	var ids: Array = []
+	if multiplayer.has_multiplayer_peer():
+		for peer_id in multiplayer.get_peers():
+			var id := int(peer_id)
+			if id != SERVER_PEER_ID:
+				ids.append(id)
+	for peer_id in _get_voice_level_states().keys():
+		var id := int(peer_id)
+		if id != SERVER_PEER_ID and not ids.has(id):
+			ids.append(id)
+	ids.sort()
+	return int(ids[0]) if not ids.is_empty() else 0
 
 
 func _voice_db_to_meter_value(peak_db: float) -> float:
 	if peak_db <= VOICE_LEVEL_MIN_DB:
 		return 0.0
 	return clampf((peak_db - VOICE_LEVEL_MIN_DB) / (VOICE_LEVEL_MAX_DB - VOICE_LEVEL_MIN_DB), 0.0, 1.0)
+
+
+func _get_voice_level_states() -> Dictionary:
+	if voice_chat == null:
+		return {}
+	var states = voice_chat.get("voice_level_states")
+	return states if typeof(states) == TYPE_DICTIONARY else {}
+
+
+func _get_voice_bool(property_name: String) -> bool:
+	if voice_chat == null:
+		return false
+	return bool(voice_chat.get(property_name))

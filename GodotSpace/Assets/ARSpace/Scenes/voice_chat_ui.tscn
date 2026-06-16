@@ -1,15 +1,11 @@
-[gd_scene load_steps=7 format=3 uid="uid://bv8x3yq7hfn1k"]
+[gd_scene load_steps=4 format=3 uid="uid://bv8x3yq7hfn1k"]
 
 [ext_resource type="Script" uid="uid://bbh8uiiah3wtw" path="res://Assets/ARSpace/Scripts/Network/voice_chat_ui.gd" id="1"]
-[ext_resource type="WhisperResource" uid="uid://yhwtdgf3v6xd" path="res://addons/godot_whisper/models/ggml-base.bin" id="2_model"]
-[ext_resource type="Script" uid="uid://c5plctmo0htue" path="res://addons/godot_whisper/capture_stream_to_text.gd" id="3_capture"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_qivdp"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_qivdp"]
 font_size = 20
-
-[sub_resource type="AudioStreamMicrophone" id="AudioStreamMicrophone_voice_ui"]
 
 [node name="VoiceChatUI" type="Control"]
 layout_mode = 3
@@ -134,15 +130,3 @@ layout_mode = 2
 theme_override_constants/separation = 4
 
 [node name="Runtime" type="Node" parent="."]
-
-[node name="MicPlayer" type="AudioStreamPlayer" parent="Runtime"]
-stream = SubResource("AudioStreamMicrophone_voice_ui")
-
-[node name="AudioPlayer" type="AudioStreamPlayer" parent="Runtime"]
-
-[node name="CaptureStreamToText" type="SpeechToText" parent="Runtime"]
-language = 2
-language_model = ExtResource("2_model")
-script = ExtResource("3_capture")
-initial_prompt = "以下是普通话句子。"
-maximum_sentence_time = 10

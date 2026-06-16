@@ -1,0 +1,10 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" uid="uid://clujaf3u776a3" path="res://addons/godot-xr-tools/objects/viewport_2d_in_3d.tscn" id="1_viewport"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Scenes/voice_call_window_ui.tscn" id="2_voice_ui"]
+
+[node name="VoiceCallWindow3D" instance=ExtResource("1_viewport")]
+screen_size = Vector2(571, 504)
+scene = ExtResource("2_voice_ui")
+viewport_size = Vector2(571, 504)
+allow_window_drag = true

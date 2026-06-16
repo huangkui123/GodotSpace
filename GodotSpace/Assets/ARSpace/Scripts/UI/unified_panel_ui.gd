@@ -79,6 +79,10 @@ func _toggle_content() -> void:
 
 func _refresh_visibility() -> void:
 	var server_panels_available := _server_panels_available()
+	visible = server_panels_available
+	if not visible:
+		return
+
 	model_button.visible = server_panels_available
 	calibration_button.visible = server_panels_available
 

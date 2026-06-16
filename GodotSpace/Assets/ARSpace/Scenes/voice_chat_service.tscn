@@ -1,9 +1,10 @@
-[gd_scene load_steps=5 format=3 uid="uid://dxka2hy60cjmt"]
+[gd_scene load_steps=6 format=3 uid="uid://dxka2hy60cjmt"]
 
 [ext_resource type="Script" uid="uid://cakyk17hhuwt0" path="res://Assets/ARSpace/Scripts/Network/voice_chat.gd" id="1_voice_chat"]
 [ext_resource type="Script" uid="uid://cgv72uyf5ogfq" path="res://Assets/ARSpace/Scripts/Network/voice_capture.gd" id="2_capture"]
 [ext_resource type="Script" uid="uid://dlil6a6h2e2qc" path="res://Assets/ARSpace/Scripts/Network/voice_transport_enet.gd" id="3_transport"]
 [ext_resource type="Script" uid="uid://bcjv8dj53lplh" path="res://Assets/ARSpace/Scripts/Network/voice_playback.gd" id="4_playback"]
+[ext_resource type="Script" uid="uid://sthhuu2sr18o" path="res://Assets/ARSpace/Scripts/Network/tencent_asr_transcriber.gd" id="5_tencent_asr"]
 
 [node name="VoiceChat" type="Node"]
 script = ExtResource("1_voice_chat")
@@ -16,3 +17,10 @@ script = ExtResource("3_transport")
 
 [node name="VoicePlayback" type="Node" parent="."]
 script = ExtResource("4_playback")
+
+[node name="TencentAsrConfig" type="Node" parent="."]
+script = ExtResource("5_tencent_asr")
+app_id = "1253369275"
+secret_id = "AKIDOxKivviGYkiS5bv0qlV2LPEpCK1UihT0"
+secret_key = "e8c5LODpDMGSZVDj14tZ1MUPBmFg7Ulr"
+engine_model_type = "16k_zh"
