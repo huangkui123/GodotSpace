@@ -3,6 +3,8 @@ class_name XRToolsViewport2DIn3D
 extends Node3D
 
 const DEBUG_LOGS := false
+const WINDOW_TRANSFORM_SYNC_INTERVAL_MSEC := 33
+const SERVER_PEER_ID := 1
 
 ## XR ToolsViewport 2D in 3D
 ##
@@ -138,6 +140,7 @@ var _drag_start_controller_transform : Transform3D = Transform3D.IDENTITY
 var _drag_start_window_transform : Transform3D = Transform3D.IDENTITY
 var _drag_offset_transform : Transform3D = Transform3D.IDENTITY
 var _drag_pointer : Node3D = null
+var _last_window_transform_sync_msec : int = 0
 
 # Child visibility tracking
 var _child_visible : bool = false
@@ -382,6 +385,50 @@ func server_receive_pointer_event(data: Dictionary):
 		if DEBUG_LOGS: print("target_node: ", target_node)
 
 	_handle_pointer_event(sender_id, fake_event, data.get("grip_value", 0.0))
+
+@rpc("any_peer", "call_remote", "unreliable")
+func server_receive_window_transform(window_transform: Transform3D):
+	_receive_window_transform_from_client(window_transform, false)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func server_receive_window_transform_reliable(window_transform: Transform3D):
+	_receive_window_transform_from_client(window_transform, true)
+
+
+@rpc("authority", "call_remote", "unreliable")
+func client_receive_window_transform(window_transform: Transform3D):
+	_apply_synced_window_transform(window_transform)
+
+
+@rpc("authority", "call_remote", "reliable")
+func client_receive_window_transform_reliable(window_transform: Transform3D):
+	_apply_synced_window_transform(window_transform)
+
+
+func _receive_window_transform_from_client(window_transform: Transform3D, reliable: bool):
+	if not multiplayer.is_server():
+		return
+
+	var sender_id := multiplayer.get_remote_sender_id()
+	_apply_synced_window_transform(window_transform)
+
+	for peer_id in multiplayer.get_peers():
+		var id := int(peer_id)
+		if id == sender_id:
+			continue
+		if reliable:
+			rpc_id(id, "client_receive_window_transform_reliable", window_transform)
+		else:
+			rpc_id(id, "client_receive_window_transform", window_transform)
+
+
+func _apply_synced_window_transform(window_transform: Transform3D):
+	if _is_dragging:
+		return
+
+	global_transform = window_transform
+	_last_drag_position = window_transform.origin
 
 func _handle_pointer_event(player_id: int, event: XRToolsPointerEvent, grip_value: float):
 	# 记录窗口被点击的位置（当按下时）
@@ -915,6 +962,7 @@ func _update_drag_position(current_position : Vector3):
 
 	# 更新上一次的位置
 	_last_drag_position = new_transform.origin
+	_sync_window_transform_to_server(false)
 
 
 # Stop dragging the window
@@ -922,6 +970,7 @@ func _stop_dragging():
 	if not _is_dragging:
 		return
 		
+	_sync_window_transform_to_server(true)
 	_is_dragging = false
 	
 	# 解锁pointer的target
@@ -942,3 +991,18 @@ func _stop_dragging():
 	_drag_start_controller_transform = Transform3D.IDENTITY
 	_drag_start_window_transform = Transform3D.IDENTITY
 	_drag_offset_transform = Transform3D.IDENTITY
+
+
+func _sync_window_transform_to_server(reliable: bool):
+	if not multiplayer.has_multiplayer_peer() or multiplayer.is_server():
+		return
+
+	var now_msec := Time.get_ticks_msec()
+	if not reliable and now_msec - _last_window_transform_sync_msec < WINDOW_TRANSFORM_SYNC_INTERVAL_MSEC:
+		return
+
+	_last_window_transform_sync_msec = now_msec
+	if reliable:
+		rpc_id(SERVER_PEER_ID, "server_receive_window_transform_reliable", global_transform)
+	else:
+		rpc_id(SERVER_PEER_ID, "server_receive_window_transform", global_transform)
