@@ -1,5 +1,7 @@
 extends Control
 
+const PanelWindowZoom = preload("res://Assets/ARSpace/Scripts/UI/panel_window_zoom.gd")
+
 @onready var work_list_view: Control = $WorkTabView/WorkListView
 @onready var llm_assistant_view: LLMAssistantUIView = $WorkTabView/LLMAssistantView
 
@@ -7,6 +9,7 @@ func _ready():
 	var global_node := _get_global_node()
 	if global_node != null:
 		global_node.set("main_menu_canvas", self)
+	PanelWindowZoom.bind_max_button(self)
 	work_list_view.visible = false
 	llm_assistant_view.visible = false
 	llm_assistant_view.set_task_catalog_provider(work_list_view)

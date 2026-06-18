@@ -2,6 +2,7 @@ extends Control
 
 class_name MovieUIView
 
+const PanelWindowZoom = preload("res://Assets/ARSpace/Scripts/UI/panel_window_zoom.gd")
 const DEBUG_LOGS := false
 
 var info_save_list: Array = []
@@ -20,6 +21,7 @@ func _ready():
 	if DEBUG_LOGS: print("MovieUIView _ready")
 	self.visible = false
 	Global.movie_canvas = self
+	PanelWindowZoom.bind_max_button(self)
 	info_save_list = []
 #	scale = self.transform.basis.get_scale()
 	init_view()

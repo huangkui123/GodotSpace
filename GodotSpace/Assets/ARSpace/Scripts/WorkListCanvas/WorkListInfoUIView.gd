@@ -2,6 +2,7 @@ extends Control
 
 class_name WorkListInfoUIView
 
+const PanelWindowZoom = preload("res://Assets/ARSpace/Scripts/UI/panel_window_zoom.gd")
 const DEBUG_LOGS := false
 
 @export var to_sound: Button
@@ -23,6 +24,7 @@ func _ready():
 	var global_node := _get_global_node()
 	if global_node != null:
 		global_node.set("work_list_info_canvas", self)
+	PanelWindowZoom.bind_max_button(self)
 	self.visible = false
 	if llm_assistant_view:
 		llm_assistant_view.visible = false

@@ -2,6 +2,7 @@ extends Control
 
 class_name MovieInfoUIView
 
+const PanelWindowZoom = preload("res://Assets/ARSpace/Scripts/UI/panel_window_zoom.gd")
 const DEBUG_LOGS := false
 
 var videoname: String = ""
@@ -11,6 +12,7 @@ var videoname: String = ""
 func _ready():
 	if DEBUG_LOGS: print("MovieInfoUIView _ready")
 	Global.movie_info_canvas = self
+	PanelWindowZoom.bind_max_button(self)
 
 	self.visible = false
 	videoname = ""

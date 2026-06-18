@@ -1,5 +1,6 @@
 extends Control
 
+const PanelWindowZoom = preload("res://Assets/ARSpace/Scripts/UI/panel_window_zoom.gd")
 const SERVER_PEER_ID := 1
 const VOICE_LEVEL_STALE_SECONDS := 1.5
 const VOICE_LEVEL_MIN_DB := -60.0
@@ -30,6 +31,7 @@ func _ready() -> void:
 	voice_chat = get_node_or_null("/root/VoiceChat")
 	llm_assistant = get_node_or_null("/root/LLMAssistantService")
 	network_handler = get_node_or_null("/root/NetworkHandler")
+	PanelWindowZoom.bind_max_button(self)
 
 	voice_button.pressed.connect(_on_voice_button_pressed)
 	transcribe_button.toggled.connect(_on_transcribe_button_toggled)

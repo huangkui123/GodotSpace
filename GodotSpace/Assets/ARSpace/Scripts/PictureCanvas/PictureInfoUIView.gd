@@ -2,6 +2,7 @@ extends Control
 
 class_name PictureInfoUIView
 
+const PanelWindowZoom = preload("res://Assets/ARSpace/Scripts/UI/panel_window_zoom.gd")
 const DEBUG_LOGS := false
 
 var imagename: String = ""
@@ -12,6 +13,7 @@ func _ready():
 	if DEBUG_LOGS: print("PictureInfoUIView _ready")
 	self.visible = false
 	Global.picture_info_canvas = self
+	PanelWindowZoom.bind_max_button(self)
 
 func set_image_name(name: String):
 	if DEBUG_LOGS: print("set_image_name: " + name)
