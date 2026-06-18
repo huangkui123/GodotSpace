@@ -15,6 +15,19 @@ run/main_scene="uid://bxjf7sbtop7t6"
 config/features=PackedStringArray("4.4", "Mobile")
 config/icon="res://icon.svg"
 
+[arspace]
+
+llm_assistant/endpoint_url="https://api.deepseek.com/chat/completions"
+llm_assistant/model="deepseek-v4-pro"
+llm_assistant/api_key_environment_name="DEEPSEEK_API_KEY"
+llm_assistant/require_wake_word=true
+llm_assistant/wake_words=PackedStringArray("助手", "智能助手", "LLM")
+llm_assistant/max_context_entries=5
+llm_assistant/max_conversation_turns=6
+llm_assistant/use_local_fallback_when_unconfigured=true
+llm_assistant/knowledge_base_path="res://Assets/ARSpace/Data/llm_knowledge_base.json"
+llm_assistant/knowledge_directories=PackedStringArray("res://Assets/ARSpace/Data/Knowledge", "res://Assets/StreamingAssets/Knowledge", "user://llm_knowledge")
+
 [audio]
 
 driver/enable_input=true
@@ -27,6 +40,7 @@ XRToolsRumbleManager="*res://addons/godot-xr-tools/rumble/rumble_manager.gd"
 Global="*res://Assets/ARSpace/Scripts/Global.gd"
 NetworkHandler="*res://Assets/ARSpace/Scripts/Network/network_handler.gd"
 VoiceChat="*res://Assets/ARSpace/Scenes/voice_chat_service.tscn"
+LLMAssistantService="*res://Assets/ARSpace/Scripts/AI/llm_assistant.gd"
 OrbitalManager="*res://addons/orbital_tools/orbital_manager.gd"
 
 [editor_plugins]

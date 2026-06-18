@@ -85,7 +85,6 @@ var transport: Node
 var playback: Node
 var transcription_config: Node
 
-var _xr_toggle_was_pressed: bool = false
 var selected_input_device: String = "Default"
 var selected_output_device: String = "Default"
 @export var voice_debug_enabled: bool = false
@@ -165,7 +164,6 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 
 func _process(delta: float) -> void:
-	_poll_vr_voice_toggle()
 	_pump_output_test_tone()
 	_update_voice_level_state(delta)
 	_log_voice_pipeline_state(delta)
@@ -351,10 +349,31 @@ func get_debug_state() -> Dictionary:
 		"packets_sent": packets_sent,
 		"packets_received": packets_received,
 		"transcription_enabled": transcription_enabled,
+		"transcription": _get_transcription_debug_state(),
 		"voice_level_states": voice_level_states.duplicate(true),
 		"capture": capture.get_debug_state() if capture != null else {},
 		"transport": transport.get_debug_state() if transport != null else {},
 		"playback": playback.get_debug_state() if playback != null else {},
+	}
+
+
+func _get_transcription_debug_state() -> Dictionary:
+	var peers: Array[Dictionary] = []
+	var last_error := ""
+	for peer_id in _peer_transcribers.keys():
+		var transcriber := _peer_transcribers[peer_id] as Node
+		if transcriber == null or not is_instance_valid(transcriber) or not transcriber.has_method("get_debug_state"):
+			continue
+		var state: Dictionary = transcriber.call("get_debug_state")
+		state["peer_id"] = int(peer_id)
+		peers.append(state)
+		var error_text := str(state.get("last_error_message", ""))
+		if not error_text.is_empty():
+			last_error = error_text
+	return {
+		"active_peer_count": peers.size(),
+		"peers": peers,
+		"last_error_message": last_error,
 	}
 
 func get_preferred_pc_input_device() -> String:
@@ -619,6 +638,24 @@ func _set_voice_level_mic_state(peer_id: int, mic_open: bool) -> void:
 
 func get_transcript_history() -> Array:
 	return voice_transcript_history.duplicate(true)
+
+func publish_assistant_transcript(text: String, speaker_name: String = "智能助手") -> void:
+	var clean_text := text.strip_edges()
+	if clean_text.is_empty():
+		return
+
+	var data := {
+		"speaker_peer_id": 0,
+		"speaker_name": speaker_name,
+		"text": clean_text,
+		"is_final": true,
+		"timestamp_msec": Time.get_ticks_msec(),
+		"source": "llm_assistant",
+	}
+	if multiplayer.has_multiplayer_peer() and multiplayer.is_server():
+		_broadcast_transcript(data)
+	else:
+		_on_transport_transcript_received(data)
 
 func _set_peer_transcription_active(peer_id: int, active: bool) -> void:
 	if not multiplayer.is_server() or peer_id <= 0:
@@ -1232,32 +1269,6 @@ func _get_voice_mode_label() -> String:
 	if not voice_endpoint_selected:
 		return "unselected"
 	return "VR" if is_vr_mode else "PC"
-
-func _poll_vr_voice_toggle() -> void:
-	if not voice_endpoint_selected or not is_vr_mode:
-		return
-
-	var pressed := _is_vr_voice_toggle_pressed()
-	if pressed and not _xr_toggle_was_pressed:
-		toggle_voice()
-	_xr_toggle_was_pressed = pressed
-
-func _is_vr_voice_toggle_pressed() -> bool:
-	var tracker := XRServer.get_tracker("right_hand")
-	if tracker == null:
-		return false
-
-	return _tracker_input_pressed(tracker, "primary") or _tracker_input_pressed(tracker, "ax_button")
-
-func _tracker_input_pressed(tracker: XRPositionalTracker, input_name: String) -> bool:
-	var value = tracker.get_input(input_name)
-	match typeof(value):
-		TYPE_BOOL:
-			return value
-		TYPE_INT, TYPE_FLOAT:
-			return float(value) > 0.5
-		_:
-			return false
 
 func _log(message: String) -> void:
 	if not voice_debug_enabled:

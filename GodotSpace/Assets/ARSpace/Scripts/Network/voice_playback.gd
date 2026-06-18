@@ -1,6 +1,8 @@
 class_name VoicePlayback
 extends Node
 
+const OPUS_STREAM_CLASS := "AudioStreamOpusChunked"
+
 @export var playback_bus: String = "Master"
 @export var max_queued_packets_per_source: int = 120
 @export var opus_sample_rate: int = 48000
@@ -46,7 +48,9 @@ func get_or_create_player(source_peer_id: int) -> AudioStreamPlayer:
 
 	var player := AudioStreamPlayer.new()
 	player.name = "VoiceSource_%d" % source_peer_id
-	player.stream = AudioStreamOpusChunked.new()
+	player.stream = _new_opus_stream()
+	if player.stream == null:
+		push_error("%s is unavailable. Voice playback cannot decode Opus packets." % OPUS_STREAM_CLASS)
 	_configure_opus_stream(player.stream)
 	player.bus = playback_bus
 	player.autoplay = true
@@ -56,7 +60,12 @@ func get_or_create_player(source_peer_id: int) -> AudioStreamPlayer:
 	players[source_peer_id] = player
 	return player
 
-func _configure_opus_stream(stream: AudioStreamOpusChunked) -> void:
+func _new_opus_stream() -> AudioStream:
+	if not ClassDB.class_exists(OPUS_STREAM_CLASS):
+		return null
+	return ClassDB.instantiate(OPUS_STREAM_CLASS) as AudioStream
+
+func _configure_opus_stream(stream: Object) -> void:
 	if stream == null:
 		return
 
@@ -72,7 +81,8 @@ func _configure_opus_stream(stream: AudioStreamOpusChunked) -> void:
 	_set_property_if_present(stream, "audiosamplesize", audio_frame_size)
 	_set_property_if_present(stream, "audiosamplechunks", audio_sample_chunks)
 	_set_property_if_present(stream, "mix_rate", audio_sample_rate)
-	stream.resetdecoder()
+	if stream.has_method("resetdecoder"):
+		stream.call("resetdecoder")
 
 func _set_property_if_present(target: Object, property_name: String, value) -> bool:
 	for property in target.get_property_list():
@@ -93,14 +103,14 @@ func _flush_source_queue(source_peer_id: int) -> void:
 	if not player.playing:
 		player.play()
 
-	var opus_stream := player.stream as AudioStreamOpusChunked
-	if opus_stream == null:
+	var opus_stream := player.stream
+	if not _is_opus_stream(opus_stream):
 		return
 
 	var queue: Array = packet_queues[source_peer_id]
-	while queue.size() > 0 and opus_stream.chunk_space_available():
+	while queue.size() > 0 and bool(opus_stream.call("chunk_space_available")):
 		var packet: PackedByteArray = queue.pop_front()
-		opus_stream.push_opus_packet(packet, 0, 0)
+		opus_stream.call("push_opus_packet", packet, 0, 0)
 		packets_pushed += 1
 
 func set_source_muted(source_peer_id: int, muted: bool) -> void:
@@ -150,8 +160,11 @@ func _get_last_playback_peak_db() -> float:
 		var player := player_value as AudioStreamPlayer
 		if player == null or not is_instance_valid(player):
 			continue
-		var opus_stream := player.stream as AudioStreamOpusChunked
-		if opus_stream == null or not opus_stream.has_method("last_chunk_max"):
+		var opus_stream := player.stream
+		if not _is_opus_stream(opus_stream) or not opus_stream.has_method("last_chunk_max"):
 			continue
 		peak = max(peak, float(opus_stream.call("last_chunk_max")))
 	return linear_to_db(peak) if peak > 0.0 else -80.0
+
+func _is_opus_stream(stream: Object) -> bool:
+	return stream != null and stream.is_class(OPUS_STREAM_CLASS)

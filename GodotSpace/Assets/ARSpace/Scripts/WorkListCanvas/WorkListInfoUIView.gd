@@ -9,6 +9,7 @@ const DEBUG_LOGS := false
 @export var to_animation: Button
 
 @onready var title_label: Label = $TopMenuBox/Title
+@onready var llm_assistant_view: LLMAssistantUIView = $LLMAssistantView
 
 var _info_save_list: Array[WorkListInfoData] = []
 @export var info_: Array[WorkListInfoItem] = []
@@ -19,8 +20,12 @@ var item_count: int = 0
 var page_item_count: int = 1
 
 func _ready():
-	Global.work_list_info_canvas = self
+	var global_node := _get_global_node()
+	if global_node != null:
+		global_node.set("work_list_info_canvas", self)
 	self.visible = false
+	if llm_assistant_view:
+		llm_assistant_view.visible = false
 
 	if DEBUG_LOGS: print(self.name, ": _ready")
 	init_view()
@@ -49,6 +54,7 @@ func refresh_list(refresh_list_data: WorkListInfoDataResult):
 	page_count = 0
 	item_count = 0
 	refresh_info()
+	_sync_assistant_context()
 
 func refresh_info():
 	item_count = _info_save_list.size()
@@ -87,13 +93,62 @@ func bind_item(item: WorkListInfoItem, infos: WorkListInfoData):
 	if DEBUG_LOGS: print(self.name, ": WorkListInfoStep = ", infos.step)
 	if DEBUG_LOGS: print("🟦 [DEBUG] 尝试播放动画 Step", infos.step)
 
-	if Global.spacebox_controller:
-		Global.spacebox_controller.play_step(infos.step)
-		Global.spacebox_controller.show_only_work_info(infos.step)
+	var global_node := _get_global_node()
+	var spacebox_controller = global_node.get("spacebox_controller") if global_node != null else null
+	if spacebox_controller:
+		spacebox_controller.play_step(infos.step)
+		spacebox_controller.show_only_work_info(infos.step)
 	else:
 		if DEBUG_LOGS: print("❌ [DEBUG] Global.spacebox_controller 为空")
 
 	item.refresh_info(infos)
+
+
+func get_current_task_context_entries() -> Array[Dictionary]:
+	if _info_save_list.is_empty():
+		return []
+
+	var task_title := title_label.text if title_label != null else "当前任务"
+	var entries: Array[Dictionary] = []
+	var current_step := _get_current_step_data()
+	if current_step != null:
+		entries.append({
+			"id": "current-task-step-%d" % current_step.step,
+			"title": "%s / 当前步骤 %d" % [task_title, current_step.step],
+			"source": "当前专家任务步骤",
+			"tags": ["当前任务", "当前步骤", "专家指导", current_step.title, task_title],
+			"content": "当前任务：%s\n当前页：%d / %d\n当前步骤：%d. %s\n步骤要求：%s" % [
+				task_title,
+				page_index,
+				max(page_count, 1),
+				current_step.step,
+				current_step.title,
+				current_step.info,
+			],
+		})
+
+	var lines: Array[String] = ["当前任务：%s" % task_title, "当前任务步骤："]
+	for step_data in _info_save_list:
+		if step_data == null:
+			continue
+		lines.append("%d. %s：%s" % [step_data.step, step_data.title, step_data.info])
+
+	entries.append({
+		"id": "current-task-guidance",
+		"title": task_title,
+		"source": "当前专家任务指导",
+		"tags": ["当前任务", "专家指导", "步骤", task_title],
+		"content": "\n".join(lines),
+	})
+	return entries
+
+
+func _get_current_step_data() -> WorkListInfoData:
+	if _info_save_list.is_empty():
+		return null
+	var current_index: int = max(0, min(_info_save_list.size() - 1, (page_index - 1) * page_item_count))
+	return _info_save_list[current_index]
+
 
 func pre_click():
 	if page_count <= 0:
@@ -104,14 +159,17 @@ func pre_click():
 	if page_index < 1:
 		page_index = 1
 	bind_page(page_index)
+	_sync_assistant_context()
 
 func first_page():
 	page_index = 1
 	bind_page(page_index)
+	_sync_assistant_context()
 
 func last_page():
 	page_index = page_count
 	bind_page(page_index)
+	_sync_assistant_context()
 
 func next_click():
 	if page_count <= 0:
@@ -122,6 +180,7 @@ func next_click():
 	if page_index > page_count:
 		page_index = page_count
 	bind_page(page_index)
+	_sync_assistant_context()
 
 func to_animation_on_value_changed(arg0: bool):
 	pass
@@ -134,4 +193,33 @@ func _on_next_pressed():
 
 
 func _on_close_button_pressed():
+	_hide_llm_assistant_view()
 	self.visible = false
+
+
+func _on_llm_assistant_pressed() -> void:
+	if llm_assistant_view == null:
+		return
+	llm_assistant_view.visible = true
+	llm_assistant_view.refresh_task_context()
+	llm_assistant_view.start_assistant()
+
+
+func _on_llm_assistant_back_pressed() -> void:
+	_hide_llm_assistant_view()
+
+
+func _hide_llm_assistant_view() -> void:
+	if llm_assistant_view == null:
+		return
+	llm_assistant_view.stop_assistant()
+	llm_assistant_view.visible = false
+
+
+func _get_global_node() -> Node:
+	return get_node_or_null("/root/Global")
+
+
+func _sync_assistant_context() -> void:
+	if llm_assistant_view != null and llm_assistant_view.has_method("refresh_task_context"):
+		llm_assistant_view.call("refresh_task_context")

@@ -5,6 +5,8 @@ signal opus_packet_captured(packet: PackedByteArray)
 signal speaking_changed(is_speaking: bool)
 signal pcm_frames_captured(frames: PackedVector2Array)
 
+const OPUS_EFFECT_CLASS := "AudioEffectOpusChunked"
+
 @export var opus_sample_rate: int = 48000
 @export var opus_frame_size: int = 960
 @export var opus_bitrate: int = 24000
@@ -15,7 +17,7 @@ signal pcm_frames_captured(frames: PackedVector2Array)
 @export var synthetic_frequency_hz: float = 220.0
 @export var synthetic_peak: float = 0.35
 
-var opus_effect: AudioEffectOpusChunked
+var opus_effect: Object
 var microphone_stream: AudioStreamMicrophone
 var microphone_playback: AudioStreamPlayback
 var pending_audio_frames: PackedVector2Array = PackedVector2Array()
@@ -38,13 +40,22 @@ var _synthetic_phase: float = 0.0
 func _ready() -> void:
 	set_process(false)
 
+func _new_opus_effect() -> Object:
+	if not ClassDB.class_exists(OPUS_EFFECT_CLASS):
+		return null
+	return ClassDB.instantiate(OPUS_EFFECT_CLASS)
+
 func setup() -> void:
 	if is_setup:
 		return
 
 	if not synthetic_input_enabled:
 		_start_microphone_playback()
-	opus_effect = AudioEffectOpusChunked.new()
+	opus_effect = _new_opus_effect()
+	if opus_effect == null:
+		push_error("%s is unavailable. Voice capture cannot encode Opus packets." % OPUS_EFFECT_CLASS)
+		_stop_microphone_playback()
+		return
 	_configure_opus_effect()
 	_clear_opus_buffers()
 	pending_audio_frames.clear()
@@ -215,14 +226,14 @@ func _push_pending_audio_chunks() -> void:
 	while pending_audio_frames.size() >= audio_frame_size:
 		var audio_chunk := pending_audio_frames.slice(0, audio_frame_size)
 		pending_audio_frames = pending_audio_frames.slice(audio_frame_size)
-		opus_effect.push_chunk(audio_chunk)
+		opus_effect.call("push_chunk", audio_chunk)
 		frames_encoded_total += audio_chunk.size()
 
 func _emit_available_opus_packets() -> void:
-	while opus_effect.chunk_available():
+	while _opus_chunk_available():
 		_sample_opus_chunk_peak()
-		var packet := opus_effect.read_opus_packet(PackedByteArray())
-		opus_effect.drop_chunk()
+		var packet: PackedByteArray = opus_effect.call("read_opus_packet", PackedByteArray())
+		opus_effect.call("drop_chunk")
 		if packet.size() > 0:
 			packets_captured += 1
 			opus_packet_captured.emit(packet)
@@ -231,8 +242,8 @@ func _clear_opus_buffers() -> void:
 	if opus_effect == null:
 		return
 
-	while opus_effect.chunk_available():
-		opus_effect.drop_chunk()
+	while _opus_chunk_available():
+		opus_effect.call("drop_chunk")
 		chunks_dropped_while_inactive += 1
 
 func _reset_opus_encoder_state() -> void:
@@ -262,6 +273,9 @@ func _get_opus_chunk_max(rms: bool, resampled: bool) -> float:
 		return float(opus_effect.call("chunk_max"))
 	return float(opus_effect.call("chunk_max", rms, resampled))
 
+func _opus_chunk_available() -> bool:
+	return opus_effect != null and bool(opus_effect.call("chunk_available"))
+
 func _get_method_arg_count(target: Object, method_name: String) -> int:
 	for method in target.get_method_list():
 		if str(method.get("name", "")) == method_name:
@@ -288,7 +302,7 @@ func get_debug_state() -> Dictionary:
 		"has_microphone_playback": microphone_playback != null,
 		"microphone_playing": microphone_playback != null and microphone_playback.is_playing(),
 		"input_device": AudioServer.get_input_device(),
-		"opus_chunk_available": opus_effect != null and opus_effect.chunk_available(),
+		"opus_chunk_available": _opus_chunk_available(),
 		"capture_frames_available": 0,
 		"pending_audio_frames": pending_audio_frames.size(),
 		"frames_read_total": frames_read_total,

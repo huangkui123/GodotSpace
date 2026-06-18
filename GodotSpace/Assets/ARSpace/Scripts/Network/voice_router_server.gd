@@ -8,6 +8,8 @@ const MODE_EXPERT_ONLY := "expert_only"
 const MODE_PRIVATE_TO_PEER := "private_to_peer"
 const ROLE_EXPERT := "expert"
 const ROLE_ASTRONAUT := "astronaut"
+const OPUS_EFFECT_CLASS := "AudioEffectOpusChunked"
+const OPUS_STREAM_CLASS := "AudioStreamOpusChunked"
 
 const VoicePlaybackScript := preload("res://Assets/ARSpace/Scripts/Network/voice_playback.gd")
 
@@ -137,12 +139,12 @@ func _process(_delta: float) -> void:
 		return
 	for target_peer_id in _target_mixers.keys():
 		var mixer: Dictionary = _target_mixers[target_peer_id]
-		var opus: AudioEffectOpusChunked = mixer.get("opus")
-		if opus == null:
+		var opus := mixer.get("opus") as Object
+		if not _is_opus_effect(opus):
 			continue
-		while opus.chunk_available():
-			var packet := opus.read_opus_packet(PackedByteArray())
-			opus.drop_chunk()
+		while bool(opus.call("chunk_available")):
+			var packet: PackedByteArray = opus.call("read_opus_packet", PackedByteArray())
+			opus.call("drop_chunk")
 			if packet.size() > 0:
 				downlink_packets_generated += 1
 				transport.send_downlink_voice_packet(target_peer_id, packet)
@@ -162,8 +164,8 @@ func _should_route_to_target(source_peer_id: int, target_peer_id: int) -> bool:
 
 func _push_packet_to_target_mix(target_peer_id: int, source_peer_id: int, packet: PackedByteArray) -> void:
 	var player := _get_mix_source_player(target_peer_id, source_peer_id)
-	if player.stream is AudioStreamOpusChunked:
-		player.stream.push_opus_packet(packet, 0, 0)
+	if _is_opus_stream(player.stream):
+		player.stream.call("push_opus_packet", packet, 0, 0)
 		mix_packets_pushed += 1
 
 func _ensure_target_mixer(target_peer_id: int) -> void:
@@ -182,9 +184,12 @@ func _ensure_target_mixer(target_peer_id: int) -> void:
 
 	var opus := _find_opus_effect(bus_index)
 	if opus == null:
-		opus = AudioEffectOpusChunked.new()
-		AudioServer.add_bus_effect(bus_index, opus)
-		AudioServer.set_bus_effect_enabled(bus_index, AudioServer.get_bus_effect_count(bus_index) - 1, true)
+		opus = _new_opus_effect()
+		if opus != null:
+			AudioServer.add_bus_effect(bus_index, opus)
+			AudioServer.set_bus_effect_enabled(bus_index, AudioServer.get_bus_effect_count(bus_index) - 1, true)
+		else:
+			push_error("%s is unavailable. Voice routing cannot mix Opus packets." % OPUS_EFFECT_CLASS)
 
 	_target_mixers[target_peer_id] = {
 		"bus_name": bus_name,
@@ -201,7 +206,9 @@ func _get_mix_source_player(target_peer_id: int, source_peer_id: int) -> AudioSt
 
 	var player := AudioStreamPlayer.new()
 	player.name = "Mix_%d_From_%d" % [target_peer_id, source_peer_id]
-	player.stream = AudioStreamOpusChunked.new()
+	player.stream = _new_opus_stream()
+	if player.stream == null:
+		push_error("%s is unavailable. Voice routing cannot decode source packets." % OPUS_STREAM_CLASS)
 	player.bus = mixer["bus_name"]
 	player.autoplay = true
 	player.mix_target = AudioStreamPlayer.MIX_TARGET_STEREO
@@ -228,12 +235,28 @@ func _cleanup_all_mixers() -> void:
 	for target_peer_id in _target_mixers.keys().duplicate():
 		_cleanup_target_mixer(target_peer_id)
 
-func _find_opus_effect(bus_index: int) -> AudioEffectOpusChunked:
+func _find_opus_effect(bus_index: int) -> AudioEffect:
 	for i in range(AudioServer.get_bus_effect_count(bus_index)):
 		var effect := AudioServer.get_bus_effect(bus_index, i)
-		if effect is AudioEffectOpusChunked:
-			return effect as AudioEffectOpusChunked
+		if _is_opus_effect(effect):
+			return effect
 	return null
+
+func _new_opus_effect() -> AudioEffect:
+	if not ClassDB.class_exists(OPUS_EFFECT_CLASS):
+		return null
+	return ClassDB.instantiate(OPUS_EFFECT_CLASS) as AudioEffect
+
+func _new_opus_stream() -> AudioStream:
+	if not ClassDB.class_exists(OPUS_STREAM_CLASS):
+		return null
+	return ClassDB.instantiate(OPUS_STREAM_CLASS) as AudioStream
+
+func _is_opus_effect(effect: Object) -> bool:
+	return effect != null and effect.is_class(OPUS_EFFECT_CLASS)
+
+func _is_opus_stream(stream: Object) -> bool:
+	return stream != null and stream.is_class(OPUS_STREAM_CLASS)
 
 func _emit_state() -> void:
 	session_state_changed.emit(get_session_state())

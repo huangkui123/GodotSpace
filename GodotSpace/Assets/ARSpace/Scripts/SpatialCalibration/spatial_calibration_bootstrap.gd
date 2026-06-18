@@ -2,10 +2,10 @@ extends Node
 
 const DEBUG_LOGS := false
 
-const PANEL_SCRIPT := preload("res://Assets/ARSpace/Scripts/SpatialCalibration/spatial_calibration_panel.gd")
 const TARGET_SCENE_PATH := "res://Assets/ARSpace/Scenes/ARSpace.tscn"
+const PANEL_NODE_NAME := "CalibrationSection"
 
-var calibration_panel: CanvasLayer
+var calibration_panel: Control
 var last_scene: Node
 
 
@@ -45,9 +45,11 @@ func _ensure_panel(scene: Node) -> void:
 	if calibration_panel != null and is_instance_valid(calibration_panel):
 		return
 
-	calibration_panel = PANEL_SCRIPT.new()
-	calibration_panel.name = "SpatialCalibrationPanel"
-	scene.add_child(calibration_panel)
+	calibration_panel = scene.find_child(PANEL_NODE_NAME, true, false) as Control
+	if calibration_panel == null:
+		push_error("SpatialCalibration: %s was not found in %s" % [PANEL_NODE_NAME, TARGET_SCENE_PATH])
+		return
+	calibration_panel.visible = true
 	if DEBUG_LOGS: print("SpatialCalibration: server panel mounted")
 
 
@@ -55,5 +57,5 @@ func _remove_panel() -> void:
 	if calibration_panel == null:
 		return
 	if is_instance_valid(calibration_panel):
-		calibration_panel.queue_free()
+		calibration_panel.visible = false
 	calibration_panel = null

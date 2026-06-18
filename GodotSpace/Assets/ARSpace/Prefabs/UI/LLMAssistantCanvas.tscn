@@ -43,20 +43,21 @@ offset_bottom = 42.0
 theme_override_colors/font_color = Color(0.523212, 0.618929, 0.944913, 1)
 theme_override_fonts/font = ExtResource("7_ish2r")
 theme_override_font_sizes/font_size = 20
-text = "LLM智能助手"
+text = "智能问答历史"
 
 [node name="StatusLabel" type="Label" parent="."]
 layout_mode = 0
-offset_left = 55.0
-offset_top = 58.0
+offset_left = 14.0
+offset_top = 51.0
 offset_right = 427.0
-offset_bottom = 84.0
+offset_bottom = 77.0
 theme_override_colors/font_color = Color(0.48, 0.8, 1, 1)
 theme_override_fonts/font = ExtResource("6_f7lua")
 theme_override_font_sizes/font_size = 15
-text = "知识库：航天员手册 / 舱内环境控制 / 专家任务指导"
+text = "暂无历史问答"
 
 [node name="PromptLabel" type="Label" parent="."]
+visible = false
 layout_mode = 0
 offset_left = 55.0
 offset_top = 92.0
@@ -65,25 +66,54 @@ offset_bottom = 118.0
 theme_override_colors/font_color = Color(0.576471, 0.666667, 0.952941, 1)
 theme_override_fonts/font = ExtResource("6_f7lua")
 theme_override_font_sizes/font_size = 16
-text = "人机对话记录"
+text = "语音转写与助手回答"
 
 [node name="Transcript" type="RichTextLabel" parent="."]
 layout_mode = 0
-offset_left = 55.0
-offset_top = 125.0
-offset_right = 427.0
-offset_bottom = 292.0
+offset_left = 10.0
+offset_top = 82.0
+offset_right = 434.0
+offset_bottom = 246.0
 theme_override_font_sizes/normal_font_size = 18
 bbcode_enabled = true
 scroll_following = true
 
+[node name="PreviousButton" type="Button" parent="."]
+layout_mode = 0
+offset_left = 11.0
+offset_top = 254.0
+offset_right = 111.0
+offset_bottom = 282.0
+text = "上一条"
+
+[node name="PageLabel" type="Label" parent="."]
+layout_mode = 0
+offset_left = 166.0
+offset_top = 258.0
+offset_right = 277.0
+offset_bottom = 282.0
+theme_override_colors/font_color = Color(0.58, 0.64, 0.78, 1)
+theme_override_fonts/font = ExtResource("6_f7lua")
+theme_override_font_sizes/font_size = 14
+text = "0 / 0"
+horizontal_alignment = 1
+
+[node name="NextButton" type="Button" parent="."]
+layout_mode = 0
+offset_left = 333.0
+offset_top = 254.0
+offset_right = 433.0
+offset_bottom = 282.0
+text = "下一条"
+
 [node name="Footer" type="Label" parent="."]
 layout_mode = 0
-offset_left = 55.0
-offset_top = 306.0
-offset_right = 427.0
-offset_bottom = 333.0
+offset_left = 11.0
+offset_top = 289.0
+offset_right = 433.0
+offset_bottom = 346.0
 theme_override_colors/font_color = Color(0.58, 0.64, 0.78, 1)
 theme_override_fonts/font = ExtResource("6_f7lua")
 theme_override_font_sizes/font_size = 13
-text = "在线检索：手册条目 3.2.1 / 4.1.7 / 专家规则库"
+text = "智能助手在后台监听语音转写；此页只用于查看历史问答。"
+autowrap_mode = 1

@@ -73,6 +73,38 @@ func bind_item(item: WorkListItem, infos: WorkListData):
 	if DEBUG_LOGS: print(self.name, ": Title = ", infos.title)
 	item.refresh_info(infos)
 
+
+func get_task_context_entries() -> Array[Dictionary]:
+	var entries: Array[Dictionary] = []
+	for task in _info_save_list:
+		if task == null:
+			continue
+		entries.append(_build_task_context_entry(task))
+	return entries
+
+
+func _build_task_context_entry(task: WorkListData) -> Dictionary:
+	var lines: Array[String] = []
+	lines.append("任务名称：%s" % task.title)
+	lines.append("任务概述：%s" % task.brief_description)
+	lines.append("步骤数量：%s" % task.step_count_text)
+
+	if task.info_data_result != null:
+		lines.append("任务步骤：")
+		for step_data in task.info_data_result.list:
+			if step_data == null:
+				continue
+			lines.append("%d. %s：%s" % [step_data.step, step_data.title, step_data.info])
+
+	return {
+		"id": "task-%d" % task.id,
+		"title": task.title,
+		"source": "专家任务指导 / 任务流程",
+		"tags": ["任务", "专家指导", task.title],
+		"content": "\n".join(lines),
+	}
+
+
 func pre_click():
 	if page_count <= 0:
 		return

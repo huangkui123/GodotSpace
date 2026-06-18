@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3 uid="uid://b6wwl21nnade8"]
+[gd_scene load_steps=14 format=3 uid="uid://b6wwl21nnade8"]
 
 [ext_resource type="Script" uid="uid://ceg2en3k7ilvl" path="res://Assets/ARSpace/Scripts/WorkListCanvas/WorkListInfoUIView.gd" id="1_fnqeu"]
 [ext_resource type="Texture2D" uid="uid://dr7y3pi3l4njr" path="res://Assets/ARSpace/Textures/UIWindow/Rectangle 1385.png" id="2_8oww3"]
@@ -12,6 +12,8 @@
 [ext_resource type="Texture2D" uid="uid://d1ajbdq6px2jj" path="res://Assets/Modern UI Pack/Textures/Icon/UI Elements/Switch.png" id="10_b508j"]
 [ext_resource type="Texture2D" uid="uid://22qp5l1761lp" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155621.png" id="11_xfmqy"]
 [ext_resource type="Texture2D" uid="uid://klwx2jn4s6kj" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155614.png" id="12_vcpeh"]
+
+[ext_resource type="PackedScene" uid="uid://c5lm3bvr8jca1" path="res://Assets/ARSpace/Prefabs/UI/LLMAssistantCanvas.tscn" id="13_l6ben"]
 
 [node name="WorkListInfoCanvas" type="CanvasLayer"]
 
@@ -77,6 +79,17 @@ offset_right = 296.672
 offset_bottom = 27.6724
 icon = ExtResource("6_e43d7")
 flat = true
+
+[node name="AssistantButton" type="Button" parent="Canvas/TopMenuBox/Controller"]
+layout_mode = 0
+offset_left = 150.0
+offset_top = -23.0
+offset_right = 194.0
+offset_bottom = 23.0
+tooltip_text = "智能助手"
+theme_override_fonts/font = ExtResource("4_kaj5u")
+theme_override_font_sizes/font_size = 16
+text = "AI"
 
 [node name="WorkListInfo" type="Control" parent="Canvas"]
 anchors_preset = 0
@@ -214,6 +227,14 @@ offset_bottom = 662.0
 scale = Vector2(0.21, 0.21)
 icon = ExtResource("12_vcpeh")
 
+[node name="LLMAssistantView" parent="Canvas" instance=ExtResource("13_l6ben")]
+visible = false
+layout_mode = 0
+offset_left = 31.0
+offset_top = 88.0
+
 [connection signal="pressed" from="Canvas/TopMenuBox/Controller/CloseButton" to="Canvas" method="_on_close_button_pressed"]
+[connection signal="pressed" from="Canvas/TopMenuBox/Controller/AssistantButton" to="Canvas" method="_on_llm_assistant_pressed"]
 [connection signal="pressed" from="Canvas/Back" to="Canvas" method="_on_back_pressed"]
 [connection signal="pressed" from="Canvas/Next" to="Canvas" method="_on_next_pressed"]
+[connection signal="pressed" from="Canvas/LLMAssistantView/BackButton" to="Canvas" method="_on_llm_assistant_back_pressed"]

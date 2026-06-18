@@ -18,14 +18,17 @@ const PARTIAL_CURSOR_COLOR := "#D7DEE8"
 @onready var rows_container: VBoxContainer = _get_voice_ui_node("ServerVoiceLevels/Rows") as VBoxContainer
 
 var voice_chat: Node
+var llm_assistant: Node
 var network_handler: Node
 var volume_rows: Dictionary = {}
 var completed_transcript := ""
 var partial_transcripts: Dictionary = {}
+var assistant_pending_line := ""
 
 
 func _ready() -> void:
 	voice_chat = get_node_or_null("/root/VoiceChat")
+	llm_assistant = get_node_or_null("/root/LLMAssistantService")
 	network_handler = get_node_or_null("/root/NetworkHandler")
 
 	voice_button.pressed.connect(_on_voice_button_pressed)
@@ -40,6 +43,12 @@ func _ready() -> void:
 		voice_chat.connect("voice_transcript_received", _on_voice_transcript_received)
 	if voice_chat != null and voice_chat.has_signal("transcription_enabled_changed"):
 		voice_chat.connect("transcription_enabled_changed", _on_transcription_enabled_changed)
+	if llm_assistant != null and llm_assistant.has_signal("answer_started"):
+		llm_assistant.connect("answer_started", _on_assistant_answer_started)
+	if llm_assistant != null and llm_assistant.has_signal("answer_completed"):
+		llm_assistant.connect("answer_completed", _on_assistant_answer_completed)
+	if llm_assistant != null and llm_assistant.has_signal("answer_failed"):
+		llm_assistant.connect("answer_failed", _on_assistant_answer_failed)
 	if network_handler != null and network_handler.has_signal("network_ready"):
 		network_handler.connect("network_ready", _on_network_changed)
 	if network_handler != null and network_handler.has_signal("network_role_selected"):
@@ -133,9 +142,25 @@ func _on_voice_transcript_received(data: Dictionary) -> void:
 	_update_transcript_text()
 
 
+func _on_assistant_answer_started(question: String) -> void:
+	assistant_pending_line = _format_transcript_line("智能助手", "正在分析问题，等待回复：%s" % question, true)
+	_update_transcript_text()
+
+
+func _on_assistant_answer_completed(_question: String, _answer: String, _sources: Array) -> void:
+	assistant_pending_line = ""
+	_update_transcript_text()
+
+
+func _on_assistant_answer_failed(_question: String, _message: String) -> void:
+	assistant_pending_line = ""
+	_update_transcript_text()
+
+
 func _load_transcript_history() -> void:
 	completed_transcript = ""
 	partial_transcripts.clear()
+	assistant_pending_line = ""
 	if voice_chat == null or not voice_chat.has_method("get_transcript_history"):
 		return
 
@@ -161,6 +186,10 @@ func _update_transcript_text() -> void:
 		if body != "":
 			body += "\n"
 		body += _format_transcript_line(str(state.get("speaker", "")), str(state.get("text", "")), true)
+	if assistant_pending_line != "":
+		if body != "":
+			body += "\n"
+		body += assistant_pending_line
 	if body == "":
 		body = "等待开麦语音..."
 	transcript_label.text = body
@@ -172,6 +201,8 @@ func _format_transcript_line(speaker: String, message: String, is_partial: bool)
 
 
 func _get_transcript_speaker_color(speaker: String) -> String:
+	if speaker == "智能助手":
+		return GROUND_COLOR
 	if speaker.begins_with("客户端"):
 		return ASTRONAUT_COLOR
 	return GROUND_COLOR
