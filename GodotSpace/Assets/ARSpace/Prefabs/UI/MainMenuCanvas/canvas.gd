@@ -20,6 +20,9 @@ func _on_photo_pressed():
 func _on_movie_pressed():
 	_set_global_canvas_visible("movie_canvas", true)
 
+func _on_voice_call_pressed():
+	_set_global_canvas_visible("voice_call_window", true)
+
 func _on_work_list_pressed():
 	_hide_llm_assistant_view()
 	work_list_view.visible = true

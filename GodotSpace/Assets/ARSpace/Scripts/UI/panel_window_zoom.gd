@@ -32,6 +32,12 @@ static func toggle_window(panel_root: Node, zoom_factor: float = DEFAULT_ZOOM_FA
 		_maximize(target, zoom_factor)
 
 
+static func set_window_visible(panel_root: Node, is_visible: bool) -> void:
+	var target := _get_window_target(panel_root)
+	if target != null:
+		target.visible = is_visible
+
+
 static func _maximize(target: Node, zoom_factor: float) -> void:
 	if target is Node3D:
 		if not target.has_meta(META_ORIGINAL_SCALE):

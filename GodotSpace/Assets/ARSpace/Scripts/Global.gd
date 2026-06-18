@@ -4,6 +4,7 @@ extends Node
 var spacebox_controller = null
 
 var main_menu_canvas: Node = null
+var voice_call_window: Node = null
 
 var picture_canvas: Node = null
 var picture_info_canvas: Node = null

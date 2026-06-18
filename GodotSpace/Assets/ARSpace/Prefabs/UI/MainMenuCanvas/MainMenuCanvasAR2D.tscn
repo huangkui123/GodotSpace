@@ -1,4 +1,4 @@
-[gd_scene load_steps=21 format=3 uid="uid://cutbiriped32f"]
+[gd_scene load_steps=22 format=3 uid="uid://cutbiriped32f"]
 
 [ext_resource type="Script" uid="uid://bg4e433qyo1nv" path="res://Assets/ARSpace/Prefabs/UI/MainMenuCanvas/canvas.gd" id="1_nqjmq"]
 [ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/MainMenuCanvas/LifeTabView.prefab.tscn" id="2_alcmm"]
@@ -20,6 +20,7 @@
 [ext_resource type="Texture2D" uid="uid://b3ka13evrqdiy" path="res://Assets/ARSpace/Textures/UIWindow/Vector (1).png" id="18_k678q"]
 [ext_resource type="Texture2D" uid="uid://d2oc1tq2wrwe7" path="res://Assets/ARSpace/Textures/拉伸.png" id="19_gv5p4"]
 [ext_resource type="PackedScene" uid="uid://c5lm3bvr8jca1" path="res://Assets/ARSpace/Prefabs/UI/LLMAssistantCanvas.tscn" id="20_g6gec"]
+[ext_resource type="Texture2D" uid="uid://7dtxho86j4hh" path="res://Assets/Sprite/Microphone Filled.png" id="21_voice"]
 
 [node name="MainMenuCanvasAR" type="CanvasLayer"]
 
@@ -193,6 +194,26 @@ texture = ExtResource("11_vbbh4")
 
 [node name="CanvasRenderer" type="Node" parent="Canvas/Navcation/ModeLayout/WorkModeTab/Text (TMP)"]
 
+[node name="Spacer" type="Control" parent="Canvas/Navcation/ModeLayout"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="VoiceCallTab" type="Button" parent="Canvas/Navcation/ModeLayout"]
+layout_mode = 2
+icon = ExtResource("9_c3tev")
+flat = true
+icon_alignment = 1
+
+[node name="CanvasRenderer" type="Node" parent="Canvas/Navcation/ModeLayout/VoiceCallTab"]
+
+[node name="Image" type="Sprite2D" parent="Canvas/Navcation/ModeLayout/VoiceCallTab"]
+position = Vector2(45, 45)
+scale = Vector2(0.42, 0.42)
+texture = ExtResource("21_voice")
+centered = false
+
+[node name="CanvasRenderer" type="Node" parent="Canvas/Navcation/ModeLayout/VoiceCallTab/Image"]
+
 [node name="TopMenuBox" type="Sprite2D" parent="Canvas"]
 position = Vector2(305.162, 71.75)
 scale = Vector2(0.852941, 0.852941)
@@ -304,6 +325,7 @@ texture = ExtResource("19_gv5p4")
 [connection signal="pressed" from="Canvas/WorkTabView/GridContainer/LLMAssistant" to="Canvas" method="_on_llm_assistant_pressed"]
 [connection signal="pressed" from="Canvas/WorkTabView/WorkListView/BackButton" to="Canvas" method="_on_back_button_pressed"]
 [connection signal="pressed" from="Canvas/WorkTabView/LLMAssistantView/BackButton" to="Canvas" method="_on_llm_back_button_pressed"]
+[connection signal="pressed" from="Canvas/Navcation/ModeLayout/VoiceCallTab" to="Canvas" method="_on_voice_call_pressed"]
 [connection signal="pressed" from="Canvas/TopMenuBox/Controller/CloseButton" to="Canvas" method="_on_close_button_pressed"]
 
 [editable path="Canvas/LifeTabView"]

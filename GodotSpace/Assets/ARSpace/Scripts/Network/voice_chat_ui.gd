@@ -32,6 +32,8 @@ func _ready() -> void:
 	llm_assistant = get_node_or_null("/root/LLMAssistantService")
 	network_handler = get_node_or_null("/root/NetworkHandler")
 	PanelWindowZoom.bind_max_button(self)
+	_bind_close_button()
+	_register_voice_window()
 
 	voice_button.pressed.connect(_on_voice_button_pressed)
 	transcribe_button.toggled.connect(_on_transcribe_button_toggled)
@@ -60,6 +62,8 @@ func _ready() -> void:
 	multiplayer.peer_disconnected.connect(_on_peer_changed)
 	_load_transcript_history()
 	_update_ui()
+	if is_3d_panel:
+		PanelWindowZoom.set_window_visible(self, false)
 
 
 func _get_voice_ui_node(relative_path: String) -> Node:
@@ -75,6 +79,33 @@ func _get_voice_ui_node(relative_path: String) -> Node:
 	return null
 
 
+func _bind_close_button() -> void:
+	var close_button := find_child("CloseButton", true, false) as Button
+	if close_button == null:
+		return
+	close_button.disabled = false
+	var callback := Callable(self, "_on_close_button_pressed")
+	if not close_button.pressed.is_connected(callback):
+		close_button.pressed.connect(callback)
+
+
+func _register_voice_window() -> void:
+	if not is_3d_panel:
+		return
+	var global_node := get_node_or_null("/root/Global")
+	if global_node == null:
+		return
+	var target := _get_window_target()
+	global_node.set("voice_call_window", target if target != null else self)
+
+
+func _get_window_target() -> Node:
+	var viewport := get_viewport()
+	if viewport != null and viewport.get_parent() is Node3D:
+		return viewport.get_parent()
+	return self
+
+
 func _process(_delta: float) -> void:
 	if not visible:
 		return
@@ -88,6 +119,10 @@ func _on_voice_button_pressed() -> void:
 		return
 	if voice_chat != null and voice_chat.has_method("toggle_voice"):
 		voice_chat.call("toggle_voice")
+
+
+func _on_close_button_pressed() -> void:
+	PanelWindowZoom.set_window_visible(self, false)
 
 
 func _on_transcribe_button_toggled(enabled: bool) -> void:

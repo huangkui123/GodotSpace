@@ -2357,6 +2357,7 @@ viewport_size = Vector2(610, 500)
 
 [node name="VoiceCallWindow3D" parent="GroupUI" instance=ExtResource("70_voice_call")]
 transform = Transform3D(-0.000815796, -1.07935e-05, 0.00288693, 1.53492e-05, 0.00299992, 1.55533e-05, -0.00288691, 1.90002e-05, -0.00081572, -1.23002, 0.905885, 1.72829)
+visible = false
 scene_properties_keys = PackedStringArray("voice_chat_ui.gd", "is_3d_panel")
 is_3d_panel = true
 
