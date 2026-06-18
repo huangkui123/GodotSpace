@@ -7,7 +7,7 @@
 script = ExtResource("1_71hh1")
 
 [node name="XROrigin3D" parent="." instance=ExtResource("1_j61gx")]
-transform = Transform3D(-0.939693, 0, 0.34202, 0, 1, 0, -0.34202, 0, -0.939693, 0, 0, 0)
+transform = Transform3D(-0.998971, 0, 0.045363, 0, 1, 0, -0.045363, 0, -0.998971, 0, 0, 0)
 
 [node name="Head" parent="XROrigin3D/XRCamera3D" index="0"]
 transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, 0, -0.01, 0.1)
