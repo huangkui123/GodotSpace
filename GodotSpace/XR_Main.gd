@@ -22,6 +22,8 @@ var xr_interface: XRInterface
 var is_test_mode: bool = false
 var passthrough_api_started: bool = false
 var passthrough_refresh_ms: int = 0
+var passthrough_supported_modes_logged: bool = false
+var passthrough_unavailable_warned: bool = false
 
 func _ready() -> void:
 	xr_interface = XRServer.find_interface("OpenXR")
@@ -51,6 +53,8 @@ func _enter_server_runtime() -> void:
 	if not _is_vr_client_runtime_instance():
 		NetworkHandler.shutdown_xr_for_server()
 		passthrough_api_started = false
+		passthrough_supported_modes_logged = false
+		passthrough_unavailable_warned = false
 	_ensure_spectator_camera_current()
 	if is_test_mode:
 		call_deferred("_ensure_test_player")
@@ -130,7 +134,9 @@ func _ensure_passthrough_active() -> bool:
 
 	var enabled: bool = false
 	var supported_blend_modes: Array = xr_interface.get_supported_environment_blend_modes()
-	print("MR passthrough supported blend modes = ", supported_blend_modes)
+	if not passthrough_supported_modes_logged:
+		passthrough_supported_modes_logged = true
+		print("MR passthrough supported blend modes = ", supported_blend_modes)
 
 	if XRInterface.XR_ENV_BLEND_MODE_ALPHA_BLEND in supported_blend_modes:
 		xr_interface.environment_blend_mode = XRInterface.XR_ENV_BLEND_MODE_ALPHA_BLEND
@@ -145,7 +151,10 @@ func _ensure_passthrough_active() -> bool:
 	get_viewport().use_xr = true
 	get_tree().root.transparent_bg = enabled
 	get_viewport().transparent_bg = enabled
-	if not enabled:
+	if enabled:
+		passthrough_unavailable_warned = false
+	elif not passthrough_unavailable_warned:
+		passthrough_unavailable_warned = true
 		push_warning("MR passthrough is unavailable on this OpenXR runtime")
 	return enabled
 
@@ -161,6 +170,8 @@ func _stop_passthrough() -> void:
 
 	xr_interface.stop_passthrough()
 	passthrough_api_started = false
+	passthrough_supported_modes_logged = false
+	passthrough_unavailable_warned = false
 	get_tree().root.transparent_bg = false
 	get_viewport().transparent_bg = false
 	print("MR透视: 已关闭")
