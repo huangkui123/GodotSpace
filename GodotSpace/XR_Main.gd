@@ -8,6 +8,7 @@ const TEST_PLAYER_SCENE: PackedScene = preload("res://Assets/ARSpace/Scenes/Play
 const TEST_PLAYER_DEFAULT_ID: int = 1
 const TEST_LEFT_HAND_OFFSET: Vector3 = Vector3(-0.28, -0.22, -0.45)
 const TEST_RIGHT_HAND_OFFSET: Vector3 = Vector3(0.28, -0.22, -0.45)
+const PASSTHROUGH_REFRESH_INTERVAL_MS: int = 1000
 
 var xr_interface: XRInterface
 
@@ -19,37 +20,67 @@ var xr_interface: XRInterface
 @export var enable_passthrough: bool = true
 
 var is_test_mode: bool = false
+var passthrough_api_started: bool = false
+var passthrough_refresh_ms: int = 0
 
-func _ready():
+func _ready() -> void:
 	xr_interface = XRServer.find_interface("OpenXR")
 
 	if _has_launch_arg(TEST_MODE_ARG):
 		print("Starting in test mode (no XR)")
 		is_test_mode = true
 
+	if NetworkHandler.has_signal("network_role_selected") and not NetworkHandler.network_role_selected.is_connected(_on_network_role_selected):
+		NetworkHandler.network_role_selected.connect(_on_network_role_selected)
+
 	_update_preview_container_visibility()
 
-	if multiplayer.is_server() or is_test_mode:
-		NetworkHandler.shutdown_xr_for_server()
-		_ensure_spectator_camera_current()
-		if is_test_mode:
-			call_deferred("_ensure_test_player")
+	if _is_server_runtime_instance() or is_test_mode:
+		_enter_server_runtime()
 	else:
-		spectator_camera.current = false
-		if xr_interface and _ensure_openxr_initialized():
-			print("OpenXR initialized successfully")
-			# Turn off v-sync!
-			DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
-			# Change our main viewport to output to the HMD
-			get_viewport().use_xr = true
+		_enter_vr_client_runtime()
 
-			# 启用MR透视
-			if enable_passthrough:
-				_start_passthrough()
-		else:
-			print("OpenXR not initialized, please check if your headset is connected")
+func _on_network_role_selected(is_server_role: bool) -> void:
+	if is_server_role:
+		_enter_server_runtime()
+	else:
+		_enter_vr_client_runtime()
+
+
+func _enter_server_runtime() -> void:
+	if not _is_vr_client_runtime_instance():
+		NetworkHandler.shutdown_xr_for_server()
+		passthrough_api_started = false
+	_ensure_spectator_camera_current()
+	if is_test_mode:
+		call_deferred("_ensure_test_player")
+
+
+func _enter_vr_client_runtime() -> void:
+	if spectator_camera != null:
+		spectator_camera.current = false
+
+	if xr_interface == null:
+		xr_interface = XRServer.find_interface("OpenXR")
+	if xr_interface == null:
+		push_warning("OpenXR interface not found for VR client.")
+		return
+	if not _ensure_openxr_initialized():
+		push_warning("OpenXR not initialized, please check if your headset is connected.")
+		return
+
+	print("OpenXR initialized successfully")
+	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
+	get_tree().root.use_xr = true
+	get_viewport().use_xr = true
+
+	if enable_passthrough:
+		_ensure_passthrough_active()
+
 
 func _ensure_openxr_initialized() -> bool:
+	if xr_interface == null:
+		return false
 	if xr_interface.is_initialized():
 		return true
 
@@ -57,7 +88,8 @@ func _ensure_openxr_initialized() -> bool:
 
 
 ## 启动MR透视模式
-func _start_passthrough():
+func _start_passthrough() -> bool:
+	return _ensure_passthrough_active()
 	if not xr_interface:
 		push_warning("MR透视: XR接口未初始化")
 		return false
@@ -88,23 +120,59 @@ func _start_passthrough():
 
 
 ## 停止MR透视模式
-func _stop_passthrough():
+func _ensure_passthrough_active() -> bool:
+	if xr_interface == null:
+		push_warning("MR passthrough: OpenXR interface is not ready")
+		return false
+	if not _ensure_openxr_initialized():
+		push_warning("MR passthrough: OpenXR initialization failed")
+		return false
+
+	var enabled: bool = false
+	var supported_blend_modes: Array = xr_interface.get_supported_environment_blend_modes()
+	print("MR passthrough supported blend modes = ", supported_blend_modes)
+
+	if XRInterface.XR_ENV_BLEND_MODE_ALPHA_BLEND in supported_blend_modes:
+		xr_interface.environment_blend_mode = XRInterface.XR_ENV_BLEND_MODE_ALPHA_BLEND
+		enabled = true
+
+	if xr_interface.is_passthrough_supported():
+		if not passthrough_api_started:
+			passthrough_api_started = xr_interface.start_passthrough()
+		enabled = enabled or passthrough_api_started
+
+	get_tree().root.use_xr = true
+	get_viewport().use_xr = true
+	get_tree().root.transparent_bg = enabled
+	get_viewport().transparent_bg = enabled
+	if not enabled:
+		push_warning("MR passthrough is unavailable on this OpenXR runtime")
+	return enabled
+
+
+func _stop_passthrough() -> void:
 	if not xr_interface:
 		return
 
 	# 恢复为不透明VR模式
-	var supported_blend_modes = xr_interface.get_supported_environment_blend_modes()
+	var supported_blend_modes: Array = xr_interface.get_supported_environment_blend_modes()
 	if XRInterface.XR_ENV_BLEND_MODE_OPAQUE in supported_blend_modes:
 		xr_interface.environment_blend_mode = XRInterface.XR_ENV_BLEND_MODE_OPAQUE
 
 	xr_interface.stop_passthrough()
+	passthrough_api_started = false
+	get_tree().root.transparent_bg = false
 	get_viewport().transparent_bg = false
 	print("MR透视: 已关闭")
 
-func _process(_delta: float):
+func _process(_delta: float) -> void:
 	_update_preview_container_visibility()
 
-	if multiplayer.is_server() or is_test_mode:
+	if _is_vr_client_runtime_instance():
+		_refresh_vr_client_passthrough()
+		return
+
+	if _is_server_runtime_instance() or is_test_mode:
 		_ensure_spectator_camera_current()
 		if is_test_mode:
 			_ensure_test_player()
@@ -141,6 +209,36 @@ func _is_testmode_client_instance() -> bool:
 	if _is_client_launch_mode():
 		return true
 	return multiplayer.has_multiplayer_peer() and not multiplayer.is_server()
+
+
+func _is_vr_client_runtime_instance() -> bool:
+	if is_test_mode:
+		return _is_testmode_client_instance()
+	if _is_client_launch_mode():
+		return true
+	return multiplayer.has_multiplayer_peer() and not multiplayer.is_server()
+
+
+func _is_server_runtime_instance() -> bool:
+	if is_test_mode:
+		return not _is_testmode_client_instance()
+	if _is_client_launch_mode():
+		return false
+	if multiplayer.has_multiplayer_peer():
+		return multiplayer.is_server()
+	return true
+
+
+func _refresh_vr_client_passthrough() -> void:
+	var now_ms: int = Time.get_ticks_msec()
+	if now_ms - passthrough_refresh_ms < PASSTHROUGH_REFRESH_INTERVAL_MS:
+		return
+
+	passthrough_refresh_ms = now_ms
+	get_tree().root.use_xr = true
+	get_viewport().use_xr = true
+	if enable_passthrough:
+		_ensure_passthrough_active()
 
 func _is_client_launch_mode() -> bool:
 	var role := _get_launch_arg_value(VOICE_ROLE_ARG).to_lower()

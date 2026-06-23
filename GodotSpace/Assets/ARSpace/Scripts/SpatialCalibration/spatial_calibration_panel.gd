@@ -3,27 +3,38 @@ extends Control
 const DEBUG_LOGS := false
 
 const FrameProtocol := preload("res://Assets/ARSpace/Scripts/SpatialCalibration/anchor_frame_protocol.gd")
-const DepthEstimator := preload("res://Assets/ARSpace/Scripts/SpatialCalibration/visual_depth_estimator.gd")
 
 const FRAME_MAGIC_PSA2 := FrameProtocol.FRAME_MAGIC_PSA2
 const ACK_MAGIC_PAA1 := FrameProtocol.ACK_MAGIC_PAA1
 const FRAME_HEADER_SIZE := FrameProtocol.FRAME_HEADER_SIZE
 const ACK_HEADER_SIZE := FrameProtocol.ACK_HEADER_SIZE
+
 const DEFAULT_PORT := 8787
 const MAX_FRAME_BYTES := 8 * 1024 * 1024
 const MAX_METADATA_BYTES := 64 * 1024
+
 const DEFAULT_CLICK_DEPTH_METERS := 1.0
 const SCROLL_DEPTH_STEP_METERS := 0.05
+const PREVIEW_MARKER_RADIUS := 0.05
+const CONFIRMED_MARKER_RADIUS := 0.05
 const CLICK_MARKER_SIZE := Vector2(16.0, 16.0)
 const INVALID_IMAGE_POSITION := Vector2(-1.0, -1.0)
-const XR_DIRECT_PIXEL_SCALE := 0.6
+const DEFAULT_DEPTH_PREDICTION_ENDPOINT := "http://127.0.0.1:8765/predict"
+const DEPTH_PREDICTION_ENDPOINT_SETTING := "godot_space/spatial_calibration/depth_prediction_endpoint"
+const DEPTH_PREDICTION_ENDPOINT_ENV := "GODOTSPACE_DEPTH_PREDICTION_ENDPOINT"
+const DEPTH_PREDICTION_PATCH_RADIUS := 5
+const MIN_RAY_Z_FACTOR := 0.05
+
+const PREVIEW_CAMERA_PATH := NodePath("UI/SubViewportContainer/SubViewport/Camera3D")
 
 var server: TCPServer = TCPServer.new()
 var client: StreamPeerTCP
 var recv_buffer: PackedByteArray = PackedByteArray()
 var ack_buffer: PackedByteArray = PackedByteArray()
+var last_frame_jpeg_bytes: PackedByteArray = PackedByteArray()
 var stream_texture: ImageTexture
 var decode_image: Image = Image.new()
+var depth_prediction_request: HTTPRequest
 
 @onready var address_label: Label = $MarginContainer/Layout/AddressLabel
 @onready var status_label: Label = $MarginContainer/Layout/StatusLabel
@@ -43,6 +54,7 @@ var last_frame_id := -1
 var last_frame_timestamp_ns := 0
 var last_frame_metadata: Dictionary = {}
 var last_received_frame_id := -1
+
 var frames_this_second := 0
 var fps_tick_ms := 0
 var display_fps := 0.0
@@ -53,17 +65,31 @@ var decode_frames := 0
 var decode_avg_ms_display := 0.0
 var last_status_text := ""
 
-var has_click_selection := false
-var last_click_image_position := INVALID_IMAGE_POSITION
-var last_click_frame_id := -1
-var last_click_frame_size := Vector2i.ZERO
-var last_click_frame_metadata: Dictionary = {}
-var click_depth_source := "manual"
-var click_depth_estimate: Dictionary = {}
-var last_display_projection: Dictionary = {}
-var confirmed_point_count := 0
+var has_selection := false
+var selected_image_position := INVALID_IMAGE_POSITION
+var selected_frame_id := -1
+var selected_frame_size := Vector2i.ZERO
+var selected_depth_m := DEFAULT_CLICK_DEPTH_METERS
+var selected_uv := Vector2.ZERO
+var selected_ray_origin := Vector3.ZERO
+var selected_ray_direction := Vector3.FORWARD
+var selected_camera_z_per_ray_meter := 1.0
+var selected_camera_name := ""
+var selected_camera_path := ""
+var selected_depth_source := "manual"
+var selection_depth_ready := false
+var depth_prediction_status_text := ""
+var depth_prediction_endpoint: String = DEFAULT_DEPTH_PREDICTION_ENDPOINT
+var depth_prediction_request_id := 0
+var pending_depth_prediction_request_id := -1
+var pending_depth_prediction_frame_id := -1
+var pending_depth_prediction_revision := -1
+var depth_manual_revision := 0
+var current_projection: Dictionary = {}
+
 var marker_root: Node3D
 var preview_marker: MeshInstance3D
+var confirmed_point_count := 0
 
 
 func _ready() -> void:
@@ -74,8 +100,9 @@ func _ready() -> void:
 
 	ack_buffer.resize(ACK_HEADER_SIZE)
 	_wire_static_ui()
-	_set_status("等待 Pico helper 连接")
-	_reset_click_selection(false)
+	_load_depth_prediction_endpoint()
+	_setup_depth_prediction_client()
+	_reset_selection(false)
 	_start_listening(DEFAULT_PORT)
 	set_process(true)
 
@@ -84,6 +111,7 @@ func _exit_tree() -> void:
 	_disconnect_client("")
 	if server.is_listening():
 		server.stop()
+	_clear_remote_preview()
 
 
 func _process(_delta: float) -> void:
@@ -95,23 +123,11 @@ func _process(_delta: float) -> void:
 		if state == StreamPeerTCP.STATUS_CONNECTED:
 			_pump_socket()
 		elif state == StreamPeerTCP.STATUS_ERROR:
-			_disconnect_client("Pico helper 连接出错")
+			_disconnect_client("Pico helper connection error")
 		elif state == StreamPeerTCP.STATUS_NONE:
-			_disconnect_client("Pico helper 已断开")
+			_disconnect_client("Pico helper disconnected")
 
-	var now_ms := Time.get_ticks_msec()
-	if fps_tick_ms == 0:
-		fps_tick_ms = now_ms
-	elif now_ms - fps_tick_ms >= 1000:
-		display_fps = frames_this_second * 1000.0 / float(now_ms - fps_tick_ms)
-		decode_avg_ms_display = decode_time_accum_ms / float(max(1, decode_frames))
-		dropped_frames_display = dropped_frames_this_second
-		frames_this_second = 0
-		decode_time_accum_ms = 0.0
-		decode_frames = 0
-		dropped_frames_this_second = 0
-		fps_tick_ms = now_ms
-		_refresh_stats()
+	_update_fps_stats()
 
 
 func _wire_static_ui() -> void:
@@ -120,49 +136,72 @@ func _wire_static_ui() -> void:
 	stop_button.pressed.connect(_on_stop_pressed)
 	confirm_button.pressed.connect(_confirm_current_point)
 	clear_button.pressed.connect(_clear_confirmed_points)
-	depth_input.value_changed.connect(_on_click_depth_changed)
+	depth_input.value_changed.connect(_on_depth_input_changed)
 	texture_rect.mouse_filter = Control.MOUSE_FILTER_STOP
 	click_marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	depth_input.set_value_no_signal(DEFAULT_CLICK_DEPTH_METERS)
+
+
+func _setup_depth_prediction_client() -> void:
+	depth_prediction_request = HTTPRequest.new()
+	depth_prediction_request.name = "DepthPredictionRequest"
+	depth_prediction_request.timeout = 90.0
+	add_child(depth_prediction_request)
+	depth_prediction_request.request_completed.connect(_on_depth_prediction_completed)
+
+
+func _load_depth_prediction_endpoint() -> void:
+	var configured_endpoint: Variant = ProjectSettings.get_setting(
+		DEPTH_PREDICTION_ENDPOINT_SETTING,
+		DEFAULT_DEPTH_PREDICTION_ENDPOINT
+	)
+	depth_prediction_endpoint = str(configured_endpoint).strip_edges()
+
+	var environment_endpoint: String = OS.get_environment(DEPTH_PREDICTION_ENDPOINT_ENV).strip_edges()
+	if environment_endpoint != "":
+		depth_prediction_endpoint = environment_endpoint
+	if depth_prediction_endpoint == "":
+		depth_prediction_endpoint = DEFAULT_DEPTH_PREDICTION_ENDPOINT
 
 
 func _on_start_pressed() -> void:
 	var port := port_input.text.to_int()
 	if port <= 0 or port > 65535:
-		_set_status("端口无效，请输入 1-65535")
+		_set_status("Invalid port. Use 1-65535.")
 		return
 	_start_listening(port)
 
 
 func _on_stop_pressed() -> void:
-	_disconnect_client("监听已停止")
+	_disconnect_client("Stream listener stopped")
 	if server.is_listening():
 		server.stop()
-	_set_status("监听已停止")
+	_set_status("Stream listener stopped")
 	_refresh_stats()
 
 
 func _start_listening(port: int) -> void:
-	_disconnect_client("切换监听端口")
+	_disconnect_client("Switching stream listener")
 	if server.is_listening():
 		server.stop()
 
 	var error := server.listen(port)
 	if error != OK:
-		_set_status("启动监听失败: %s" % error_string(error))
+		_set_status("Failed to listen: %s" % error_string(error))
 		return
 
 	_refresh_addresses(port)
-	_set_status("监听中，等待 Pico helper 连接到端口 %d" % port)
+	_set_status("Listening for Pico helper on port %d" % port)
 	_refresh_stats()
 
 
 func _accept_client() -> void:
-	_disconnect_client("收到新的 Pico helper 连接")
+	_disconnect_client("New Pico helper connection")
 	client = server.take_connection()
 	recv_buffer = PackedByteArray()
 	if client != null:
 		client.set_no_delay(true)
-		_set_status("Pico helper 已连接，等待首帧")
+		_set_status("Pico helper connected; waiting for frames")
 		_refresh_stats()
 
 
@@ -173,7 +212,7 @@ func _disconnect_client(reason: String) -> void:
 	recv_buffer = PackedByteArray()
 	last_received_frame_id = -1
 	last_frame_metadata = {}
-	_reset_click_selection(false)
+	last_frame_jpeg_bytes = PackedByteArray()
 	if reason != "":
 		_set_status(reason)
 	_refresh_stats()
@@ -186,7 +225,7 @@ func _pump_socket() -> void:
 
 	var packet := client.get_data(available)
 	if int(packet[0]) != OK:
-		_disconnect_client("读取失败: %s" % error_string(int(packet[0])))
+		_disconnect_client("Read failed: %s" % error_string(int(packet[0])))
 		return
 
 	recv_buffer.append_array(packet[1])
@@ -206,11 +245,11 @@ func _try_consume_frame() -> bool:
 	var metadata_size := _read_u32_be(recv_buffer, 24)
 	var payload_size := _read_u32_be(recv_buffer, 28)
 	if metadata_size > MAX_METADATA_BYTES:
-		_set_status("收到异常元数据，已丢弃")
+		_set_status("Discarded frame with oversized metadata")
 		recv_buffer = PackedByteArray()
 		return false
 	if payload_size <= 0 or payload_size > MAX_FRAME_BYTES:
-		_set_status("收到异常 JPEG 数据，已丢弃")
+		_set_status("Discarded frame with invalid JPEG payload")
 		recv_buffer = PackedByteArray()
 		return false
 
@@ -248,7 +287,7 @@ func _show_frame(
 	var decode_start_us := Time.get_ticks_usec()
 	var error := decode_image.load_jpg_from_buffer(jpeg_bytes)
 	if error != OK:
-		_set_status("JPEG 解码失败: %s" % error_string(error))
+		_set_status("JPEG decode failed: %s" % error_string(error))
 		return
 
 	var image_size := Vector2i(decode_image.get_width(), decode_image.get_height())
@@ -262,16 +301,15 @@ func _show_frame(
 	last_frame_size = image_size
 	last_frame_timestamp_ns = timestamp_ns
 	last_frame_metadata = metadata
+	last_frame_jpeg_bytes = jpeg_bytes
 	_update_click_marker_position()
-	if has_click_selection:
-		_recompute_click_result()
 
 	frames_this_second += 1
 	var decode_ms := float(Time.get_ticks_usec() - decode_start_us) / 1000.0
 	decode_time_accum_ms += decode_ms
 	decode_frames += 1
 	_refresh_stats()
-	_set_status("正在显示 Pico 画面")
+	_set_status("Showing Pico stream")
 
 
 func _on_preview_gui_input(event: InputEvent) -> void:
@@ -279,288 +317,591 @@ func _on_preview_gui_input(event: InputEvent) -> void:
 	if mouse_event == null or not mouse_event.pressed:
 		return
 
-	if mouse_event.button_index == MOUSE_BUTTON_WHEEL_UP:
-		_adjust_click_depth(SCROLL_DEPTH_STEP_METERS)
-		get_viewport().set_input_as_handled()
-		return
-	if mouse_event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-		_adjust_click_depth(-SCROLL_DEPTH_STEP_METERS)
-		get_viewport().set_input_as_handled()
-		return
-	if mouse_event.button_index == MOUSE_BUTTON_RIGHT:
-		_confirm_current_point()
-		get_viewport().set_input_as_handled()
-		return
-	if mouse_event.button_index != MOUSE_BUTTON_LEFT:
-		return
+	match mouse_event.button_index:
+		MOUSE_BUTTON_WHEEL_UP:
+			_adjust_selection_depth(SCROLL_DEPTH_STEP_METERS)
+			get_viewport().set_input_as_handled()
+		MOUSE_BUTTON_WHEEL_DOWN:
+			_adjust_selection_depth(-SCROLL_DEPTH_STEP_METERS)
+			get_viewport().set_input_as_handled()
+		MOUSE_BUTTON_RIGHT:
+			_confirm_current_point()
+			get_viewport().set_input_as_handled()
+		MOUSE_BUTTON_LEFT:
+			_select_preview_point(mouse_event.position)
+			get_viewport().set_input_as_handled()
+
+
+func _select_preview_point(local_position: Vector2) -> void:
 	if last_frame_size.x <= 0 or last_frame_size.y <= 0:
-		result_label.text = "还没有有效视频帧，无法点击取点。"
+		_set_result_text("No valid video frame yet.")
 		return
 
-	var image_position := _texture_local_to_image_position(mouse_event.position, last_frame_size)
+	var image_position := _texture_local_to_image_position(local_position, last_frame_size)
 	if image_position == INVALID_IMAGE_POSITION:
-		result_label.text = "点击落在黑边区域，未命中实际视频内容。"
+		_set_result_text("Click inside the displayed video image.")
 		return
 
-	has_click_selection = true
-	last_click_image_position = image_position
-	last_click_frame_id = last_frame_id
-	last_click_frame_size = last_frame_size
-	last_click_frame_metadata = last_frame_metadata.duplicate(true)
-	_apply_initial_depth_estimate(image_position)
+	var projection := _project_video_point(image_position, last_frame_size, float(depth_input.value), last_frame_id)
+	if projection.has("error"):
+		_reset_selection(true)
+		_set_result_text(str(projection["error"]))
+		return
+
+	var uv: Vector2 = projection.get("uv", Vector2.ZERO)
+	var ray_origin: Vector3 = projection.get("camera_position", Vector3.ZERO)
+	var ray_direction: Vector3 = projection.get("ray_direction", Vector3.FORWARD)
+	var z_per_ray_meter: float = float(projection.get("camera_z_per_ray_meter", 1.0))
+
+	has_selection = true
+	depth_manual_revision += 1
+	selected_image_position = image_position
+	selected_frame_id = last_frame_id
+	selected_frame_size = last_frame_size
+	selected_depth_m = float(projection.get("depth_m", depth_input.value))
+	selected_uv = uv
+	selected_ray_origin = ray_origin
+	selected_ray_direction = ray_direction.normalized()
+	if z_per_ray_meter < MIN_RAY_Z_FACTOR:
+		z_per_ray_meter = MIN_RAY_Z_FACTOR
+	selected_camera_z_per_ray_meter = z_per_ray_meter
+	selected_camera_name = str(projection.get("camera_name", ""))
+	selected_camera_path = str(projection.get("camera_path", ""))
+	selected_depth_source = "pending_depth_pro"
+	selection_depth_ready = false
+	depth_prediction_status_text = ""
 	_update_click_marker_position()
-	_recompute_click_result()
-	get_viewport().set_input_as_handled()
+	_request_depth_prediction()
 
 
-func _on_click_depth_changed(_value: float) -> void:
-	if has_click_selection:
-		click_depth_source = "manual"
-		click_depth_estimate = {}
-	_recompute_click_result()
+func _on_depth_input_changed(value: float) -> void:
+	selected_depth_m = float(value)
+	selected_depth_source = "manual"
+	selection_depth_ready = true
+	depth_prediction_status_text = "DepthPredict=manual depth %.2fm" % selected_depth_m
+	depth_manual_revision += 1
+	if has_selection:
+		_recompute_selection()
 
 
-func _apply_initial_depth_estimate(image_position: Vector2) -> void:
-	click_depth_source = "manual"
-	click_depth_estimate = DepthEstimator.estimate_initial_depth(
-		decode_image,
-		image_position,
-		last_click_frame_metadata,
-		float(depth_input.min_value),
-		float(depth_input.max_value),
-	)
-	if not bool(click_depth_estimate.get("available", false)):
+func _adjust_selection_depth(delta_meters: float) -> void:
+	if not has_selection:
 		return
 
-	var estimated_depth := float(click_depth_estimate.get("depth_m", depth_input.value))
-	depth_input.set_value_no_signal(estimated_depth)
-	click_depth_source = str(click_depth_estimate.get("source", "visual_initial"))
-
-
-func _adjust_click_depth(delta_meters: float) -> void:
-	var next_depth: float = clamp(
-		float(depth_input.value) + delta_meters,
+	selected_depth_m = clamp(
+		selected_depth_m + delta_meters,
 		float(depth_input.min_value),
-		float(depth_input.max_value),
+		float(depth_input.max_value)
 	)
-	depth_input.value = next_depth
+	selected_depth_source = "manual"
+	selection_depth_ready = true
+	depth_prediction_status_text = "DepthPredict=manual depth %.2fm" % selected_depth_m
+	depth_manual_revision += 1
+	depth_input.set_value_no_signal(selected_depth_m)
+	_recompute_selection()
 
 
-func _reset_click_selection(clear_marker_only: bool) -> void:
-	has_click_selection = false
-	last_click_image_position = INVALID_IMAGE_POSITION
-	last_click_frame_id = -1
-	last_click_frame_size = Vector2i.ZERO
-	last_click_frame_metadata = {}
-	click_depth_source = "manual"
-	click_depth_estimate = {}
-	last_display_projection = {}
+func _request_depth_prediction() -> void:
+	if depth_prediction_request == null:
+		depth_prediction_status_text = "DepthPredict=unavailable: no HTTPRequest"
+		_recompute_selection()
+		return
+	if last_frame_jpeg_bytes.is_empty():
+		depth_prediction_status_text = "DepthPredict=unavailable: no JPEG frame"
+		_recompute_selection()
+		return
+
+	var http_status := depth_prediction_request.get_http_client_status()
+	if http_status != HTTPClient.STATUS_DISCONNECTED:
+		depth_prediction_request.cancel_request()
+
+	depth_prediction_request_id += 1
+	pending_depth_prediction_request_id = depth_prediction_request_id
+	pending_depth_prediction_frame_id = selected_frame_id
+	pending_depth_prediction_revision = depth_manual_revision
+	depth_prediction_status_text = "DepthPredict=requesting %s..." % depth_prediction_endpoint
+	_set_status("Depth prediction requested")
+
+	var body := {
+		"request_id": pending_depth_prediction_request_id,
+		"image_jpeg_base64": Marshalls.raw_to_base64(last_frame_jpeg_bytes),
+		"x": selected_image_position.x,
+		"y": selected_image_position.y,
+		"patch_radius": DEPTH_PREDICTION_PATCH_RADIUS,
+		"min_depth_m": float(depth_input.min_value),
+		"max_depth_m": float(depth_input.max_value),
+	}
+	var headers := PackedStringArray(["Content-Type: application/json"])
+	var error := depth_prediction_request.request(
+		depth_prediction_endpoint,
+		headers,
+		HTTPClient.METHOD_POST,
+		JSON.stringify(body)
+	)
+	if error != OK:
+		pending_depth_prediction_request_id = -1
+		depth_prediction_status_text = "DepthPredict=request failed: %s" % error_string(error)
+	_recompute_selection()
+
+
+func _on_depth_prediction_completed(
+	result: int,
+	response_code: int,
+	_headers: PackedStringArray,
+	body: PackedByteArray,
+) -> void:
+	var request_id := pending_depth_prediction_request_id
+	pending_depth_prediction_request_id = -1
+	if request_id < 0:
+		return
+	if not has_selection or pending_depth_prediction_frame_id != selected_frame_id:
+		return
+	if pending_depth_prediction_revision != depth_manual_revision:
+		depth_prediction_status_text = "DepthPredict=ignored after manual edit"
+		_recompute_selection()
+		return
+	if result != HTTPRequest.RESULT_SUCCESS:
+		depth_prediction_status_text = "DepthPredict=HTTP error %d" % result
+		_set_status(depth_prediction_status_text)
+		_recompute_selection()
+		return
+
+	var json := JSON.new()
+	var parse_error := json.parse(body.get_string_from_utf8())
+	if parse_error != OK or typeof(json.data) != TYPE_DICTIONARY:
+		depth_prediction_status_text = "DepthPredict=invalid response HTTP %d" % response_code
+		_set_status(depth_prediction_status_text)
+		_recompute_selection()
+		return
+
+	var response: Dictionary = json.data
+	if int(response.get("request_id", request_id)) != request_id:
+		return
+	if response_code < 200 or response_code >= 300:
+		var service_error := str(response.get("error", "HTTP %d" % response_code))
+		depth_prediction_status_text = "DepthPredict=service error: %s" % service_error
+		_set_status(depth_prediction_status_text)
+		push_warning(depth_prediction_status_text)
+		_recompute_selection()
+		return
+	if not bool(response.get("ok", false)):
+		depth_prediction_status_text = "DepthPredict=unavailable: %s" % str(response.get("error", "unknown"))
+		_set_status(depth_prediction_status_text)
+		push_warning(depth_prediction_status_text)
+		_recompute_selection()
+		return
+
+	var camera_z_depth_m := float(response.get("depth_m", 0.0))
+	if camera_z_depth_m <= 0.0:
+		depth_prediction_status_text = "DepthPredict=invalid depth"
+		_set_status(depth_prediction_status_text)
+		_recompute_selection()
+		return
+
+	var z_per_ray_meter := selected_camera_z_per_ray_meter
+	if z_per_ray_meter < MIN_RAY_Z_FACTOR:
+		z_per_ray_meter = MIN_RAY_Z_FACTOR
+	var predicted_ray_depth_m := camera_z_depth_m / z_per_ray_meter
+	predicted_ray_depth_m = clamp(
+		predicted_ray_depth_m,
+		float(depth_input.min_value),
+		float(depth_input.max_value)
+	)
+	selected_depth_m = predicted_ray_depth_m
+	selected_depth_source = "depth_pro"
+	selection_depth_ready = true
+	depth_input.set_value_no_signal(selected_depth_m)
+	depth_prediction_status_text = "DepthPredict=%.2fm z, %.2fm ray (%s)" % [
+		camera_z_depth_m,
+		predicted_ray_depth_m,
+		str(response.get("model", "depth_pro")),
+	]
+	_set_status(depth_prediction_status_text)
+	_recompute_selection()
+
+
+func _recompute_selection() -> void:
+	if not has_selection:
+		return
+
+	if not selection_depth_ready:
+		current_projection = {}
+		confirm_button.disabled = true
+		_hide_local_preview_marker()
+		_clear_remote_preview()
+		_set_result_text(_build_pending_selection_text())
+		return
+
+	var projection := _build_projection_from_selection()
+	current_projection = projection
+	if projection.has("error"):
+		confirm_button.disabled = true
+		_hide_local_preview_marker()
+		_clear_remote_preview()
+		_set_result_text(str(projection["error"]))
+		return
+
+	confirm_button.disabled = false
+	var position: Vector3 = projection.get("position", Vector3.ZERO)
+	_update_local_preview_marker(position)
+	_send_remote_preview(position, projection)
+	_set_result_text(_build_projection_text(projection))
+
+
+func _project_video_point(image_position: Vector2, frame_size: Vector2i, depth_m: float, frame_id: int = -1) -> Dictionary:
+	var camera := _get_reference_camera()
+	if camera == null:
+		return {"error": "No virtual reference camera found."}
+	if frame_size.x <= 0 or frame_size.y <= 0:
+		return {"error": "Invalid video frame size."}
+
+	var uv := Vector2(
+		image_position.x / float(frame_size.x),
+		image_position.y / float(frame_size.y)
+	)
+	var ray := _project_virtual_camera_ray(camera, uv, frame_size)
+	if ray.has("error"):
+		return ray
+
+	var origin: Vector3 = ray.get("origin", camera.global_position)
+	var direction: Vector3 = ray.get("direction", Vector3.FORWARD)
+	direction = direction.normalized()
+	var position := origin + direction * depth_m
+	var projection_frame_id := frame_id if frame_id >= 0 else selected_frame_id
+	return {
+		"position": position,
+		"camera_position": origin,
+		"ray_direction": direction,
+		"pixel": image_position,
+		"uv": uv,
+		"depth_m": depth_m,
+		"camera_name": camera.name,
+		"camera_path": str(camera.get_path()),
+		"frame_id": projection_frame_id,
+		"projection_aspect": float(ray.get("projection_aspect", 0.0)),
+		"camera_z_per_ray_meter": float(ray.get("camera_z_per_ray_meter", 1.0)),
+	}
+
+
+func _project_virtual_camera_ray(camera: Camera3D, uv: Vector2, frame_size: Vector2i) -> Dictionary:
+	if frame_size.x <= 0 or frame_size.y <= 0:
+		return {"error": "Invalid video frame size."}
+
+	var frame_height: float = float(frame_size.y)
+	if frame_height < 1.0:
+		frame_height = 1.0
+	var aspect: float = float(frame_size.x) / frame_height
+	var safe_aspect: float = aspect
+	if safe_aspect < 0.0001:
+		safe_aspect = 0.0001
+
+	var ndc := Vector2(
+		uv.x * 2.0 - 1.0,
+		1.0 - uv.y * 2.0
+	)
+	var camera_transform := camera.global_transform
+
+	if camera.projection == Camera3D.PROJECTION_ORTHOGONAL:
+		var view_width: float = camera.size * safe_aspect
+		var view_height: float = camera.size
+		if camera.keep_aspect == Camera3D.KEEP_WIDTH:
+			view_width = camera.size
+			view_height = camera.size / safe_aspect
+
+		var local_origin := Vector3(
+			ndc.x * view_width * 0.5,
+			ndc.y * view_height * 0.5,
+			0.0
+		)
+		return {
+			"origin": camera_transform.origin + camera_transform.basis * local_origin,
+			"direction": (camera_transform.basis * Vector3.FORWARD).normalized(),
+			"projection_aspect": aspect,
+			"camera_z_per_ray_meter": 1.0,
+		}
+
+	var half_fov_tan: float = tan(deg_to_rad(camera.fov) * 0.5)
+	var half_width_tan: float = half_fov_tan * safe_aspect
+	var half_height_tan: float = half_fov_tan
+	if camera.keep_aspect == Camera3D.KEEP_WIDTH:
+		half_width_tan = half_fov_tan
+		half_height_tan = half_fov_tan / safe_aspect
+
+	var local_ray := Vector3(
+		ndc.x * half_width_tan,
+		ndc.y * half_height_tan,
+		-1.0
+	).normalized()
+	return {
+		"origin": camera_transform.origin,
+		"direction": (camera_transform.basis * local_ray).normalized(),
+		"projection_aspect": aspect,
+		"camera_z_per_ray_meter": -local_ray.z,
+	}
+
+
+func _build_projection_from_selection() -> Dictionary:
+	if selected_frame_size.x <= 0 or selected_frame_size.y <= 0:
+		return {"error": "Invalid selected frame size."}
+	if selected_ray_direction.length_squared() <= 0.0:
+		return {"error": "Invalid selected ray."}
+
+	var direction := selected_ray_direction.normalized()
+	var position := selected_ray_origin + direction * selected_depth_m
+	return {
+		"position": position,
+		"camera_position": selected_ray_origin,
+		"ray_direction": direction,
+		"pixel": selected_image_position,
+		"uv": selected_uv,
+		"depth_m": selected_depth_m,
+		"camera_name": selected_camera_name,
+		"camera_path": selected_camera_path,
+		"frame_id": selected_frame_id,
+		"projection_aspect": _get_frame_aspect(selected_frame_size),
+		"camera_z_per_ray_meter": selected_camera_z_per_ray_meter,
+		"depth_source": selected_depth_source,
+	}
+
+
+func _get_frame_aspect(frame_size: Vector2i) -> float:
+	var frame_height: float = float(frame_size.y)
+	if frame_height < 1.0:
+		frame_height = 1.0
+	return float(frame_size.x) / frame_height
+
+
+func _get_reference_camera() -> Camera3D:
+	var root := get_tree().current_scene
+	if root == null:
+		return null
+
+	var preview_camera := root.get_node_or_null(PREVIEW_CAMERA_PATH) as Camera3D
+	if preview_camera != null:
+		return preview_camera
+
+	var exported_preview_camera := root.get("subUI") as Camera3D
+	if exported_preview_camera != null:
+		return exported_preview_camera
+
+	var xr_camera := root.find_child("XRCamera3D", true, false) as Camera3D
+	if xr_camera != null:
+		return xr_camera
+
+	var viewport_camera := get_viewport().get_camera_3d()
+	if viewport_camera != null:
+		return viewport_camera
+
+	return root.find_child("SpectatorCamera", true, false) as Camera3D
+
+
+func _confirm_current_point() -> void:
+	if not has_selection:
+		_set_result_text("Left click a video point first.")
+		return
+	if current_projection.is_empty() or current_projection.has("error"):
+		_recompute_selection()
+	if current_projection.is_empty() or current_projection.has("error"):
+		return
+
+	var position: Vector3 = current_projection.get("position", Vector3.ZERO)
+	var confirmed_depth_m: float = float(current_projection.get("depth_m", selected_depth_m))
+	var confirmed_depth_source: String = str(current_projection.get("depth_source", selected_depth_source))
+	var confirmed_depth_text := depth_prediction_status_text
+	if confirmed_depth_text == "":
+		confirmed_depth_text = "DepthPredict=confirmed %.2fm (%s)" % [
+			confirmed_depth_m,
+			confirmed_depth_source,
+		]
+	confirmed_point_count += 1
+	_add_local_confirmed_marker(position)
+	_send_confirmed_point(position, current_projection)
+	_clear_remote_preview()
+	_reset_selection(true)
+	_set_result_text(confirmed_depth_text)
+
+
+func _reset_selection(clear_text_only: bool) -> void:
+	has_selection = false
+	selected_image_position = INVALID_IMAGE_POSITION
+	selected_frame_id = -1
+	selected_frame_size = Vector2i.ZERO
+	selected_depth_m = float(depth_input.value) if depth_input != null else DEFAULT_CLICK_DEPTH_METERS
+	selected_uv = Vector2.ZERO
+	selected_ray_origin = Vector3.ZERO
+	selected_ray_direction = Vector3.FORWARD
+	selected_camera_z_per_ray_meter = 1.0
+	selected_camera_name = ""
+	selected_camera_path = ""
+	selected_depth_source = "manual"
+	selection_depth_ready = false
+	depth_prediction_status_text = ""
+	pending_depth_prediction_request_id = -1
+	current_projection = {}
 	if confirm_button != null:
 		confirm_button.disabled = true
 	if click_marker != null:
 		click_marker.visible = false
-	_hide_preview_marker()
-	if result_label != null and not clear_marker_only:
-		result_label.text = "点击 Pico 预览画面选点；滚轮调深度，右键或按钮确认。"
+	_hide_local_preview_marker()
+	_clear_remote_preview()
+	if result_label != null and not clear_text_only:
+		_set_result_text("Left click to preview. Mouse wheel changes depth. Right click confirms.")
 
 
-func _recompute_click_result() -> void:
-	if not has_click_selection:
+func _get_marker_root() -> Node3D:
+	if marker_root != null and is_instance_valid(marker_root):
+		return marker_root
+
+	var scene := get_tree().current_scene
+	if scene == null:
+		return null
+	marker_root = scene.get_node_or_null("SpatialCalibrationMarkers") as Node3D
+	if marker_root == null:
+		marker_root = Node3D.new()
+		marker_root.name = "SpatialCalibrationMarkers"
+		scene.add_child(marker_root)
+	return marker_root
+
+
+func _update_local_preview_marker(position: Vector3) -> void:
+	var root := _get_marker_root()
+	if root == null:
 		return
 
-	var projection := _compute_virtual_camera_projection(
-		last_click_image_position,
-		last_click_frame_size,
-		float(depth_input.value),
-	)
-	var capture_debug := _compute_capture_debug_projection(
-		last_click_image_position,
-		last_click_frame_size,
-		last_click_frame_metadata,
-		float(depth_input.value),
-	)
-	projection["capture_debug"] = capture_debug
-	last_display_projection = projection
+	if preview_marker == null or not is_instance_valid(preview_marker):
+		preview_marker = _create_marker_mesh(Color(0.2, 1.0, 0.25, 1.0), PREVIEW_MARKER_RADIUS)
+		preview_marker.name = "PreviewSpatialCalibrationPoint"
+		root.add_child(preview_marker)
+	preview_marker.global_position = position
+	preview_marker.visible = true
 
-	if projection.has("error"):
-		confirm_button.disabled = true
-		result_label.text = str(projection["error"])
-		_hide_preview_marker()
+
+func _hide_local_preview_marker() -> void:
+	if preview_marker != null and is_instance_valid(preview_marker):
+		preview_marker.visible = false
+
+
+func _add_local_confirmed_marker(position: Vector3) -> void:
+	var root := _get_marker_root()
+	if root == null:
 		return
 
-	confirm_button.disabled = false
-	_update_preview_marker(projection.get("position", Vector3.ZERO))
-	result_label.text = _build_result_text(projection)
+	var marker := _create_marker_mesh(Color(1.0, 0.08, 0.03, 1.0), CONFIRMED_MARKER_RADIUS)
+	marker.name = "SpatialCalibrationPoint%d" % confirmed_point_count
+	root.add_child(marker)
+	marker.global_position = position
+	marker.visible = true
 
 
-func _compute_virtual_camera_projection(
-	image_position: Vector2,
-	frame_size: Vector2i,
-	depth_m: float,
-) -> Dictionary:
-	var camera := _get_reference_camera()
-	if camera == null:
-		return {"error": "未找到 server 虚拟相机，无法计算空间标定点。"}
-	if frame_size.x <= 0 or frame_size.y <= 0:
-		return {"error": "当前帧尺寸无效，无法计算空间标定点。"}
-
-	var uv := Vector2(
-		image_position.x / float(frame_size.x),
-		image_position.y / float(frame_size.y),
-	)
-	var ray := _virtual_camera_ray_from_uv(camera, uv, frame_size)
-	var origin := camera.global_transform.origin
-	var point := origin + ray * depth_m
-	return {
-		"position": point,
-		"camera_position": origin,
-		"ray_direction": ray,
-		"uv": uv,
-		"pixel": image_position,
-		"depth_m": depth_m,
-		"camera_name": camera.name,
-	}
+func _create_marker_mesh(color: Color, radius: float) -> MeshInstance3D:
+	var marker := MeshInstance3D.new()
+	var mesh := SphereMesh.new()
+	mesh.radius = radius
+	mesh.height = radius * 2.0
+	mesh.radial_segments = 24
+	mesh.rings = 12
+	marker.mesh = mesh
+	marker.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	marker.set_surface_override_material(0, _make_marker_material(color))
+	return marker
 
 
-func _virtual_camera_ray_from_uv(camera: Camera3D, uv: Vector2, frame_size: Vector2i) -> Vector3:
-	var pixel_x := (uv.x - 0.5) * 2.0
-	var pixel_y := (0.5 - uv.y) * 2.0
-	if camera.projection == Camera3D.PROJECTION_PERSPECTIVE:
-		var aspect: float = float(frame_size.x) / max(1.0, float(frame_size.y))
-		var vertical_tan := tan(deg_to_rad(camera.fov) * 0.5)
-		var local_ray := Vector3(
-			pixel_x * vertical_tan * aspect * XR_DIRECT_PIXEL_SCALE,
-			pixel_y * vertical_tan * XR_DIRECT_PIXEL_SCALE,
-			-1.0
-		).normalized()
-		return (camera.global_transform.basis * local_ray).normalized()
-
-	var local_orthographic_ray := Vector3(
-		pixel_x * XR_DIRECT_PIXEL_SCALE,
-		pixel_y * XR_DIRECT_PIXEL_SCALE,
-		-1.0
-	).normalized()
-	return (camera.global_transform.basis * local_orthographic_ray).normalized()
+func _make_marker_material(color: Color) -> StandardMaterial3D:
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color
+	material.emission_enabled = true
+	material.emission = color
+	material.emission_energy_multiplier = 2.0
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.no_depth_test = true
+	return material
 
 
-func _compute_capture_debug_projection(
-	image_position: Vector2,
-	frame_size: Vector2i,
-	metadata: Dictionary,
-	depth_m: float,
-) -> Dictionary:
-	if metadata.is_empty():
-		return {"available": false, "reason": "missing_metadata"}
-	if frame_size.x <= 0 or frame_size.y <= 0:
-		return {"available": false, "reason": "invalid_frame_size"}
-
-	var fx := float(metadata.get("camera_intrinsics_fx", 0.0))
-	var fy := float(metadata.get("camera_intrinsics_fy", 0.0))
-	if abs(fx) < 0.000001 or abs(fy) < 0.000001:
-		return {"available": false, "reason": "missing_intrinsics"}
-
-	var cx := float(metadata.get("camera_intrinsics_cx", float(frame_size.x) * 0.5))
-	var cy := float(metadata.get("camera_intrinsics_cy", float(frame_size.y) * 0.5))
-	var ray_camera := Vector3(
-		(image_position.x - cx) / fx,
-		(cy - image_position.y) / fy,
-		-1.0
-	).normalized()
-
-	var hmd_position := Vector3(
-		float(metadata.get("head_pose_x", 0.0)),
-		float(metadata.get("head_pose_y", 0.0)),
-		float(metadata.get("head_pose_z", 0.0)),
-	)
-	var hmd_rotation := Quaternion(
-		float(metadata.get("head_pose_rx", 0.0)),
-		float(metadata.get("head_pose_ry", 0.0)),
-		float(metadata.get("head_pose_rz", 0.0)),
-		float(metadata.get("head_pose_rw", 1.0)),
-	)
-	var ray_world := (Basis(hmd_rotation) * ray_camera).normalized()
-	var point_world := hmd_position + ray_world * depth_m
-	return {
-		"available": true,
-		"point_world": point_world,
-		"hmd_position": hmd_position,
-		"ray_world": ray_world,
-		"head_pose_available": bool(metadata.get("head_pose_available", false)),
-		"intrinsics_probe": str(metadata.get("camera_intrinsics_probe", "")),
-		"extrinsics_status": str(metadata.get("camera_extrinsics_status", "")),
-	}
-
-
-func _confirm_current_point() -> void:
-	if not has_click_selection:
-		result_label.text = "请先在 Pico 预览画面点击一个点。"
-		return
-	if last_display_projection.is_empty() or last_display_projection.has("error"):
-		_recompute_click_result()
-	if last_display_projection.is_empty() or last_display_projection.has("error"):
+func _send_remote_preview(position: Vector3, projection: Dictionary) -> void:
+	var network_handler := get_node_or_null("/root/NetworkHandler")
+	if network_handler == null or not network_handler.has_method("send_spatial_calibration_preview"):
 		return
 
-	var position: Vector3 = last_display_projection.get("position", Vector3.ZERO)
-	confirmed_point_count += 1
-	_add_confirmed_marker(position)
-	_send_confirmed_point(position, last_display_projection)
-	result_label.text = "%s\n已确认并同步标定点 #%d。" % [
-		_build_result_text(last_display_projection),
-		confirmed_point_count,
-	]
+	network_handler.send_spatial_calibration_preview(position, _build_marker_payload(
+		projection,
+		Color(0.2, 1.0, 0.25, 1.0),
+		PREVIEW_MARKER_RADIUS,
+		"spatial_calibration_preview"
+	))
+
+
+func _clear_remote_preview() -> void:
+	var network_handler := get_node_or_null("/root/NetworkHandler")
+	if network_handler != null and network_handler.has_method("clear_spatial_calibration_preview"):
+		network_handler.clear_spatial_calibration_preview()
 
 
 func _send_confirmed_point(position: Vector3, projection: Dictionary) -> void:
 	var network_handler := get_node_or_null("/root/NetworkHandler")
-	var color := Color(1.0, 0.08, 0.03, 1.0)
+	if network_handler == null or not network_handler.has_method("send_remote_annotation"):
+		_set_status("NetworkHandler unavailable; point is local only")
+		return
+
+	network_handler.send_remote_annotation(position, _build_marker_payload(
+		projection,
+		Color(1.0, 0.08, 0.03, 1.0),
+		CONFIRMED_MARKER_RADIUS,
+		"spatial_calibration"
+	))
+	_set_status("Synced calibration point #%d" % confirmed_point_count)
+
+
+func _build_marker_payload(
+	projection: Dictionary,
+	color: Color,
+	size: float,
+	source: String,
+) -> Dictionary:
 	var pixel: Vector2 = projection.get("pixel", Vector2.ZERO)
 	var uv: Vector2 = projection.get("uv", Vector2.ZERO)
-	var payload := {
-		"source": "spatial_calibration",
-		"frame_id": last_click_frame_id,
+	return {
+		"source": source,
+		"frame_id": int(projection.get("frame_id", selected_frame_id)),
 		"frame_timestamp_ns": last_frame_timestamp_ns,
-		"depth_m": float(projection.get("depth_m", depth_input.value)),
-		"depth_source": click_depth_source,
+		"depth_m": float(projection.get("depth_m", selected_depth_m)),
+		"depth_source": str(projection.get("depth_source", selected_depth_source)),
+		"projection_aspect": float(projection.get("projection_aspect", 0.0)),
 		"pixel": [pixel.x, pixel.y],
 		"uv": [uv.x, uv.y],
 		"camera_name": str(projection.get("camera_name", "")),
+		"camera_path": str(projection.get("camera_path", "")),
 		"color": {"r": color.r, "g": color.g, "b": color.b, "a": color.a},
-		"size": 0.05,
-		"lifetime": 5.0,
+		"size": size,
+		"lifetime": 0.0,
 	}
-	if network_handler != null and network_handler.has_method("send_remote_annotation"):
-		network_handler.send_remote_annotation(position, payload)
-		_set_status("已通过 NetworkHandler 同步标定点 #%d" % confirmed_point_count)
-	else:
-		_set_status("NetworkHandler 不可用，标定点仅在 server 本地显示")
 
 
 func _clear_confirmed_points() -> void:
 	if marker_root != null and is_instance_valid(marker_root):
 		for child in marker_root.get_children():
 			child.queue_free()
-		preview_marker = null
+	preview_marker = null
 	confirmed_point_count = 0
+	_reset_selection(true)
+
 	var network_handler := get_node_or_null("/root/NetworkHandler")
 	if network_handler != null and network_handler.has_method("clear_all_remote_annotations"):
 		network_handler.clear_all_remote_annotations()
-	_set_status("已清除空间标定点")
+	_set_status("Cleared spatial calibration points")
 
 
 func _update_click_marker_position() -> void:
-	if not has_click_selection:
+	if not has_selection:
 		click_marker.visible = false
 		return
 
-	var local_position := _image_position_to_texture_local(
-		last_click_image_position,
-		last_click_frame_size,
-	)
+	var local_position := _image_position_to_texture_local(selected_image_position, selected_frame_size)
 	if local_position == INVALID_IMAGE_POSITION:
 		click_marker.visible = false
 		return
 
-	click_marker.position = local_position - click_marker.size * 0.5
+	click_marker.position = local_position - CLICK_MARKER_SIZE * 0.5
+	click_marker.size = CLICK_MARKER_SIZE
 	click_marker.visible = true
 
 
@@ -597,126 +938,29 @@ func _image_position_to_texture_local(image_position: Vector2, reference_image_s
 	var displayed_rect := _get_displayed_image_rect(reference_image_size)
 	var uv := Vector2(
 		image_position.x / float(reference_image_size.x),
-		image_position.y / float(reference_image_size.y),
+		image_position.y / float(reference_image_size.y)
 	)
 	return displayed_rect.position + displayed_rect.size * uv
 
 
-func _get_reference_camera() -> Camera3D:
-	var root := get_tree().current_scene
-	if root == null:
-		return null
-
-	var xr_camera := root.find_child("XRCamera3D", true, false) as Camera3D
-	if xr_camera != null:
-		return xr_camera
-
-	var viewport_camera := get_viewport().get_camera_3d()
-	if viewport_camera != null:
-		return viewport_camera
-
-	return root.find_child("SpectatorCamera", true, false) as Camera3D
+func _build_pending_selection_text() -> String:
+	if depth_prediction_status_text != "":
+		return depth_prediction_status_text
+	return "DepthPredict=waiting for prediction"
 
 
-func _get_marker_root() -> Node3D:
-	if marker_root != null and is_instance_valid(marker_root):
-		return marker_root
-
-	var scene := get_tree().current_scene
-	if scene == null:
-		return null
-	marker_root = scene.get_node_or_null("SpatialCalibrationMarkers") as Node3D
-	if marker_root == null:
-		marker_root = Node3D.new()
-		marker_root.name = "SpatialCalibrationMarkers"
-		scene.add_child(marker_root)
-	return marker_root
-
-
-func _update_preview_marker(position: Vector3) -> void:
-	var root := _get_marker_root()
-	if root == null:
-		return
-	if preview_marker == null or not is_instance_valid(preview_marker):
-		preview_marker = _create_marker_mesh(Color(0.2, 1.0, 0.25, 1.0), 0.05)
-		preview_marker.name = "PreviewSpatialCalibrationPoint"
-		root.add_child(preview_marker)
-	preview_marker.global_position = position
-	preview_marker.visible = true
-
-
-func _hide_preview_marker() -> void:
-	if preview_marker != null and is_instance_valid(preview_marker):
-		preview_marker.visible = false
-
-
-func _add_confirmed_marker(position: Vector3) -> void:
-	var root := _get_marker_root()
-	if root == null:
-		return
-	var marker := _create_marker_mesh(Color(1.0, 0.08, 0.03, 1.0), 0.05)
-	marker.name = "SpatialCalibrationPoint%d" % confirmed_point_count
-	root.add_child(marker)
-	marker.global_position = position
-	marker.visible = true
-	get_tree().create_timer(5.0).timeout.connect(func():
-		if is_instance_valid(marker):
-			marker.queue_free()
-	)
-
-
-func _create_marker_mesh(color: Color, radius: float) -> MeshInstance3D:
-	var marker := MeshInstance3D.new()
-	var mesh := SphereMesh.new()
-	mesh.radius = radius
-	mesh.height = radius * 2.0
-	mesh.radial_segments = 24
-	mesh.rings = 12
-	marker.mesh = mesh
-	marker.set_surface_override_material(0, _make_marker_material(color))
-	return marker
-
-
-func _make_marker_material(color: Color) -> StandardMaterial3D:
-	var material := StandardMaterial3D.new()
-	material.albedo_color = color
-	material.emission_enabled = true
-	material.emission = color
-	material.emission_energy_multiplier = 1.6
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	return material
-
-
-func _build_result_text(projection: Dictionary) -> String:
-	if projection.has("error"):
-		return str(projection["error"])
-
-	var pixel: Vector2 = projection.get("pixel", Vector2.ZERO)
-	var uv: Vector2 = projection.get("uv", Vector2.ZERO)
-	var point: Vector3 = projection.get("position", Vector3.ZERO)
-	var camera_position: Vector3 = projection.get("camera_position", Vector3.ZERO)
-	var ray: Vector3 = projection.get("ray_direction", Vector3.FORWARD)
-	var lines := [
-		"帧=%d  像素=%s  UV=%s" % [last_click_frame_id, _format_vector2(pixel), _format_vector2(uv)],
-		"虚拟相机=%s  深度=%.2fm (%s)" % [
-			str(projection.get("camera_name", "")),
-			float(projection.get("depth_m", depth_input.value)),
-			click_depth_source,
-		],
-		"Camera=%s" % _format_vector3(camera_position),
-		"Ray=%s" % _format_vector3(ray),
-		"标定点=%s" % _format_vector3(point),
+func _build_projection_text(_projection: Dictionary) -> String:
+	if depth_prediction_status_text != "":
+		return depth_prediction_status_text
+	return "DepthPredict=%.2fm (%s)" % [
+		selected_depth_m,
+		selected_depth_source,
 	]
 
-	var capture_debug: Dictionary = projection.get("capture_debug", {})
-	if bool(capture_debug.get("available", false)):
-		lines.append("Pico metadata参考点=%s  head_pose=%s" % [
-			_format_vector3(capture_debug.get("point_world", Vector3.ZERO)),
-			str(capture_debug.get("head_pose_available", false)),
-		])
-	else:
-		lines.append("Pico metadata参考不可用: %s" % str(capture_debug.get("reason", "unknown")))
-	return "\n".join(lines)
+
+func _set_result_text(text: String) -> void:
+	if result_label != null:
+		result_label.text = text
 
 
 func _refresh_addresses(port: int = DEFAULT_PORT) -> void:
@@ -729,22 +973,41 @@ func _refresh_addresses(port: int = DEFAULT_PORT) -> void:
 			addresses.append("%s:%d" % [address, port])
 
 	if addresses.is_empty():
-		address_label.text = "本机 IPv4: 未找到"
+		address_label.text = "Local IPv4: not found"
 	else:
-		address_label.text = "把 Pico helper 指向: %s" % ", ".join(addresses)
+		address_label.text = "Point Pico helper to: %s" % ", ".join(addresses)
+
+
+func _update_fps_stats() -> void:
+	var now_ms := Time.get_ticks_msec()
+	if fps_tick_ms == 0:
+		fps_tick_ms = now_ms
+		return
+	if now_ms - fps_tick_ms < 1000:
+		return
+
+	display_fps = frames_this_second * 1000.0 / float(now_ms - fps_tick_ms)
+	decode_avg_ms_display = decode_time_accum_ms / float(max(1, decode_frames))
+	dropped_frames_display = dropped_frames_this_second
+	frames_this_second = 0
+	decode_time_accum_ms = 0.0
+	decode_frames = 0
+	dropped_frames_this_second = 0
+	fps_tick_ms = now_ms
+	_refresh_stats()
 
 
 func _refresh_stats() -> void:
 	if stats_label == null:
 		return
 
-	var connection_text := "未连接"
+	var connection_text := "disconnected"
 	if client != null and client.get_status() == StreamPeerTCP.STATUS_CONNECTED:
-		connection_text = "已连接"
+		connection_text = "connected"
 	elif server.is_listening():
-		connection_text = "监听中"
+		connection_text = "listening"
 
-	stats_label.text = "状态: %s | 帧: %d | 分辨率: %dx%d | FPS: %.1f | 丢帧: %d | 解码均值: %.1fms" % [
+	stats_label.text = "State: %s | Frame: %d | Size: %dx%d | FPS: %.1f | Dropped: %d | Decode avg: %.1fms" % [
 		connection_text,
 		last_frame_id,
 		last_frame_size.x,
@@ -761,7 +1024,8 @@ func _set_status(text: String) -> void:
 	last_status_text = text
 	if status_label != null:
 		status_label.text = text
-	if DEBUG_LOGS: print("SpatialCalibration: %s" % text)
+	if DEBUG_LOGS:
+		print("SpatialCalibration: %s" % text)
 
 
 func _send_ack(frame_id: int) -> void:
@@ -771,7 +1035,7 @@ func _send_ack(frame_id: int) -> void:
 	_write_u32_be(ack_buffer, 4, frame_id)
 	var error := client.put_data(ack_buffer)
 	if error != OK:
-		_disconnect_client("ACK 回传失败: %s" % error_string(error))
+		_disconnect_client("ACK failed: %s" % error_string(error))
 
 
 func _resync_buffer() -> void:
@@ -789,7 +1053,7 @@ func _parse_metadata(metadata_bytes: PackedByteArray) -> Dictionary:
 	var json := JSON.new()
 	var error := json.parse(metadata_bytes.get_string_from_utf8())
 	if error != OK:
-		_set_status("元数据 JSON 解析失败: %s" % error_string(error))
+		_set_status("Metadata JSON parse failed: %s" % error_string(error))
 		return {}
 	if typeof(json.data) != TYPE_DICTIONARY:
 		return {}

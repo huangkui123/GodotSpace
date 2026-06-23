@@ -208,11 +208,18 @@ func _start_openxr_for_client() -> void:
 		push_warning("OpenXR interface not found for VR client. Start the VR instance with Godot engine args: --xr-mode on --xr-client")
 		return
 
+	var passthrough_enabled: bool = false
+	var supported_blend_modes: Array = openxr_interface.get_supported_environment_blend_modes()
+	if XRInterface.XR_ENV_BLEND_MODE_ALPHA_BLEND in supported_blend_modes:
+		openxr_interface.environment_blend_mode = XRInterface.XR_ENV_BLEND_MODE_ALPHA_BLEND
+		passthrough_enabled = true
+
 	if not openxr_interface.is_initialized() and not openxr_interface.initialize():
 		push_warning("Failed to initialize OpenXR for VR client. If this instance was started with only --xr-client, restart it with --xr-mode on --xr-client")
 		return
 
 	get_tree().root.use_xr = true
+	get_tree().root.transparent_bg = passthrough_enabled
 
 func _on_network_ready():
 	_go_to_game_scene()

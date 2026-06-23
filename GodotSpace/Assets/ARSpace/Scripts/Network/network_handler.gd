@@ -1,27 +1,33 @@
 extends Node
 
 const IP_ADDRESS: String = "127.0.0.1"
-# const IP_ADDRESS: String = "172.25.80.1"
 const PORT: int = 42069
 const MAX_CLIENTS: int = 8
 const CHANNEL_COUNT: int = 3
 
 signal network_ready
 signal network_role_selected(is_server: bool)
-## 收到远程标注信号
 signal remote_annotation_received(position: Vector3, data: Dictionary)
 
-var peer: ENetMultiplayerPeer
-# 预加载标记场景
-@export var marker_scene = preload("res://Assets/ARSpace/Prefabs/Marker.prefab.tscn")
+@export var marker_scene: PackedScene = preload("res://Assets/ARSpace/Prefabs/Marker.prefab.tscn")
 
-func _ready():
+var peer: ENetMultiplayerPeer
+var spatial_calibration_preview_marker: Node3D
+
+
+func _ready() -> void:
 	multiplayer.connected_to_server.connect(_on_connected_to_server)
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
 	multiplayer.peer_connected.connect(_on_peer_connected)
 
-func _on_peer_connected(peer_id: int):
-	print("🔗 玩家 %d 已连接" % peer_id)
+
+func _on_peer_connected(peer_id: int) -> void:
+	print("Peer %d connected" % peer_id)
+
+
+func _on_peer_disconnected(peer_id: int) -> void:
+	print("Peer %d disconnected" % peer_id)
+
 
 func start_server() -> bool:
 	peer = ENetMultiplayerPeer.new()
@@ -29,9 +35,10 @@ func start_server() -> bool:
 	if error != OK:
 		push_error("Failed to start server on port %d. Error: %d" % [PORT, error])
 		return false
+
 	multiplayer.multiplayer_peer = peer
 	shutdown_xr_for_server()
-	print("服务器已启动...")
+	print("Server started")
 	network_role_selected.emit(true)
 	network_ready.emit()
 	return true
@@ -44,10 +51,12 @@ func start_client(ip: String = IP_ADDRESS) -> bool:
 	if error != OK:
 		push_error("Failed to connect to %s:%d. Error: %d" % [target_ip, PORT, error])
 		return false
+
 	multiplayer.multiplayer_peer = peer
 	network_role_selected.emit(false)
 	print("Client connecting to ", target_ip)
 	return true
+
 
 func _get_server_ip_from_args(default_ip: String) -> String:
 	for arg in OS.get_cmdline_args():
@@ -57,6 +66,7 @@ func _get_server_ip_from_args(default_ip: String) -> String:
 				return value
 	return default_ip
 
+
 func shutdown_xr_for_server() -> void:
 	get_viewport().use_xr = false
 
@@ -65,206 +75,221 @@ func shutdown_xr_for_server() -> void:
 		openxr_interface.uninitialize()
 		print("OpenXR disabled for server instance")
 
-func _on_connected_to_server():
-	print("已成功连接到服务器！")
+
+func _on_connected_to_server() -> void:
+	print("Connected to server")
 	network_ready.emit()
 
-# 处理玩家断开连接
-func _on_peer_disconnected(peer_id: int):
-	print("玩家 %d 已断开连接" % peer_id)
 
-# 接收服务器发送的标记创建请求
 @rpc("authority", "call_local", "reliable")
-func create_marker_at_position(position: Vector3):
-	print("客户端接收到创建标记请求，位置:", position)
+func create_marker_at_position(position: Vector3) -> void:
+	if marker_scene == null:
+		return
 
-	# 在客户端创建标记
-	if marker_scene:
-		var marker = marker_scene.instantiate()
-		# 将标记添加到主场景
-		var main_scene = get_tree().current_scene
-		if main_scene:
-			main_scene.add_child(marker)
-			marker.setup(position)
-			print("客户端成功创建标记")
-		else:
-			print("错误：无法获取主场景")
-	else:
-		print("错误：标记场景未加载")
+	var marker: Node = marker_scene.instantiate()
+	var main_scene := get_tree().current_scene
+	if main_scene == null:
+		return
 
-# 接收服务器发送的模型高亮请求
+	main_scene.add_child(marker)
+	if marker.has_method("setup"):
+		marker.setup(position)
+	elif marker is Node3D:
+		(marker as Node3D).global_position = position
+
+
 @rpc("authority", "call_local", "reliable")
-func highlight_model_part(node_path: String, is_highlight: bool):
-	print("客户端接收到模型高亮请求，路径:", node_path, " 高亮状态:", is_highlight)
-
-	# 获取Tree节点
+func highlight_model_part(node_path: String, is_highlight: bool) -> void:
 	var tree_list = get_tree().get_first_node_in_group("tree_list")
 	if not tree_list:
-		print("错误：无法找到TreeList节点")
 		return
 
-	# 根据节点路径找到对应的3D模型部件
 	var target_node = get_tree().get_root().get_node_or_null(node_path)
 	if not target_node:
-		print("错误：无法找到目标节点:", node_path)
 		return
 
-	# 找到对应的MeshInstance3D
 	var mesh_instance = tree_list.find_mesh_instance_child(target_node)
 	if not mesh_instance:
-		print("错误：节点没有MeshInstance3D子节点")
 		return
 
-	# 应用高亮状态
 	if is_highlight:
 		tree_list.highlight_part(mesh_instance)
-		tree_list.highlighted_parts[mesh_instance] = null  # 在客户端不需要TreeItem引用
-		print("客户端成功高亮模型部件")
+		tree_list.highlighted_parts[mesh_instance] = null
 	else:
 		tree_list.clear_highlight(mesh_instance)
 		tree_list.highlighted_parts.erase(mesh_instance)
-		print("客户端成功取消高亮模型部件")
-
-	# 如果客户端也有TreeList UI，同步更新TreeItem颜色
 	tree_list.update_tree_item_color(target_node, is_highlight)
 
-# ==================== 远程标注同步 RPC ====================
 
-## 发送远程标注到VR端
-## 由地面端（服务器）调用，发送到所有VR端（客户端）
-func send_remote_annotation(position: Vector3, data: Dictionary = {}):
-	if multiplayer.is_server():
-		var peers = multiplayer.get_peers()
-		for peer_id in peers:
-			rpc_id(peer_id, "_receive_remote_annotation", position, data)
-			print("📤 发送远程标注到VR端 [%d]: %s" % [peer_id, position])
-	else:
-		print("⚠️ 只有服务器（地面端）可以发送远程标注")
+func send_spatial_calibration_preview(position: Vector3, data: Dictionary = {}) -> void:
+	if not multiplayer.is_server():
+		return
 
-## 接收远程标注（VR端）
+	for peer_id in multiplayer.get_peers():
+		rpc_id(peer_id, "_receive_spatial_calibration_preview", position, data)
+
+
 @rpc("authority", "call_local", "reliable")
-func _receive_remote_annotation(position: Vector3, data: Dictionary):
-	print("📥 VR端收到远程标注: %s, 数据: %s" % [position, data])
+func _receive_spatial_calibration_preview(position: Vector3, data: Dictionary) -> void:
+	if spatial_calibration_preview_marker == null or not is_instance_valid(spatial_calibration_preview_marker):
+		spatial_calibration_preview_marker = _create_simple_annotation_marker(position, data)
+		spatial_calibration_preview_marker.name = "SpatialCalibrationPreviewMarker"
+		spatial_calibration_preview_marker.add_to_group("spatial_calibration_preview_marker")
 
-	# 发送信号，让其他组件处理
+	var main_scene := get_tree().current_scene
+	if main_scene != null and spatial_calibration_preview_marker.get_parent() == null:
+		main_scene.add_child(spatial_calibration_preview_marker)
+
+	spatial_calibration_preview_marker.global_position = position
+	spatial_calibration_preview_marker.visible = true
+
+
+func clear_spatial_calibration_preview() -> void:
+	if not multiplayer.is_server():
+		return
+
+	for peer_id in multiplayer.get_peers():
+		rpc_id(peer_id, "_clear_spatial_calibration_preview")
+
+
+@rpc("authority", "call_local", "reliable")
+func _clear_spatial_calibration_preview() -> void:
+	if spatial_calibration_preview_marker != null and is_instance_valid(spatial_calibration_preview_marker):
+		spatial_calibration_preview_marker.queue_free()
+	spatial_calibration_preview_marker = null
+
+	for candidate in get_tree().get_nodes_in_group("spatial_calibration_preview_marker"):
+		var marker_node := candidate as Node
+		if marker_node != null and is_instance_valid(marker_node):
+			marker_node.queue_free()
+
+
+func send_remote_annotation(position: Vector3, data: Dictionary = {}) -> void:
+	if not multiplayer.is_server():
+		return
+
+	for peer_id in multiplayer.get_peers():
+		rpc_id(peer_id, "_receive_remote_annotation", position, data)
+
+
+@rpc("authority", "call_local", "reliable")
+func _receive_remote_annotation(position: Vector3, data: Dictionary) -> void:
 	remote_annotation_received.emit(position, data)
-
-	# 创建标注标记
 	_create_annotation_marker(position, data)
 
-## 创建标注标记
-func _create_annotation_marker(position: Vector3, data: Dictionary):
-	var marker = _create_simple_annotation_marker(position, data)
-	if marker:
-		var main_scene = get_tree().current_scene
-		if main_scene:
-			main_scene.add_child(marker)
-			marker.global_position = position
-			print("✅ VR端创建标注标记: %s (场景: %s)" % [position, main_scene.name])
-			print("   标记实际位置: %s" % marker.global_position)
 
-## 创建简单标注标记
-func _create_simple_annotation_marker(position: Vector3, data: Dictionary):
-	var marker = Node3D.new()
+func _create_annotation_marker(position: Vector3, data: Dictionary) -> void:
+	var marker: Node3D = _create_simple_annotation_marker(position, data)
+	var main_scene := get_tree().current_scene
+	if main_scene == null:
+		return
+
+	main_scene.add_child(marker)
+	marker.global_position = position
+
+
+func _create_simple_annotation_marker(position: Vector3, data: Dictionary) -> Node3D:
+	var marker: Node3D = Node3D.new()
 	marker.name = "RemoteAnnotationMarker"
 	marker.global_position = position
-	# 添加到组以便后续管理
 	marker.add_to_group("remote_annotation_marker")
 
-	# 创建球体网格 - 增大尺寸使其在VR中更明显
-	var marker_size: float = data.get("size", 0.05)
-	var mesh_instance = MeshInstance3D.new()
-	var sphere = SphereMesh.new()
+	var marker_size := float(data.get("size", 0.05))
+	var color := _read_payload_color(data, Color.RED)
+
+	var mesh_instance := MeshInstance3D.new()
+	var sphere := SphereMesh.new()
 	sphere.radius = marker_size
 	sphere.height = marker_size * 2.0
 	mesh_instance.mesh = sphere
-
-	# 创建材质 - 使用更亮的发光效果
-	var material = StandardMaterial3D.new()
-	var color = Color.RED
-	if data.has("color"):
-		var c = data.color
-		if c is Dictionary:
-			color = Color(c.get("r", 1), c.get("g", 0), c.get("b", 0), c.get("a", 1))
-		elif c is Color:
-			color = c
-
-	material.albedo_color = color
-	material.emission_enabled = true
-	material.emission = color
-	material.emission_energy_multiplier = 2.0  # 增强发光
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED  # 不受光照影响，始终可见
-	mesh_instance.material_override = material
-
+	mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mesh_instance.material_override = _make_marker_material(color, 2.0, false)
 	marker.add_child(mesh_instance)
 
-	# 添加一个更大的半透明外圈，使标记更醒目
-	var outer_mesh = MeshInstance3D.new()
-	var outer_sphere = SphereMesh.new()
+	var outer_mesh := MeshInstance3D.new()
+	var outer_sphere := SphereMesh.new()
 	outer_sphere.radius = marker_size * 1.5
 	outer_sphere.height = marker_size * 3.0
 	outer_mesh.mesh = outer_sphere
-
-	var outer_material = StandardMaterial3D.new()
-	outer_material.albedo_color = Color(color.r, color.g, color.b, 0.3)
-	outer_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	outer_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	outer_mesh.material_override = outer_material
-
+	outer_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	outer_mesh.material_override = _make_marker_material(Color(color.r, color.g, color.b, 0.3), 1.0, true)
 	marker.add_child(outer_mesh)
 
-	# 添加呼吸动画
 	_add_pulse_animation(marker, mesh_instance)
 
-	# 注意：不设置自动销毁，标记将永久存在
-	# 如果需要手动设置生命周期，可以在 data 中传入 "lifetime" 参数
-	var lifetime = data.get("lifetime", 0.0)
-	if lifetime > 0:
-		print("⏱️ 标记将在 %.1f 秒后消失" % lifetime)
-		var timer = get_tree().create_timer(lifetime)
-		timer.timeout.connect(func():
+	var lifetime := float(data.get("lifetime", 0.0))
+	if lifetime > 0.0:
+		get_tree().create_timer(lifetime).timeout.connect(func():
 			if is_instance_valid(marker):
 				marker.queue_free()
-				print("🗑️ 标记已被移除")
 		)
-	else:
-		print("♾️ 标记将永久存在（无生命周期）")
 
 	return marker
 
-## 添加呼吸动画
-func _add_pulse_animation(marker: Node3D, mesh_instance: MeshInstance3D):
-	# 确保 marker 存在时才执行动画
+
+func _read_payload_color(data: Dictionary, fallback: Color) -> Color:
+	if not data.has("color"):
+		return fallback
+
+	var value = data["color"]
+	if value is Color:
+		return value
+	if value is Dictionary:
+		var color_data := value as Dictionary
+		return Color(
+			float(color_data.get("r", fallback.r)),
+			float(color_data.get("g", fallback.g)),
+			float(color_data.get("b", fallback.b)),
+			float(color_data.get("a", fallback.a))
+		)
+	return fallback
+
+
+func _make_marker_material(color: Color, emission_energy: float, transparent: bool) -> StandardMaterial3D:
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color
+	material.emission_enabled = true
+	material.emission = color
+	material.emission_energy_multiplier = emission_energy
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.no_depth_test = true
+	if transparent:
+		material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	return material
+
+
+func _add_pulse_animation(marker: Node3D, mesh_instance: MeshInstance3D) -> void:
 	if not is_instance_valid(marker) or not is_instance_valid(mesh_instance):
 		return
 
-	var tween = create_tween()  # 使用 NetworkHandler 的 tween，而不是 marker 的
+	var tween := create_tween()
 	tween.set_loops()
-	tween.bind_node(marker)  # 绑定到 marker，marker 被删除时自动停止
+	tween.bind_node(marker)
 	tween.tween_property(mesh_instance, "scale", Vector3(1.3, 1.3, 1.3), 0.6).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
-	tween.tween_property(mesh_instance, "scale", Vector3(1.0, 1.0, 1.0), 0.6).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
+	tween.tween_property(mesh_instance, "scale", Vector3.ONE, 0.6).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
 
-## 批量发送远程标注
-func send_remote_annotations_batch(annotations: Array):
-	for ann in annotations:
-		if ann is Dictionary:
-			send_remote_annotation(ann.get("position", Vector3.ZERO), ann.get("data", {}))
-		elif ann is Vector3:
-			send_remote_annotation(ann)
 
-## 清除所有远程标注
-func clear_all_remote_annotations():
-	if multiplayer.is_server():
-		var peers = multiplayer.get_peers()
-		for peer_id in peers:
-			rpc_id(peer_id, "_clear_remote_annotations")
-			print("🗑️ 发送清除标注命令到VR端 [%d]" % peer_id)
+func send_remote_annotations_batch(annotations: Array) -> void:
+	for annotation in annotations:
+		if annotation is Dictionary:
+			send_remote_annotation(annotation.get("position", Vector3.ZERO), annotation.get("data", {}))
+		elif annotation is Vector3:
+			send_remote_annotation(annotation)
+
+
+func clear_all_remote_annotations() -> void:
+	if not multiplayer.is_server():
+		return
+
+	for peer_id in multiplayer.get_peers():
+		rpc_id(peer_id, "_clear_remote_annotations")
+		rpc_id(peer_id, "_clear_spatial_calibration_preview")
+
 
 @rpc("authority", "call_local", "reliable")
-func _clear_remote_annotations():
-	print("🗑️ VR端收到清除标注命令")
-
-	# 清除所有远程标注标记
-	var markers = get_tree().get_nodes_in_group("remote_annotation_marker")
-	for marker in markers:
-		marker.queue_free()
+func _clear_remote_annotations() -> void:
+	for candidate in get_tree().get_nodes_in_group("remote_annotation_marker"):
+		var marker_node := candidate as Node
+		if marker_node != null and is_instance_valid(marker_node):
+			marker_node.queue_free()
+	_clear_spatial_calibration_preview()
