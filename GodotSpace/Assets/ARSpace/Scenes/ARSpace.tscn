@@ -2258,9 +2258,9 @@ bones/20/rotation = Quaternion(0.780588, -0.220926, -0.310107, -0.495688)
 bones/21/rotation = Quaternion(-0.0329693, 0.849871, 0.0272099, 0.525254)
 
 [node name="Root" parent="SpaceBox/SpaceBox/Environment_Life/Malamute/GeneralSkeleton" index="0"]
-transform = Transform3D(-11.9508, -19.1468, 97.4196, 22.0729, -96.1795, -16.1953, 96.7986, 19.5679, 15.7205, -0.497334, 16.6447, -5.71002)
-joint_offset = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00161743, -0.00416488, 0.0040881)
-body_offset = Transform3D(99.9994, -0.348785, -0.0122204, 0.348841, 99.999, 0.271122, 0.0112667, -0.271174, 99.9997, 0.160339, 0.415939, -0.40992)
+transform = Transform3D(-11.9508, -19.1468, 97.4196, 22.0729, -96.1795, -16.1953, 96.7986, 19.5679, 15.7205, -0.497475, 16.6446, -5.7103)
+joint_offset = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00161468, -0.00416527, 0.00408978)
+body_offset = Transform3D(99.9994, -0.348785, -0.0122204, 0.348841, 99.999, 0.271122, 0.0112667, -0.271174, 99.9997, 0.160065, 0.415977, -0.410088)
 
 [node name="AnimationPlayer" parent="SpaceBox/SpaceBox/Environment_Life/Malamute/GeneralSkeleton/Root" index="0"]
 root_motion_track = NodePath("../..")

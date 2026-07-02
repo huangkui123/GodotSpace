@@ -144,6 +144,7 @@ var _last_window_transform_sync_msec : int = 0
 
 # Child visibility tracking
 var _child_visible : bool = false
+var _visibility_tracked_child : Node = null
 
 # Window positioning tracking
 var _was_visible_last_frame : bool = false
@@ -514,16 +515,21 @@ func _position_window_relative_to_last_clicked():
 
 # Update child visibility tracking
 func _update_child_visibility_tracking():
-	# Disconnect previous signal if connected
-	if scene_node and scene_node.has_signal("visibility_changed"):
-		if scene_node.visibility_changed.is_connected(_on_child_visibility_changed):
-			scene_node.visibility_changed.disconnect(_on_child_visibility_changed)
-	
 	# Try to get the target child node
 	var target_child = _get_target_child_node()
+	
+	# Disconnect previous target if the tracked child changed
+	if is_instance_valid(_visibility_tracked_child) and _visibility_tracked_child != target_child:
+		if _visibility_tracked_child.has_signal("visibility_changed"):
+			if _visibility_tracked_child.visibility_changed.is_connected(_on_child_visibility_changed):
+				_visibility_tracked_child.visibility_changed.disconnect(_on_child_visibility_changed)
+	
+	_visibility_tracked_child = target_child
+	
 	if target_child and target_child.has_signal("visibility_changed"):
 		# Connect to the visibility changed signal
-		target_child.visibility_changed.connect(_on_child_visibility_changed)
+		if not target_child.visibility_changed.is_connected(_on_child_visibility_changed):
+			target_child.visibility_changed.connect(_on_child_visibility_changed)
 		# Update current visibility state
 		_child_visible = target_child.visible
 
