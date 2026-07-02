@@ -1,11 +1,11 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=7 format=3 uid="uid://bqmgdyck3dj8a"]
 
-[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Rectangle 1386-1.png" id="1_ne2cq"]
-[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/UIWindow/Rectangle 1387.png" id="2_r75eb"]
-[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Rectangle 1386.png" id="3_6sgyt"]
-[ext_resource type="Script" path="res://Assets/ARSpace/Scripts/WorkListCanvas/WorkListItem.gd" id="4_0g6ha"]
-[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155676.png" id="5_p7ee5"]
-[ext_resource type="FontFile" path="res://scenes/shared/fonts/lato/Lato-Regular.ttf" id="6_p48gh"]
+[ext_resource type="Texture2D" uid="uid://j55fbmd5cvmt" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Rectangle 1386-1.png" id="1_ne2cq"]
+[ext_resource type="Texture2D" uid="uid://cx3jhn403qknb" path="res://Assets/ARSpace/Textures/UIWindow/Rectangle 1387.png" id="2_r75eb"]
+[ext_resource type="Texture2D" uid="uid://o37q65bnypo2" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Rectangle 1386.png" id="3_6sgyt"]
+[ext_resource type="Script" uid="uid://c5p4mn6cpjxxt" path="res://Assets/ARSpace/Scripts/WorkListCanvas/WorkListItem.gd" id="4_0g6ha"]
+[ext_resource type="Texture2D" uid="uid://cod4udhawrror" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155676.png" id="5_p7ee5"]
+[ext_resource type="FontFile" uid="uid://b6nf5k17guhst" path="res://scenes/shared/fonts/lato/Lato-Regular.ttf" id="6_p48gh"]
 
 [node name="WorkItem" type="TextureButton"]
 custom_minimum_size = Vector2(420, 55)

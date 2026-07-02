@@ -1,7 +1,7 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=3 format=3 uid="uid://dpax47vjmw1mc"]
 
-[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155625.png" id="1_jswos"]
-[ext_resource type="Texture2D" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155648.png" id="2_lia1s"]
+[ext_resource type="Texture2D" uid="uid://hpqqiukd5dcg" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155625.png" id="1_jswos"]
+[ext_resource type="Texture2D" uid="uid://ctkmm17vxycoo" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155648.png" id="2_lia1s"]
 
 [node name="WorkList" type="Button"]
 offset_right = 207.0

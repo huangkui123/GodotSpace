@@ -11,6 +11,8 @@ const DEBUG_LOGS := false
 
 @onready var title_label: Label = $TopMenuBox/Title
 @onready var llm_assistant_view: LLMAssistantUIView = $LLMAssistantView
+@onready var animation_toggle_button: Button = $WorkListInfo/ListContent/WorkListInfoItem/AnimationToggle
+@onready var audio_toggle_button: Button = $WorkListInfo/ListContent/WorkListInfoItem/AudioToggle
 
 var _info_save_list: Array[WorkListInfoData] = []
 @export var info_: Array[WorkListInfoItem] = []
@@ -28,6 +30,10 @@ func _ready():
 	self.visible = false
 	if llm_assistant_view:
 		llm_assistant_view.visible = false
+	if animation_toggle_button != null and not animation_toggle_button.pressed.is_connected(_on_animation_toggle_pressed):
+		animation_toggle_button.pressed.connect(_on_animation_toggle_pressed)
+	if audio_toggle_button != null and not audio_toggle_button.pressed.is_connected(_on_audio_toggle_pressed):
+		audio_toggle_button.pressed.connect(_on_audio_toggle_pressed)
 
 	if DEBUG_LOGS: print(self.name, ": _ready")
 	init_view()
@@ -106,6 +112,82 @@ func bind_item(item: WorkListInfoItem, infos: WorkListInfoData):
 	item.refresh_info(infos)
 
 
+func replay_current_step_animation() -> void:
+	var current_step := _get_current_step_data()
+	if current_step == null:
+		return
+
+	var global_node := _get_global_node()
+	var spacebox_controller = global_node.get("spacebox_controller") if global_node != null else null
+	if spacebox_controller == null:
+		if DEBUG_LOGS: print("spacebox_controller is null, unable to replay step animation.")
+		return
+
+	if spacebox_controller.has_method("set_worklist1_visible"):
+		spacebox_controller.call("set_worklist1_visible", true)
+	if spacebox_controller.has_method("show_only_work_info"):
+		spacebox_controller.call("show_only_work_info", current_step.step)
+	if spacebox_controller.has_method("play_step"):
+		spacebox_controller.call("play_step", current_step.step)
+
+
+func play_current_step_voice() -> void:
+	var current_step := _get_current_step_data()
+	if current_step == null:
+		return
+
+	var voice_text := _build_step_voice_text(current_step)
+	if voice_text.strip_edges().is_empty():
+		return
+
+	if not ClassDB.class_has_method("DisplayServer", "tts_speak"):
+		push_warning("DisplayServer TTS is not available on this platform.")
+		return
+
+	var voice_id := _get_preferred_tts_voice_id()
+	_stop_current_step_voice()
+	DisplayServer.tts_speak(voice_text, voice_id, 80, 1.0, 1.0, current_step.step, true)
+
+
+func _build_step_voice_text(step_data: WorkListInfoData) -> String:
+	var lines: Array[String] = []
+	var title_text := step_data.title.strip_edges()
+	var info_text := step_data.info.strip_edges()
+	if not title_text.is_empty():
+		lines.append(title_text)
+	if not info_text.is_empty():
+		lines.append(info_text)
+	return "\n".join(lines)
+
+
+func _get_preferred_tts_voice_id() -> String:
+	if ClassDB.class_has_method("DisplayServer", "tts_get_voices_for_language"):
+		var language_codes: Array[String] = ["zh_CN", "zh-CN", "zh", "zh_TW", "zh-TW", "zh_HK", "zh-HK"]
+		for language_code in language_codes:
+			var voice_ids: PackedStringArray = DisplayServer.tts_get_voices_for_language(language_code)
+			if voice_ids.size() > 0:
+				return voice_ids[0]
+
+	if ClassDB.class_has_method("DisplayServer", "tts_get_voices"):
+		var voices: Array = DisplayServer.tts_get_voices()
+		for voice in voices:
+			if typeof(voice) != TYPE_DICTIONARY:
+				continue
+			var language := str(voice.get("language", "")).to_lower()
+			if language.begins_with("zh"):
+				return str(voice.get("id", voice.get("name", "")))
+		for voice in voices:
+			if typeof(voice) == TYPE_DICTIONARY:
+				return str(voice.get("id", voice.get("name", "")))
+
+	return ""
+
+
+func _stop_current_step_voice() -> void:
+	if ClassDB.class_has_method("DisplayServer", "tts_stop"):
+		DisplayServer.tts_stop()
+
+
 func get_current_task_context_entries() -> Array[Dictionary]:
 	if _info_save_list.is_empty():
 		return []
@@ -157,6 +239,7 @@ func pre_click():
 		return
 	if page_index <= 1:
 		return
+	_stop_current_step_voice()
 	page_index -= 1
 	if page_index < 1:
 		page_index = 1
@@ -164,11 +247,13 @@ func pre_click():
 	_sync_assistant_context()
 
 func first_page():
+	_stop_current_step_voice()
 	page_index = 1
 	bind_page(page_index)
 	_sync_assistant_context()
 
 func last_page():
+	_stop_current_step_voice()
 	page_index = page_count
 	bind_page(page_index)
 	_sync_assistant_context()
@@ -178,6 +263,7 @@ func next_click():
 		return
 	if page_index >= page_count:
 		return
+	_stop_current_step_voice()
 	page_index += 1
 	if page_index > page_count:
 		page_index = page_count
@@ -185,7 +271,14 @@ func next_click():
 	_sync_assistant_context()
 
 func to_animation_on_value_changed(arg0: bool):
-	pass
+	if arg0:
+		replay_current_step_animation()
+
+func _on_animation_toggle_pressed() -> void:
+	replay_current_step_animation()
+
+func _on_audio_toggle_pressed() -> void:
+	play_current_step_voice()
 
 func _on_back_pressed():
 	pre_click()
@@ -195,6 +288,7 @@ func _on_next_pressed():
 
 
 func _on_close_button_pressed():
+	_stop_current_step_voice()
 	_hide_llm_assistant_view()
 	self.visible = false
 

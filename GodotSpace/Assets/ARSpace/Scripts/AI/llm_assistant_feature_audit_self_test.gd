@@ -86,10 +86,18 @@ func _assert_task_detail_entry() -> void:
 		_fail("Task detail scene missing Canvas node.")
 	if canvas.get_node_or_null("TopMenuBox/Controller/AssistantButton") == null:
 		_fail("Task detail scene missing assistant button.")
+	if canvas.get_node_or_null("WorkListInfo/ListContent/WorkListInfoItem/AnimationToggle") == null:
+		_fail("Task detail scene missing replay animation button.")
+	if canvas.get_node_or_null("WorkListInfo/ListContent/WorkListInfoItem/AudioToggle") == null:
+		_fail("Task detail scene missing play voice button.")
 	if canvas.get_node_or_null("LLMAssistantView") == null:
 		_fail("Task detail scene missing assistant view.")
 	if not canvas.has_method("get_current_task_context_entries"):
 		_fail("Task detail UI does not expose current task context for assistant.")
+	if not canvas.has_method("replay_current_step_animation"):
+		_fail("Task detail UI does not expose replay animation handler.")
+	if not canvas.has_method("play_current_step_voice"):
+		_fail("Task detail UI does not expose play voice handler.")
 	scene_root.queue_free()
 
 

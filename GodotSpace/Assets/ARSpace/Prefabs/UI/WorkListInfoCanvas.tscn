@@ -12,7 +12,6 @@
 [ext_resource type="Texture2D" uid="uid://d1ajbdq6px2jj" path="res://Assets/Modern UI Pack/Textures/Icon/UI Elements/Switch.png" id="10_b508j"]
 [ext_resource type="Texture2D" uid="uid://22qp5l1761lp" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155621.png" id="11_xfmqy"]
 [ext_resource type="Texture2D" uid="uid://klwx2jn4s6kj" path="res://Assets/ARSpace/Textures/二期交互修改（0808）/Group 155614.png" id="12_vcpeh"]
-
 [ext_resource type="PackedScene" uid="uid://c5lm3bvr8jca1" path="res://Assets/ARSpace/Prefabs/UI/LLMAssistantCanvas.tscn" id="13_l6ben"]
 
 [node name="WorkListInfoCanvas" type="CanvasLayer"]
@@ -237,4 +236,3 @@ offset_top = 88.0
 [connection signal="pressed" from="Canvas/TopMenuBox/Controller/AssistantButton" to="Canvas" method="_on_llm_assistant_pressed"]
 [connection signal="pressed" from="Canvas/Back" to="Canvas" method="_on_back_pressed"]
 [connection signal="pressed" from="Canvas/Next" to="Canvas" method="_on_next_pressed"]
-[connection signal="pressed" from="Canvas/LLMAssistantView/BackButton" to="Canvas" method="_on_llm_assistant_back_pressed"]
