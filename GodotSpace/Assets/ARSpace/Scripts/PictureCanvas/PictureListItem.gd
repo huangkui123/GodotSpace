@@ -16,7 +16,10 @@ func _ready():
 
 func _on_click_btn():
 	# print(self, " ClickBtn")
-	Global.picture_info_canvas.set_image_name(item_data.banner_path.get_file())
+	var global_node := get_node_or_null("/root/Global")
+	var picture_info_canvas = global_node.get("picture_info_canvas") if global_node != null else null
+	if picture_info_canvas != null and picture_info_canvas.has_method("set_image_name"):
+		picture_info_canvas.call("set_image_name", item_data.banner_path.get_file())
 
 # 刷新显示内容
 func refresh_info(data: PictureListData):

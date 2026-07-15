@@ -20,15 +20,14 @@ var can_max: bool = true
 func _ready():
 	if DEBUG_LOGS: print("PictureUIView _ready")
 	self.visible = false
-	Global.picture_canvas = self
+	var global_node := get_node_or_null("/root/Global")
+	if global_node != null:
+		global_node.set("picture_canvas", self)
 	PanelWindowZoom.bind_max_button(self)
 	info_save_list = []
 #	scale = self.transform.basis.get_scale()
 	init_view()
-
-	var picture_list_data_result = PictureListDataResult.new()
-	picture_list_data_result.refresh_image_list()
-	refresh_data_change_view(picture_list_data_result)
+	_refresh_picture_data()
 
 func _enter_tree():
 	pass
@@ -42,6 +41,51 @@ func init_view():
 func refresh_data_change_view(result: PictureListDataResult):
 	if DEBUG_LOGS: print("->PictureListDataResult")
 	refresh_list(result)
+
+
+func open_album(requested_page: int = 1, refresh: bool = true) -> Dictionary:
+	if requested_page < 1:
+		return _tool_error("invalid_page", "Album page must be greater than zero.")
+	if refresh:
+		_refresh_picture_data()
+	if page_count > 0 and requested_page > page_count:
+		return _tool_error(
+			"invalid_page",
+			"Album page %d exceeds the available page count %d." % [requested_page, page_count]
+		)
+	page_index = requested_page
+	if page_count > 0:
+		bind_page(page_index)
+	else:
+		for item in info_:
+			if item != null:
+				item.visible = false
+	visible = true
+	return {
+		"ok": true,
+		"data": {
+			"visible": visible,
+			"page": page_index,
+			"page_count": page_count,
+			"picture_count": item_count,
+			"refreshed": refresh,
+		},
+		"error": null,
+	}
+
+
+func _refresh_picture_data() -> void:
+	var picture_list_data_result = PictureListDataResult.new()
+	picture_list_data_result.refresh_image_list()
+	refresh_data_change_view(picture_list_data_result)
+
+
+func _tool_error(code: String, message: String) -> Dictionary:
+	return {
+		"ok": false,
+		"data": {},
+		"error": {"code": code, "message": message},
+	}
 
 func refresh_list(refresh_list: PictureListDataResult):
 	if DEBUG_LOGS: print("->RefreshList:刷新列表")

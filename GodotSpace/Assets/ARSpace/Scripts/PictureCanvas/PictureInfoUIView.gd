@@ -12,7 +12,9 @@ var imagename: String = ""
 func _ready():
 	if DEBUG_LOGS: print("PictureInfoUIView _ready")
 	self.visible = false
-	Global.picture_info_canvas = self
+	var global_node := get_node_or_null("/root/Global")
+	if global_node != null:
+		global_node.set("picture_info_canvas", self)
 	PanelWindowZoom.bind_max_button(self)
 
 func set_image_name(name: String):
