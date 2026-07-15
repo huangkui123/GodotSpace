@@ -19,6 +19,7 @@ config/icon="res://icon.svg"
 
 local_agent/enabled=true
 local_agent/endpoint_url="ws://127.0.0.1:7861/ws/godot"
+local_agent/max_message_bytes=262144
 llm_assistant/endpoint_url="https://api.deepseek.com/chat/completions"
 llm_assistant/model="deepseek-v4-pro"
 llm_assistant/api_key_environment_name="DEEPSEEK_API_KEY"
