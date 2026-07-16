@@ -778,9 +778,7 @@ func _on_peer_connected(peer_id: int) -> void:
 
 
 func _on_peer_disconnected(peer_id: int) -> void:
-	_peer_highest_request_sequence.erase(peer_id)
-	_peer_snapshot_request_msec.erase(peer_id)
-	_clear_preview_sequences_for_peer(peer_id)
+	_forget_peer_transient_state(peer_id)
 	_release_peer_leases(peer_id)
 	if peer_id == SERVER_PEER_ID and not _is_server_authority():
 		_clear_local_replica()
@@ -788,7 +786,14 @@ func _on_peer_disconnected(peer_id: int) -> void:
 
 func _on_peer_role_changed(peer_id: int, _role: String) -> void:
 	if _is_server_authority() and not State.is_ground_role(_get_peer_role(peer_id)):
+		_forget_peer_transient_state(peer_id)
 		_release_peer_leases(peer_id)
+
+
+func _forget_peer_transient_state(peer_id: int) -> void:
+	_peer_highest_request_sequence.erase(peer_id)
+	_peer_snapshot_request_msec.erase(peer_id)
+	_clear_preview_sequences_for_peer(peer_id)
 
 
 func _on_network_role_selected(is_server_role: bool) -> void:

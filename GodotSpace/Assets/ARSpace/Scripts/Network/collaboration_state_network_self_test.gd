@@ -8,6 +8,7 @@ const SpatialWindowState = preload("res://Assets/ARSpace/Scripts/UI/SpatialWindo
 
 const CONNECT_TIMEOUT_FRAMES: int = 300
 const STATE_TIMEOUT_FRAMES: int = 300
+const SNAPSHOT_REQUEST_INTERVAL_MSEC: int = 250
 const GROUND_TOKEN_ENV: String = "GODOTSPACE_GROUND_VR_TOKEN"
 
 var _failures: Array[String] = []
@@ -74,13 +75,15 @@ func _run() -> void:
 	)
 	var preview_transform := Transform3D(Basis(Vector3.UP, 0.25), Vector3(0.5, 1.1, -1.25))
 	var preview_queued := false
-	for sequence in range(1, 21):
+	for sequence in range(1, STATE_TIMEOUT_FRAMES + 1):
 		preview_queued = bool(ground_windows.call("request_operation", primary_window_id, "transform_preview", {
 			"shared_transform": preview_transform,
 			"stream_sequence": sequence,
 			"lease_token": ground_lease_token,
 		})) or preview_queued
 		await process_frame
+		if int(server_preview_count["count"]) >= 1:
+			break
 	_expect(preview_queued, "Ground client should queue an unreliable drag preview.")
 	_expect(await _wait_for_counter(server_preview_count, "count", 1), "Server should receive at least one Ground drag preview.")
 	_expect(int(server_windows.call("get_revision")) == 2, "Drag previews must not advance durable spatial-window revision.")
@@ -177,13 +180,123 @@ func _run() -> void:
 	_expect(await _wait_for_revision(ground_state, 3), "Existing Ground client should receive the Astronaut model snapshot.")
 	_expect((server_state.get_domain_state(Schema.DOMAIN_MODELS) as Dictionary).size() == 1, "Server must allocate exactly one model instance.")
 
+	var ground_focus_results: Array[Dictionary] = []
+	ground_windows.connect("operation_completed", func(result: Dictionary) -> void:
+		if str(result.get("operation", "")) == "focus":
+			ground_focus_results.append(result)
+	)
+	_expect(
+		bool(ground_windows.call("request_operation", primary_window_id, "focus", {})),
+		"Ground VR should request authoritative focus before its role changes."
+	)
+	_expect(await _wait_for_results(ground_focus_results, 1), "Ground VR focus should receive an authoritative result.")
+	if not ground_focus_results.is_empty():
+		_expect(bool(ground_focus_results[0].get("accepted", false)), "Ground VR focus should be accepted before demotion.")
+	_expect(await _wait_for_window_revision(server_windows, 3), "Ground VR focus should advance the durable window revision.")
+	_expect(await _wait_for_window_revision(ground_windows, 3), "Ground VR should receive its confirmed focus order.")
+	_expect(await _wait_for_window_revision(astronaut_windows, 3), "Astronaut should receive the confirmed focus order.")
+	var confirmed_focus_order := int((server_windows.call("get_window_state", primary_window_id) as Dictionary).get("focus_order", 0))
+	_expect(confirmed_focus_order > 0, "Confirmed focus order should be present before Ground VR demotion.")
+
+	server_handler.call("_set_peer_role", ground_id, Schema.ROLE_ASTRONAUT)
+	server_handler.call("_broadcast_peer_role_snapshot")
+	_expect(await _wait_for_role(server_handler, ground_id, Schema.ROLE_ASTRONAUT), "Server should demote the connected Ground VR peer to Astronaut.")
+	_expect(await _wait_for_role(ground_handler, ground_id, Schema.ROLE_ASTRONAUT), "The connected peer should receive its Astronaut demotion.")
+	_expect(await _wait_for_window_revision(server_windows, 4), "Role demotion should release the Ground VR window lease.")
+	_expect(await _wait_for_window_revision(ground_windows, 4), "Demoted peer should receive the lease-free window snapshot.")
+	_expect(await _wait_for_window_revision(astronaut_windows, 4), "Other clients should receive the lease-free window snapshot.")
+	var window_after_demotion := server_windows.call("get_window_state", primary_window_id) as Dictionary
+	_expect(int(window_after_demotion.get("lease_peer_id", -1)) == 0, "Role demotion should clear window lease ownership.")
+	_expect(str(window_after_demotion.get("lease_token", "not-cleared")) == "", "Role demotion should clear the window lease token.")
+	_expect(int(window_after_demotion.get("lease_expires_msec", -1)) == 0, "Role demotion should clear the lease expiry.")
+	_expect(int(window_after_demotion.get("focus_order", 0)) == confirmed_focus_order, "Role demotion should preserve confirmed shared focus order while clearing transient ownership.")
+	_expect(not (server_state.get("_peer_highest_sequences") as Dictionary).has(ground_id), "Role demotion should clear CollaborationState replay sequence ownership.")
+	_expect(not (server_state.get("_peer_request_cache") as Dictionary).has(ground_id), "Role demotion should clear CollaborationState cached results.")
+	_expect(not (server_state.get("_peer_request_order") as Dictionary).has(ground_id), "Role demotion should clear CollaborationState cache order.")
+	_expect(not (server_state.get("_peer_snapshot_request_msec") as Dictionary).has(ground_id), "Role demotion should clear CollaborationState snapshot throttling state.")
+	_expect(not (server_windows.get("_peer_highest_request_sequence") as Dictionary).has(ground_id), "Role demotion should clear spatial-window request sequence ownership.")
+	_expect(not (server_windows.get("_peer_snapshot_request_msec") as Dictionary).has(ground_id), "Role demotion should clear spatial-window snapshot throttling state.")
+	_expect(
+		not _has_peer_window_preview_sequence(server_windows.get("_peer_preview_sequence_by_window") as Dictionary, ground_id),
+		"Role demotion should clear unreliable preview sequence ownership."
+	)
+
+	var demoted_window_results: Array[Dictionary] = []
+	ground_windows.connect("operation_completed", func(result: Dictionary) -> void:
+		if str(result.get("operation", "")) == "acquire_lease":
+			demoted_window_results.append(result)
+	)
+	_expect(
+		bool(ground_windows.call("request_operation", primary_window_id, "acquire_lease", {"timeout_msec": 10000})),
+		"Demoted peer may queue a Ground-only window request for Server rejection."
+	)
+	_expect(await _wait_for_results(demoted_window_results, 1), "Demoted peer should receive a window rejection result.")
+	if not demoted_window_results.is_empty():
+		_expect(not bool(demoted_window_results[0].get("accepted", true)), "Demoted Astronaut must not reacquire a window lease.")
+		_expect(str(demoted_window_results[0].get("error", "")) == "role_not_allowed", "Demoted window rejection should report role_not_allowed.")
+	_expect(int(server_windows.call("get_revision")) == 4, "Rejected post-demotion window request must preserve revision.")
+	var demoted_state_results: Array[Dictionary] = []
+	ground_state.request_completed.connect(func(result: Dictionary) -> void:
+		if str(result.get("domain", "")) == Schema.DOMAIN_MENU:
+			demoted_state_results.append(result)
+	)
+	ground_state.request_change(
+		Schema.DOMAIN_MENU,
+		Schema.OP_SET,
+		{"mode": "work", "active_tab": "demoted", "page_id": ""}
+	)
+	_expect(await _wait_for_results(demoted_state_results, 1), "Demoted peer should receive a state rejection result.")
+	if not demoted_state_results.is_empty():
+		_expect(not bool(demoted_state_results[0].get("accepted", true)), "Demoted Astronaut must not mutate Ground-only collaboration state.")
+		_expect(str(demoted_state_results[0].get("error", "")) == "role_not_allowed", "Demoted state rejection should report role_not_allowed.")
+	_expect(server_state.get_session_revision() == 3, "Rejected post-demotion collaboration request must preserve revision.")
+
+	astronaut_state.queue_free()
+	astronaut_windows.queue_free()
+	await process_frame
+	_expect(await _wait_for_snapshot_request_window(server_state, astronaut_id), "Collaboration snapshot throttle should become ready for node reconstruction.")
+	_expect(await _wait_for_snapshot_request_window(server_windows, astronaut_id), "Window snapshot throttle should become ready for node reconstruction.")
+	var rebuilt_state_snapshots := {"count": 0}
+	var rebuilt_window_snapshots := {"count": 0}
+	var rebuilt_window_registrations: Dictionary = {}
+	var rebuilt_window_changes: Dictionary = {}
+	astronaut_state = _add_collaboration_state(astronaut_branch)
+	astronaut_state.snapshot_applied.connect(func(_revision: int, _domain_revisions: Dictionary) -> void:
+		rebuilt_state_snapshots["count"] = int(rebuilt_state_snapshots["count"]) + 1
+	)
+	astronaut_windows = _add_spatial_window_registry(astronaut_branch)
+	astronaut_windows.connect("snapshot_applied", func(_revision: int, _window_count: int) -> void:
+		rebuilt_window_snapshots["count"] = int(rebuilt_window_snapshots["count"]) + 1
+	)
+	astronaut_windows.connect("window_registered", func(window_id: String, _state: Dictionary) -> void:
+		rebuilt_window_registrations[window_id] = int(rebuilt_window_registrations.get(window_id, 0)) + 1
+	)
+	astronaut_windows.connect("window_state_changed", func(window_id: String, _state: Dictionary) -> void:
+		rebuilt_window_changes[window_id] = int(rebuilt_window_changes.get(window_id, 0)) + 1
+	)
+	# Explicit requests plus each node's deferred ready request exercise the
+	# Server throttle and must still produce one idempotent reconstruction.
+	astronaut_state.call("request_snapshot")
+	astronaut_windows.call("request_snapshot")
+	_expect(await _wait_for_revision(astronaut_state, 3), "Rebuilt CollaborationState should request the latest full snapshot without reconnecting.")
+	_expect(await _wait_for_window_revision(astronaut_windows, 4), "Rebuilt window registry should request the latest full snapshot without reconnecting.")
+	for _frame in range(3):
+		await process_frame
+	_expect(astronaut_state.call("get_state") == server_state.call("get_state"), "Rebuilt CollaborationState must exactly match the authoritative snapshot.")
+	_expect(astronaut_windows.call("get_windows_snapshot") == server_windows.call("get_windows_snapshot"), "Rebuilt window registry must exactly match the authoritative snapshot.")
+	_expect(int(rebuilt_state_snapshots["count"]) == 1, "Rebuilt CollaborationState should apply one snapshot despite duplicate immediate requests.")
+	_expect(int(rebuilt_window_snapshots["count"]) == 1, "Rebuilt window registry should apply one snapshot despite duplicate immediate requests.")
+	_expect(int(rebuilt_window_registrations.get(primary_window_id, 0)) == 1, "Rebuilt registry should register each authoritative window exactly once.")
+	_expect(int(rebuilt_window_changes.get(primary_window_id, 0)) == 1, "Rebuilt registry should emit one initial state change per authoritative window.")
+	_expect(rebuilt_window_registrations.size() == 1, "Rebuilt registry must not create duplicate window identities.")
+
 	var durable_window_before_disconnect := server_windows.call("get_window_state", primary_window_id) as Dictionary
 	ground_peer.close()
 	_expect(await _wait_for_role(server_handler, ground_id, "unknown"), "Disconnect must clear the Server role registry entry.")
 	_expect(await _wait_for_revision(ground_state, 0), "Disconnected client must clear its local replica.")
 	_expect(server_state.get_session_revision() == 3, "A client disconnect must preserve confirmed Server state.")
-	_expect(await _wait_for_window_revision(server_windows, 3), "Ground disconnect during drag should release its spatial-window lease.")
-	_expect(await _wait_for_window_revision(astronaut_windows, 3), "Lease release should replicate to the remaining client.")
+	_expect(await _wait_for_window_revision(server_windows, 4), "Demoted peer disconnect should preserve the already released lease revision.")
+	_expect(await _wait_for_window_revision(astronaut_windows, 4), "Remaining client should preserve the role-cleaned window revision.")
 	_expect(await _wait_for_window_revision(ground_windows, 0), "Disconnected Ground should clear its local spatial-window replica.")
 	var window_after_disconnect := server_windows.call("get_window_state", primary_window_id) as Dictionary
 	_expect(int(window_after_disconnect.get("lease_peer_id", -1)) == 0, "Ground disconnect should clear spatial-window lease ownership.")
@@ -209,7 +322,7 @@ func _run() -> void:
 		"shared_transform": Transform3D(Basis.IDENTITY, Vector3(-0.8, 1.0, -1.0)),
 		"size_m": Vector2(1.2, 0.75),
 	})), "Server should register a second spatial window while Ground is offline.")
-	_expect(await _wait_for_window_revision(astronaut_windows, 4), "Remaining client should receive the offline spatial-window mutation.")
+	_expect(await _wait_for_window_revision(astronaut_windows, 5), "Remaining client should receive the offline spatial-window mutation.")
 
 	var replacement_peer := ENetMultiplayerPeer.new()
 	_expect(replacement_peer.create_client("127.0.0.1", port, 3) == OK, "Ground reconnect should start connecting.")
@@ -223,7 +336,7 @@ func _run() -> void:
 	_expect(await _wait_for_role(ground_handler, replacement_id, Schema.ROLE_GROUND_VR), "Reconnected client should receive its new role.")
 	_expect(await _wait_for_revision(ground_state, 4), "Reconnected client must receive a fresh full snapshot.")
 	_expect(int((ground_state.get_domain_state(Schema.DOMAIN_TASK) as Dictionary).get("task_id", 0)) == 2, "Reconnect snapshot must include state changed while offline.")
-	_expect(await _wait_for_window_revision(ground_windows, 4), "Reconnected Ground must receive the latest spatial-window revision.")
+	_expect(await _wait_for_window_revision(ground_windows, 5), "Reconnected Ground must receive the latest spatial-window revision.")
 	_expect(
 		ground_windows.call("get_windows_snapshot") == server_windows.call("get_windows_snapshot"),
 		"Reconnected Ground must receive the complete authoritative spatial-window snapshot."
@@ -334,6 +447,24 @@ func _wait_for_window_revision(registry: Node, expected_revision: int) -> bool:
 		if int(registry.call("get_revision")) == expected_revision:
 			return true
 		await process_frame
+	return false
+
+
+func _wait_for_snapshot_request_window(service: Node, peer_id: int) -> bool:
+	for _frame in range(STATE_TIMEOUT_FRAMES):
+		var request_times := service.get("_peer_snapshot_request_msec") as Dictionary
+		var previous := int(request_times.get(peer_id, -SNAPSHOT_REQUEST_INTERVAL_MSEC))
+		if Time.get_ticks_msec() - previous >= SNAPSHOT_REQUEST_INTERVAL_MSEC:
+			return true
+		await process_frame
+	return false
+
+
+func _has_peer_window_preview_sequence(sequences: Dictionary, peer_id: int) -> bool:
+	var prefix := "%d:" % peer_id
+	for key in sequences:
+		if str(key).begins_with(prefix):
+			return true
 	return false
 
 
