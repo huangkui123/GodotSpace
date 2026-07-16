@@ -126,4 +126,4 @@ func _on_next_pressed():
 
 
 func _on_close_button_pressed():
-	self.visible = false
+	PanelWindowZoom.set_window_visible(self, false)

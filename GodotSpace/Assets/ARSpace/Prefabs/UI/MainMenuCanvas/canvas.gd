@@ -35,7 +35,14 @@ func _on_back_button_pressed():
 
 func _on_close_button_pressed():
 	_hide_llm_assistant_view()
-	self.visible = false
+	PanelWindowZoom.set_window_visible(self, false)
+
+func on_spatial_window_visibility_changed(is_visible: bool) -> void:
+	if is_visible:
+		return
+	_hide_llm_assistant_view()
+	work_list_view.visible = false
+	_set_spacebox_worklist_visible(false)
 
 func _on_llm_assistant_pressed() -> void:
 	work_list_view.visible = false
@@ -63,7 +70,7 @@ func _set_global_canvas_visible(property_name: StringName, is_visible: bool) -> 
 	var global_node := _get_global_node()
 	var canvas = global_node.get(property_name) if global_node != null else null
 	if canvas != null:
-		canvas.visible = is_visible
+		PanelWindowZoom.set_window_visible(canvas, is_visible)
 
 func _get_global_node() -> Node:
 	return get_node_or_null("/root/Global")

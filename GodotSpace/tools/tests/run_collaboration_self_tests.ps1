@@ -17,6 +17,11 @@ $ScriptTests = @(
     'res://Assets/ARSpace/Scripts/Network/peer_role_registry_self_test.gd',
     'res://Assets/ARSpace/Scripts/Network/peer_role_network_self_test.gd',
     'res://Assets/ARSpace/Scripts/Network/voice_dictation_self_test.gd',
+	'res://Assets/ARSpace/Scripts/UI/SpatialWindow/spatial_window_state_self_test.gd',
+	'res://Assets/ARSpace/Scripts/UI/SpatialWindow/spatial_window_self_test.gd',
+	'res://Assets/ARSpace/Scripts/UI/SpatialWindow/spatial_window_adapter_self_test.gd',
+	'res://Assets/ARSpace/Scripts/UI/SpatialWindow/spatial_window_registry_network_self_test.gd',
+	'res://Assets/ARSpace/Scripts/UI/SpatialWindow/spatial_window_migration_self_test.gd',
     'res://Assets/ARSpace/Scripts/VirtualAnnotation/virtual_annotation_self_test.gd',
     'res://Assets/ARSpace/Scripts/VirtualAnnotation/virtual_annotation_network_self_test.gd',
     'res://Assets/ARSpace/Scripts/collaboration_feature_self_test.gd'

@@ -19,15 +19,19 @@ func _ready():
 
 func set_video_name(name: String):
 	if not self.visible:
-		self.visible = true
+		PanelWindowZoom.set_window_visible(self, true)
 	title_label.text = name
 	videoname = name
 	p_info.set_video(name)
 
 func _on_close_button_pressed():
 	if self.visible:
-		self.visible = false
+		PanelWindowZoom.set_window_visible(self, false)
 		p_info.destory()
 		# p_info.set_video("")
 		# videoname = ""
 		# title_label.text = ""
+
+func on_spatial_window_visibility_changed(is_visible: bool) -> void:
+	if not is_visible and p_info != null and p_info.has_method("destory"):
+		p_info.call("destory")

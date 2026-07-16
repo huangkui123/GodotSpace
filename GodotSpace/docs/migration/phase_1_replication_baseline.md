@@ -26,9 +26,9 @@
 | 头部和双手位姿对其他端可见 | `Player.tscn`、`player.gd`、`multiplayer_spawner.gd` | Client 上报自身位姿，Server 校验发送方并中继 | 两个 Client 与 Server 均看到正确 peer 的头手；旧序号和冒充包被拒绝；远端插值稳定 |
 | 航天员全身形象与手势 | 第一阶段目标 `AstronautAvatar.tscn` 及其 IK/手势脚本；当前入口仍在 `Player.tscn` | 航天端产生跟踪和手势状态，Server 校验与中继 | 远端看到同一角色的全身、头手和手势；本地身体不遮挡视野；跟踪丢失、重获和重连无骨骼爆炸 |
 | 共享空间与重定中 | `ARSpace.tscn/SharedSpaceOrigin`、`shared_space_alignment.gd`、`SpatialCalibration/*` | Server 保存标定版本；每端只在共享原点边界做局部/世界转换 | 玩家、窗口、标注和柜体使用同一坐标；迟到 Client 收到当前标定；清除/重标定不叠加偏移 |
-| 主菜单和三维窗口交互 | `ARSpace.tscn/GroupUI`、`UI/unified_panel_ui.gd`；第一阶段目标 `UI/SpatialWindow3D.*` | 操作端发请求，Server 校验窗口 ID、状态和变换 | PC 鼠标、XR 近距和 XR 射线语义一致；拖动、缩放、吸附、焦点、关闭可同步且迟到恢复 |
+| 主菜单和三维窗口交互 | `ARSpace.tscn/SharedSpaceOrigin`、`UI/SpatialWindow/SpatialWindow3D.tscn`、`SpatialWindowAdapter` 与 Registry Autoload | PC/Ground VR 发请求，Server 校验角色、稳定窗口 ID、状态、米制尺寸、租约和共享局部变换 | PC 鼠标、XR 近距和 XR 射线语义一致；拖动、缩放、吸附、焦点、关闭可同步且迟到恢复 |
 | 无容器样品任务入口 | `WorkListCanvas/WorkListUIView.gd`、`WorkListItem.gd` | 当前仅本地 UI；后续写入协作状态 | 任务 1 可打开 20 步；任务 2—5 明确显示“未配置”且不复制任务 1 步骤；任务 6—8 不出现在 UI |
-| 图片、视频、工作清单、语音窗口 | `PictureCanvas/*`、`MovieCanvas/*`、`WorkListCanvas/*`、`Network/voice_chat_ui.gd` | 第一阶段统一纳入窗口框架；业务内容同步由后续阶段细化 | 至少四类业务窗口可创建、操作、关闭、同步和迟到恢复 |
+| 图片、视频、工作清单、语音窗口 | 7 个稳定 ID 的 `SpatialWindowAdapter`；调用入口统一经过 `panel_window_zoom.gd` | 第一阶段窗口外壳状态已统一纳入 Registry；图片/视频等业务内容同步由后续阶段细化 | 主菜单、图片列表/详情、视频列表/详情、工作清单和语音窗口可打开、关闭、变换并迟到恢复 |
 | 点式标注 | `VirtualAnnotation/*` | PC 地面端和地面 VR 可请求，Server 分配 ID 和版本 | 非地面角色请求被拒绝；快照、删除、清空、断线清理可重复验证 |
 | PICO 图像点选标定 | `SpatialCalibration/*`、Android companion helper | 只在 PC Server 显示标定面板并确认结果 | 帧长度受限；半包/坏包不破坏会话；标定版本可快照、清除和重做 |
 

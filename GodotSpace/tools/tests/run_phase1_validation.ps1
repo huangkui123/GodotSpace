@@ -53,7 +53,8 @@ if (-not $SkipImport) {
         'Failed to load script',
         'Failed loading resource',
         'Cannot open file.*res://',
-        'GDExtension.*(?:failed|could not|cannot)',
+        '(?:GDExtension.*(?:failed|could not|cannot|can''t|error)|(?:failed|could not|cannot|can''t|error).*GDExtension)',
+        'Error loading extension:',
         '(?:autoload|Autoload).*(?:failed|invalid)'
     )
     foreach ($Pattern in $CriticalPatterns) {

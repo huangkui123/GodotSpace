@@ -336,6 +336,13 @@ func connect_scene_signal(which : String, callback : Callable, flags : int = 0):
 
 # Handle pointer event from screen-body
 func _on_pointer_event(event: XRToolsPointerEvent):
+	if _uses_application_window_registry():
+		var local_controller = _get_controller_from_pointer(event.pointer)
+		var local_grip_value: float = 0.0
+		if local_controller:
+			local_grip_value = local_controller.get_float(grip_action)
+		_handle_pointer_event(multiplayer.get_unique_id(), event, local_grip_value)
+		return
 	if multiplayer.is_server():
 		# 如果自己就是服务器，直接处理事件
 		pass
@@ -361,6 +368,8 @@ func _on_pointer_event(event: XRToolsPointerEvent):
 
 @rpc("any_peer")
 func server_receive_pointer_event(data: Dictionary):
+	if _uses_application_window_registry():
+		return
 	# 这里一定只会在服务器跑
 	var sender_id = multiplayer.get_remote_sender_id()
 
@@ -389,21 +398,29 @@ func server_receive_pointer_event(data: Dictionary):
 
 @rpc("any_peer", "call_remote", "unreliable")
 func server_receive_window_transform(window_transform: Transform3D):
+	if _uses_application_window_registry():
+		return
 	_receive_window_transform_from_client(window_transform, false)
 
 
 @rpc("any_peer", "call_remote", "reliable")
 func server_receive_window_transform_reliable(window_transform: Transform3D):
+	if _uses_application_window_registry():
+		return
 	_receive_window_transform_from_client(window_transform, true)
 
 
 @rpc("authority", "call_remote", "unreliable")
 func client_receive_window_transform(window_transform: Transform3D):
+	if _uses_application_window_registry():
+		return
 	_apply_synced_window_transform(window_transform)
 
 
 @rpc("authority", "call_remote", "reliable")
 func client_receive_window_transform_reliable(window_transform: Transform3D):
+	if _uses_application_window_registry():
+		return
 	_apply_synced_window_transform(window_transform)
 
 
@@ -439,7 +456,7 @@ func _handle_pointer_event(player_id: int, event: XRToolsPointerEvent, grip_valu
 		if Global and Global.has_method("set_last_clicked_window"):
 			# 检查是否有窗口正在被拖动
 			var has_dragging_window = Global.dragging_window != null
-			if not has_dragging_window:
+			if not has_dragging_window and not _uses_application_window_registry():
 				Global.set_last_clicked_window(self)
 	
 	# Handle dragging functionality if enabled
@@ -1000,6 +1017,11 @@ func _stop_dragging():
 
 
 func _sync_window_transform_to_server(reliable: bool):
+	# Migrated application windows use a stable ID, role validation, leases and
+	# shared-local transforms in SpatialWindowRegistry. Keep this legacy path
+	# only for third-party scenes that have not opted into the adapter.
+	if _uses_application_window_registry():
+		return
 	if not multiplayer.has_multiplayer_peer() or multiplayer.is_server():
 		return
 
@@ -1012,3 +1034,7 @@ func _sync_window_transform_to_server(reliable: bool):
 		rpc_id(SERVER_PEER_ID, "server_receive_window_transform_reliable", global_transform)
 	else:
 		rpc_id(SERVER_PEER_ID, "server_receive_window_transform", global_transform)
+
+
+func _uses_application_window_registry() -> bool:
+	return get_node_or_null("SpatialWindowAdapter") != null

@@ -14,15 +14,19 @@ var movie_info_canvas: Node = null
 
 var work_list_info_canvas: Node = null
 
-# 窗口管理相关变量
+# 仅供尚未迁移的 XR Tools 本地放置逻辑兼容。权威窗口状态由
+# SpatialWindowRegistryService 管理，这些值不得用于网络同步。
 var last_clicked_window_position: Vector3 = Vector3.ZERO
 var last_clicked_window_transform: Transform3D = Transform3D.IDENTITY
-var window_right_offset: float = 700.0  # 新窗口出现在右侧的偏移距离
+var window_right_offset: float = 0.7  # Godot 世界单位为米
 var dragging_window: Node3D = null  # 当前正在被拖动的窗口
 
 # 记录上一个被点击的窗口位置
 func set_last_clicked_window(window_node: Node3D):
 	if window_node:
+		var adapter := window_node.get_node_or_null("SpatialWindowAdapter")
+		if adapter != null and adapter.has_method("request_focus"):
+			adapter.call("request_focus")
 		last_clicked_window_position = window_node.global_position
 		last_clicked_window_transform = window_node.global_transform
 		# print("Recorded last clicked window position: ", last_clicked_window_position)

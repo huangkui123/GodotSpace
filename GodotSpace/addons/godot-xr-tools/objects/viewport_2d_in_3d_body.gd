@@ -52,6 +52,9 @@ func global_to_viewport(p_at : Vector3) -> Vector2:
 
 # Pointer event handler
 func _on_pointer_event(event: XRToolsPointerEvent):
+	if _uses_application_window_registry():
+		_handle_pointer_event(multiplayer.get_unique_id(), event)
+		return
 	if multiplayer.is_server():
 		pass
 	else:
@@ -70,6 +73,8 @@ func _on_pointer_event(event: XRToolsPointerEvent):
 
 @rpc("any_peer")
 func server_receive_pointer_event(data: Dictionary):
+	if _uses_application_window_registry():
+		return
 	# 这里一定只会在服务器跑
 	var sender_id = multiplayer.get_remote_sender_id()
 
@@ -95,6 +100,11 @@ func server_receive_pointer_event(data: Dictionary):
 	# 	print("target_node: ", target_node)
 
 	_handle_pointer_event(sender_id, fake_event)
+
+
+func _uses_application_window_registry() -> bool:
+	var viewport_window := get_parent()
+	return viewport_window != null and viewport_window.get_node_or_null("SpatialWindowAdapter") != null
 
 
 func _handle_pointer_event(player_id: int, event: XRToolsPointerEvent):

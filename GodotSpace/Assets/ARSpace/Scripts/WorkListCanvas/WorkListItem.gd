@@ -4,6 +4,7 @@ class_name WorkListItem
 
 const DEBUG_LOGS := false
 const UNCONFIGURED_SUFFIX := "（未配置）"
+const PanelWindowZoom = preload("res://Assets/ARSpace/Scripts/UI/panel_window_zoom.gd")
 
 signal unconfigured_task_selected(task_id: int, task_title: String)
 
@@ -29,7 +30,7 @@ func click_btn():
 
 	var work_info = Global.work_list_info_canvas
 	if work_info:
-		work_info.visible = true
+		PanelWindowZoom.set_window_visible(work_info, true)
 		work_info.on_refresh_data_change_view(item_data.info_data_result)
 
 	if DEBUG_LOGS: print(self.name, ": Index = ", item_data.id)
@@ -39,7 +40,7 @@ func close_guide():
 
 	var work_info = Global.work_list_info_canvas
 	if work_info:
-		work_info.visible = false
+		PanelWindowZoom.set_window_visible(work_info, false)
 
 func refresh_info(data: WorkListData):
 	self.visible = true

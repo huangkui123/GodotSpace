@@ -2,8 +2,6 @@ extends RefCounted
 
 const DEFAULT_ZOOM_FACTOR := 1.6
 const META_BOUND := &"panel_window_zoom_bound"
-const META_MAXIMIZED := &"panel_window_zoom_maximized"
-const META_ORIGINAL_SCALE := &"panel_window_zoom_original_scale"
 
 
 static func bind_max_button(panel_root: Node, zoom_factor: float = DEFAULT_ZOOM_FACTOR) -> void:
@@ -21,56 +19,39 @@ static func bind_max_button(panel_root: Node, zoom_factor: float = DEFAULT_ZOOM_
 		max_button.set_meta(META_BOUND, true)
 
 
-static func toggle_window(panel_root: Node, zoom_factor: float = DEFAULT_ZOOM_FACTOR) -> void:
-	var target := _get_window_target(panel_root)
-	if target == null:
+static func toggle_window(panel_root: Node, _zoom_factor: float = DEFAULT_ZOOM_FACTOR) -> void:
+	var controller := _get_window_controller(panel_root)
+	if controller == null or not controller.has_method("request_toggle_maximized"):
+		push_warning("Panel window is not migrated to SpatialWindow3D yet.")
 		return
-
-	if bool(target.get_meta(META_MAXIMIZED, false)):
-		_restore(target)
-	else:
-		_maximize(target, zoom_factor)
+	controller.call("request_toggle_maximized")
 
 
 static func set_window_visible(panel_root: Node, is_visible: bool) -> void:
-	var target := _get_window_target(panel_root)
-	if target != null:
-		target.visible = is_visible
+	var controller := _get_window_controller(panel_root)
+	if controller != null and controller.has_method("request_visibility"):
+		controller.call("request_visibility", is_visible)
+	elif panel_root != null:
+		panel_root.visible = is_visible
 
 
-static func _maximize(target: Node, zoom_factor: float) -> void:
-	if target is Node3D:
-		if not target.has_meta(META_ORIGINAL_SCALE):
-			target.set_meta(META_ORIGINAL_SCALE, (target as Node3D).scale)
-		(target as Node3D).scale = ((target as Node3D).get_meta(META_ORIGINAL_SCALE) as Vector3) * zoom_factor
-	elif target is Control:
-		if not target.has_meta(META_ORIGINAL_SCALE):
-			target.set_meta(META_ORIGINAL_SCALE, (target as Control).scale)
-		(target as Control).scale = ((target as Control).get_meta(META_ORIGINAL_SCALE) as Vector2) * zoom_factor
-	else:
-		return
-
-	target.set_meta(META_MAXIMIZED, true)
-
-
-static func _restore(target: Node) -> void:
-	if not target.has_meta(META_ORIGINAL_SCALE):
-		target.set_meta(META_MAXIMIZED, false)
-		return
-
-	if target is Node3D:
-		(target as Node3D).scale = target.get_meta(META_ORIGINAL_SCALE) as Vector3
-	elif target is Control:
-		(target as Control).scale = target.get_meta(META_ORIGINAL_SCALE) as Vector2
-
-	target.set_meta(META_MAXIMIZED, false)
-
-
-static func _get_window_target(panel_root: Node) -> Node:
+static func _get_window_controller(panel_root: Node) -> Node:
+	if panel_root == null:
+		return null
+	var direct_adapter := panel_root.get_node_or_null("SpatialWindowAdapter")
+	if direct_adapter != null:
+		return direct_adapter
 	var viewport := panel_root.get_viewport()
 	if viewport != null:
 		var viewport_parent := viewport.get_parent()
 		if viewport_parent is Node3D:
-			return viewport_parent
+			var adapter := viewport_parent.get_node_or_null("SpatialWindowAdapter")
+			if adapter != null:
+				return adapter
 
-	return panel_root
+	var current := panel_root
+	while current != null:
+		if current.has_method("request_toggle_maximized"):
+			return current
+		current = current.get_parent()
+	return null

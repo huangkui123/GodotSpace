@@ -290,7 +290,14 @@ func _on_next_pressed():
 func _on_close_button_pressed():
 	_stop_current_step_voice()
 	_hide_llm_assistant_view()
-	self.visible = false
+	PanelWindowZoom.set_window_visible(self, false)
+
+
+func on_spatial_window_visibility_changed(is_visible: bool) -> void:
+	if is_visible:
+		return
+	_stop_current_step_voice()
+	_hide_llm_assistant_view()
 
 
 func _on_llm_assistant_pressed() -> void:

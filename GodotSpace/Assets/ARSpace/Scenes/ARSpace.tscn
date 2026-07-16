@@ -1,4 +1,4 @@
-[gd_scene load_steps=106 format=4 uid="uid://ca028g0q2kstx"]
+[gd_scene load_steps=108 format=4 uid="uid://ca028g0q2kstx"]
 
 [ext_resource type="Script" uid="uid://d1pt7mdt5llk4" path="res://XR_Main.gd" id="1_g432p"]
 [ext_resource type="Script" uid="uid://bt6aew4asx754" path="res://Assets/ARSpace/Scenes/SpaceBox.gd" id="2_wjh8v"]
@@ -71,6 +71,8 @@
 [ext_resource type="Script" uid="uid://crvnkm0d7eggt" path="res://Assets/ARSpace/Scripts/shared_space_alignment.gd" id="71_shared_alignment"]
 [ext_resource type="PackedScene" path="res://Assets/ARSpace/Scenes/VirtualAnnotationSystem.tscn" id="72_annotation_system"]
 [ext_resource type="Script" path="res://Assets/ARSpace/Scripts/SpatialCalibration/spatial_calibration_replica.gd" id="73_spatial_replica"]
+[ext_resource type="Script" path="res://Assets/ARSpace/Scripts/UI/SpatialWindow/spatial_window_adapter.gd" id="74_window_adapter"]
+[ext_resource type="Script" path="res://Assets/ARSpace/Scripts/UI/SpatialWindow/spatial_window_snap_zone.gd" id="75_snap_zone"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_m4rif"]
 resource_name = "Default-Skybox"
@@ -2288,26 +2290,33 @@ root_motion_track = NodePath("../..")
 [node name="Malamute" parent="SpaceBox/SpaceBox/Environment_Life/Malamute/GeneralSkeleton" index="1"]
 skin = SubResource("Skin_33alu")
 
-[node name="MainMenuCanvas" parent="." instance=ExtResource("54_4gitt")]
+[node name="MainMenuCanvas" parent="SharedSpaceOrigin" instance=ExtResource("54_4gitt")]
 transform = Transform3D(-0.00299996, 1.53247e-05, 4.76738e-06, 1.53492e-05, 0.00299992, 1.55533e-05, -4.68778e-06, 1.55775e-05, -0.00299996, -0.0719683, 1.10385, 2.91889)
 screen_size = Vector2(620, 460)
 scene = ExtResource("55_iecw7")
 viewport_size = Vector2(620, 460)
 unshaded = true
 
-[node name="Viewport" parent="MainMenuCanvas" index="0"]
+[node name="Viewport" parent="SharedSpaceOrigin/MainMenuCanvas" index="0"]
 size = Vector2i(620, 460)
 
-[node name="Screen" parent="MainMenuCanvas" index="1"]
+[node name="Screen" parent="SharedSpaceOrigin/MainMenuCanvas" index="1"]
 mesh = SubResource("QuadMesh_34xb6")
 surface_material_override/0 = SubResource("StandardMaterial3D_ievty")
 
-[node name="StaticBody3D" parent="MainMenuCanvas" index="2"]
+[node name="StaticBody3D" parent="SharedSpaceOrigin/MainMenuCanvas" index="2"]
 screen_size = Vector2(620, 460)
 viewport_size = Vector2(620, 460)
 
-[node name="CollisionShape3D" parent="MainMenuCanvas/StaticBody3D" index="0"]
+[node name="CollisionShape3D" parent="SharedSpaceOrigin/MainMenuCanvas/StaticBody3D" index="0"]
 shape = SubResource("BoxShape3D_6yffd")
+
+[node name="SpatialWindowAdapter" type="Node" parent="SharedSpaceOrigin/MainMenuCanvas"]
+script = ExtResource("74_window_adapter")
+window_id = "main_menu"
+window_type = "main_menu"
+default_size_m = Vector2(1.86, 1.38)
+maximized_size_m = Vector2(2.79, 2.07)
 
 [node name="Light" type="Node3D" parent="."]
 
@@ -2337,44 +2346,113 @@ surface_material_override/0 = ExtResource("8_3u5fo")
 visible = false
 shape = SubResource("ConcavePolygonShape3D_cddhk")
 
-[node name="GroupUI" type="Node3D" parent="."]
+[node name="GroupUI" type="Node3D" parent="SharedSpaceOrigin"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.109527, 0)
 
-[node name="PictureCanvas" parent="GroupUI" instance=ExtResource("54_4gitt")]
+[node name="SpatialWindowSnapZones" type="Node3D" parent="SharedSpaceOrigin"]
+
+[node name="LeftPrimary" type="Node3D" parent="SharedSpaceOrigin/SpatialWindowSnapZones"]
+position = Vector3(-1.3, 1.25, 2.7)
+script = ExtResource("75_snap_zone")
+slot_id = "left_primary"
+target_size_m = Vector2(1.2, 0.8)
+
+[node name="CenterPrimary" type="Node3D" parent="SharedSpaceOrigin/SpatialWindowSnapZones"]
+position = Vector3(0, 1.25, 2.7)
+script = ExtResource("75_snap_zone")
+slot_id = "center_primary"
+target_size_m = Vector2(1.35, 0.9)
+
+[node name="RightPrimary" type="Node3D" parent="SharedSpaceOrigin/SpatialWindowSnapZones"]
+position = Vector3(1.3, 1.25, 2.7)
+script = ExtResource("75_snap_zone")
+slot_id = "right_primary"
+target_size_m = Vector2(1.2, 0.8)
+
+[node name="PictureCanvas" parent="SharedSpaceOrigin/GroupUI" instance=ExtResource("54_4gitt")]
 transform = Transform3D(-0.00299996, 1.53247e-05, 4.76738e-06, 1.53492e-05, 0.00299992, 1.55533e-05, -4.68778e-06, 1.55775e-05, -0.00299996, -2.03729, 0.967935, 4.1962)
 screen_size = Vector2(610, 460)
 scene = ExtResource("57_ijmol")
 viewport_size = Vector2(610, 500)
 
-[node name="PictureInfoCanvas" parent="GroupUI" instance=ExtResource("54_4gitt")]
+[node name="SpatialWindowAdapter" type="Node" parent="SharedSpaceOrigin/GroupUI/PictureCanvas"]
+script = ExtResource("74_window_adapter")
+window_id = "picture_browser"
+window_type = "picture_browser"
+default_size_m = Vector2(1.83, 1.38)
+maximized_size_m = Vector2(2.745, 2.07)
+starts_visible = false
+
+[node name="PictureInfoCanvas" parent="SharedSpaceOrigin/GroupUI" instance=ExtResource("54_4gitt")]
 transform = Transform3D(-0.00299996, 1.53247e-05, 4.76738e-06, 1.53492e-05, 0.00299992, 1.55533e-05, -4.68778e-06, 1.55775e-05, -0.00299996, -3.94012, 0.967935, 4.00141)
 screen_size = Vector2(610, 460)
 scene = ExtResource("58_q6r6r")
 viewport_size = Vector2(610, 500)
 
-[node name="MovieCanvas" parent="GroupUI" instance=ExtResource("54_4gitt")]
+[node name="SpatialWindowAdapter" type="Node" parent="SharedSpaceOrigin/GroupUI/PictureInfoCanvas"]
+script = ExtResource("74_window_adapter")
+window_id = "picture_detail"
+window_type = "picture_detail"
+default_size_m = Vector2(1.83, 1.38)
+maximized_size_m = Vector2(2.745, 2.07)
+starts_visible = false
+
+[node name="MovieCanvas" parent="SharedSpaceOrigin/GroupUI" instance=ExtResource("54_4gitt")]
 transform = Transform3D(-0.00299996, 1.53247e-05, 4.76738e-06, 1.53492e-05, 0.00299992, 1.55533e-05, -4.68778e-06, 1.55775e-05, -0.00299996, -2.03729, 0.967935, 4.1962)
 screen_size = Vector2(610, 460)
 scene = ExtResource("59_c4ac8")
 viewport_size = Vector2(610, 500)
 
-[node name="MovieInfoCanvas" parent="GroupUI" instance=ExtResource("54_4gitt")]
+[node name="SpatialWindowAdapter" type="Node" parent="SharedSpaceOrigin/GroupUI/MovieCanvas"]
+script = ExtResource("74_window_adapter")
+window_id = "movie_browser"
+window_type = "movie_browser"
+default_size_m = Vector2(1.83, 1.38)
+maximized_size_m = Vector2(2.745, 2.07)
+starts_visible = false
+
+[node name="MovieInfoCanvas" parent="SharedSpaceOrigin/GroupUI" instance=ExtResource("54_4gitt")]
 transform = Transform3D(-0.00299996, 1.53247e-05, 4.76738e-06, 1.53492e-05, 0.00299992, 1.55533e-05, -4.68778e-06, 1.55775e-05, -0.00299996, -3.94012, 0.967935, 4.1962)
 screen_size = Vector2(610, 460)
 scene = ExtResource("60_qufia")
 viewport_size = Vector2(610, 500)
 
-[node name="WorkListInfoCanvas" parent="GroupUI" instance=ExtResource("54_4gitt")]
+[node name="SpatialWindowAdapter" type="Node" parent="SharedSpaceOrigin/GroupUI/MovieInfoCanvas"]
+script = ExtResource("74_window_adapter")
+window_id = "movie_detail"
+window_type = "movie_detail"
+default_size_m = Vector2(1.83, 1.38)
+maximized_size_m = Vector2(2.745, 2.07)
+starts_visible = false
+
+[node name="WorkListInfoCanvas" parent="SharedSpaceOrigin/GroupUI" instance=ExtResource("54_4gitt")]
 transform = Transform3D(-0.00299996, 1.53247e-05, 4.76738e-06, 1.53492e-05, 0.00299992, 1.55533e-05, -4.68778e-06, 1.55775e-05, -0.00299996, -2.02817, 0.967935, 4.1911)
 screen_size = Vector2(610, 460)
 scene = ExtResource("61_8h1ek")
 viewport_size = Vector2(610, 500)
 
-[node name="VoiceCallWindow3D" parent="GroupUI" instance=ExtResource("70_voice_call")]
+[node name="SpatialWindowAdapter" type="Node" parent="SharedSpaceOrigin/GroupUI/WorkListInfoCanvas"]
+script = ExtResource("74_window_adapter")
+window_id = "work_list"
+window_type = "work_list"
+default_size_m = Vector2(1.83, 1.38)
+maximized_size_m = Vector2(2.745, 2.07)
+starts_visible = false
+
+[node name="VoiceCallWindow3D" parent="SharedSpaceOrigin/GroupUI" instance=ExtResource("70_voice_call")]
 transform = Transform3D(-0.000815796, -1.07935e-05, 0.00288693, 1.53492e-05, 0.00299992, 1.55533e-05, -0.00288691, 1.90002e-05, -0.00081572, -1.23002, 0.905885, 1.72829)
 visible = false
 scene_properties_keys = PackedStringArray("voice_chat_ui.gd", "is_3d_panel")
 is_3d_panel = true
+
+[node name="SpatialWindowAdapter" type="Node" parent="SharedSpaceOrigin/GroupUI/VoiceCallWindow3D"]
+script = ExtResource("74_window_adapter")
+window_id = "voice_call"
+window_type = "voice_call"
+default_size_m = Vector2(1.713, 1.512)
+maximized_size_m = Vector2(2.55, 2.25)
+starts_visible = false
+follow_content_visibility = false
 
 [node name="MultiplayerSpawner" type="MultiplayerSpawner" parent="."]
 _spawnable_scenes = PackedStringArray("uid://c0oao8sfhry88")
@@ -2745,4 +2823,4 @@ autowrap_mode = 3
 [editable path="SpaceBox/SpaceBox/dashiyangui/Canvas"]
 [editable path="SpaceBox/SpaceBox/WorkEffect"]
 [editable path="SpaceBox/SpaceBox/Environment_Life/Malamute"]
-[editable path="MainMenuCanvas"]
+[editable path="SharedSpaceOrigin/MainMenuCanvas"]

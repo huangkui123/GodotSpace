@@ -265,7 +265,22 @@ func _update_ui() -> void:
 
 func _update_panel_visibility() -> void:
 	var profile = RuntimeProfile.current()
+	if is_3d_panel and _has_spatial_window_adapter():
+		return
 	visible = profile.uses_xr() if is_3d_panel else profile.uses_desktop_ui() and profile.is_server()
+
+
+func on_spatial_window_visibility_changed(is_visible: bool) -> void:
+	if not is_visible:
+		assistant_pending_line = ""
+
+
+func _has_spatial_window_adapter() -> bool:
+	var viewport := get_viewport()
+	if viewport == null:
+		return false
+	var viewport_parent := viewport.get_parent()
+	return viewport_parent != null and viewport_parent.get_node_or_null("SpatialWindowAdapter") != null
 
 
 func _update_transcription_control() -> void:
