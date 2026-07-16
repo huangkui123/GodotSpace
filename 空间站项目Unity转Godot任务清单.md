@@ -146,11 +146,13 @@
 
 ### 任务 1.2（P0）建立可重复的开发与验证流程
 
-- [ ] 运行 `--headless --path <Project> --import`，记录脚本解析、缺失资源、Autoload 和 GDExtension 错误基线。
-- [ ] 运行已有 LLM 离线自测、玩家网络自测、角色网络自测和 VirtualAnnotation 网络自测。
-- [ ] 新增三个启动烟雾用例：PC Server、无头显 `--testmode` Client、XR Client 配置解析。
-- [ ] 为 StartMenu → ARSpace、Client 连接失败返回、Server 断开返回和重连建立自动/半自动回归步骤。
-- [ ] 建立基线问题清单，将已知的 headless 退出清理噪声与真实解析/加载错误分开。
+- [x] 运行 `--headless --path <Project> --import`，记录脚本解析、缺失资源、Autoload 和 GDExtension 错误基线。
+- [x] 运行已有 LLM 离线自测、玩家网络自测、角色网络自测和 VirtualAnnotation 网络自测。
+- [x] 新增三个启动烟雾用例：PC Server、无头显 `--testmode` Client、XR Client 配置解析。
+- [x] 为 StartMenu → ARSpace、Client 连接失败返回、Server 断开返回和重连建立自动/半自动回归步骤。
+- [x] 建立基线问题清单，将已知的 headless 退出清理噪声与真实解析/加载错误分开。
+
+任务 1.2 记录：统一入口为 `GodotSpace/tools/tests/run_phase1_validation.ps1`，开发机恢复与命令见 `GodotSpace/docs/testing/development_and_validation.md`，导入分类见 `headless_import_baseline.md`，会话半自动回归见 `phase1_session_regression.md`。2026-07-16 使用指定 Godot 4.4 构建完整运行 50.5 秒通过；导入退出码为 0，无脚本解析、缺失资源、Autoload 或 GDExtension 关键错误。Android build-tools、SubViewport 层级和 dummy renderer 空材质输出保留为待归因基线问题，未伪装成已知清理噪声。
 
 **完成标准：** 新开发机可按文档恢复环境，并用同一 Godot 构建稳定重现烟雾检查和离线自测结果。
 
