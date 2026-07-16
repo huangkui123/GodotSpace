@@ -1,6 +1,6 @@
 # 第一阶段复刻基线
 
-本文是 Unity 空间站项目到 GodotSpace 的角色、权限、启动和验收合同。业务名称、测试报告和网络数据均以本文为准；`sky` 只保留给天空盒或环境天空含义。
+本文是 Unity 空间站项目到 GodotSpace 的角色、权限、启动和验收合同。业务名称、测试报告和网络数据均以本文为准；`sky` 只保留给天空盒或环境天空含义。角色映射来自任务清单“1.5 已确认的项目决策”，视为本阶段的产品/项目输入；后续若变更，必须先修改该决策再同步实现与测试。
 
 ## 三端角色合同
 
@@ -24,7 +24,7 @@
 | --- | --- | --- | --- |
 | PC、VR、AR 进入同一会话 | `StartMenu.tscn`、`startmenu_ui.gd`、`runtime_profile.gd`、`network_handler.gd` | PC 地面端创建 ENet 会话并分配角色 | 三种 profile 可解析；第二个地面 VR 被拒绝；不同连接顺序、掉线和重连不产生重复玩家 |
 | 头部和双手位姿对其他端可见 | `Player.tscn`、`player.gd`、`multiplayer_spawner.gd` | Client 上报自身位姿，Server 校验发送方并中继 | 两个 Client 与 Server 均看到正确 peer 的头手；旧序号和冒充包被拒绝；远端插值稳定 |
-| 航天员全身形象与手势 | 第一阶段目标 `AstronautAvatar.tscn` 及其 IK/手势脚本；当前入口仍在 `Player.tscn` | 航天端产生跟踪和手势状态，Server 校验与中继 | 远端看到同一角色的全身、头手和手势；本地身体不遮挡视野；跟踪丢失、重获和重连无骨骼爆炸 |
+| 航天员全身形象与手势 | `Assets/ARSpace/Characters/Astronaut/AstronautAvatar.tscn`、`astronaut_avatar.gd`、`avatar_pose_state.gd`、`XRInputRouter` 与 `Player.tscn` | 航天端产生跟踪和手势状态，Server 校验与中继 | 远端看到同一角色的全身、头手和手势；本地身体不遮挡视野；跟踪丢失、重获和重连无骨骼爆炸 |
 | 共享空间与重定中 | `ARSpace.tscn/SharedSpaceOrigin`、`shared_space_alignment.gd`、`SpatialCalibration/*` | Server 保存标定版本；每端只在共享原点边界做局部/世界转换 | 玩家、窗口、标注和柜体使用同一坐标；迟到 Client 收到当前标定；清除/重标定不叠加偏移 |
 | 主菜单和三维窗口交互 | `ARSpace.tscn/SharedSpaceOrigin`、`UI/SpatialWindow/SpatialWindow3D.tscn`、`SpatialWindowAdapter` 与 Registry Autoload | PC/Ground VR 发请求，Server 校验角色、稳定窗口 ID、状态、米制尺寸、租约和共享局部变换 | PC 鼠标、XR 近距和 XR 射线语义一致；拖动、缩放、吸附、焦点、关闭可同步且迟到恢复 |
 | 无容器样品任务入口 | `WorkListCanvas/WorkListUIView.gd`、`WorkListItem.gd` | 当前仅本地 UI；后续写入协作状态 | 任务 1 可打开 20 步；任务 2—5 明确显示“未配置”且不复制任务 1 步骤；任务 6—8 不出现在 UI |

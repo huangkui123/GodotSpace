@@ -49,6 +49,14 @@ Godot 目标工程：`F:\GodotSpace\GodotSpace`
 - 手势 Animator 参数或手指骨骼；不迁移 Unity 运行时 SDK DLL。
 - Godot 目标文件、导入结果、材质重建差异和许可说明。
 
+### 2026-07-17 可复现性复核
+
+- Unity 源 `china_rig.fbx` 为 30,644,608 字节，SHA-256 为 `7CA5F29C84CC4E69F0B2F7D3E77F9BB6C29C44D2BC1DF427410F999A62B7CF91`；Godot 目标复制件字节数相同，UDIM 等长补丁后的 SHA-256 为 `FCCE684F6E4DD5D656D764DE75CE02D33E675E217BAC6B54BEFD21C0B474FEEF`。哈希不同是迁移脚本对目标复制件执行预期 UDIM 文件名补丁的结果，源文件未修改。
+- Unity 源纹理共 44 张、253,747,718 字节；目标 `Source/` 共 48 张纹理，其中 44 张是最大边 1024 的移动端副本，另外 4 张是 FBX importer 所需别名。
+- `git check-attr filter -- Assets/ARSpace/Characters/Astronaut/Source/china_rig.fbx` 返回 `filter: lfs`，当前 `git lfs status` 未显示航天员二进制被普通 Git 暂存或修改。
+- `migrate_astronaut_assets.ps1` 现在会在复制前解析仓库根目录、确认目标 FBX 位于仓库内、硬性检查 LFS filter 与 `git lfs version`、输出 `git count-objects -vH` 基线，并在修改复制件前校验源/目标 SHA-256 完全一致；任一前置条件失败都会停止迁移。
+- Unity 源目录没有 `.anim`、`.controller` 或 `.overrideController`，FBX importer 为 `importAnimation=0`，`china_rig_VRIK.prefab` 的 Animator Controller 为空。第一阶段已实现的程序化 IK 与有界手势骨骼驱动不能作为“Unity 业务动画资产可用”的证据；须由负责人明确接受该替代方案，或补充动画资产后，才可关闭对应清单项。
+
 ## 行为证据与发布物
 
 2026-07-16 审计结果：

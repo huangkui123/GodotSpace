@@ -44,6 +44,11 @@ func _initialize() -> void:
 		failures.append("StartMenu must display synchronous network startup failures")
 	if not menu_source.contains("RuntimeProfile.Preset.VR_GROUND_CLIENT"):
 		failures.append("StartMenu must expose the VR Ground Client mode")
+	for expected_label in ["PC 地面端 Server", "地面 VR 端 Client", "航天端 XR Client"]:
+		if not menu_source.contains(expected_label):
+			failures.append("StartMenu is missing the canonical runtime label: %s" % expected_label)
+	if menu_source.contains("VR 地面端 Client"):
+		failures.append("StartMenu must not restore the legacy reversed Ground VR label")
 	var voice_source := FileAccess.get_file_as_string("res://Assets/ARSpace/Scripts/Network/voice_chat.gd")
 	if not voice_source.contains("NetworkHandler.peer == null or not multiplayer.has_multiplayer_peer()"):
 		failures.append("VoiceChat must wait for a real ENet peer before publishing levels")

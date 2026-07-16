@@ -69,9 +69,38 @@ if (-not (Test-Path -LiteralPath $SourceModel -PathType Leaf)) {
 	throw "Astronaut FBX not found: $SourceModel"
 }
 
-New-Item -ItemType Directory -Force -Path $DestinationTextures | Out-Null
+$RepositoryRoot = (& git -C $ProjectRoot rev-parse --show-toplevel).Trim()
+if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($RepositoryRoot)) {
+	throw "Unable to resolve the Git repository containing: $ProjectRoot"
+}
+$RepositoryPrefix = $RepositoryRoot.TrimEnd('\') + '\'
 $DestinationModel = Join-Path $DestinationRoot 'china_rig.fbx'
+if (-not $DestinationModel.StartsWith($RepositoryPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+	throw "Astronaut destination must remain inside the Git repository: $DestinationModel"
+}
+$DestinationRelative = $DestinationModel.Substring($RepositoryPrefix.Length).Replace('\', '/')
+$LfsAttribute = (& git -C $RepositoryRoot check-attr filter -- $DestinationRelative) -join "`n"
+if ($LASTEXITCODE -ne 0 -or $LfsAttribute -notmatch ': filter: lfs$') {
+	throw "Astronaut FBX must be covered by Git LFS before copying: $DestinationRelative"
+}
+& git lfs version | Write-Output
+if ($LASTEXITCODE -ne 0) {
+	throw 'Git LFS is required before copying the astronaut FBX.'
+}
+Write-Output 'Repository object baseline before migration:'
+& git -C $RepositoryRoot count-objects -vH | Write-Output
+if ($LASTEXITCODE -ne 0) {
+	throw 'Unable to inspect repository object size before migration.'
+}
+
+New-Item -ItemType Directory -Force -Path $DestinationTextures | Out-Null
+$SourceModelHash = (Get-FileHash -LiteralPath $SourceModel -Algorithm SHA256).Hash
 Copy-Item -LiteralPath $SourceModel -Destination $DestinationModel -Force
+$CopiedModelHash = (Get-FileHash -LiteralPath $DestinationModel -Algorithm SHA256).Hash
+if ($CopiedModelHash -ne $SourceModelHash) {
+	throw 'Astronaut FBX copy failed SHA-256 verification before patching.'
+}
+Write-Output "Verified source FBX copy SHA-256: $SourceModelHash"
 & $Python $PatchFbxScript $DestinationModel
 if ($LASTEXITCODE -ne 0) {
 	throw 'Unable to patch FBX UDIM texture aliases.'

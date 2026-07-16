@@ -16,9 +16,11 @@ var item_count: int = 0
 
 var page_item_count: int = 5
 
+var _sample_data_initialized: bool = false
+
 func _ready():
 	if DEBUG_LOGS: print(self.name, ": _ready")
-	if OS.has_feature("editor"):
+	if _info_save_list.is_empty():
 		sample_data_init()
 
 func on_refresh_data_change_view(result: WorkListDataResult):
@@ -134,7 +136,11 @@ func next_click():
 		page_index = page_count
 	bind_page(page_index)
 
-func sample_data_init():
+func sample_data_init() -> void:
+	if _sample_data_initialized:
+		return
+	_sample_data_initialized = true
+
 	var info_data_result = WorkListInfoDataResult.new()
 	info_data_result.title = "无容器样品实验流程"
 	info_data_result.list.append(WorkListInfoData.new(1, 1, "step1.png",

@@ -61,7 +61,7 @@ func _setup_runtime_mode_selector() -> void:
 	_setting_runtime_mode = true
 	mode_selector.clear()
 	mode_selector.add_item("PC 地面端 Server", RuntimeProfile.Preset.PC_GROUND_SERVER)
-	mode_selector.add_item("VR 地面端 Client", RuntimeProfile.Preset.VR_GROUND_CLIENT)
+	mode_selector.add_item("地面 VR 端 Client", RuntimeProfile.Preset.VR_GROUND_CLIENT)
 	mode_selector.add_item("航天端 XR Client", RuntimeProfile.Preset.ASTRONAUT_XR_CLIENT)
 
 	var profile = RuntimeProfile.current()
