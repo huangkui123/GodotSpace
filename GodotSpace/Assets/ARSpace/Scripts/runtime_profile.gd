@@ -31,6 +31,7 @@ enum Preset {
 	PC_GROUND_SERVER,
 	VR_GROUND_SERVER,
 	SKY_XR_CLIENT,
+	VR_GROUND_CLIENT,
 }
 
 
@@ -73,11 +74,11 @@ class Profile extends RefCounted:
 		return environment == EnvironmentMode.PASSTHROUGH
 
 	func can_annotate() -> bool:
-		return is_server() and is_ground()
+		return is_ground()
 
 	func get_preset() -> int:
 		if is_client():
-			return Preset.SKY_XR_CLIENT
+			return Preset.VR_GROUND_CLIENT if is_ground() else Preset.SKY_XR_CLIENT
 		if uses_xr():
 			return Preset.VR_GROUND_SERVER
 		return Preset.PC_GROUND_SERVER
@@ -88,12 +89,15 @@ class Profile extends RefCounted:
 		match get_preset():
 			Preset.VR_GROUND_SERVER:
 				return "VR GROUND SERVER"
+			Preset.VR_GROUND_CLIENT:
+				return "VR GROUND CLIENT"
 			Preset.SKY_XR_CLIENT:
 				return "SKY XR CLIENT"
 			_:
 				return "PC GROUND SERVER"
 
 const GROUND_VR_ARG := "--ground-vr"
+const GROUND_VR_CLIENT_ARG := "--ground-vr-client"
 const XR_CLIENT_ARG := "--xr-client"
 const TEST_MODE_ARG := "--testmode"
 const VOICE_ROLE_ARG := "--voice-role="
@@ -116,6 +120,7 @@ static func from_args(all_args: Array, user_args: Array, is_android: bool = fals
 	var profile := Profile.new()
 	var app_args: Array = user_args if not user_args.is_empty() else all_args
 	var wants_ground_vr := _has_arg(app_args, GROUND_VR_ARG)
+	var wants_ground_vr_client := _has_arg(app_args, GROUND_VR_CLIENT_ARG)
 	var wants_xr_client := _has_arg(app_args, XR_CLIENT_ARG)
 	var wants_test_mode := _has_arg(app_args, TEST_MODE_ARG)
 	var voice_role := _get_arg_value(app_args, VOICE_ROLE_ARG).to_lower()
@@ -126,6 +131,7 @@ static func from_args(all_args: Array, user_args: Array, is_android: bool = fals
 	profile.xr_mode_disabled = xr_mode_value == "off"
 	profile.has_explicit_mode = is_android \
 		or wants_ground_vr \
+		or wants_ground_vr_client \
 		or wants_xr_client \
 		or wants_test_mode \
 		or not voice_role.is_empty() \
@@ -143,21 +149,32 @@ static func from_args(all_args: Array, user_args: Array, is_android: bool = fals
 
 	if wants_ground_vr and wants_xr_client:
 		errors.append("--ground-vr cannot be combined with --xr-client")
+	if wants_ground_vr and wants_ground_vr_client:
+		errors.append("--ground-vr cannot be combined with --ground-vr-client")
+	if wants_ground_vr_client and wants_xr_client:
+		errors.append("--ground-vr-client cannot be combined with --xr-client")
 	if wants_ground_vr and role_requests_client:
 		errors.append("--ground-vr requires --voice-role=server")
+	if wants_ground_vr_client and not role_requests_client:
+		errors.append("--ground-vr-client requires --voice-role=client")
 	if wants_xr_client and role_requests_server:
 		errors.append("--xr-client requires --voice-role=client")
 	if wants_ground_vr and wants_test_mode:
 		errors.append("--ground-vr cannot be combined with --testmode")
+	if wants_ground_vr_client and wants_test_mode:
+		errors.append("--ground-vr-client cannot be combined with --testmode")
 	if wants_xr_client and wants_test_mode:
 		errors.append("--xr-client cannot be combined with --testmode")
 	if profile.xr_mode_requested and wants_test_mode:
 		errors.append("--xr-mode on cannot be combined with --testmode")
 	if is_android and (wants_ground_vr or role_requests_server):
 		errors.append("Ground Server is not supported on Android")
+	if is_android and wants_ground_vr_client:
+		errors.append("Ground VR Client is not supported on Android")
 	if role_requests_server and profile.xr_mode_requested and not wants_ground_vr and not wants_test_mode:
 		errors.append("XR Server launch requires --ground-vr")
 	var requests_xr_presentation := wants_ground_vr \
+		or wants_ground_vr_client \
 		or wants_xr_client \
 		or (role_requests_client and not wants_test_mode) \
 		or (is_android and not wants_test_mode)
@@ -165,15 +182,18 @@ static func from_args(all_args: Array, user_args: Array, is_android: bool = fals
 		errors.append("XR presentation cannot be combined with --xr-mode off")
 
 	var client_role := is_android \
+		or wants_ground_vr_client \
 		or wants_xr_client \
 		or role_requests_client
 
 	profile.network_role = NetworkRole.CLIENT if client_role else NetworkRole.SERVER
-	profile.semantic_role = SemanticRole.SKY if client_role else SemanticRole.GROUND
+	profile.semantic_role = SemanticRole.GROUND \
+		if wants_ground_vr_client or not client_role \
+		else SemanticRole.SKY
 
 	if wants_test_mode:
 		profile.presentation = Presentation.TEST
-	elif wants_ground_vr or client_role:
+	elif wants_ground_vr or wants_ground_vr_client or client_role:
 		profile.presentation = Presentation.XR
 	else:
 		profile.presentation = Presentation.DESKTOP
@@ -198,6 +218,14 @@ static func select_session_mode(preset: int, is_android: bool = OS.has_feature("
 			profile.xr_mode_requested = true
 			if is_android:
 				profile.validation_error = "Ground VR Server is not supported on Android"
+		Preset.VR_GROUND_CLIENT:
+			profile.network_role = NetworkRole.CLIENT
+			profile.semantic_role = SemanticRole.GROUND
+			profile.presentation = Presentation.XR
+			profile.environment = EnvironmentMode.OPAQUE
+			profile.xr_mode_requested = true
+			if is_android:
+				profile.validation_error = "Ground VR Client is not supported on Android"
 		Preset.SKY_XR_CLIENT:
 			profile.network_role = NetworkRole.CLIENT
 			profile.semantic_role = SemanticRole.SKY

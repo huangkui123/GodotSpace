@@ -38,8 +38,11 @@ func _on_start_pressed():
 	if not _prepare_presentation(profile):
 		return
 
-	if profile.is_server() and NetworkHandler.start_server():
-		_go_to_game_scene()
+	if profile.is_server():
+		if NetworkHandler.start_server():
+			_go_to_game_scene()
+		else:
+			_set_status(NetworkHandler.get_last_start_error(), true)
 		return
 
 	if profile.is_client():
@@ -48,6 +51,8 @@ func _on_start_pressed():
 			# Load the replicated scene before ENet finishes its asynchronous
 			# handshake so MultiplayerSpawner is ready for the initial snapshot.
 			_go_to_game_scene()
+		else:
+			_set_status(NetworkHandler.get_last_start_error(), true)
 
 func _setup_runtime_mode_selector() -> void:
 	if mode_selector == null:
@@ -56,8 +61,9 @@ func _setup_runtime_mode_selector() -> void:
 	_setting_runtime_mode = true
 	mode_selector.clear()
 	mode_selector.add_item("PC 地面端 Server", RuntimeProfile.Preset.PC_GROUND_SERVER)
-	mode_selector.add_item("VR 地面端 Server", RuntimeProfile.Preset.VR_GROUND_SERVER)
+	mode_selector.add_item("VR 地面端 Client", RuntimeProfile.Preset.VR_GROUND_CLIENT)
 	mode_selector.add_item("天上端 XR Client", RuntimeProfile.Preset.SKY_XR_CLIENT)
+	mode_selector.add_item("VR 地面端 Server", RuntimeProfile.Preset.VR_GROUND_SERVER)
 
 	var profile = RuntimeProfile.current()
 	_select_runtime_preset(profile.get_preset())

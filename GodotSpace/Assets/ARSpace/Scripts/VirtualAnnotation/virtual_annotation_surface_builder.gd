@@ -90,7 +90,7 @@ func start_build() -> void:
 		return
 	_restore_existing_body_layers()
 	_reset_runtime_state()
-	if not _is_server_authority():
+	if not _is_annotation_capable_ground():
 		build_completed.emit(get_coverage_report())
 		return
 
@@ -472,7 +472,6 @@ func _estimate_face_count(mesh: Mesh) -> int:
 	return count
 
 
-func _is_server_authority() -> bool:
+func _is_annotation_capable_ground() -> bool:
 	var profile = RuntimeProfile.current()
-	return profile.can_annotate() \
-		and (not multiplayer.has_multiplayer_peer() or multiplayer.is_server())
+	return profile.is_ground()

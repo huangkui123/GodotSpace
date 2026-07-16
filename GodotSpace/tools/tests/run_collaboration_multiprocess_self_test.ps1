@@ -1,21 +1,50 @@
 param(
     [string]$Godot = 'D:\godot_modding\bin\godot.windows.editor.x86_64.llvm.console.exe',
     [string]$Project = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path,
-    [int]$Port = 43195
+    [int]$Port = 0
 )
 
 $ErrorActionPreference = 'Stop'
 $PeerScene = 'res://Assets/ARSpace/Scenes/Tests/CollaborationMultiprocessPeer.tscn'
 $Jobs = @()
 
+if ($Port -eq 0) {
+    foreach ($Candidate in 43280..43299) {
+        $Probe = $null
+        try {
+            $Probe = [System.Net.Sockets.UdpClient]::new($Candidate)
+            $Port = $Candidate
+            break
+        }
+        catch [System.Net.Sockets.SocketException] {
+            continue
+        }
+        finally {
+            if ($null -ne $Probe) {
+                $Probe.Dispose()
+            }
+        }
+    }
+}
+if ($Port -lt 43200 -or $Port -gt 43299) {
+    throw "Collaboration multiprocess test requires an available UDP port in the 432xx range. Selected: $Port"
+}
+Write-Host "Using collaboration test port $Port"
+
 function Start-CollaborationPeer {
     param([string]$Role, [string]$VoiceRole)
     return Start-Job -ScriptBlock {
         param($GodotPath, $ProjectPath, $ScenePath, $PeerRole, $PeerVoiceRole, $PeerPort)
+        $ModeArgument = switch ($PeerRole) {
+            'server' { '--testmode' }
+            'ground_client' { '--ground-vr-client' }
+            'sky_client' { '--testmode' }
+            default { throw "Unknown collaboration peer role: $PeerRole" }
+        }
         $Lines = & $GodotPath --headless --path $ProjectPath $ScenePath -- `
             "--collab-process-role=$PeerRole" `
             "--collab-process-port=$PeerPort" `
-            '--testmode' `
+            $ModeArgument `
             "--voice-role=$PeerVoiceRole" 2>&1
         [pscustomobject]@{
             Role = $PeerRole
@@ -28,11 +57,11 @@ function Start-CollaborationPeer {
 try {
     $Jobs += Start-CollaborationPeer -Role 'server' -VoiceRole 'server'
     Start-Sleep -Milliseconds 750
-    $Jobs += Start-CollaborationPeer -Role 'first_client' -VoiceRole 'client'
+    $Jobs += Start-CollaborationPeer -Role 'ground_client' -VoiceRole 'client'
     Start-Sleep -Milliseconds 1250
-    $Jobs += Start-CollaborationPeer -Role 'late_client' -VoiceRole 'client'
+    $Jobs += Start-CollaborationPeer -Role 'sky_client' -VoiceRole 'client'
 
-    $null = Wait-Job -Job $Jobs -Timeout 45
+    $null = Wait-Job -Job $Jobs -Timeout 60
     $Results = @()
     foreach ($Job in $Jobs) {
         if ($Job.State -ne 'Completed') {
@@ -47,6 +76,9 @@ try {
 		Write-Host $Result.Output
 		if ([int]$Result.ExitCode -ne 0) {
 			$FailedRoles += "$($Result.Role)($($Result.ExitCode))"
+		}
+		if ($Result.Output.Contains('previously freed')) {
+			$FailedRoles += "$($Result.Role)(stale XR Tools reference)"
 		}
 	}
 	if ($FailedRoles.Count -gt 0) {

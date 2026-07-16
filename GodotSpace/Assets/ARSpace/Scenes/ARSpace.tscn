@@ -68,7 +68,7 @@
 [ext_resource type="Script" uid="uid://cgre2apvnqf2e" path="res://Assets/ARSpace/Scripts/SpatialCalibration/spatial_calibration_panel.gd" id="68_spatial"]
 [ext_resource type="Script" uid="uid://dqsqeamwaa1jl" path="res://Assets/ARSpace/Scripts/UI/unified_panel_ui.gd" id="69_control"]
 [ext_resource type="PackedScene" path="res://Assets/ARSpace/Scenes/voice_call_window_3d.tscn" id="70_voice_call"]
-[ext_resource type="Script" path="res://Assets/ARSpace/Scripts/shared_space_alignment.gd" id="71_shared_alignment"]
+[ext_resource type="Script" uid="uid://crvnkm0d7eggt" path="res://Assets/ARSpace/Scripts/shared_space_alignment.gd" id="71_shared_alignment"]
 [ext_resource type="PackedScene" path="res://Assets/ARSpace/Scenes/VirtualAnnotationSystem.tscn" id="72_annotation_system"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_m4rif"]
@@ -274,14 +274,14 @@ metadata/humanoid_rotation_delta = {
 resource_local_to_scene = true
 size = Vector2(620, 460)
 
-[sub_resource type="ViewportTexture" id="ViewportTexture_2envh"]
+[sub_resource type="ViewportTexture" id="ViewportTexture_swovu"]
 viewport_path = NodePath("Viewport")
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_2envh"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ievty"]
 transparency = 1
 cull_mode = 2
 shading_mode = 0
-albedo_texture = SubResource("ViewportTexture_2envh")
+albedo_texture = SubResource("ViewportTexture_swovu")
 texture_filter = 1
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_6yffd"]
@@ -2296,7 +2296,7 @@ size = Vector2i(620, 460)
 
 [node name="Screen" parent="MainMenuCanvas" index="1"]
 mesh = SubResource("QuadMesh_34xb6")
-surface_material_override/0 = SubResource("StandardMaterial3D_2envh")
+surface_material_override/0 = SubResource("StandardMaterial3D_ievty")
 
 [node name="StaticBody3D" parent="MainMenuCanvas" index="2"]
 screen_size = Vector2(620, 460)
@@ -2404,7 +2404,7 @@ render_target_update_mode = 4
 [node name="Camera3D" type="Camera3D" parent="UI/SubViewportContainer/SubViewport"]
 transform = Transform3D(-0.979177, 0, 0.20301, 0, 1, 0, -0.20301, 0, -0.979177, 0, 1.874, 0)
 
-[node name="ControlPanelUI" type="Control" parent="UI"]
+[node name="ControlPanelUI" type="Control" parent="UI" groups=["unified_control_panel"]]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -2455,6 +2455,11 @@ text = "语音"
 custom_minimum_size = Vector2(60, 36)
 layout_mode = 2
 text = "标定"
+
+[node name="AnnotationButton" type="Button" parent="UI/ControlPanelUI/PanelRoot/Sidebar/SidebarMargin/SidebarButtons"]
+custom_minimum_size = Vector2(60, 36)
+layout_mode = 2
+text = "标注"
 
 [node name="SidebarSpacer" type="Control" parent="UI/ControlPanelUI/PanelRoot/Sidebar/SidebarMargin/SidebarButtons"]
 layout_mode = 2
@@ -2635,6 +2640,92 @@ text = "清除标定点"
 [node name="ResultLabel" type="Label" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/CalibrationSection/MarginContainer/Layout"]
 layout_mode = 2
 text = "点击 Pico 预览画面选择点，滚轮调整深度，右键或点击按钮确认。"
+autowrap_mode = 3
+
+[node name="AnnotationSection" type="MarginContainer" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections" groups=["virtual_annotation_panel"]]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="Layout" type="VBoxContainer" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/AnnotationSection"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/AnnotationSection/Layout"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "虚拟空间点标注"
+label_settings = SubResource("LabelSettings_2envh")
+
+[node name="ModeButton" type="Button" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/AnnotationSection/Layout"]
+layout_mode = 2
+text = "开启标注模式 (P)"
+
+[node name="StatusLabel" type="Label" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/AnnotationSection/Layout"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+text = "正在准备可标注表面…"
+autowrap_mode = 3
+
+[node name="CountLabel" type="Label" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/AnnotationSection/Layout"]
+layout_mode = 2
+text = "会话标注：0/128　选中：无"
+
+[node name="NoteEdit" type="LineEdit" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/AnnotationSection/Layout"]
+layout_mode = 2
+placeholder_text = "语音说明或编号说明"
+max_length = 80
+
+[node name="PrimaryRow" type="HBoxContainer" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/AnnotationSection/Layout"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="RecordButton" type="Button" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/AnnotationSection/Layout/PrimaryRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "按住录音"
+
+[node name="ConfirmButton" type="Button" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/AnnotationSection/Layout/PrimaryRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "确认/更新"
+
+[node name="CancelButton" type="Button" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/AnnotationSection/Layout/PrimaryRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "取消草稿"
+
+[node name="ManageRow" type="HBoxContainer" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/AnnotationSection/Layout"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="DeleteButton" type="Button" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/AnnotationSection/Layout/ManageRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "删除选中"
+
+[node name="DeleteLastButton" type="Button" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/AnnotationSection/Layout/ManageRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "删除最后一项"
+
+[node name="ClearButton" type="Button" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/AnnotationSection/Layout/ManageRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "清除全部"
+
+[node name="HelpLabel" type="Label" parent="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/AnnotationSection/Layout"]
+modulate = Color(0.78, 0.82, 0.88, 1)
+layout_mode = 2
+text = "P：切换标注模式　左键：放置或选择虚拟标注"
 autowrap_mode = 3
 
 [connection signal="item_selected" from="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/ModelSection/ModelSectionInner/Tree" to="UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/ModelSection/ModelSectionInner/Tree" method="_on_Tree_item_selected"]

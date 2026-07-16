@@ -10,6 +10,7 @@ const REQUIRED_RESOURCES := [
 	"res://Assets/ARSpace/Scenes/Tests/CollaborationMultiprocessPeer.tscn",
 	"res://Assets/ARSpace/Scripts/shared_space_alignment.gd",
 	"res://Assets/ARSpace/Scripts/Network/collaboration_multiprocess_peer.gd",
+	"res://Assets/ARSpace/Scripts/Network/network_startup_recovery_self_test.gd",
 	"res://Assets/ARSpace/Scripts/VirtualAnnotation/virtual_annotation_manager.gd",
 	"res://Assets/ARSpace/Scripts/VirtualAnnotation/virtual_annotation_surface_builder.gd",
 	"res://Assets/ARSpace/Scripts/VirtualAnnotation/virtual_annotation_interaction_controller.gd",
@@ -51,8 +52,15 @@ func _test_runtime_contract() -> void:
 		["--xr-client", "--voice-role=client"],
 		false
 	)
+	var vr_ground_client = RuntimeProfile.from_args(
+		["--xr-mode", "on", "--ground-vr-client", "--voice-role=client"],
+		["--ground-vr-client", "--voice-role=client"],
+		false
+	)
 	_expect(pc_ground.is_server() and pc_ground.is_ground() and pc_ground.can_annotate(), "PC Ground profile contract failed")
 	_expect(vr_ground.is_server() and vr_ground.uses_xr() and not vr_ground.uses_passthrough(), "VR Ground profile contract failed")
+	_expect(vr_ground_client.is_client() and vr_ground_client.is_ground(), "VR Ground Client role contract failed")
+	_expect(vr_ground_client.uses_xr() and not vr_ground_client.uses_passthrough() and vr_ground_client.can_annotate(), "VR Ground Client capability contract failed")
 	_expect(sky_xr.is_client() and sky_xr.is_sky() and sky_xr.uses_passthrough(), "Sky XR profile contract failed")
 	_expect(not sky_xr.can_annotate(), "Sky XR must remain view-only")
 
@@ -67,6 +75,8 @@ func _test_scene_contract() -> void:
 		"[node name=\"VirtualAnnotations\"",
 		"[node name=\"SharedSpaceAlignment\"",
 		"[node name=\"MultiplayerSpawner\"",
+		"[node name=\"AnnotationButton\"",
+		"groups=[\"virtual_annotation_panel\"]",
 		"virtual_annotation_surface_precise",
 		"virtual_annotation_surface_low_poly",
 	]:
@@ -81,6 +91,8 @@ func _test_scene_contract() -> void:
 		"SharedSpaceOrigin/VirtualAnnotations",
 		"SharedSpaceAlignment",
 		"MultiplayerSpawner",
+		"UI/ControlPanelUI/PanelRoot/Sidebar/SidebarMargin/SidebarButtons/AnnotationButton",
+		"UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/AnnotationSection",
 	]:
 		_expect(_find_scene_node(arspace_state, node_path) >= 0, "ARSpace scene-state path is missing: %s" % node_path)
 	var spawner_index := _find_scene_node(arspace_state, "MultiplayerSpawner")
@@ -95,6 +107,27 @@ func _test_scene_contract() -> void:
 	var annotation_state := annotation_system.get_state()
 	for child_path in ["Manager", "SurfaceBuilder", "Interaction"]:
 		_expect(_find_scene_node(annotation_state, child_path) >= 0, "annotation scene-state path is missing: %s" % child_path)
+
+	var interaction_source := _read_text(
+		"res://Assets/ARSpace/Scripts/VirtualAnnotation/virtual_annotation_interaction_controller.gd"
+	)
+	_expect(
+		interaction_source.contains("virtual_annotation_panel"),
+		"annotation interaction must bind the ControlPanelUI annotation section"
+	)
+	_expect(
+		not interaction_source.contains("CanvasLayer.new()"),
+		"annotation interaction must not create an independent CanvasLayer window"
+	)
+	var unified_panel_source := _read_text("res://Assets/ARSpace/Scripts/UI/unified_panel_ui.gd")
+	_expect(
+		unified_panel_source.contains("PANEL_ANNOTATION"),
+		"ControlPanelUI must expose the annotation panel"
+	)
+	_expect(
+		unified_panel_source.contains("control is PanelContainer"),
+		"ControlPanelUI panels must block pointer clicks from reaching 3D annotation rays"
+	)
 
 
 func _test_input_and_layer_contract() -> void:

@@ -69,6 +69,15 @@ func _run() -> void:
 	vr_text_interaction.call("set_draft_text", "VR 重新录音说明")
 	_check(bool(vr_text_interaction.call("confirm_draft_or_update")), "VR text buffer should update a selected annotation without a PC LineEdit")
 	_check(str(manager.get_annotation(first_id).get("text", "")) == "VR 重新录音说明", "selected VR annotation should retain re-recorded text")
+	var rejected_draft := draft.duplicate(true)
+	rejected_draft["text"] = "被拒绝的本地草稿"
+	vr_text_interaction.call("_set_draft", rejected_draft)
+	vr_text_interaction.call("_on_operation_submitted", "create", 41)
+	vr_text_interaction.call("_clear_draft")
+	vr_text_interaction.call("_on_operation_failed", "create", 41, "Server 拒绝测试请求。")
+	var restored_draft: Dictionary = vr_text_interaction.get("_draft")
+	_check(str(restored_draft.get("text", "")) == "被拒绝的本地草稿", "a rejected asynchronous create should restore its local draft")
+	vr_text_interaction.call("_clear_draft")
 	vr_text_interaction.free()
 
 	var invalid_draft := draft.duplicate(true)
@@ -114,6 +123,21 @@ func _run() -> void:
 	excluded_mesh.mesh = BoxMesh.new()
 	surface_root.add_child(excluded_mesh)
 
+	RuntimeProfile.select_session_mode(RuntimeProfile.Preset.SKY_XR_CLIENT, false)
+	var sky_builder = BuilderScript.new()
+	sky_builder.name = "SkySurfaceBuilder"
+	sky_builder.auto_build = false
+	sky_builder.shared_space_origin_path = NodePath("..")
+	sky_builder.target_root_path = NodePath("..")
+	sky_builder.scan_root_path = NodePath("../SurfaceRoot")
+	shared_origin.add_child(sky_builder)
+	sky_builder.start_build()
+	await process_frame
+	_check(not sky_builder.is_ready_for_annotations(), "Sky clients must not build annotation collision surfaces")
+	_check(included_mesh.get_child_count() == 0, "Sky clients must leave annotation meshes without local proxies")
+	sky_builder.free()
+
+	RuntimeProfile.select_session_mode(RuntimeProfile.Preset.VR_GROUND_CLIENT, false)
 	var builder = BuilderScript.new()
 	builder.name = "SurfaceBuilder"
 	builder.auto_build = false
@@ -128,7 +152,7 @@ func _run() -> void:
 		await process_frame
 		frame_budget -= 1
 	var report := builder.get_coverage_report()
-	_check(builder.is_ready_for_annotations(), "surface builder should finish incrementally")
+	_check(builder.is_ready_for_annotations(), "Ground VR clients should build annotation surfaces incrementally")
 	_check(str(builder.call("_get_surface_policy", included_mesh)) == "convex", "low-poly policy should select a convex proxy on a rendered server")
 	_check(int(report.get("box_proxies", 0)) == 1, "high-poly policy should build one box proxy")
 	_check(int(report.get("excluded_nodes", 0)) >= 1, "UI-like mesh names should be excluded")
@@ -143,6 +167,7 @@ func _run() -> void:
 		await process_frame
 		frame_budget -= 1
 	_check(builder.is_ready_for_annotations() and included_mesh.get_child_count() == proxy_child_count, "rebuild should replace surface proxies exactly once")
+	RuntimeProfile.clear_session_override()
 
 	var interaction = InteractionScript.new()
 	var pointer := MockFunctionPointer.new()

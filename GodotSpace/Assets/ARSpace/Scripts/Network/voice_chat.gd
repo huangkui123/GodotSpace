@@ -741,6 +741,8 @@ func _on_server_disconnected() -> void:
 func _update_voice_level_state(delta: float) -> void:
 	if not voice_endpoint_selected or capture == null or transport == null:
 		return
+	if NetworkHandler.peer == null or not multiplayer.has_multiplayer_peer():
+		return
 
 	_voice_level_send_accum += delta
 	if _voice_level_send_accum < VOICE_LEVEL_SEND_INTERVAL:

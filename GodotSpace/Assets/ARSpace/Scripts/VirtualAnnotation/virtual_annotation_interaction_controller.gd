@@ -48,9 +48,10 @@ var _dictation_session_id: String = ""
 var _dictation_active: bool = false
 var _clear_confirmation_deadline_ms: int = 0
 var _status_message: String = ""
+var _pending_create_drafts: Dictionary = {}
 
-var _canvas: CanvasLayer
-var _panel: PanelContainer
+var _control_panel: Node
+var _panel: Control
 var _mode_button: Button
 var _status_label: Label
 var _count_label: Label
@@ -75,7 +76,7 @@ func _ready() -> void:
 	_connect_dictation_signals()
 	var profile = RuntimeProfile.current()
 	if show_pc_panel and profile.uses_desktop_ui():
-		_build_pc_panel()
+		_bind_control_panel_section()
 	_refresh_authority_visibility()
 	_update_panel()
 
@@ -87,7 +88,7 @@ func _exit_tree() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not _is_server_authority():
+	if not _can_local_annotate():
 		return
 	if event is InputEventKey:
 		var key_event := event as InputEventKey
@@ -112,8 +113,8 @@ func toggle_annotation_mode() -> bool:
 
 
 func set_annotation_mode(enabled: bool) -> bool:
-	if enabled and not _is_server_authority():
-		_set_status("天上端仅显示标注。")
+	if enabled and not _can_local_annotate():
+		_set_status("当前端未获得地面标注权限。")
 		return false
 	if enabled and not _surfaces_ready():
 		_set_status("正在准备可标注表面，请稍候。")
@@ -122,6 +123,8 @@ func set_annotation_mode(enabled: bool) -> bool:
 		return true
 
 	_annotation_mode = enabled
+	if enabled:
+		_open_control_panel_section()
 	_set_pickup_suppressed(enabled)
 	_set_vr_visuals_visible(enabled)
 	if not enabled:
@@ -161,9 +164,12 @@ func set_draft_text(text: String) -> void:
 
 
 func confirm_draft_or_update() -> bool:
-	if not _is_server_authority():
+	if not _can_local_annotate():
 		return false
 	if not _draft.is_empty():
+		if not _pending_create_drafts.is_empty():
+			_set_status("上一个标注正在等待 PC 地面 Server 处理。")
+			return false
 		var text := _note_edit.text.strip_edges() if _note_edit != null else _local_text_buffer.strip_edges()
 		if text == "":
 			text = str(_draft.get("text", "")).strip_edges()
@@ -171,8 +177,12 @@ func confirm_draft_or_update() -> bool:
 			text = _manager.get_next_default_text()
 		_draft["text"] = text
 		var annotation_id: int = int(_manager.create_annotation(_draft))
-		if annotation_id <= 0:
+		if annotation_id < 0:
 			return false
+		if annotation_id == 0:
+			_clear_draft()
+			_set_status("已提交给 PC 地面 Server，正在等待发布。")
+			return true
 		_last_annotation_id = annotation_id
 		_selected_annotation_id = annotation_id
 		_clear_draft()
@@ -191,7 +201,11 @@ func confirm_draft_or_update() -> bool:
 		if text == "":
 			text = "标注 %d" % _selected_annotation_id
 		if _manager.update_annotation_text(_selected_annotation_id, text):
-			_set_status("已更新虚拟标注 %d。" % _selected_annotation_id)
+			_set_status(
+				"已更新虚拟标注 %d。" % _selected_annotation_id
+				if multiplayer.is_server()
+				else "已提交标注更新请求。"
+			)
 			return true
 	return false
 
@@ -209,8 +223,16 @@ func delete_selected_annotation() -> bool:
 	var annotation_id := _selected_annotation_id
 	if not _manager.delete_annotation(annotation_id):
 		return false
-	_selected_annotation_id = -1
-	_set_status("已删除虚拟标注 %d。" % annotation_id)
+	# A Ground VR Client keeps the selection until the Server confirms the
+	# deletion and the authoritative remove event arrives. This also preserves
+	# the selection when a request is rejected.
+	if multiplayer.is_server():
+		_selected_annotation_id = -1
+	_set_status(
+		"已删除虚拟标注 %d。" % annotation_id
+		if multiplayer.is_server()
+		else "已提交标注删除请求。"
+	)
 	return true
 
 
@@ -232,10 +254,18 @@ func request_clear_all() -> bool:
 		_update_panel()
 		return false
 	_clear_confirmation_deadline_ms = 0
-	_manager.clear_annotations()
-	_selected_annotation_id = -1
-	_last_annotation_id = -1
-	_set_status("已清除全部虚拟标注。")
+	if not _manager.clear_annotations():
+		return false
+	# Clients wait for the reliable authoritative clear event. Optimistically
+	# clearing these ids would hide useful state if the Server rejects a request.
+	if multiplayer.is_server():
+		_selected_annotation_id = -1
+		_last_annotation_id = -1
+	_set_status(
+		"已清除全部虚拟标注。"
+		if multiplayer.is_server()
+		else "已提交全部清除请求。"
+	)
 	return true
 
 
@@ -305,11 +335,13 @@ func _set_draft(draft: Dictionary) -> void:
 	if str(_draft.get("text", "")).strip_edges() == "":
 		_draft["text"] = _manager.get_next_default_text()
 	_local_text_buffer = str(_draft.get("text", ""))
-	if _draft_preview == null or not is_instance_valid(_draft_preview):
+	if DisplayServer.get_name() != "headless" \
+			and (_draft_preview == null or not is_instance_valid(_draft_preview)):
 		_draft_preview = MARKER_SCENE.instantiate() as Node3D
 		_draft_preview.name = "LocalVirtualAnnotationDraft"
 		add_child(_draft_preview)
-	_draft_preview.call("configure", _draft, _manager.get_shared_space_origin(), true, _manager.get_target_root())
+	if _draft_preview != null:
+		_draft_preview.call("configure", _draft, _manager.get_shared_space_origin(), true, _manager.get_target_root())
 	if _note_edit != null:
 		_note_edit.text = str(_draft.get("text", ""))
 	draft_changed.emit(_draft.duplicate(true))
@@ -519,7 +551,7 @@ func _set_vr_visuals_visible(visible: bool) -> void:
 func _refresh_wrist_visibility() -> void:
 	if _wrist_label != null:
 		_wrist_label.visible = _annotation_mode \
-			or (_is_server_authority() and not _surfaces_ready())
+			or (_can_local_annotate() and not _surfaces_ready())
 
 
 func _find_pickup_node() -> void:
@@ -577,85 +609,53 @@ func _set_pickup_suppressed(suppressed: bool) -> void:
 		_pickup_node.set("enabled", _pickup_previous_enabled)
 
 
-func _build_pc_panel() -> void:
-	_canvas = CanvasLayer.new()
-	_canvas.name = "VirtualAnnotationCanvas"
-	_canvas.layer = 30
-	add_child(_canvas)
+func _bind_control_panel_section() -> void:
+	_panel = get_tree().get_first_node_in_group("virtual_annotation_panel") as Control
+	_control_panel = get_tree().get_first_node_in_group("unified_control_panel")
+	if _panel == null:
+		push_warning("ControlPanelUI does not provide a virtual annotation section.")
+		return
 
-	_panel = PanelContainer.new()
-	_panel.name = "VirtualAnnotationPanel"
-	_panel.position = Vector2(18.0, 84.0)
-	_panel.custom_minimum_size = Vector2(390.0, 0.0)
-	_canvas.add_child(_panel)
+	_mode_button = _panel.get_node_or_null("Layout/ModeButton") as Button
+	_status_label = _panel.get_node_or_null("Layout/StatusLabel") as Label
+	_count_label = _panel.get_node_or_null("Layout/CountLabel") as Label
+	_note_edit = _panel.get_node_or_null("Layout/NoteEdit") as LineEdit
+	_record_button = _panel.get_node_or_null("Layout/PrimaryRow/RecordButton") as Button
+	_confirm_button = _panel.get_node_or_null("Layout/PrimaryRow/ConfirmButton") as Button
+	var cancel_button := _panel.get_node_or_null("Layout/PrimaryRow/CancelButton") as Button
+	_delete_button = _panel.get_node_or_null("Layout/ManageRow/DeleteButton") as Button
+	var delete_last_button := _panel.get_node_or_null("Layout/ManageRow/DeleteLastButton") as Button
+	_clear_button = _panel.get_node_or_null("Layout/ManageRow/ClearButton") as Button
 
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 12)
-	margin.add_theme_constant_override("margin_top", 10)
-	margin.add_theme_constant_override("margin_right", 12)
-	margin.add_theme_constant_override("margin_bottom", 10)
-	_panel.add_child(margin)
-	var content := VBoxContainer.new()
-	content.add_theme_constant_override("separation", 6)
-	margin.add_child(content)
+	if _mode_button == null \
+			or _status_label == null \
+			or _count_label == null \
+			or _note_edit == null \
+			or _record_button == null \
+			or _confirm_button == null \
+			or cancel_button == null \
+			or _delete_button == null \
+			or delete_last_button == null \
+			or _clear_button == null:
+		push_error("ControlPanelUI virtual annotation section is incomplete.")
+		_mode_button = null
+		return
 
-	var title := Label.new()
-	title.text = "虚拟空间点标注"
-	title.add_theme_font_size_override("font_size", 20)
-	content.add_child(title)
-
-	_mode_button = Button.new()
-	_mode_button.pressed.connect(toggle_annotation_mode)
-	content.add_child(_mode_button)
-	_status_label = Label.new()
-	_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_status_label.custom_minimum_size.y = 40.0
-	content.add_child(_status_label)
-	_count_label = Label.new()
-	content.add_child(_count_label)
-
-	_note_edit = LineEdit.new()
-	_note_edit.placeholder_text = "语音说明或编号说明"
 	_note_edit.max_length = MAX_TEXT_LENGTH
+	_mode_button.pressed.connect(toggle_annotation_mode)
 	_note_edit.text_changed.connect(_on_note_text_changed)
-	content.add_child(_note_edit)
-
-	var primary_row := HBoxContainer.new()
-	content.add_child(primary_row)
-	_record_button = Button.new()
-	_record_button.text = "按住录音"
 	_record_button.button_down.connect(begin_dictation)
 	_record_button.button_up.connect(finish_dictation)
-	primary_row.add_child(_record_button)
-	_confirm_button = Button.new()
-	_confirm_button.text = "确认/更新"
 	_confirm_button.pressed.connect(confirm_draft_or_update)
-	primary_row.add_child(_confirm_button)
-	var cancel_button := Button.new()
-	cancel_button.text = "取消草稿"
 	cancel_button.pressed.connect(cancel_draft)
-	primary_row.add_child(cancel_button)
-
-	var manage_row := HBoxContainer.new()
-	content.add_child(manage_row)
-	_delete_button = Button.new()
-	_delete_button.text = "删除选中"
 	_delete_button.pressed.connect(delete_selected_annotation)
-	manage_row.add_child(_delete_button)
-	var delete_last_button := Button.new()
-	delete_last_button.text = "删除最后一项"
 	delete_last_button.pressed.connect(delete_last_annotation)
-	manage_row.add_child(delete_last_button)
-	_clear_button = Button.new()
-	_clear_button.text = "清除全部"
 	_clear_button.pressed.connect(request_clear_all)
-	manage_row.add_child(_clear_button)
 
-	var help := Label.new()
-	help.text = "P：切换模式　左键：放置/选择　VR：B切换、扳机取点、握把听写、A确认、X删除、Y清除"
-	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	help.modulate = Color(0.78, 0.82, 0.88)
-	content.add_child(help)
+
+func _open_control_panel_section() -> void:
+	if _control_panel != null and _control_panel.has_method("open_annotation_panel"):
+		_control_panel.call("open_annotation_panel")
 
 
 func _connect_manager_signals() -> void:
@@ -665,6 +665,12 @@ func _connect_manager_signals() -> void:
 	_manager.annotations_cleared.connect(_on_annotations_cleared)
 	_manager.snapshot_applied.connect(_on_snapshot_applied)
 	_manager.operation_rejected.connect(_set_status)
+	if _manager.has_signal("operation_completed"):
+		_manager.operation_completed.connect(_on_operation_completed)
+	if _manager.has_signal("operation_submitted"):
+		_manager.operation_submitted.connect(_on_operation_submitted)
+	if _manager.has_signal("operation_failed"):
+		_manager.operation_failed.connect(_on_operation_failed)
 
 
 func _connect_builder_signals() -> void:
@@ -758,7 +764,42 @@ func _on_note_text_changed(text: String) -> void:
 
 func _on_annotation_added(annotation: Dictionary) -> void:
 	_last_annotation_id = maxi(_last_annotation_id, int(annotation.get("id", -1)))
+	if int(annotation.get("creator_peer_id", -1)) == _get_local_peer_id():
+		_selected_annotation_id = int(annotation.get("id", -1))
+		_local_text_buffer = str(annotation.get("text", ""))
 	_update_panel()
+
+
+func _on_operation_submitted(operation: String, request_sequence: int) -> void:
+	if operation == "create" and not _draft.is_empty():
+		_pending_create_drafts[request_sequence] = _draft.duplicate(true)
+
+
+func _on_operation_completed(operation: String, request_sequence: int, annotation_id: int) -> void:
+	if operation == "create":
+		_pending_create_drafts.erase(request_sequence)
+	match operation:
+		"create":
+			_last_annotation_id = maxi(_last_annotation_id, annotation_id)
+			_selected_annotation_id = annotation_id
+			_set_status("已发布虚拟标注 %d。" % annotation_id)
+		"update":
+			_set_status("已更新虚拟标注 %d。" % annotation_id)
+		"delete":
+			_set_status("已删除虚拟标注 %d。" % annotation_id)
+		"clear":
+			_set_status("已清除全部虚拟标注。")
+	_update_panel()
+
+
+func _on_operation_failed(operation: String, request_sequence: int, message: String) -> void:
+	if operation != "create" or not _pending_create_drafts.has(request_sequence):
+		return
+	var retained_draft: Dictionary = (_pending_create_drafts[request_sequence] as Dictionary).duplicate(true)
+	_pending_create_drafts.erase(request_sequence)
+	if _draft.is_empty():
+		_set_draft(retained_draft)
+	_set_status("%s 本地草稿已保留，可修改后重试。" % message)
 
 
 func _on_annotation_updated(annotation: Dictionary) -> void:
@@ -797,9 +838,7 @@ func _recalculate_last_annotation_id() -> void:
 
 
 func _refresh_authority_visibility() -> void:
-	if _canvas != null:
-		_canvas.visible = _is_server_authority()
-	if not _is_server_authority() and _annotation_mode:
+	if not _can_local_annotate() and _annotation_mode:
 		set_annotation_mode(false)
 
 
@@ -807,10 +846,16 @@ func _surfaces_ready() -> bool:
 	return _surface_builder == null or _surface_builder.is_ready_for_annotations()
 
 
-func _is_server_authority() -> bool:
-	var profile = RuntimeProfile.current()
-	return profile.can_annotate() \
-		and (not multiplayer.has_multiplayer_peer() or multiplayer.is_server())
+func _can_local_annotate() -> bool:
+	return _manager != null \
+		and _manager.has_method("can_local_annotate") \
+		and bool(_manager.call("can_local_annotate"))
+
+
+func _get_local_peer_id() -> int:
+	if not multiplayer.has_multiplayer_peer():
+		return SERVER_PEER_ID
+	return multiplayer.get_unique_id()
 
 
 func _set_status(message: String) -> void:
@@ -826,7 +871,7 @@ func _update_panel() -> void:
 	if _mode_button == null:
 		return
 	_mode_button.text = "关闭标注模式 (P)" if _annotation_mode else "开启标注模式 (P)"
-	_mode_button.disabled = not _is_server_authority() or (not _surfaces_ready() and not _annotation_mode)
+	_mode_button.disabled = not _can_local_annotate() or (not _surfaces_ready() and not _annotation_mode)
 	_count_label.text = "会话标注：%d/%d　选中：%s" % [
 		_manager.get_annotation_count(),
 		MAX_ANNOTATIONS,

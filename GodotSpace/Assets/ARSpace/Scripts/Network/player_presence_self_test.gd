@@ -24,7 +24,27 @@ func _run() -> void:
 	await get_tree().process_frame
 	_check_player_scene_contract(ground_player)
 	var ground_label := ground_player.get_node_or_null("NetworkHead/PresenceLabel") as Label3D
-	_check(ground_label != null and ground_label.text.contains("地面端"), "peer 1 should use ground label")
+	_check(ground_label != null and ground_label.text.contains("地面端 PC"), "peer 1 should use PC Ground label")
+
+	var ground_vr_player := PLAYER_SCENE.instantiate()
+	ground_vr_player.name = "6"
+	ground_vr_player.call("set_session_role", "ground_vr")
+	get_tree().root.add_child(ground_vr_player)
+	_check(
+		ground_vr_player.get_node_or_null("XROrigin3D") == null,
+		"directly instantiated remote players must strip XR before child _enter_tree"
+	)
+	await get_tree().process_frame
+	var ground_vr_label := ground_vr_player.get_node_or_null("NetworkHead/PresenceLabel") as Label3D
+	_check(ground_vr_label != null and ground_vr_label.text.contains("地面端 VR"), "assigned Ground VR should use Ground VR label")
+	var ground_vr_mesh := ground_vr_player.get_node_or_null("NetworkHead/HeadMesh") as MeshInstance3D
+	var ground_vr_material: StandardMaterial3D = null
+	if ground_vr_mesh != null:
+		ground_vr_material = ground_vr_mesh.material_override as StandardMaterial3D
+	_check(
+		ground_vr_material != null and ground_vr_material.albedo_color.is_equal_approx(Color(0.22, 0.95, 0.55, 1.0)),
+		"assigned Ground VR should use the Ground VR color"
+	)
 
 	var sky_player := PLAYER_SCENE.instantiate()
 	sky_player.name = "7"
@@ -54,6 +74,7 @@ func _run() -> void:
 	_check(network_head != null and network_head.global_position.is_equal_approx(expected_global_head), "shared-space pose should respect a transformed SharedSpaceOrigin")
 
 	ground_player.queue_free()
+	ground_vr_player.queue_free()
 	sky_player.queue_free()
 	shared_origin.queue_free()
 	await get_tree().process_frame
@@ -93,7 +114,12 @@ func _check_server_spawns_local_player() -> void:
 	_check(world.get_node_or_null("1") == server_player, "duplicate peer 1 spawn should be ignored")
 	spawner.spawn_player(2)
 	await get_tree().process_frame
-	_check(world.get_node_or_null("2") != null, "test peer should spawn before disconnect cleanup")
+	var remote_player := world.get_node_or_null("2")
+	_check(remote_player != null, "test peer should spawn before disconnect cleanup")
+	_check(
+		remote_player != null and remote_player.get_node_or_null("XROrigin3D") == null,
+		"remote player XR branch must be removed before it enters the SceneTree"
+	)
 	spawner.remove_player(2)
 	_check(world.get_node_or_null("2") == null, "disconnect cleanup should remove the stale player immediately")
 

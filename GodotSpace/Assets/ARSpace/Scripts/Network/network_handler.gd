@@ -1,16 +1,33 @@
 extends Node
 
+const RuntimeProfileScript = preload("res://Assets/ARSpace/Scripts/runtime_profile.gd")
+
 const IP_ADDRESS: String = "127.0.0.1"
 const PORT: int = 42069
 const MAX_CLIENTS: int = 8
 const CHANNEL_COUNT: int = 3
 const START_MENU_SCENE: String = "res://Assets/ARSpace/Scenes/StartMenu.tscn"
+const SERVER_PEER_ID: int = 1
+const ROLE_UNKNOWN: String = "unknown"
+const ROLE_PC_GROUND: String = "pc_ground"
+const ROLE_GROUND_VR: String = "ground_vr"
+const ROLE_SKY: String = "sky"
+const GROUND_VR_TOKEN_ENV: String = "GODOTSPACE_GROUND_VR_TOKEN"
+const VALID_SESSION_ROLES: Array[String] = [
+	ROLE_UNKNOWN,
+	ROLE_PC_GROUND,
+	ROLE_GROUND_VR,
+	ROLE_SKY,
+]
 
 signal network_ready
 signal network_role_selected(is_server: bool)
 signal connection_failed(reason: String)
 signal server_connection_lost
 signal remote_annotation_received(position: Vector3, data: Dictionary)
+signal peer_role_changed(peer_id: int, assigned_role: String)
+signal local_role_assigned(assigned_role: String, can_annotate: bool)
+signal peer_role_request_rejected(peer_id: int, requested_role: String, reason: String)
 
 @export var marker_scene: PackedScene = preload("res://Assets/ARSpace/Prefabs/Marker.prefab.tscn")
 
@@ -18,6 +35,11 @@ var peer: ENetMultiplayerPeer
 var spatial_calibration_preview_marker: Node3D
 var _client_session_active: bool = false
 var _returning_to_menu: bool = false
+var _last_start_error: String = ""
+var _peer_roles: Dictionary = {}
+var _resolved_role_requests: Dictionary = {}
+var _ground_vr_peer_id: int = 0
+var _peer_role_revision: int = 0
 
 
 func _ready() -> void:
@@ -30,21 +52,34 @@ func _ready() -> void:
 
 func _on_peer_connected(peer_id: int) -> void:
 	print("Peer %d connected" % peer_id)
+	if not multiplayer.is_server() or peer_id <= SERVER_PEER_ID:
+		return
+	_ensure_server_role_registry()
+	# A new peer is safe-by-default. The Server may promote exactly one peer to
+	# Ground VR after processing its request. RPC payloads never determine the
+	# effective role directly.
+	_set_peer_role(peer_id, ROLE_SKY)
+	call_deferred("_send_peer_role_snapshot", peer_id)
 
 
 func _on_peer_disconnected(peer_id: int) -> void:
 	print("Peer %d disconnected" % peer_id)
+	if multiplayer.is_server():
+		_remove_peer_role(peer_id)
 
 
 func start_server() -> bool:
 	_close_network_peer()
+	_last_start_error = ""
 	peer = ENetMultiplayerPeer.new()
 	var error := peer.create_server(PORT, MAX_CLIENTS, CHANNEL_COUNT)
 	if error != OK:
-		push_error("Failed to start server on port %d. Error: %d" % [PORT, error])
-		return false
+		return _handle_start_failure(
+			"无法启动地面 Server：UDP 端口 %d 不可用（错误 %d）。请关闭旧的 Godot Server 进程或释放该端口。" % [PORT, error]
+		)
 
 	multiplayer.multiplayer_peer = peer
+	_reset_peer_roles(true)
 	_client_session_active = false
 	_returning_to_menu = false
 	print("Server started")
@@ -55,19 +90,37 @@ func start_server() -> bool:
 
 func start_client(ip: String = IP_ADDRESS) -> bool:
 	_close_network_peer()
+	_last_start_error = ""
 	var target_ip := _get_server_ip_from_args(ip)
 	peer = ENetMultiplayerPeer.new()
 	var error := peer.create_client(target_ip, PORT, CHANNEL_COUNT)
 	if error != OK:
-		push_error("Failed to connect to %s:%d. Error: %d" % [target_ip, PORT, error])
-		return false
+		return _handle_start_failure(
+			"无法创建到 %s:%d 的 Client 连接（错误 %d）。" % [target_ip, PORT, error]
+		)
 
 	multiplayer.multiplayer_peer = peer
+	_reset_peer_roles(false)
 	_client_session_active = true
 	_returning_to_menu = false
 	network_role_selected.emit(false)
 	print("Client connecting to ", target_ip)
 	return true
+
+
+func get_last_start_error() -> String:
+	return _last_start_error
+
+
+func _handle_start_failure(message: String, report_warning: bool = true) -> bool:
+	_last_start_error = message
+	if peer != null:
+		peer.close()
+	peer = null
+	_restore_offline_multiplayer_peer()
+	if report_warning:
+		push_warning(_last_start_error)
+	return false
 
 
 func _get_server_ip_from_args(default_ip: String) -> String:
@@ -81,6 +134,8 @@ func _get_server_ip_from_args(default_ip: String) -> String:
 
 func _on_connected_to_server() -> void:
 	print("Connected to server")
+	_reset_peer_roles(false)
+	_request_local_role_assignment()
 	network_ready.emit()
 
 
@@ -117,8 +172,257 @@ func _close_network_peer() -> void:
 	if peer != null:
 		peer.close()
 	peer = null
-	if multiplayer.has_multiplayer_peer():
-		multiplayer.multiplayer_peer = null
+	_reset_peer_roles(false)
+	_restore_offline_multiplayer_peer()
+
+
+func _restore_offline_multiplayer_peer() -> void:
+	# SceneMultiplayer normally owns an OfflineMultiplayerPeer. Keeping that
+	# invariant prevents is_server()/get_unique_id() calls from observing a
+	# transient null peer when ENet startup fails or a session is closed.
+	multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
+
+
+func get_peer_role(peer_id: int) -> String:
+	if peer_id == SERVER_PEER_ID:
+		return ROLE_PC_GROUND
+	return str(_peer_roles.get(peer_id, ROLE_UNKNOWN))
+
+
+func get_peer_roles() -> Dictionary:
+	return _peer_roles.duplicate(true)
+
+
+func get_local_assigned_role() -> String:
+	return get_peer_role(_get_safe_local_peer_id())
+
+
+func get_ground_vr_peer_id() -> int:
+	return _ground_vr_peer_id
+
+
+func is_peer_ground(peer_id: int) -> bool:
+	return get_peer_role(peer_id) in [ROLE_PC_GROUND, ROLE_GROUND_VR]
+
+
+func can_peer_annotate(peer_id: int) -> bool:
+	# Annotation authority is derived only from the Server-owned registry. A
+	# role string supplied in an annotation RPC payload has no effect here.
+	return is_peer_ground(peer_id)
+
+
+func is_ground_vr_pairing_protected() -> bool:
+	return not OS.get_environment(GROUND_VR_TOKEN_ENV).is_empty()
+
+
+func _reset_peer_roles(is_server_session: bool) -> void:
+	var previous_roles := _peer_roles.duplicate(true)
+	_peer_roles.clear()
+	_resolved_role_requests.clear()
+	_ground_vr_peer_id = 0
+	_peer_role_revision = 0
+	if is_server_session:
+		_peer_roles[SERVER_PEER_ID] = ROLE_PC_GROUND
+		_resolved_role_requests[SERVER_PEER_ID] = true
+		_peer_role_revision = 1
+	_emit_role_changes(previous_roles, _peer_roles)
+
+
+func _ensure_server_role_registry() -> void:
+	if get_peer_role(SERVER_PEER_ID) == ROLE_PC_GROUND and _peer_roles.has(SERVER_PEER_ID):
+		return
+	_peer_roles[SERVER_PEER_ID] = ROLE_PC_GROUND
+	_resolved_role_requests[SERVER_PEER_ID] = true
+	_peer_role_revision = maxi(_peer_role_revision + 1, 1)
+	peer_role_changed.emit(SERVER_PEER_ID, ROLE_PC_GROUND)
+
+
+func _request_local_role_assignment() -> void:
+	if multiplayer.is_server() or not _has_connected_multiplayer_peer():
+		return
+	var requested_role := _get_requested_local_role()
+	var pairing_token := OS.get_environment(GROUND_VR_TOKEN_ENV) \
+		if requested_role == ROLE_GROUND_VR else ""
+	rpc_id(SERVER_PEER_ID, "_server_request_session_role", requested_role, pairing_token)
+
+
+func _get_requested_local_role() -> String:
+	var profile = RuntimeProfileScript.current()
+	if profile != null \
+			and profile.has_method("is_ground") \
+			and bool(profile.call("is_ground")) \
+			and profile.has_method("uses_xr") \
+			and bool(profile.call("uses_xr")):
+		return ROLE_GROUND_VR
+	return ROLE_SKY
+
+
+@rpc("any_peer", "call_remote", "reliable", 0)
+func _server_request_session_role(requested_role: String, pairing_token: String = "") -> void:
+	if not multiplayer.is_server():
+		return
+	var sender_id := multiplayer.get_remote_sender_id()
+	if sender_id <= SERVER_PEER_ID or sender_id not in multiplayer.get_peers():
+		return
+	_assign_requested_role(sender_id, requested_role, pairing_token)
+	_broadcast_peer_role_snapshot()
+
+
+func _assign_requested_role(peer_id: int, requested_role: String, pairing_token: String = "") -> String:
+	if peer_id <= SERVER_PEER_ID:
+		return ROLE_PC_GROUND if peer_id == SERVER_PEER_ID else ROLE_UNKNOWN
+	if _resolved_role_requests.has(peer_id):
+		return get_peer_role(peer_id)
+
+	var normalized_request := requested_role.strip_edges().to_lower()
+	var assigned_role := ROLE_SKY
+	var rejection_reason := ""
+	if normalized_request == ROLE_GROUND_VR:
+		if _ground_vr_peer_id > SERVER_PEER_ID and _ground_vr_peer_id != peer_id:
+			rejection_reason = "ground_vr_slot_occupied"
+		elif not _is_valid_ground_vr_pairing_token(pairing_token):
+			rejection_reason = "invalid_ground_vr_token"
+		else:
+			assigned_role = ROLE_GROUND_VR
+	elif normalized_request != ROLE_SKY:
+		rejection_reason = "unsupported_role_request"
+
+	_resolved_role_requests[peer_id] = true
+	_set_peer_role(peer_id, assigned_role)
+	if not rejection_reason.is_empty():
+		peer_role_request_rejected.emit(peer_id, normalized_request, rejection_reason)
+	return assigned_role
+
+
+func _is_valid_ground_vr_pairing_token(pairing_token: String) -> bool:
+	var expected_token := OS.get_environment(GROUND_VR_TOKEN_ENV)
+	if expected_token.is_empty():
+		# Trusted-LAN compatibility mode still keeps the role Server-assigned and
+		# limits it to one peer. Configure the environment variable on both Ground
+		# processes when role authentication is required.
+		return true
+	return _constant_time_text_equals(expected_token, pairing_token)
+
+
+func _constant_time_text_equals(left: String, right: String) -> bool:
+	var left_bytes := left.to_utf8_buffer()
+	var right_bytes := right.to_utf8_buffer()
+	var difference := left_bytes.size() ^ right_bytes.size()
+	var comparison_length := maxi(left_bytes.size(), right_bytes.size())
+	for index in range(comparison_length):
+		var left_value := int(left_bytes[index]) if index < left_bytes.size() else 0
+		var right_value := int(right_bytes[index]) if index < right_bytes.size() else 0
+		difference |= left_value ^ right_value
+	return difference == 0
+
+
+func _set_peer_role(peer_id: int, assigned_role: String) -> void:
+	var normalized_role := assigned_role if assigned_role in VALID_SESSION_ROLES else ROLE_UNKNOWN
+	if peer_id == SERVER_PEER_ID:
+		normalized_role = ROLE_PC_GROUND
+	var previous_role := get_peer_role(peer_id)
+	if previous_role == normalized_role and _peer_roles.has(peer_id):
+		return
+	if previous_role == ROLE_GROUND_VR and _ground_vr_peer_id == peer_id:
+		_ground_vr_peer_id = 0
+	_peer_roles[peer_id] = normalized_role
+	if normalized_role == ROLE_GROUND_VR:
+		_ground_vr_peer_id = peer_id
+	_peer_role_revision += 1
+	peer_role_changed.emit(peer_id, normalized_role)
+	if peer_id == _get_safe_local_peer_id():
+		local_role_assigned.emit(normalized_role, can_peer_annotate(peer_id))
+
+
+func _remove_peer_role(peer_id: int) -> void:
+	if peer_id <= SERVER_PEER_ID:
+		return
+	var previous_role := get_peer_role(peer_id)
+	if previous_role == ROLE_GROUND_VR and _ground_vr_peer_id == peer_id:
+		_ground_vr_peer_id = 0
+	_peer_roles.erase(peer_id)
+	_resolved_role_requests.erase(peer_id)
+	_peer_role_revision += 1
+	peer_role_changed.emit(peer_id, ROLE_UNKNOWN)
+	_broadcast_peer_role_snapshot()
+
+
+func _broadcast_peer_role_snapshot() -> void:
+	if not multiplayer.is_server() or not _has_connected_multiplayer_peer():
+		return
+	for peer_id_value in multiplayer.get_peers():
+		_send_peer_role_snapshot(int(peer_id_value))
+
+
+func _send_peer_role_snapshot(peer_id: int) -> void:
+	if not multiplayer.is_server() or peer_id <= SERVER_PEER_ID:
+		return
+	if peer_id not in multiplayer.get_peers():
+		return
+	rpc_id(peer_id, "_client_receive_peer_roles", _peer_role_revision, _peer_roles)
+
+
+@rpc("authority", "call_remote", "reliable", 0)
+func _client_receive_peer_roles(revision: int, roles: Dictionary) -> void:
+	if multiplayer.is_server() or multiplayer.get_remote_sender_id() != SERVER_PEER_ID:
+		return
+	if revision < _peer_role_revision or not _validate_peer_role_snapshot(roles):
+		return
+	var previous_roles := _peer_roles.duplicate(true)
+	_peer_roles = roles.duplicate(true)
+	_peer_role_revision = revision
+	_ground_vr_peer_id = 0
+	for peer_id_value in _peer_roles:
+		var peer_id := int(peer_id_value)
+		if str(_peer_roles[peer_id_value]) == ROLE_GROUND_VR:
+			_ground_vr_peer_id = peer_id
+	_emit_role_changes(previous_roles, _peer_roles)
+	var local_peer_id := _get_safe_local_peer_id()
+	local_role_assigned.emit(get_peer_role(local_peer_id), can_peer_annotate(local_peer_id))
+
+
+func _validate_peer_role_snapshot(roles: Dictionary) -> bool:
+	if str(roles.get(SERVER_PEER_ID, ROLE_UNKNOWN)) != ROLE_PC_GROUND:
+		return false
+	var ground_vr_count := 0
+	for peer_id_value in roles:
+		var peer_id := int(peer_id_value)
+		var assigned_role := str(roles[peer_id_value])
+		if peer_id <= 0 or assigned_role not in VALID_SESSION_ROLES:
+			return false
+		if peer_id == SERVER_PEER_ID and assigned_role != ROLE_PC_GROUND:
+			return false
+		if peer_id != SERVER_PEER_ID and assigned_role == ROLE_PC_GROUND:
+			return false
+		if assigned_role == ROLE_GROUND_VR:
+			ground_vr_count += 1
+	return ground_vr_count <= 1
+
+
+func _emit_role_changes(previous_roles: Dictionary, current_roles: Dictionary) -> void:
+	var peer_ids: Dictionary = {}
+	for peer_id in previous_roles:
+		peer_ids[peer_id] = true
+	for peer_id in current_roles:
+		peer_ids[peer_id] = true
+	for peer_id_value in peer_ids:
+		var peer_id := int(peer_id_value)
+		var previous_role := str(previous_roles.get(peer_id_value, ROLE_UNKNOWN))
+		var current_role := str(current_roles.get(peer_id_value, ROLE_UNKNOWN))
+		if previous_role != current_role:
+			peer_role_changed.emit(peer_id, current_role)
+
+
+func _get_safe_local_peer_id() -> int:
+	if not multiplayer.has_multiplayer_peer() or multiplayer.multiplayer_peer == null:
+		return SERVER_PEER_ID
+	return multiplayer.get_unique_id()
+
+
+func _has_connected_multiplayer_peer() -> bool:
+	if not multiplayer.has_multiplayer_peer() or multiplayer.multiplayer_peer == null:
+		return false
+	return multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED
 
 
 @rpc("authority", "call_local", "reliable")

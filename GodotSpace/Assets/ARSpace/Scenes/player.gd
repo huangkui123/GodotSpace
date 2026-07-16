@@ -13,7 +13,12 @@ const TEST_TRIGGER_KEY := KEY_J
 const TEST_GRIP_KEY := KEY_K
 const PC_LEFT_HAND_OFFSET := Vector3(-0.28, -0.22, -0.38)
 const PC_RIGHT_HAND_OFFSET := Vector3(0.28, -0.22, -0.38)
-const GROUND_ROLE_COLOR := Color(0.16, 0.78, 1.0, 1.0)
+const ROLE_UNKNOWN: String = "unknown"
+const ROLE_PC_GROUND: String = "pc_ground"
+const ROLE_GROUND_VR: String = "ground_vr"
+const ROLE_SKY: String = "sky"
+const PC_GROUND_ROLE_COLOR := Color(0.16, 0.78, 1.0, 1.0)
+const GROUND_VR_ROLE_COLOR := Color(0.22, 0.95, 0.55, 1.0)
 const SKY_ROLE_COLOR := Color(1.0, 0.62, 0.18, 1.0)
 
 const LOCAL_XR_NODE_PATHS: Array[NodePath] = [
@@ -63,13 +68,21 @@ var _replica_ready_peer_ids: Dictionary = {}
 var _has_received_network_pose: bool = false
 var _test_trigger_pressed: bool = false
 var _test_grip_pressed: bool = false
+var _session_role: String = ROLE_UNKNOWN
 
 func _enter_tree() -> void:
 	set_multiplayer_authority(_get_peer_id_from_name(), true)
+	# Parent _enter_tree runs before the XR children enter the SceneTree. This
+	# protects direct/non-spawner instantiation paths from registering remote XR
+	# movement providers globally, matching prepare_for_network_spawn().
+	if not _is_local_authority():
+		_remove_remote_xr_branch()
 
 func _ready() -> void:
 	set_multiplayer_authority(_get_peer_id_from_name(), true)
 	_runtime_profile = RuntimeProfileScript.current()
+	_connect_role_registry()
+	_refresh_session_role()
 	_apply_role_appearance()
 	_configure_local_xr_nodes(_is_local_authority())
 	_sync_network_pose_from_local_source()
@@ -80,6 +93,13 @@ func _ready() -> void:
 		call_deferred("_notify_server_replica_ready")
 	if not multiplayer.peer_disconnected.is_connected(_on_peer_disconnected):
 		multiplayer.peer_disconnected.connect(_on_peer_disconnected)
+
+func _exit_tree() -> void:
+	var network_handler := get_node_or_null("/root/NetworkHandler")
+	if network_handler != null \
+			and network_handler.has_signal("peer_role_changed") \
+			and network_handler.peer_role_changed.is_connected(_on_peer_role_changed):
+		network_handler.peer_role_changed.disconnect(_on_peer_role_changed)
 
 func _process(delta: float) -> void:
 	if _is_local_authority():
@@ -110,6 +130,46 @@ func _input(event: InputEvent) -> void:
 func _get_peer_id_from_name() -> int:
 	var peer_id := name.to_int()
 	return peer_id if peer_id > 0 else SERVER_PEER_ID
+
+func set_session_role(assigned_role: String) -> void:
+	var normalized_role := _normalize_session_role(assigned_role)
+	if _session_role == normalized_role:
+		return
+	_session_role = normalized_role
+	if is_inside_tree():
+		_apply_role_appearance()
+
+func get_session_role() -> String:
+	return _resolved_session_role()
+
+func _connect_role_registry() -> void:
+	var network_handler := get_node_or_null("/root/NetworkHandler")
+	if network_handler == null or not network_handler.has_signal("peer_role_changed"):
+		return
+	if not network_handler.peer_role_changed.is_connected(_on_peer_role_changed):
+		network_handler.peer_role_changed.connect(_on_peer_role_changed)
+
+func _refresh_session_role() -> void:
+	var network_handler := get_node_or_null("/root/NetworkHandler")
+	if network_handler == null or not network_handler.has_method("get_peer_role"):
+		return
+	var registered_role := str(network_handler.call("get_peer_role", _get_peer_id_from_name()))
+	if registered_role != ROLE_UNKNOWN:
+		_session_role = _normalize_session_role(registered_role)
+
+func _on_peer_role_changed(peer_id: int, assigned_role: String) -> void:
+	if peer_id != _get_peer_id_from_name():
+		return
+	set_session_role(assigned_role)
+
+func _normalize_session_role(assigned_role: String) -> String:
+	var normalized_role := assigned_role.strip_edges().to_lower()
+	return normalized_role if normalized_role in [ROLE_PC_GROUND, ROLE_GROUND_VR, ROLE_SKY] else ROLE_UNKNOWN
+
+func _resolved_session_role() -> String:
+	if _session_role != ROLE_UNKNOWN:
+		return _session_role
+	return ROLE_PC_GROUND if _get_peer_id_from_name() == SERVER_PEER_ID else ROLE_SKY
 
 func _is_local_authority() -> bool:
 	if _has_active_multiplayer_peer():
@@ -145,6 +205,17 @@ func _is_pc_ground_server() -> bool:
 
 func _has_command_line_argument(argument: String) -> bool:
 	return OS.get_cmdline_args().has(argument) or OS.get_cmdline_user_args().has(argument)
+
+
+func prepare_for_network_spawn(is_local_replica: bool) -> void:
+	# MultiplayerSpawner calls this before the player enters the SceneTree.
+	# Removing the unused XR branch at this point prevents XRToolsPlayerBody
+	# from caching movement providers owned by remote replicas. Those providers
+	# would otherwise be freed shortly afterwards and leave stale references in
+	# the local PlayerBody.
+	if not is_local_replica:
+		_remove_remote_xr_branch()
+
 
 func _configure_local_xr_nodes(is_local_authority: bool) -> void:
 	var xr_origin := get_node_or_null("XROrigin3D") as XROrigin3D
@@ -189,7 +260,10 @@ func _configure_local_xr_nodes(is_local_authority: bool) -> void:
 
 	_set_network_avatar_visible(false)
 	if not is_local_authority:
-		call_deferred("_remove_remote_xr_branch")
+		# This is a fallback for players instantiated outside MultiplayerSpawner.
+		# Detach synchronously so later local players cannot discover this
+		# replica's XR movement providers through the global group.
+		_remove_remote_xr_branch()
 	elif _is_test_mode():
 		_configure_test_mode_local_visuals()
 
@@ -221,6 +295,8 @@ func _configure_test_mode_local_visuals() -> void:
 func _remove_remote_xr_branch() -> void:
 	var xr_origin := get_node_or_null("XROrigin3D")
 	if xr_origin != null:
+		if xr_origin.get_parent() == self:
+			remove_child(xr_origin)
 		xr_origin.queue_free()
 
 func _set_test_trigger_pressed(pressed: bool) -> void:
@@ -528,8 +604,12 @@ func _set_network_avatar_visible(is_visible: bool) -> void:
 			avatar_root.visible = is_visible
 
 func _apply_role_appearance() -> void:
-	var is_ground := _get_peer_id_from_name() == SERVER_PEER_ID
-	var role_color := GROUND_ROLE_COLOR if is_ground else SKY_ROLE_COLOR
+	var assigned_role := _resolved_session_role()
+	var role_color := SKY_ROLE_COLOR
+	if assigned_role == ROLE_PC_GROUND:
+		role_color = PC_GROUND_ROLE_COLOR
+	elif assigned_role == ROLE_GROUND_VR:
+		role_color = GROUND_VR_ROLE_COLOR
 	for node_path in NETWORK_AVATAR_MESHES:
 		var mesh_instance := get_node_or_null(node_path) as MeshInstance3D
 		if mesh_instance == null:
@@ -544,5 +624,11 @@ func _apply_role_appearance() -> void:
 
 	var label := get_node_or_null("NetworkHead/PresenceLabel") as Label3D
 	if label != null:
-		label.text = "地面端 · 在线" if is_ground else "天上端 %d · 在线" % _get_peer_id_from_name()
+		match assigned_role:
+			ROLE_PC_GROUND:
+				label.text = "地面端 PC · 在线"
+			ROLE_GROUND_VR:
+				label.text = "地面端 VR · 在线"
+			_:
+				label.text = "天上端 %d · 在线" % _get_peer_id_from_name()
 		label.modulate = role_color.lightened(0.25)

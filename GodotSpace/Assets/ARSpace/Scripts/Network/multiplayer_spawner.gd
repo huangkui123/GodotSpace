@@ -47,20 +47,36 @@ func spawn_player(id: int) -> void:
 		return
 
 	_pending_spawn_ids[id] = true
-	spawn({"peer_id": id})
+	spawn({
+		"peer_id": id,
+		"session_role": _get_registered_peer_role(id),
+	})
 	_pending_spawn_ids.erase(id)
 
 func _instantiate_player(data: Variant) -> Node:
 	if network_player == null or not (data is Dictionary):
 		return null
 
-	var peer_id := int((data as Dictionary).get("peer_id", 0))
+	var spawn_data := data as Dictionary
+	var peer_id := int(spawn_data.get("peer_id", 0))
 	if peer_id <= 0:
 		return null
 
 	var player: Node = network_player.instantiate()
 	player.name = str(peer_id)
+	if player.has_method("prepare_for_network_spawn"):
+		var local_peer_id := multiplayer.get_unique_id() \
+			if multiplayer.has_multiplayer_peer() else SERVER_PEER_ID
+		player.call("prepare_for_network_spawn", peer_id == local_peer_id)
+	if player.has_method("set_session_role"):
+		player.call("set_session_role", str(spawn_data.get("session_role", "unknown")))
 	return player
+
+func _get_registered_peer_role(peer_id: int) -> String:
+	var network_handler := get_node_or_null("/root/NetworkHandler")
+	if network_handler != null and network_handler.has_method("get_peer_role"):
+		return str(network_handler.call("get_peer_role", peer_id))
+	return "pc_ground" if peer_id == SERVER_PEER_ID else "sky"
 
 func remove_player(id: int) -> void:
 	if not multiplayer.is_server() or id == SERVER_PEER_ID:

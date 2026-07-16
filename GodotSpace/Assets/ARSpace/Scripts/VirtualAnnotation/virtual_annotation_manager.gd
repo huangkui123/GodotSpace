@@ -7,11 +7,15 @@ signal annotation_removed(annotation_id: int)
 signal annotations_cleared()
 signal annotation_selected(annotation_id: int)
 signal operation_rejected(message: String)
+signal operation_submitted(operation: String, request_sequence: int)
+signal operation_completed(operation: String, request_sequence: int, annotation_id: int)
+signal operation_failed(operation: String, request_sequence: int, message: String)
 signal snapshot_applied(state_revision: int, annotation_count: int)
 
 const SERVER_PEER_ID: int = 1
 const MAX_ANNOTATIONS: int = 128
 const MAX_TEXT_LENGTH: int = 80
+const MAX_TARGET_PATH_LENGTH: int = 512
 const SNAPSHOT_REQUEST_RETRY_MSEC: int = 500
 const SERVER_SNAPSHOT_MIN_INTERVAL_MSEC: int = 250
 const DEFAULT_NORMAL: Vector3 = Vector3.UP
@@ -20,6 +24,7 @@ const RuntimeProfile := preload("res://Assets/ARSpace/Scripts/runtime_profile.gd
 
 @export_node_path("Node3D") var shared_space_origin_path: NodePath = NodePath("../..")
 @export_node_path("Node") var target_root_path: NodePath
+@export_node_path("Node") var peer_authority_path: NodePath = NodePath("/root/NetworkHandler")
 @export var marker_scene: PackedScene = preload("res://Assets/ARSpace/Scenes/VirtualAnnotationMarker.tscn")
 @export var warn_on_rejection: bool = true
 
@@ -30,6 +35,8 @@ var _next_annotation_id: int = 1
 var _snapshot_request_pending: bool = false
 var _last_snapshot_request_msec: int = -SNAPSHOT_REQUEST_RETRY_MSEC
 var _server_snapshot_request_msec_by_peer: Dictionary = {}
+var _server_operation_sequence_by_peer: Dictionary = {}
+var _next_client_operation_sequence: int = 1
 
 
 func _ready() -> void:
@@ -42,35 +49,35 @@ func _ready() -> void:
 
 
 func create_annotation(draft: Dictionary) -> int:
-	if not _is_server_authority():
+	if not can_local_annotate():
 		_reject("只有地面端可以创建虚拟标注。")
 		return -1
-	if _annotations.size() >= MAX_ANNOTATIONS:
-		_reject("本次会话最多保留 %d 个虚拟标注。" % MAX_ANNOTATIONS)
+	if _is_server_authority():
+		return _create_annotation_authoritative(draft, SERVER_PEER_ID)
+	if not _is_connected_client():
+		_reject("尚未连接地面 Server。")
 		return -1
-
-	var normalized := _normalize_draft(draft)
-	if normalized.is_empty():
-		return -1
-
-	var annotation_id := _next_annotation_id
-	_next_annotation_id += 1
-	_state_revision += 1
-	normalized["id"] = annotation_id
-	normalized["revision"] = 1
-	normalized["creator_peer_id"] = SERVER_PEER_ID
-	normalized["created_at_ms"] = Time.get_ticks_msec()
-	_annotations[annotation_id] = normalized
-	_upsert_marker(normalized)
-	annotation_added.emit(normalized.duplicate(true))
-	_broadcast_upsert(normalized)
-	return annotation_id
+	var request_sequence := _take_client_operation_sequence()
+	operation_submitted.emit("create", request_sequence)
+	rpc_id(SERVER_PEER_ID, "_server_create_annotation", request_sequence, draft.duplicate(true))
+	return 0
 
 
 func update_annotation_text(annotation_id: int, text: String) -> bool:
-	if not _is_server_authority():
+	if not can_local_annotate():
 		_reject("只有地面端可以更新虚拟标注。")
 		return false
+	if not _is_server_authority():
+		if not _is_connected_client() or annotation_id <= 0:
+			return false
+		var request_sequence := _take_client_operation_sequence()
+		operation_submitted.emit("update", request_sequence)
+		rpc_id(SERVER_PEER_ID, "_server_update_annotation_text", request_sequence, annotation_id, text)
+		return true
+	return _update_annotation_text_authoritative(annotation_id, text)
+
+
+func _update_annotation_text_authoritative(annotation_id: int, text: String) -> bool:
 	if not _annotations.has(annotation_id):
 		_reject("找不到虚拟标注 %d。" % annotation_id)
 		return false
@@ -90,9 +97,20 @@ func update_annotation_text(annotation_id: int, text: String) -> bool:
 
 
 func delete_annotation(annotation_id: int) -> bool:
-	if not _is_server_authority():
+	if not can_local_annotate():
 		_reject("只有地面端可以删除虚拟标注。")
 		return false
+	if not _is_server_authority():
+		if not _is_connected_client() or annotation_id <= 0:
+			return false
+		var request_sequence := _take_client_operation_sequence()
+		operation_submitted.emit("delete", request_sequence)
+		rpc_id(SERVER_PEER_ID, "_server_delete_annotation", request_sequence, annotation_id)
+		return true
+	return _delete_annotation_authoritative(annotation_id)
+
+
+func _delete_annotation_authoritative(annotation_id: int) -> bool:
 	if not _annotations.has(annotation_id):
 		return false
 
@@ -104,10 +122,22 @@ func delete_annotation(annotation_id: int) -> bool:
 	return true
 
 
-func clear_annotations() -> void:
-	if not _is_server_authority():
+func clear_annotations() -> bool:
+	if not can_local_annotate():
 		_reject("只有地面端可以清除虚拟标注。")
-		return
+		return false
+	if not _is_server_authority():
+		if not _is_connected_client():
+			return false
+		var request_sequence := _take_client_operation_sequence()
+		operation_submitted.emit("clear", request_sequence)
+		rpc_id(SERVER_PEER_ID, "_server_clear_annotations", request_sequence)
+		return true
+	_clear_annotations_authoritative()
+	return true
+
+
+func _clear_annotations_authoritative() -> void:
 	if _annotations.is_empty():
 		return
 
@@ -117,6 +147,28 @@ func clear_annotations() -> void:
 	annotations_cleared.emit()
 	if multiplayer.has_multiplayer_peer():
 		rpc("_rpc_clear_annotations", _state_revision)
+
+
+func _create_annotation_authoritative(draft: Dictionary, creator_peer_id: int) -> int:
+	if _annotations.size() >= MAX_ANNOTATIONS:
+		_reject("本次会话最多保留 %d 个虚拟标注。" % MAX_ANNOTATIONS)
+		return -1
+	var normalized := _normalize_draft(draft)
+	if normalized.is_empty():
+		return -1
+
+	var annotation_id := _next_annotation_id
+	_next_annotation_id += 1
+	_state_revision += 1
+	normalized["id"] = annotation_id
+	normalized["revision"] = 1
+	normalized["creator_peer_id"] = creator_peer_id
+	normalized["created_at_ms"] = Time.get_ticks_msec()
+	_annotations[annotation_id] = normalized
+	_upsert_marker(normalized)
+	annotation_added.emit(normalized.duplicate(true))
+	_broadcast_upsert(normalized)
+	return annotation_id
 
 
 func request_annotation_snapshot() -> void:
@@ -244,6 +296,87 @@ func validate_annotation_record(annotation: Dictionary) -> bool:
 
 
 @rpc("any_peer", "call_remote", "reliable", 0)
+func _server_create_annotation(request_sequence: int, draft: Dictionary) -> void:
+	var sender_id := multiplayer.get_remote_sender_id()
+	var permission_error := _get_remote_operation_error(sender_id, request_sequence)
+	if not permission_error.is_empty():
+		_send_operation_result(sender_id, request_sequence, "create", false, -1, permission_error)
+		return
+	var payload_error := _get_remote_draft_error(draft)
+	if not payload_error.is_empty():
+		_send_operation_result(sender_id, request_sequence, "create", false, -1, payload_error)
+		return
+	var annotation_id := _create_annotation_authoritative(draft, sender_id)
+	_send_operation_result(
+		sender_id,
+		request_sequence,
+		"create",
+		annotation_id > 0,
+		annotation_id,
+		"" if annotation_id > 0 else "虚拟标注创建失败。"
+	)
+
+
+@rpc("any_peer", "call_remote", "reliable", 0)
+func _server_update_annotation_text(request_sequence: int, annotation_id: int, text: String) -> void:
+	var sender_id := multiplayer.get_remote_sender_id()
+	var permission_error := _get_remote_operation_error(sender_id, request_sequence)
+	if not permission_error.is_empty():
+		_send_operation_result(sender_id, request_sequence, "update", false, annotation_id, permission_error)
+		return
+	if annotation_id <= 0 or text.length() > MAX_TEXT_LENGTH:
+		_send_operation_result(sender_id, request_sequence, "update", false, annotation_id, "标注编号或说明无效。")
+		return
+	var succeeded := _update_annotation_text_authoritative(annotation_id, text)
+	_send_operation_result(sender_id, request_sequence, "update", succeeded, annotation_id, "" if succeeded else "找不到要更新的虚拟标注。")
+
+
+@rpc("any_peer", "call_remote", "reliable", 0)
+func _server_delete_annotation(request_sequence: int, annotation_id: int) -> void:
+	var sender_id := multiplayer.get_remote_sender_id()
+	var permission_error := _get_remote_operation_error(sender_id, request_sequence)
+	if not permission_error.is_empty():
+		_send_operation_result(sender_id, request_sequence, "delete", false, annotation_id, permission_error)
+		return
+	if annotation_id <= 0:
+		_send_operation_result(sender_id, request_sequence, "delete", false, annotation_id, "标注编号无效。")
+		return
+	var succeeded := _delete_annotation_authoritative(annotation_id)
+	_send_operation_result(sender_id, request_sequence, "delete", succeeded, annotation_id, "" if succeeded else "找不到要删除的虚拟标注。")
+
+
+@rpc("any_peer", "call_remote", "reliable", 0)
+func _server_clear_annotations(request_sequence: int) -> void:
+	var sender_id := multiplayer.get_remote_sender_id()
+	var permission_error := _get_remote_operation_error(sender_id, request_sequence)
+	if not permission_error.is_empty():
+		_send_operation_result(sender_id, request_sequence, "clear", false, -1, permission_error)
+		return
+	_clear_annotations_authoritative()
+	_send_operation_result(sender_id, request_sequence, "clear", true, -1, "")
+
+
+@rpc("authority", "call_remote", "reliable", 0)
+func _rpc_receive_operation_result(
+	request_sequence: int,
+	operation: String,
+	succeeded: bool,
+	annotation_id: int,
+	message: String
+) -> void:
+	if multiplayer.is_server() or multiplayer.get_remote_sender_id() != SERVER_PEER_ID:
+		return
+	if request_sequence <= 0 or operation not in ["create", "update", "delete", "clear"]:
+		return
+	if succeeded:
+		operation_completed.emit(operation, request_sequence, annotation_id)
+		return
+	var rejection_message := message if not message.is_empty() else "地面 Server 拒绝了标注操作。"
+	_reject(rejection_message)
+	operation_failed.emit(operation, request_sequence, rejection_message)
+
+
+@rpc("any_peer", "call_remote", "reliable", 0)
 func _server_request_annotation_snapshot() -> void:
 	if not multiplayer.is_server():
 		return
@@ -335,7 +468,10 @@ func _normalize_draft(draft: Dictionary) -> Dictionary:
 		return {}
 	var target_local_position = draft.get("target_local_position", Vector3.ZERO)
 	var target_local_normal = draft.get("target_local_normal", DEFAULT_NORMAL)
-	if target_path != "" and (not _is_finite_vector(target_local_position) or not _is_valid_normal(target_local_normal)):
+	if target_path == "":
+		target_local_position = Vector3.ZERO
+		target_local_normal = DEFAULT_NORMAL
+	elif not _is_finite_vector(target_local_position) or not _is_valid_normal(target_local_normal):
 		_reject("标注目标的局部坐标无效。")
 		return {}
 
@@ -448,10 +584,108 @@ func _get_target_root() -> Node:
 	return get_node_or_null(target_root_path)
 
 
+func can_local_annotate() -> bool:
+	var profile = RuntimeProfile.current()
+	if not profile.is_ground():
+		return false
+	if _is_server_authority():
+		return true
+	if not _is_connected_client():
+		return false
+	var permission_service := _get_permission_service()
+	if permission_service == null:
+		return false
+	if permission_service.has_method("get_local_assigned_role"):
+		return str(permission_service.call("get_local_assigned_role")) in ["pc_ground", "ground_vr"]
+	if permission_service.has_method("can_peer_annotate"):
+		return bool(permission_service.call("can_peer_annotate", multiplayer.get_unique_id()))
+	return false
+
+
 func _is_server_authority() -> bool:
 	var profile = RuntimeProfile.current()
-	return profile.can_annotate() \
-		and (not multiplayer.has_multiplayer_peer() or multiplayer.is_server())
+	return profile.is_ground() and multiplayer.is_server()
+
+
+func _is_connected_client() -> bool:
+	if multiplayer.is_server() or not multiplayer.has_multiplayer_peer():
+		return false
+	var active_peer := multiplayer.multiplayer_peer
+	return active_peer != null \
+		and active_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED
+
+
+func _get_permission_service() -> Node:
+	if peer_authority_path.is_empty():
+		return null
+	return get_node_or_null(peer_authority_path)
+
+
+func _get_remote_operation_error(sender_id: int, request_sequence: int) -> String:
+	if not multiplayer.is_server():
+		return "当前节点不是标注状态 Server。"
+	if sender_id <= SERVER_PEER_ID or sender_id not in multiplayer.get_peers():
+		return "标注请求的发送者无效。"
+	var permission_service := _get_permission_service()
+	if permission_service == null or not permission_service.has_method("can_peer_annotate"):
+		return "标注权限服务未就绪。"
+	if not bool(permission_service.call("can_peer_annotate", sender_id)):
+		return "当前端未登记为地面 VR，无权修改标注。"
+	if request_sequence <= 0:
+		return "标注请求序号无效。"
+	var previous_sequence := int(_server_operation_sequence_by_peer.get(sender_id, 0))
+	if request_sequence <= previous_sequence:
+		return "标注请求已处理或已过期。"
+	_server_operation_sequence_by_peer[sender_id] = request_sequence
+	return ""
+
+
+func _get_remote_draft_error(draft: Dictionary) -> String:
+	if draft.size() > 8:
+		return "标注请求包含过多字段。"
+	if _annotations.size() >= MAX_ANNOTATIONS:
+		return "本次会话已达到 %d 个虚拟标注的上限。" % MAX_ANNOTATIONS
+	if not _is_finite_vector(draft.get("shared_position", Vector3.INF)):
+		return "标注位置无效。"
+	if not _is_valid_normal(draft.get("shared_normal", Vector3.ZERO)):
+		return "标注表面法线无效。"
+	var target_path_value = draft.get("target_path", "")
+	if not (target_path_value is String) or not _is_safe_target_path(target_path_value as String):
+		return "标注目标路径无效。"
+	if not (draft.get("text", "") is String) or str(draft.get("text", "")).length() > MAX_TEXT_LENGTH:
+		return "标注说明超过 %d 个字符。" % MAX_TEXT_LENGTH
+	if not _is_finite_vector(draft.get("target_local_position", Vector3.INF)):
+		return "标注目标局部位置无效。"
+	if not _is_valid_normal(draft.get("target_local_normal", Vector3.ZERO)):
+		return "标注目标局部法线无效。"
+	return ""
+
+
+func _take_client_operation_sequence() -> int:
+	var sequence := _next_client_operation_sequence
+	_next_client_operation_sequence += 1
+	return sequence
+
+
+func _send_operation_result(
+	peer_id: int,
+	request_sequence: int,
+	operation: String,
+	succeeded: bool,
+	annotation_id: int,
+	message: String
+) -> void:
+	if peer_id <= SERVER_PEER_ID or peer_id not in multiplayer.get_peers():
+		return
+	rpc_id(
+		peer_id,
+		"_rpc_receive_operation_result",
+		request_sequence,
+		operation,
+		succeeded,
+		annotation_id,
+		message
+	)
 
 
 func _on_connected_to_server() -> void:
@@ -461,6 +695,7 @@ func _on_connected_to_server() -> void:
 
 func _on_peer_disconnected(peer_id: int) -> void:
 	_server_snapshot_request_msec_by_peer.erase(peer_id)
+	_server_operation_sequence_by_peer.erase(peer_id)
 
 
 func _reset_client_session_state() -> void:
@@ -470,6 +705,7 @@ func _reset_client_session_state() -> void:
 	_next_annotation_id = 1
 	_snapshot_request_pending = false
 	_last_snapshot_request_msec = -SNAPSHOT_REQUEST_RETRY_MSEC
+	_next_client_operation_sequence = 1
 	_clear_markers()
 	if had_annotations:
 		annotations_cleared.emit()
@@ -492,6 +728,8 @@ func _sanitize_text(text: String) -> String:
 func _is_safe_target_path(path_text: String) -> bool:
 	if path_text == "":
 		return true
+	if path_text.length() > MAX_TARGET_PATH_LENGTH:
+		return false
 	var path := NodePath(path_text)
 	if path.is_absolute() or path.get_subname_count() > 0:
 		return false

@@ -32,6 +32,17 @@ func _run_cases() -> void:
 	_expect(ground_vr.uses_xr() and not ground_vr.uses_passthrough(), "Ground VR should use opaque XR")
 	_expect(ground_vr.can_annotate(), "Ground VR should be allowed to annotate")
 
+	var ground_vr_client = RuntimeProfile.from_args(
+		["--xr-mode", "on", "--", "--ground-vr-client", "--voice-role=client"],
+		["--ground-vr-client", "--voice-role=client"],
+		false
+	)
+	_expect(ground_vr_client.is_valid(), "Ground VR Client profile should be valid")
+	_expect(ground_vr_client.is_client() and ground_vr_client.is_ground(), "Ground VR Client should keep independent network and semantic roles")
+	_expect(ground_vr_client.uses_xr() and not ground_vr_client.uses_passthrough(), "Ground VR Client should use opaque XR")
+	_expect(ground_vr_client.can_annotate(), "Ground VR Client should be allowed to annotate")
+	_expect(ground_vr_client.get_preset() == RuntimeProfile.Preset.VR_GROUND_CLIENT, "Ground VR Client should preserve its menu preset")
+
 	var sky = RuntimeProfile.from_args(
 		["--xr-mode=on", "--", "--xr-client", "--voice-role=client"],
 		["--xr-client", "--voice-role=client"],
@@ -73,6 +84,34 @@ func _run_cases() -> void:
 	)
 	_expect(not conflicting_client_role.is_valid(), "Ground VR with a client voice role should be rejected")
 
+	var conflicting_ground_modes = RuntimeProfile.from_args(
+		["--xr-mode", "on", "--", "--ground-vr", "--ground-vr-client", "--voice-role=client"],
+		["--ground-vr", "--ground-vr-client", "--voice-role=client"],
+		false
+	)
+	_expect(not conflicting_ground_modes.is_valid(), "Ground VR Server and Client flags should conflict")
+
+	var conflicting_ground_and_sky_clients = RuntimeProfile.from_args(
+		["--xr-mode", "on", "--", "--ground-vr-client", "--xr-client", "--voice-role=client"],
+		["--ground-vr-client", "--xr-client", "--voice-role=client"],
+		false
+	)
+	_expect(not conflicting_ground_and_sky_clients.is_valid(), "Ground and Sky client flags should conflict")
+
+	var missing_ground_client_role = RuntimeProfile.from_args(
+		["--xr-mode", "on", "--", "--ground-vr-client"],
+		["--ground-vr-client"],
+		false
+	)
+	_expect(not missing_ground_client_role.is_valid(), "Ground VR Client should require a client voice role")
+
+	var conflicting_ground_client_server_role = RuntimeProfile.from_args(
+		["--xr-mode", "on", "--", "--ground-vr-client", "--voice-role=server"],
+		["--ground-vr-client", "--voice-role=server"],
+		false
+	)
+	_expect(not conflicting_ground_client_server_role.is_valid(), "Ground VR Client with a server voice role should be rejected")
+
 	var conflicting_server_role = RuntimeProfile.from_args(
 		["--xr-mode", "on", "--", "--xr-client", "--voice-role=server"],
 		["--xr-client", "--voice-role=server"],
@@ -86,6 +125,13 @@ func _run_cases() -> void:
 		false
 	)
 	_expect(not conflicting_test_mode.is_valid(), "Ground VR with test mode should be rejected")
+
+	var conflicting_ground_client_test_mode = RuntimeProfile.from_args(
+		["--xr-mode", "on", "--", "--ground-vr-client", "--testmode", "--voice-role=client"],
+		["--ground-vr-client", "--testmode", "--voice-role=client"],
+		false
+	)
+	_expect(not conflicting_ground_client_test_mode.is_valid(), "Ground VR Client with test mode should be rejected")
 
 	var conflicting_sky_test_mode = RuntimeProfile.from_args(
 		["--", "--xr-client", "--testmode", "--voice-role=client"],
@@ -160,6 +206,13 @@ func _run_cases() -> void:
 	)
 	_expect(not android_server.is_valid(), "Android Ground Server should be rejected")
 
+	var android_ground_client = RuntimeProfile.from_args(
+		["--", "--ground-vr-client", "--voice-role=client"],
+		["--ground-vr-client", "--voice-role=client"],
+		true
+	)
+	_expect(not android_ground_client.is_valid(), "Android Ground VR Client should be rejected")
+
 	var android_default = RuntimeProfile.from_args([], [], true)
 	_expect(android_default.is_valid(), "default Android profile should be valid")
 	_expect(android_default.is_client() and android_default.is_sky(), "default Android profile should be Sky Client")
@@ -170,8 +223,14 @@ func _run_cases() -> void:
 	_expect(RuntimeProfile.current() == menu_ground_vr, "menu selection should persist for the session")
 	_expect(menu_ground_vr.uses_xr() and menu_ground_vr.is_server(), "menu Ground VR preset should use XR Server")
 	_expect(not menu_ground_vr.selection_locked, "menu-selected modes should remain changeable after returning to StartMenu")
+	var menu_ground_client = RuntimeProfile.select_session_mode(RuntimeProfile.Preset.VR_GROUND_CLIENT, false)
+	_expect(menu_ground_client.is_client() and menu_ground_client.is_ground(), "menu Ground VR Client should use a Ground Client role")
+	_expect(menu_ground_client.uses_xr() and not menu_ground_client.uses_passthrough(), "menu Ground VR Client should use opaque XR")
+	_expect(menu_ground_client.can_annotate(), "menu Ground VR Client should expose annotation capability")
 	var rejected_android_menu = RuntimeProfile.select_session_mode(RuntimeProfile.Preset.VR_GROUND_SERVER, true)
 	_expect(not rejected_android_menu.is_valid(), "Android menu must reject Ground VR Server")
+	var rejected_android_ground_client_menu = RuntimeProfile.select_session_mode(RuntimeProfile.Preset.VR_GROUND_CLIENT, true)
+	_expect(not rejected_android_ground_client_menu.is_valid(), "Android menu must reject Ground VR Client")
 	RuntimeProfile.clear_session_override()
 
 

@@ -29,6 +29,20 @@ func _initialize() -> void:
 	if not xr_main_source.contains("XR_RETRY_INTERVAL_MS"):
 		failures.append("XR_Main must retry a delayed OpenXR runtime without a busy loop")
 
+	var network_source := FileAccess.get_file_as_string("res://Assets/ARSpace/Scripts/Network/network_handler.gd")
+	if not network_source.contains("return _handle_start_failure("):
+		failures.append("NetworkHandler startup failures must use the shared recovery path")
+	if not network_source.contains("OfflineMultiplayerPeer.new()"):
+		failures.append("NetworkHandler must restore an OfflineMultiplayerPeer after closing ENet")
+	var menu_source := FileAccess.get_file_as_string("res://Assets/ARSpace/Scenes/startmenu_ui.gd")
+	if not menu_source.contains("NetworkHandler.get_last_start_error()"):
+		failures.append("StartMenu must display synchronous network startup failures")
+	if not menu_source.contains("RuntimeProfile.Preset.VR_GROUND_CLIENT"):
+		failures.append("StartMenu must expose the VR Ground Client mode")
+	var voice_source := FileAccess.get_file_as_string("res://Assets/ARSpace/Scripts/Network/voice_chat.gd")
+	if not voice_source.contains("NetworkHandler.peer == null or not multiplayer.has_multiplayer_peer()"):
+		failures.append("VoiceChat must wait for a real ENet peer before publishing levels")
+
 	if failures.is_empty():
 		print("Runtime mode integration self-test passed")
 		quit(0)
