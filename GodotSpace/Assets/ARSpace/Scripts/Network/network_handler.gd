@@ -4,19 +4,26 @@ const IP_ADDRESS: String = "127.0.0.1"
 const PORT: int = 42069
 const MAX_CLIENTS: int = 8
 const CHANNEL_COUNT: int = 3
+const START_MENU_SCENE: String = "res://Assets/ARSpace/Scenes/StartMenu.tscn"
 
 signal network_ready
 signal network_role_selected(is_server: bool)
+signal connection_failed(reason: String)
+signal server_connection_lost
 signal remote_annotation_received(position: Vector3, data: Dictionary)
 
 @export var marker_scene: PackedScene = preload("res://Assets/ARSpace/Prefabs/Marker.prefab.tscn")
 
 var peer: ENetMultiplayerPeer
 var spatial_calibration_preview_marker: Node3D
+var _client_session_active: bool = false
+var _returning_to_menu: bool = false
 
 
 func _ready() -> void:
 	multiplayer.connected_to_server.connect(_on_connected_to_server)
+	multiplayer.connection_failed.connect(_on_connection_failed)
+	multiplayer.server_disconnected.connect(_on_server_disconnected)
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
 	multiplayer.peer_connected.connect(_on_peer_connected)
 
@@ -30,6 +37,7 @@ func _on_peer_disconnected(peer_id: int) -> void:
 
 
 func start_server() -> bool:
+	_close_network_peer()
 	peer = ENetMultiplayerPeer.new()
 	var error := peer.create_server(PORT, MAX_CLIENTS, CHANNEL_COUNT)
 	if error != OK:
@@ -37,7 +45,8 @@ func start_server() -> bool:
 		return false
 
 	multiplayer.multiplayer_peer = peer
-	shutdown_xr_for_server()
+	_client_session_active = false
+	_returning_to_menu = false
 	print("Server started")
 	network_role_selected.emit(true)
 	network_ready.emit()
@@ -45,6 +54,7 @@ func start_server() -> bool:
 
 
 func start_client(ip: String = IP_ADDRESS) -> bool:
+	_close_network_peer()
 	var target_ip := _get_server_ip_from_args(ip)
 	peer = ENetMultiplayerPeer.new()
 	var error := peer.create_client(target_ip, PORT, CHANNEL_COUNT)
@@ -53,6 +63,8 @@ func start_client(ip: String = IP_ADDRESS) -> bool:
 		return false
 
 	multiplayer.multiplayer_peer = peer
+	_client_session_active = true
+	_returning_to_menu = false
 	network_role_selected.emit(false)
 	print("Client connecting to ", target_ip)
 	return true
@@ -67,18 +79,46 @@ func _get_server_ip_from_args(default_ip: String) -> String:
 	return default_ip
 
 
-func shutdown_xr_for_server() -> void:
-	get_viewport().use_xr = false
-
-	var openxr_interface := XRServer.find_interface("OpenXR")
-	if openxr_interface and openxr_interface.is_initialized():
-		openxr_interface.uninitialize()
-		print("OpenXR disabled for server instance")
-
-
 func _on_connected_to_server() -> void:
 	print("Connected to server")
 	network_ready.emit()
+
+
+func _on_connection_failed() -> void:
+	if not _client_session_active:
+		return
+	push_warning("Unable to connect to the Ground Server. Returning to the start menu.")
+	connection_failed.emit("Unable to connect to the Ground Server.")
+	call_deferred("_return_client_to_start_menu")
+
+
+func _on_server_disconnected() -> void:
+	if not _client_session_active:
+		return
+	push_warning("Ground Server disconnected. Returning to the start menu.")
+	server_connection_lost.emit()
+	call_deferred("_return_client_to_start_menu")
+
+
+func _return_client_to_start_menu() -> void:
+	if _returning_to_menu:
+		return
+	_returning_to_menu = true
+	_close_network_peer()
+	var current_scene := get_tree().current_scene
+	if current_scene == null or current_scene.scene_file_path != START_MENU_SCENE:
+		get_tree().change_scene_to_file(START_MENU_SCENE)
+	else:
+		_returning_to_menu = false
+
+
+func _close_network_peer() -> void:
+	_client_session_active = false
+	if peer != null:
+		peer.close()
+	peer = null
+	if multiplayer.has_multiplayer_peer():
+		multiplayer.multiplayer_peer = null
 
 
 @rpc("authority", "call_local", "reliable")

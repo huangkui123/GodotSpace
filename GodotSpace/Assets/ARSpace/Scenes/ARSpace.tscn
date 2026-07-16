@@ -1,4 +1,4 @@
-[gd_scene load_steps=104 format=4 uid="uid://ca028g0q2kstx"]
+[gd_scene load_steps=105 format=4 uid="uid://ca028g0q2kstx"]
 
 [ext_resource type="Script" uid="uid://d1pt7mdt5llk4" path="res://XR_Main.gd" id="1_g432p"]
 [ext_resource type="Script" uid="uid://bt6aew4asx754" path="res://Assets/ARSpace/Scenes/SpaceBox.gd" id="2_wjh8v"]
@@ -55,7 +55,6 @@
 [ext_resource type="PackedScene" path="res://Assets/ARSpace/Scenes/ARSpace.Malamute.tscn" id="53_q7t41"]
 [ext_resource type="PackedScene" uid="uid://clujaf3u776a3" path="res://addons/godot-xr-tools/objects/viewport_2d_in_3d.tscn" id="54_4gitt"]
 [ext_resource type="PackedScene" uid="uid://cutbiriped32f" path="res://Assets/ARSpace/Prefabs/UI/MainMenuCanvas/MainMenuCanvasAR2D.tscn" id="55_iecw7"]
-[ext_resource type="PackedScene" uid="uid://clc5dre31iskm" path="res://addons/godot-xr-tools/xr/start_xr.tscn" id="56_0dm4r"]
 [ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/PictureCanvas.tscn" id="57_ijmol"]
 [ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/PictureInfoCanvas.tscn" id="58_q6r6r"]
 [ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/UI/MovieCanvas.tscn" id="59_c4ac8"]
@@ -69,6 +68,8 @@
 [ext_resource type="Script" uid="uid://cgre2apvnqf2e" path="res://Assets/ARSpace/Scripts/SpatialCalibration/spatial_calibration_panel.gd" id="68_spatial"]
 [ext_resource type="Script" uid="uid://dqsqeamwaa1jl" path="res://Assets/ARSpace/Scripts/UI/unified_panel_ui.gd" id="69_control"]
 [ext_resource type="PackedScene" path="res://Assets/ARSpace/Scenes/voice_call_window_3d.tscn" id="70_voice_call"]
+[ext_resource type="Script" path="res://Assets/ARSpace/Scripts/shared_space_alignment.gd" id="71_shared_alignment"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Scenes/VirtualAnnotationSystem.tscn" id="72_annotation_system"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_m4rif"]
 resource_name = "Default-Skybox"
@@ -296,6 +297,18 @@ font_size = 20
 [node name="RootNode3D" type="Node3D" node_paths=PackedStringArray("subUI")]
 script = ExtResource("1_g432p")
 subUI = NodePath("UI/SubViewportContainer/SubViewport/Camera3D")
+
+[node name="SharedSpaceOrigin" type="Node3D" parent="." groups=["shared_space_origin"]]
+
+[node name="GroundVRAnchor" type="Node3D" parent="SharedSpaceOrigin"]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -0.155226, 0, 0.436745)
+
+[node name="SkyXRAnchor" type="Node3D" parent="SharedSpaceOrigin"]
+
+[node name="VirtualAnnotations" parent="SharedSpaceOrigin" instance=ExtResource("72_annotation_system")]
+
+[node name="SharedSpaceAlignment" type="Node" parent="."]
+script = ExtResource("71_shared_alignment")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 environment = SubResource("Environment_jwhk2")
@@ -1922,7 +1935,7 @@ transform = Transform3D(-4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0, 0, 1, 0, 0, 
 
 [node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/SpaceObject/WorkTips/Canvas(WorkTask)/WorkRecord/List View Custom/Scrollbar/Sliding Area/Handle"]
 
-[node name="dashiyangui" parent="SpaceBox/SpaceBox" instance=ExtResource("12_q8ege")]
+[node name="dashiyangui" parent="SpaceBox/SpaceBox" groups=["virtual_annotation_surface_precise"] instance=ExtResource("12_q8ege")]
 script = ExtResource("13_ktgtg")
 
 [node name="xiaoshiyangui_b" parent="SpaceBox/SpaceBox/dashiyangui/xiaoshiyangui" index="1"]
@@ -1984,7 +1997,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1)
 volume_db = -6.0206
 autoplay = true
 
-[node name="20_ Tv Table" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life"]
+[node name="20_ Tv Table" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life" groups=["virtual_annotation_surface_low_poly"]]
 transform = Transform3D(-0.74367, 0, -6.50137e-08, 0, 0.74367, 0, 6.50137e-08, 0, -0.74367, 0, 0.752, 4.919)
 
 [node name="Cube_060" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life/20_ Tv Table"]
@@ -2087,7 +2100,7 @@ transform = Transform3D(-0.0011, 0, -8.74228e-11, 0, 0.0011, 0, 9.61651e-11, 0, 
 
 [node name="CanvasRenderer" type="Node" parent="SpaceBox/SpaceBox/Environment_Life/20_ Tv Table/Sceen/RawImage"]
 
-[node name="10_ Sofa" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life"]
+[node name="10_ Sofa" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life" groups=["virtual_annotation_surface_low_poly"]]
 transform = Transform3D(0.550676, 0, 0, 0, 0.550676, 0, 0, 0, 0.550676, 0, 0.323, 1.302)
 
 [node name="Cube_030" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life/10_ Sofa"]
@@ -2127,7 +2140,7 @@ gi_mode = 2
 mesh = ExtResource("34_uhxdm")
 surface_material_override/0 = ExtResource("33_56rge")
 
-[node name="18_ Table" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life"]
+[node name="18_ Table" type="Node3D" parent="SpaceBox/SpaceBox/Environment_Life" groups=["virtual_annotation_surface_low_poly"]]
 transform = Transform3D(0.325535, 0, 0, 0, 0.325535, 0, 0, 0, 0.325535, 0, 0.216, 2.8)
 
 [node name="PickableObject" parent="SpaceBox/SpaceBox/Environment_Life/18_ Table" instance=ExtResource("35_5eh3o")]
@@ -2291,8 +2304,6 @@ viewport_size = Vector2(620, 460)
 
 [node name="CollisionShape3D" parent="MainMenuCanvas/StaticBody3D" index="0"]
 shape = SubResource("BoxShape3D_6yffd")
-
-[node name="StartXR" parent="." instance=ExtResource("56_0dm4r")]
 
 [node name="Light" type="Node3D" parent="."]
 

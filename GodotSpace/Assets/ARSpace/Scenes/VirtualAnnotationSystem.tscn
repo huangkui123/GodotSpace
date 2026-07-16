@@ -1,0 +1,22 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://Assets/ARSpace/Scripts/VirtualAnnotation/virtual_annotation_manager.gd" id="1_manager"]
+[ext_resource type="Script" path="res://Assets/ARSpace/Scripts/VirtualAnnotation/virtual_annotation_surface_builder.gd" id="2_builder"]
+[ext_resource type="Script" path="res://Assets/ARSpace/Scripts/VirtualAnnotation/virtual_annotation_interaction_controller.gd" id="3_interaction"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Scenes/VirtualAnnotationMarker.tscn" id="4_marker"]
+
+[node name="VirtualAnnotationSystem" type="Node3D"]
+
+[node name="Manager" type="Node3D" parent="."]
+script = ExtResource("1_manager")
+shared_space_origin_path = NodePath("../..")
+marker_scene = ExtResource("4_marker")
+
+[node name="SurfaceBuilder" type="Node" parent="."]
+script = ExtResource("2_builder")
+shared_space_origin_path = NodePath("../..")
+
+[node name="Interaction" type="Node" parent="."]
+script = ExtResource("3_interaction")
+manager_path = NodePath("../Manager")
+surface_builder_path = NodePath("../SurfaceBuilder")

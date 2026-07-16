@@ -2,12 +2,11 @@
 extends Control
 
 const GAME_SCENE_PATH = "res://Assets/ARSpace/Scenes/ARSpace.tscn"
-const XR_CLIENT_ARG = "--xr-client"
-const XR_MODE_ARG = "--xr-mode"
-const VOICE_ROLE_ARG = "--voice-role="
 const SERVER_IP_ARG = "--server-ip="
+const RuntimeProfile = preload("res://Assets/ARSpace/Scripts/runtime_profile.gd")
 
 @onready var mode_label: Label = $VBoxContainer/ModeLabel
+@onready var mode_selector: OptionButton = $VBoxContainer/RuntimeMode
 @onready var network_controls: Control = $VBoxContainer/Network
 @onready var server_ip_label: Label = $VBoxContainer/Network/ServerIPLabel
 @onready var client_ip_label: Label = $VBoxContainer/Network/ClientIPLabel
@@ -15,34 +14,88 @@ const SERVER_IP_ARG = "--server-ip="
 @onready var audio_controls: Control = $VBoxContainer/Audio
 @onready var input_device: OptionButton = $VBoxContainer/Audio/InputDevice
 @onready var output_device: OptionButton = $VBoxContainer/Audio/OutputDevice
+@onready var status_label: Label = $VBoxContainer/Status
+@onready var start_button: Button = $VBoxContainer/Start
 
 var _changing_scene: bool = false
+var _setting_runtime_mode: bool = false
 
 func _ready():
+	_reset_presentation_viewport()
 	NetworkHandler.network_ready.connect(_on_network_ready)
-	_update_startup_mode_label()
+	_setup_runtime_mode_selector()
+	_update_runtime_ui()
 	_setup_network_controls()
 	_setup_audio_controls()
 
 func _on_start_pressed():
-	_apply_audio_selection()
-
-	if _is_vr_client_mode():
-		_start_vr_client()
+	var profile = RuntimeProfile.current()
+	if not profile.is_valid():
+		_set_status(profile.validation_error, true)
 		return
 
-	if NetworkHandler.start_server():
+	_apply_audio_selection()
+	if not _prepare_presentation(profile):
+		return
+
+	if profile.is_server() and NetworkHandler.start_server():
 		_go_to_game_scene()
 		return
 
-	if _can_fallback_to_vr_client():
-		_start_vr_client()
+	if profile.is_client():
+		_set_status("Connecting to %s:%d..." % [_get_selected_server_ip(), NetworkHandler.PORT])
+		if NetworkHandler.start_client(_get_selected_server_ip()):
+			# Load the replicated scene before ENet finishes its asynchronous
+			# handshake so MultiplayerSpawner is ready for the initial snapshot.
+			_go_to_game_scene()
 
-func _update_startup_mode_label() -> void:
-	if mode_label == null:
+func _setup_runtime_mode_selector() -> void:
+	if mode_selector == null:
 		return
 
-	mode_label.text = "MODE: VR CLIENT" if _is_vr_client_mode() else "MODE: PC SERVER"
+	_setting_runtime_mode = true
+	mode_selector.clear()
+	mode_selector.add_item("PC 地面端 Server", RuntimeProfile.Preset.PC_GROUND_SERVER)
+	mode_selector.add_item("VR 地面端 Server", RuntimeProfile.Preset.VR_GROUND_SERVER)
+	mode_selector.add_item("天上端 XR Client", RuntimeProfile.Preset.SKY_XR_CLIENT)
+
+	var profile = RuntimeProfile.current()
+	_select_runtime_preset(profile.get_preset())
+	mode_selector.disabled = profile.selection_locked
+	if not profile.has_explicit_mode:
+		profile = RuntimeProfile.select_session_mode(RuntimeProfile.Preset.PC_GROUND_SERVER)
+	if not mode_selector.item_selected.is_connected(_on_runtime_mode_selected):
+		mode_selector.item_selected.connect(_on_runtime_mode_selected)
+	_setting_runtime_mode = false
+
+
+func _select_runtime_preset(preset: int) -> void:
+	for index in range(mode_selector.item_count):
+		if mode_selector.get_item_id(index) == preset:
+			mode_selector.select(index)
+			return
+
+
+func _on_runtime_mode_selected(index: int) -> void:
+	if _setting_runtime_mode:
+		return
+	var preset := mode_selector.get_item_id(index)
+	RuntimeProfile.select_session_mode(preset)
+	_update_runtime_ui()
+	_setup_network_controls()
+	_setup_audio_controls()
+
+
+func _update_runtime_ui() -> void:
+	var profile = RuntimeProfile.current()
+	if mode_label != null:
+		mode_label.text = "MODE: %s" % profile.get_mode_label()
+	if start_button != null:
+		start_button.disabled = not profile.is_valid()
+	if profile.is_valid():
+		_set_status("")
+	else:
+		_set_status(profile.validation_error, true)
 
 func _setup_audio_controls() -> void:
 	if audio_controls == null:
@@ -89,7 +142,7 @@ func _setup_network_controls() -> void:
 	if network_controls == null:
 		return
 
-	var is_client := _is_vr_client_mode()
+	var is_client: bool = RuntimeProfile.current().is_client()
 	network_controls.visible = true
 
 	if server_ip_label != null:
@@ -158,68 +211,36 @@ func _is_usable_ipv4(ip: String) -> bool:
 			return false
 	return true
 
-func _is_vr_client_mode() -> bool:
-	if OS.has_feature("android"):
-		return true
-
-	var role := _get_arg_value(VOICE_ROLE_ARG).to_lower()
-	if role == "client" or role == "vr":
-		return true
-	if role == "server" or role == "pc":
-		return false
-	return _get_all_cmdline_args().has(XR_CLIENT_ARG) or _has_xr_mode_on_arg()
-
 func _get_arg_value(prefix: String) -> String:
-	for arg in _get_all_cmdline_args():
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with(prefix):
+			return arg.substr(prefix.length()).strip_edges()
+	for arg in OS.get_cmdline_args():
 		if arg.begins_with(prefix):
 			return arg.substr(prefix.length()).strip_edges()
 	return ""
 
-func _get_all_cmdline_args() -> Array:
-	var args := []
-	args.append_array(OS.get_cmdline_args())
-	args.append_array(OS.get_cmdline_user_args())
-	return args
+func _prepare_presentation(profile) -> bool:
+	_reset_presentation_viewport()
+	if profile.uses_xr() and XRServer.find_interface("OpenXR") == null:
+		_set_status("OpenXR interface was not found. Launch XR modes with --xr-mode on.", true)
+		return false
+	return true
 
-func _has_xr_mode_on_arg() -> bool:
-	var args := _get_all_cmdline_args()
-	for i in range(args.size()):
-		var arg := str(args[i]).to_lower()
-		if arg == XR_MODE_ARG and i + 1 < args.size():
-			return str(args[i + 1]).to_lower() == "on"
-		if arg.begins_with(XR_MODE_ARG + "="):
-			return arg.get_slice("=", 1).to_lower() == "on"
-	return false
 
-func _can_fallback_to_vr_client() -> bool:
-	return XRServer.find_interface("OpenXR") != null
+func _reset_presentation_viewport() -> void:
+	get_tree().root.use_xr = false
+	get_viewport().use_xr = false
+	get_tree().root.transparent_bg = false
+	get_viewport().transparent_bg = false
 
-func _start_vr_client() -> void:
-	if mode_label != null:
-		mode_label.text = "MODE: VR CLIENT"
 
-	_start_openxr_for_client()
-	if NetworkHandler.start_client(_get_selected_server_ip()):
-		_go_to_game_scene()
-
-func _start_openxr_for_client() -> void:
-	var openxr_interface := XRServer.find_interface("OpenXR")
-	if openxr_interface == null:
-		push_warning("OpenXR interface not found for VR client. Start the VR instance with Godot engine args: --xr-mode on --xr-client")
+func _set_status(message: String, is_error: bool = false) -> void:
+	if status_label == null:
 		return
-
-	var passthrough_enabled: bool = false
-	var supported_blend_modes: Array = openxr_interface.get_supported_environment_blend_modes()
-	if XRInterface.XR_ENV_BLEND_MODE_ALPHA_BLEND in supported_blend_modes:
-		openxr_interface.environment_blend_mode = XRInterface.XR_ENV_BLEND_MODE_ALPHA_BLEND
-		passthrough_enabled = true
-
-	if not openxr_interface.is_initialized() and not openxr_interface.initialize():
-		push_warning("Failed to initialize OpenXR for VR client. If this instance was started with only --xr-client, restart it with --xr-mode on --xr-client")
-		return
-
-	get_tree().root.use_xr = true
-	get_tree().root.transparent_bg = passthrough_enabled
+	status_label.text = message
+	status_label.visible = not message.is_empty()
+	status_label.modulate = Color(1.0, 0.35, 0.35) if is_error else Color(0.85, 0.9, 1.0)
 
 func _on_network_ready():
 	_go_to_game_scene()

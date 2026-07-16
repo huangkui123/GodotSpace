@@ -5,10 +5,15 @@ signal remote_speaking_changed(peer_id: int, is_speaking: bool)
 signal voice_level_changed(peer_id: int, state: Dictionary)
 signal voice_transcript_received(data: Dictionary)
 signal transcription_enabled_changed(enabled: bool)
+signal dictation_state_changed(session_id: String, state: String, detail: String)
+signal dictation_partial_received(session_id: String, text: String)
+signal dictation_final_received(session_id: String, text: String)
+signal dictation_failed(session_id: String, code: int, message: String)
 
 const SERVER_PEER_ID := 1
 const SERVER_SOURCE_ID := 1
 const XR_CLIENT_ARG := "--xr-client"
+const GROUND_VR_ARG := "--ground-vr"
 const XR_MODE_ARG := "--xr-mode"
 const VOICE_ROLE_ARG := "--voice-role="
 const VOICE_TEST_TONE_ARG := "--voice-test-tone"
@@ -23,15 +28,19 @@ const VOICE_LEVEL_MAX_DB := 0.0
 const TRANSCRIPTION_TARGET_SAMPLE_RATE := 16000
 const TRANSCRIPTION_BYTES_PER_SAMPLE := 2
 const TRANSCRIPTION_UPLOAD_CHUNK_MSEC := 200
+const DICTATION_MAX_DURATION_MSEC := 15000
+const DICTATION_FINALIZE_TIMEOUT_MSEC := 3000
+const TENCENT_ASR_ENV_VARS := [
+	"TENCENT_ASR_APP_ID",
+	"TENCENT_ASR_SECRET_ID",
+	"TENCENT_ASR_SECRET_KEY",
+]
 const VoiceCaptureScript := preload("res://Assets/ARSpace/Scripts/Network/voice_capture.gd")
 const VoiceTransportScript := preload("res://Assets/ARSpace/Scripts/Network/voice_transport_enet.gd")
 const VoicePlaybackScript := preload("res://Assets/ARSpace/Scripts/Network/voice_playback.gd")
 const TencentAsrTranscriberScript := preload("res://Assets/ARSpace/Scripts/Network/tencent_asr_transcriber.gd")
+const RuntimeProfileScript := preload("res://Assets/ARSpace/Scripts/runtime_profile.gd")
 const TENCENT_ASR_CONFIG_PROPERTIES := [
-	"app_id",
-	"secret_id",
-	"secret_key",
-	"use_environment_credentials",
 	"engine_model_type",
 	"hotword_list",
 	"need_vad",
@@ -44,6 +53,7 @@ const TENCENT_ASR_CONFIG_PROPERTIES := [
 	"word_info",
 	"packet_duration_msec",
 	"max_buffered_audio_msec",
+	"connect_timeout_msec",
 	"debug_logs",
 ]
 const VR_INPUT_DEVICE_HINTS := [
@@ -78,6 +88,7 @@ var voice_players: Dictionary = {}
 var packets_received: int = 0
 var packets_sent: int = 0
 var is_vr_mode: bool = false
+var is_server_endpoint: bool = false
 var voice_endpoint_selected: bool = false
 
 var capture: Node
@@ -117,6 +128,14 @@ var _client_transcription_source_sample_rate: int = 48000
 var _client_transcription_resample_read_pos: float = 0.0
 var _client_transcription_mono_buffer := PackedFloat32Array()
 var _client_transcription_pcm_buffer := PackedByteArray()
+var _dictation_transcriber: Node
+var _dictation_session_id := ""
+var _dictation_state := "idle"
+var _dictation_started_msec := 0
+var _dictation_finalize_deadline_msec := 0
+var _dictation_last_text := ""
+var _dictation_final_emitted := false
+var _dictation_failure_reported := false
 
 func _ready() -> void:
 	if _has_cmdline_arg(VOICE_DEBUG_ARG):
@@ -167,6 +186,7 @@ func _process(delta: float) -> void:
 	_pump_output_test_tone()
 	_update_voice_level_state(delta)
 	_log_voice_pipeline_state(delta)
+	_update_dictation_timeout()
 
 func toggle_voice() -> void:
 	set_voice_enabled(not voice_enabled)
@@ -177,22 +197,23 @@ func set_voice_enabled(enabled: bool) -> void:
 		return
 
 	if voice_enabled == enabled:
-		if capture != null:
+		if capture != null and not _is_dictation_active():
 			capture.set_voice_active(enabled)
 		return
 
 	voice_enabled = enabled
 	if capture != null:
-		capture.set_voice_active(voice_enabled)
+		capture.set_voice_active(voice_enabled and not _is_dictation_active())
 
 	if transport != null:
-		transport.send_speaking_state(voice_enabled)
+		var effective_speaking := voice_enabled and not _is_dictation_active()
+		transport.send_speaking_state(effective_speaking)
 		if multiplayer.is_server():
 			for peer_id in multiplayer.get_peers():
-				transport.send_server_speaking_state_to_peer(peer_id, voice_enabled)
+				transport.send_server_speaking_state_to_peer(peer_id, effective_speaking)
 
 	if multiplayer.is_server():
-		_set_peer_transcription_active(_get_local_voice_peer_id(), voice_enabled)
+		_set_peer_transcription_active(_get_local_voice_peer_id(), voice_enabled and not _is_dictation_active())
 	else:
 		_reset_client_transcription_upload()
 
@@ -205,6 +226,114 @@ func start_voice_chat() -> void:
 
 func stop_voice_chat() -> void:
 	set_voice_enabled(false)
+
+
+func get_dictation_readiness() -> Dictionary:
+	if _is_dictation_active():
+		return {
+			"available": false,
+			"reason": "busy",
+			"message": "已有听写会话正在进行。",
+			"state": _dictation_state,
+			"session_id": _dictation_session_id,
+		}
+	if capture == null or not bool(capture.get("is_setup")):
+		return {
+			"available": false,
+			"reason": "capture_unavailable",
+			"message": "麦克风采集尚未就绪。",
+			"state": _dictation_state,
+		}
+	var missing: Array[String] = []
+	for environment_name in TENCENT_ASR_ENV_VARS:
+		if OS.get_environment(environment_name).strip_edges().is_empty():
+			missing.append(environment_name)
+	if not missing.is_empty():
+		return {
+			"available": false,
+			"reason": "credentials_missing",
+			"message": "腾讯 ASR 环境变量未配置完整。",
+			"missing_environment_variables": missing,
+			"state": _dictation_state,
+		}
+	return {
+		"available": true,
+		"reason": "ready",
+		"message": "听写已就绪。",
+		"state": _dictation_state,
+	}
+
+
+func begin_local_dictation(session_id: String, purpose: String = "annotation") -> bool:
+	var clean_session_id := session_id.strip_edges()
+	if clean_session_id.is_empty():
+		return false
+	var readiness := get_dictation_readiness()
+	if not bool(readiness.get("available", false)):
+		_dictation_state_changed_for(clean_session_id, "failed", str(readiness.get("message", "听写不可用。")))
+		dictation_failed.emit(clean_session_id, ERR_UNAVAILABLE, str(readiness.get("message", "听写不可用。")))
+		return false
+
+	_dictation_session_id = clean_session_id
+	_dictation_state = "connecting"
+	_dictation_started_msec = Time.get_ticks_msec()
+	_dictation_finalize_deadline_msec = 0
+	_dictation_last_text = ""
+	_dictation_final_emitted = false
+	_dictation_failure_reported = false
+	_stop_peer_transcription(_get_local_voice_peer_id())
+	if capture != null:
+		capture.set_voice_active(false)
+	_publish_local_speaking_state(false)
+
+	_dictation_transcriber = TencentAsrTranscriberScript.new()
+	_dictation_transcriber.name = "TencentAsrDictation"
+	_configure_peer_transcriber(_dictation_transcriber)
+	_dictation_transcriber.set("need_vad", false)
+	_dictation_transcriber.set("max_speak_time", DICTATION_MAX_DURATION_MSEC)
+	add_child(_dictation_transcriber)
+	var dictation_source := _dictation_transcriber
+	_dictation_transcriber.transcribed_msg.connect(
+		Callable(self, "_on_dictation_transcribed_msg").bind(clean_session_id, dictation_source)
+	)
+	_dictation_transcriber.connection_state_changed.connect(
+		Callable(self, "_on_dictation_connection_state_changed").bind(clean_session_id, dictation_source)
+	)
+	_dictation_transcriber.error_occurred.connect(
+		Callable(self, "_on_dictation_error").bind(clean_session_id, dictation_source)
+	)
+	_dictation_state_changed_for(clean_session_id, "connecting", purpose.strip_edges())
+	if not bool(_dictation_transcriber.call("start_transcription")):
+		if _dictation_session_id == clean_session_id:
+			_fail_dictation(ERR_CANT_CONNECT, "无法启动腾讯 ASR 听写。")
+		return false
+	return true
+
+
+func finish_local_dictation(session_id: String) -> bool:
+	if not _matches_active_dictation(session_id):
+		return false
+	if _dictation_state == "finalizing":
+		return true
+	_dictation_state = "finalizing"
+	_dictation_finalize_deadline_msec = Time.get_ticks_msec() + DICTATION_FINALIZE_TIMEOUT_MSEC
+	_dictation_state_changed_for(_dictation_session_id, "finalizing", "正在等待最终转写结果。")
+	if _dictation_transcriber != null and is_instance_valid(_dictation_transcriber):
+		_dictation_transcriber.call("finish_transcription")
+	else:
+		_fail_dictation(ERR_UNAVAILABLE, "听写连接已经失效。")
+		return false
+	return true
+
+
+func cancel_local_dictation(session_id: String) -> bool:
+	if not _matches_active_dictation(session_id):
+		return false
+	var active_session_id := _dictation_session_id
+	_dictation_state = "cancelled"
+	_dictation_state_changed_for(active_session_id, "cancelled", "听写已取消。")
+	_cleanup_dictation(true)
+	return true
 
 func toggle_transcription() -> void:
 	set_transcription_enabled(not transcription_enabled)
@@ -350,6 +479,12 @@ func get_debug_state() -> Dictionary:
 		"packets_received": packets_received,
 		"transcription_enabled": transcription_enabled,
 		"transcription": _get_transcription_debug_state(),
+		"dictation": {
+			"state": _dictation_state,
+			"session_id": _dictation_session_id,
+			"active": _is_dictation_active(),
+			"has_text": not _dictation_last_text.is_empty(),
+		},
 		"voice_level_states": voice_level_states.duplicate(true),
 		"capture": capture.get_debug_state() if capture != null else {},
 		"transport": transport.get_debug_state() if transport != null else {},
@@ -450,7 +585,7 @@ func _connect_multiplayer_signals() -> void:
 	multiplayer.server_disconnected.connect(_on_server_disconnected)
 
 func _on_local_opus_packet_captured(packet: PackedByteArray) -> void:
-	if not voice_enabled or not multiplayer.has_multiplayer_peer():
+	if _is_dictation_active() or not voice_enabled or not multiplayer.has_multiplayer_peer():
 		return
 
 	if multiplayer.is_server():
@@ -479,7 +614,13 @@ func _on_downlink_voice_packet_received(packet: PackedByteArray) -> void:
 	playback.push_source_packet(SERVER_SOURCE_ID, packet)
 
 func _on_local_pcm_frames_captured(frames: PackedVector2Array) -> void:
-	if not voice_enabled or frames.is_empty():
+	if frames.is_empty():
+		return
+	if _is_dictation_active():
+		if _dictation_transcriber != null and is_instance_valid(_dictation_transcriber):
+			_dictation_transcriber.call("push_audio_frames", frames)
+		return
+	if not voice_enabled:
 		return
 	if not voice_endpoint_selected or not multiplayer.has_multiplayer_peer():
 		return
@@ -495,6 +636,11 @@ func _on_local_pcm_frames_captured(frames: PackedVector2Array) -> void:
 
 func _on_local_speaking_changed(is_speaking: bool) -> void:
 	var peer_id := _get_local_voice_peer_id()
+	if _is_dictation_active():
+		if multiplayer.is_server():
+			_set_voice_level_mic_state(peer_id, false)
+		remote_speaking_changed.emit(peer_id, false)
+		return
 	if multiplayer.is_server():
 		_set_voice_level_mic_state(peer_id, is_speaking)
 		_set_peer_transcription_active(peer_id, is_speaking)
@@ -575,6 +721,8 @@ func _on_connected_to_server() -> void:
 
 func _on_connection_failed() -> void:
 	_log("VoiceChat connection failed")
+	if _is_dictation_active():
+		cancel_local_dictation(_dictation_session_id)
 	set_voice_enabled(false)
 	_stop_all_transcription()
 	if playback != null:
@@ -582,6 +730,8 @@ func _on_connection_failed() -> void:
 
 func _on_server_disconnected() -> void:
 	_log("VoiceChat server disconnected")
+	if _is_dictation_active():
+		cancel_local_dictation(_dictation_session_id)
 	set_voice_enabled(false)
 	_stop_all_transcription()
 	_reset_client_transcription_upload()
@@ -600,10 +750,11 @@ func _update_voice_level_state(delta: float) -> void:
 	var capture_state: Dictionary = capture.get_debug_state()
 	var peak := clampf(float(capture_state.get("last_input_peak", 0.0)), 0.0, 1.0)
 	var peak_db := clampf(float(capture_state.get("last_input_peak_db", -80.0)), -80.0, 12.0)
+	var local_mic_open := voice_enabled and not _is_dictation_active()
 	if multiplayer.is_server():
-		_store_voice_level_state(_get_local_voice_peer_id(), peak, peak_db, voice_enabled)
+		_store_voice_level_state(_get_local_voice_peer_id(), peak, peak_db, local_mic_open)
 	elif multiplayer.has_multiplayer_peer():
-		transport.send_voice_level_state(peak, peak_db, voice_enabled)
+		transport.send_voice_level_state(peak, peak_db, local_mic_open)
 
 func _store_voice_level_state(peer_id: int, peak: float, peak_db: float, mic_open: bool) -> void:
 	if peer_id <= 0:
@@ -695,6 +846,132 @@ func _configure_peer_transcriber(transcriber: Node) -> void:
 
 	for property_name in TENCENT_ASR_CONFIG_PROPERTIES:
 		transcriber.set(property_name, transcription_config.get(property_name))
+
+
+func _on_dictation_transcribed_msg(is_final: bool, new_text: String, session_id: String, source: Node) -> void:
+	if source != _dictation_transcriber or not _matches_active_dictation(session_id):
+		return
+	var clean_text := new_text.strip_edges()
+	if clean_text.is_empty():
+		return
+	_dictation_last_text = clean_text
+	if is_final:
+		return
+	dictation_partial_received.emit(_dictation_session_id, clean_text)
+
+
+func _on_dictation_connection_state_changed(state: String, detail: String, session_id: String, source: Node) -> void:
+	if source != _dictation_transcriber or not _matches_active_dictation(session_id):
+		return
+	match state:
+		"connected", "open":
+			if _dictation_state != "finalizing":
+				_dictation_state = "capturing"
+				_dictation_state_changed_for(_dictation_session_id, "capturing", "正在录音。")
+		"finalizing":
+			if _dictation_state == "finalizing":
+				_dictation_state_changed_for(_dictation_session_id, "finalizing", "正在识别。")
+		"finished":
+			_complete_dictation()
+		"closed":
+			if not _dictation_last_text.is_empty() and _dictation_state == "finalizing":
+				_complete_dictation()
+			else:
+				_fail_dictation(ERR_CONNECTION_ERROR, detail if not detail.strip_edges().is_empty() else "听写连接已关闭。")
+		"error":
+			_fail_dictation(ERR_CONNECTION_ERROR, detail if not detail.strip_edges().is_empty() else "听写连接发生错误。")
+
+
+func _on_dictation_error(code: int, message: String, session_id: String, source: Node) -> void:
+	if source != _dictation_transcriber or not _matches_active_dictation(session_id) or _dictation_failure_reported:
+		return
+	_fail_dictation(code, message)
+
+
+func _update_dictation_timeout() -> void:
+	if not _is_dictation_active():
+		return
+	var now := Time.get_ticks_msec()
+	if _dictation_state != "finalizing" and now - _dictation_started_msec >= DICTATION_MAX_DURATION_MSEC:
+		finish_local_dictation(_dictation_session_id)
+		return
+	if _dictation_state == "finalizing" \
+			and _dictation_finalize_deadline_msec > 0 \
+			and now >= _dictation_finalize_deadline_msec:
+		_fail_dictation(ERR_TIMEOUT, "等待最终转写结果超时。")
+
+
+func _complete_dictation() -> void:
+	if not _is_dictation_active():
+		return
+	if _dictation_last_text.is_empty():
+		_fail_dictation(ERR_FILE_CORRUPT, "腾讯 ASR 未返回可用文字。")
+		return
+	var active_session_id := _dictation_session_id
+	if not _dictation_final_emitted:
+		_dictation_final_emitted = true
+		dictation_final_received.emit(active_session_id, _dictation_last_text)
+	_dictation_state = "completed"
+	_dictation_state_changed_for(active_session_id, "completed", "听写完成。")
+	_cleanup_dictation(false)
+
+
+func _fail_dictation(code: int, message: String) -> void:
+	if not _is_dictation_active() or _dictation_failure_reported:
+		return
+	_dictation_failure_reported = true
+	var active_session_id := _dictation_session_id
+	var clean_message := message.strip_edges()
+	if clean_message.is_empty():
+		clean_message = "听写失败。"
+	_dictation_state = "failed"
+	_dictation_state_changed_for(active_session_id, "failed", clean_message)
+	dictation_failed.emit(active_session_id, code, clean_message)
+	_cleanup_dictation(true)
+
+
+func _cleanup_dictation(cancel_transport: bool) -> void:
+	var transcriber := _dictation_transcriber
+	_dictation_transcriber = null
+	if transcriber != null and is_instance_valid(transcriber):
+		if cancel_transport and transcriber.has_method("cancel_transcription"):
+			transcriber.call("cancel_transcription")
+		transcriber.queue_free()
+	_dictation_session_id = ""
+	_dictation_started_msec = 0
+	_dictation_finalize_deadline_msec = 0
+	if capture != null:
+		capture.set_voice_active(voice_enabled)
+	_publish_local_speaking_state(voice_enabled)
+	if multiplayer.is_server():
+		_set_peer_transcription_active(
+			_get_local_voice_peer_id(),
+			voice_enabled and transcription_enabled
+		)
+	else:
+		_reset_client_transcription_upload()
+
+
+func _publish_local_speaking_state(active: bool) -> void:
+	if transport != null and multiplayer.has_multiplayer_peer():
+		transport.send_speaking_state(active)
+		if multiplayer.is_server():
+			for peer_id in multiplayer.get_peers():
+				transport.send_server_speaking_state_to_peer(peer_id, active)
+	if multiplayer.is_server():
+		_set_voice_level_mic_state(_get_local_voice_peer_id(), active)
+
+
+func _dictation_state_changed_for(session_id: String, state: String, detail: String) -> void:
+	dictation_state_changed.emit(session_id, state, detail)
+
+
+func _matches_active_dictation(session_id: String) -> bool:
+	return _is_dictation_active() and session_id.strip_edges() == _dictation_session_id
+
+
+func _is_dictation_active() -> bool:
+	return not _dictation_session_id.is_empty()
 
 func _stop_peer_transcription(peer_id: int) -> void:
 	if not _peer_transcribers.has(peer_id):
@@ -790,14 +1067,14 @@ func _get_transcript_speaker_name(peer_id: int) -> String:
 
 func _is_peer_mic_open(peer_id: int) -> bool:
 	if peer_id == _get_local_voice_peer_id():
-		return voice_enabled
+		return voice_enabled and not _is_dictation_active()
 	var state: Dictionary = voice_level_states.get(peer_id, {})
 	return bool(state.get("mic_open", false))
 
 func _get_open_mic_peer_ids() -> Array:
 	var ids: Array = []
 	var local_peer_id := _get_local_voice_peer_id()
-	if local_peer_id > 0 and voice_enabled:
+	if local_peer_id > 0 and voice_enabled and not _is_dictation_active():
 		ids.append(local_peer_id)
 	for peer_id in voice_level_states.keys():
 		var id := int(peer_id)
@@ -859,7 +1136,7 @@ func _reset_client_transcription_upload() -> void:
 func _get_local_voice_peer_id() -> int:
 	if multiplayer.has_multiplayer_peer():
 		return multiplayer.get_unique_id()
-	return SERVER_PEER_ID if voice_endpoint_selected and not is_vr_mode else 0
+	return SERVER_PEER_ID if voice_endpoint_selected and is_server_endpoint else 0
 
 func _request_runtime_audio_permissions() -> void:
 	if OS.has_feature("android") and OS.has_method("request_permissions"):
@@ -878,7 +1155,8 @@ func _select_voice_role_from_args() -> void:
 
 func _set_voice_endpoint_role(is_server_role: bool) -> void:
 	voice_endpoint_selected = true
-	is_vr_mode = not is_server_role
+	is_server_endpoint = is_server_role
+	is_vr_mode = _is_vr_mode_requested()
 	_apply_audio_device_profile()
 	_setup_capture_after_device_selection()
 	_ensure_debug_controls()
@@ -951,15 +1229,13 @@ func _get_arg_value(prefix: String) -> String:
 	return ""
 
 func _is_vr_mode_requested() -> bool:
-	if OS.has_feature("android"):
+	var profile = RuntimeProfileScript.current()
+	if profile != null and profile.is_valid():
+		return profile.uses_xr()
+	if OS.has_feature("android") or _has_cmdline_arg(GROUND_VR_ARG):
 		return true
-
 	var role := _get_arg_value(VOICE_ROLE_ARG).to_lower()
-	if role == "client" or role == "vr":
-		return true
-	if role == "server" or role == "pc":
-		return false
-	return _has_cmdline_arg(XR_CLIENT_ARG) or _has_xr_mode_on_arg()
+	return role in ["client", "vr"] or _has_cmdline_arg(XR_CLIENT_ARG) or _has_xr_mode_on_arg()
 
 func _has_xr_mode_on_arg() -> bool:
 	var args := OS.get_cmdline_args()

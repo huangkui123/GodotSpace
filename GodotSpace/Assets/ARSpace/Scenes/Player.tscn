@@ -1,7 +1,22 @@
-[gd_scene load_steps=3 format=3 uid="uid://c0oao8sfhry88"]
+[gd_scene load_steps=7 format=3 uid="uid://c0oao8sfhry88"]
 
 [ext_resource type="Script" uid="uid://wnij2dalp1lv" path="res://Assets/ARSpace/Scenes/player.gd" id="1_71hh1"]
 [ext_resource type="PackedScene" uid="uid://xxvflxhi3tku" path="res://Assets/ARSpace/Scenes/Player_XR.tscn" id="1_j61gx"]
+
+[sub_resource type="SphereMesh" id="SphereMesh_presence_head"]
+radius = 0.11
+height = 0.22
+
+[sub_resource type="BoxMesh" id="BoxMesh_presence_facing"]
+size = Vector3(0.08, 0.05, 0.18)
+
+[sub_resource type="SphereMesh" id="SphereMesh_presence_hand"]
+radius = 0.055
+height = 0.11
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_presence_torso"]
+radius = 0.18
+height = 0.62
 
 [node name="Player" type="Node3D"]
 script = ExtResource("1_71hh1")
@@ -13,9 +28,40 @@ transform = Transform3D(-0.998971, 0, 0.045363, 0, 1, 0, -0.045363, 0, -0.998971
 transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, 0, -0.01, 0.1)
 
 [node name="NetworkHead" type="Node3D" parent="."]
+visible = false
+
+[node name="HeadMesh" type="MeshInstance3D" parent="NetworkHead"]
+mesh = SubResource("SphereMesh_presence_head")
+
+[node name="FacingIndicator" type="MeshInstance3D" parent="NetworkHead"]
+position = Vector3(0, -0.015, -0.17)
+mesh = SubResource("BoxMesh_presence_facing")
+
+[node name="PresenceLabel" type="Label3D" parent="NetworkHead"]
+position = Vector3(0, 0.28, 0)
+pixel_size = 0.0025
+billboard = 1
+no_depth_test = true
+text = "在线"
+font_size = 32
+outline_size = 8
 
 [node name="NetworkLeftHand" type="Node3D" parent="."]
+visible = false
+
+[node name="HandMesh" type="MeshInstance3D" parent="NetworkLeftHand"]
+mesh = SubResource("SphereMesh_presence_hand")
 
 [node name="NetworkRightHand" type="Node3D" parent="."]
+visible = false
+
+[node name="HandMesh" type="MeshInstance3D" parent="NetworkRightHand"]
+mesh = SubResource("SphereMesh_presence_hand")
+
+[node name="NetworkTorso" type="Node3D" parent="."]
+visible = false
+
+[node name="TorsoMesh" type="MeshInstance3D" parent="NetworkTorso"]
+mesh = SubResource("CapsuleMesh_presence_torso")
 
 [editable path="XROrigin3D"]

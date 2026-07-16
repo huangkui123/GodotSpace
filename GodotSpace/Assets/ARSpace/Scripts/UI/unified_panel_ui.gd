@@ -1,5 +1,6 @@
 extends Control
 
+const RuntimeProfile = preload("res://Assets/ARSpace/Scripts/runtime_profile.gd")
 const PANEL_MODEL := "model"
 const PANEL_VOICE := "voice"
 const PANEL_CALIBRATION := "calibration"
@@ -102,9 +103,11 @@ func _refresh_visibility() -> void:
 
 
 func _server_panels_available() -> bool:
-	if VoiceChat.voice_endpoint_selected:
-		return not VoiceChat.is_vr_mode
-	return multiplayer.has_multiplayer_peer() and multiplayer.is_server()
+	var profile = RuntimeProfile.current()
+	return profile.is_valid() \
+		and profile.is_server() \
+		and profile.is_ground() \
+		and profile.uses_desktop_ui()
 
 
 func _configure_mouse_passthrough(node: Node) -> void:

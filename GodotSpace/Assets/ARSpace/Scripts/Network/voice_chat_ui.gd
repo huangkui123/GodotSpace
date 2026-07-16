@@ -1,6 +1,7 @@
 extends Control
 
 const PanelWindowZoom = preload("res://Assets/ARSpace/Scripts/UI/panel_window_zoom.gd")
+const RuntimeProfile = preload("res://Assets/ARSpace/Scripts/runtime_profile.gd")
 const SERVER_PEER_ID := 1
 const VOICE_LEVEL_STALE_SECONDS := 1.5
 const VOICE_LEVEL_MIN_DB := -60.0
@@ -115,7 +116,7 @@ func _process(_delta: float) -> void:
 
 
 func _on_voice_button_pressed() -> void:
-	if is_3d_panel and multiplayer.is_server():
+	if _is_server_remote_monitor_panel():
 		return
 	if voice_chat != null and voice_chat.has_method("toggle_voice"):
 		voice_chat.call("toggle_voice")
@@ -263,7 +264,8 @@ func _update_ui() -> void:
 
 
 func _update_panel_visibility() -> void:
-	visible = is_3d_panel or multiplayer.is_server()
+	var profile = RuntimeProfile.current()
+	visible = profile.uses_xr() if is_3d_panel else profile.uses_desktop_ui() and profile.is_server()
 
 
 func _update_transcription_control() -> void:
@@ -279,11 +281,14 @@ func _update_transcription_control() -> void:
 
 
 func _can_control_transcription() -> bool:
-	return not is_3d_panel and multiplayer.is_server()
+	if not multiplayer.is_server():
+		return false
+	var profile = RuntimeProfile.current()
+	return profile.uses_xr() if is_3d_panel else profile.uses_desktop_ui()
 
 
 func _update_status() -> void:
-	if is_3d_panel and multiplayer.is_server():
+	if _is_server_remote_monitor_panel():
 		var client_peer_id := _get_first_client_peer_id()
 		if client_peer_id > 0:
 			status_label.text = "%s：%s" % [
@@ -319,8 +324,9 @@ func _update_server_volume_panel() -> void:
 
 
 func _should_show_server_volume_panel() -> bool:
+	var profile = RuntimeProfile.current()
 	return _get_voice_bool("voice_endpoint_selected") \
-			and not _get_voice_bool("is_vr_mode") \
+			and profile.uses_desktop_ui() \
 			and multiplayer.has_multiplayer_peer() \
 			and multiplayer.is_server()
 
@@ -448,13 +454,19 @@ func _get_voice_panel_peer_label(peer_id: int) -> String:
 
 
 func _get_displayed_voice_enabled() -> bool:
-	if is_3d_panel and multiplayer.is_server():
+	if _is_server_remote_monitor_panel():
 		var client_peer_id := _get_first_client_peer_id()
 		if client_peer_id <= 0:
 			return false
 		var state: Dictionary = _get_voice_level_states().get(client_peer_id, {})
 		return bool(state.get("mic_open", false))
 	return _get_voice_bool("voice_enabled")
+
+
+func _is_server_remote_monitor_panel() -> bool:
+	return is_3d_panel \
+		and multiplayer.is_server() \
+		and RuntimeProfile.current().uses_desktop_ui()
 
 
 func _get_first_client_peer_id() -> int:

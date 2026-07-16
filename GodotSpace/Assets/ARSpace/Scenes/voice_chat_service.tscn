@@ -20,7 +20,4 @@ script = ExtResource("4_playback")
 
 [node name="TencentAsrConfig" type="Node" parent="."]
 script = ExtResource("5_tencent_asr")
-app_id = "1253369275"
-secret_id = "AKIDOxKivviGYkiS5bv0qlV2LPEpCK1UihT0"
-secret_key = "e8c5LODpDMGSZVDj14tZ1MUPBmFg7Ulr"
 engine_model_type = "16k_zh"

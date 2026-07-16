@@ -105,6 +105,11 @@ push_to_talk={
 ]
 }
 
+[layer_names]
+
+3d_physics/layer_24="VirtualAnnotationSurface"
+3d_physics/layer_25="VirtualAnnotationMarker"
+
 [rendering]
 
 renderer/rendering_method="mobile"
