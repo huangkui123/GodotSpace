@@ -172,7 +172,7 @@
 
 ### 任务 1.4（P0）复刻航天员全身角色与 XR 输入切换
 
-- [x] Unity 航天员模型、纹理、骨骼和动画资产已确认可用；盘点其源文件、材质/纹理依赖和导入设置，按需复制到 GodotSpace 并制定 Godot 导入策略。
+- [ ] Unity 航天员模型、纹理、骨骼和动画资产已确认可用；盘点其源文件、材质/纹理依赖和导入设置，按需复制到 GodotSpace 并制定 Godot 导入策略。
 - [x] 建立统一航天员场景，分离本地模型、远端模型、跟踪目标和角色标签。
 - [x] 使用 SkeletonIK3D、自定义程序化 IK 或适配的骨骼解算器，以 HMD+左手+右手驱动头、肩、手臂和躯干。
 - [x] 实现身高标定、肩宽/手臂长度适配、头手局部偏移、跟踪丢失和重获取的平滑处理。
@@ -181,7 +181,7 @@
 - [x] 实现“头部凝视 / 左手主控 / 右手主控”切换，并统一射线显隐、UI 点击、抓取、滚轮等输入语义。
 - [x] 为跟踪无效、手柄断开和凝视模式提供明确的降级策略。
 
-任务 1.4 记录：Unity `china_rig.fbx`、8 材质和 44 张纹理已审计并由 `tools/migration/migrate_astronaut_assets.ps1` 可复现迁移；FBX 使用目录级 Git LFS，贴图压到 1024 上限。`AstronautAvatar.tscn` 绑定实际 33 骨骼，自定义双骨 IK 限制臂长并实现身高/肩宽、偏移和 0.25 秒跟踪降级。`XRInputRouter` 提供凝视/左/右三态，位姿包追加 7 个有界整数并继续使用 30 Hz 不可靠通道和远端插值。自动测试覆盖左右手、骨架合同、量化越界、丢追踪和真实 ENet 中继；真实 PICO 双航天端视觉与长时间抖动仍按 `docs/migration/astronaut_avatar_migration.md` 手工验证。
+任务 1.4 记录：Unity `china_rig.fbx`、8 材质和 44 张纹理已审计并由 `tools/migration/migrate_astronaut_assets.ps1` 可复现迁移；FBX 使用目录级 Git LFS，贴图压到 1024 上限。`AstronautAvatar.tscn` 绑定实际 33 骨骼，自定义双骨 IK 限制臂长并实现身高/肩宽、偏移和 0.25 秒跟踪降级。`XRInputRouter` 提供凝视/左/右三态，位姿包追加 7 个有界整数并继续使用 30 Hz 不可靠通道和远端插值。自动测试覆盖左右手、骨架合同、量化越界、丢追踪和真实 ENet 中继；真实 PICO 双航天端视觉与长时间抖动仍按 `docs/migration/astronaut_avatar_migration.md` 手工验证。2026-07-17 复核确认 Unity importer 为 `importAnimation=0`，FBX 无 clip，`china_rig_VRIK.prefab` 的 Animator Controller 为空，源目录也没有 `.anim`、`.controller` 或 `.overrideController`；因此模型、纹理和骨骼迁移已完成，但本条在负责人明确接受程序化 IK/手势作为动画替代，或补充业务动画资产前保持未勾选。
 
 **完成标准：** 两个远端角色可稳定看到航天员头手运动和手势，无骨骼爆炸、左右手对调、明显抖动或重连后重复角色。
 
