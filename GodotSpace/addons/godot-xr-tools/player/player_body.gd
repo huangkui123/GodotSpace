@@ -286,9 +286,9 @@ func _physics_process(delta: float):
 
 	# Allow the movement providers a chance to perform pre-movement updates. The providers can:
 	# - Adjust the gravity direction
-	for p in _movement_providers:
-		if p.enabled:
-			p.physics_pre_movement(delta, self)
+	#for p in _movement_providers:
+	#	if p.enabled:
+	#		p.physics_pre_movement(delta, self)
 
 	# Determine the gravity "up" direction and plane
 	if gravity.is_equal_approx(Vector3.ZERO):
