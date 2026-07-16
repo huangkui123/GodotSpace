@@ -35,15 +35,28 @@
 
 第一次 headless 导入在定制引擎清理阶段出现一次 signal 11；清理进程后同命令退出码为 `0`，随后整套验证通过。最终导入仍输出项目已记录的 progress dialog、SubViewport、dummy renderer material 和 ObjectDB 清理噪声，未出现新的关键错误类型。
 
+### 2026-07-17 增强回归
+
+同一完整命令再次执行通过，退出码为 `0`，用时 89.2 秒。增强后的 `run_collaboration_multiprocess_self_test.ps1` 不再依赖固定 sleep，而是为每个场景分配独立 `432xx` 端口和临时阶段标记，并同时校验三个进程的退出码、精确 PASS token 与非预期 Godot 错误。现覆盖：
+
+- Server→Ground VR→Astronaut，含 Ground 断线、重连、迟到快照与最终 Server 关闭。
+- Server→Astronaut→Ground VR，确认 Ground 席位不依赖连接先后。
+- 两个独立 Ground Client 竞争唯一席位，确认第二个被降级为 Astronaut、本地与伪造标注请求均被拒绝。
+- Server 在两个 Client 完成断言后统一关闭，两个 Client 均确认 ENet transport 已断开。
+
+`collaboration_state_network_self_test.gd` 同时使用真实 loopback ENet 扩充窗口集成覆盖：Ground 拖动预览中断线后 lease 自动释放且预览不写入持久状态；离线期间 Server 新增窗口后，Ground 重连取得与 Server 完全相同的两窗口快照；第二个 Ground 请求者被真实角色注册表降级后，窗口 lease 请求返回 `role_not_allowed`；Server 关闭后 Ground/Astronaut 两端 registry revision 归零且窗口集合为空。完整回归末尾仍出现两条精确的 headless dummy renderer `Parameter "m" is null` 空 Mesh 噪声，未出现脚本解析、资源缺失、RPC path、autoload 或 GDExtension 新错误。
+
+`run_runtime_startup_smoke_tests.ps1` 还新增正式关闭恢复双进程用例：Server/桌面 Test Client 通过真实 `NetworkHandler.start_server/start_client` 进入 `ARSpace.tscn`；Server 先创建非零 CollaborationState 菜单状态、SpatialCalibrationState 确认点和 SpatialWindowRegistryService 窗口，Client 验证完整快照后才触发 Server 关闭；随后 Client 必须同时观察 `server_connection_lost` 与 `session_closed`，恢复 `OfflineMultiplayerPeer`，清空角色表、Ground 席位和三类状态，并由正式路径返回 `StartMenu.tscn`。runner 使用 READY 日志屏障、原生退出码、唯一 PASS token 与精确错误白名单，已独立复跑 12.9 秒通过。
+
 ## 任务 1.7 证据矩阵
 
 | 验收项 | 自动化证据 | 当前判定 | 真机仍需确认 |
 | --- | --- | --- | --- |
-| PC Ground Server + Ground VR + Astronaut XR | `run_collaboration_multiprocess_self_test.ps1` 同时运行三角色；`run_runtime_startup_smoke_tests.ps1` 检查正式参数入口 | 部分覆盖 | 两台真实 PICO 同时接入正式 `ARSpace.tscn` |
-| 连接顺序、第二 Ground VR、掉线/重连、Server 关闭 | `peer_role_network_self_test.gd`、`collaboration_state_network_self_test.gd`、多进程重连测试 | 部分覆盖 | Astronaut 先连接等顺序、真实无线网络、头显休眠/唤醒、StartMenu 回退和界面提示 |
+| PC Ground Server + Ground VR + Astronaut XR | `run_collaboration_multiprocess_self_test.ps1` 在三个独立 Godot 进程中运行三角色；`run_runtime_startup_smoke_tests.ps1` 检查正式参数入口 | 部分覆盖 | 两台真实 PICO 同时接入正式 `ARSpace.tscn` |
+| 连接顺序、第二 Ground VR、掉线/重连、Server 关闭 | 三套独立进程场景覆盖两种连接顺序、Ground 重连和第二 Ground 降级/拒权；正式运行时双进程用例覆盖非零业务状态下 ARSpace→StartMenu 的 Server 关闭与全量清理 | 部分覆盖 | 真实无线网络、头显休眠/唤醒和头显内界面提示 |
 | 航天员全身 IK、头手、手势、名称、本地/远端隐藏 | `PlayerPresenceSelfTest.tscn`、`PlayerNetworkSelfTest.tscn`、`avatar_pose_state` 边界检查 | 部分覆盖 | 真实跟踪姿态、遮挡、手臂观感和长时骨骼稳定性 |
 | 共享原点、重定中、标定快照、迟到 Client | `shared_space_alignment_self_test.gd`、`shared_space_contract_self_test.gd`、`spatial_calibration_state_network_self_test.gd` | 部分覆盖 | PICO 实景三 Tag 对照、重定中后的实体对齐误差 |
-| 主菜单和至少四类业务窗口 | 5 项 SpatialWindow 自测与真实 ENet 快照/租约测试 | 部分覆盖 | PC 鼠标、PICO 近抓/远射线/摇杆、震动和两端视觉一致性 |
+| 主菜单和至少四类业务窗口 | 5 项 SpatialWindow 自测；真实 ENet 覆盖预览、lease 断线释放、降级拒权、重连完整快照与 Server 关闭清理 | 部分覆盖 | PC 鼠标、PICO 近抓/远射线/摇杆、震动和两端视觉一致性 |
 | 真实设备运行至少 30 分钟 | 无 | 未执行 | 帧率、跟踪、内存、RPC 错误、残留节点和断线恢复 |
 
 ## 真机签字流程

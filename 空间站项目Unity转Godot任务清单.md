@@ -224,7 +224,7 @@
 - [ ] 验证主菜单和至少 4 类业务窗口的拖动、缩放、吸附、焦点、震动和同步。
 - [ ] 在真实 XR/PICO 设备上运行至少 30 分钟，记录帧率、跟踪、内存、RPC 错误和残留节点。
 
-任务 1.7 自动化前置验收记录（2026-07-16）：`run_phase1_validation.ps1` 已完整通过，覆盖真实 ENet 三角色测试进程、连接/掉线/重连、第二 Ground VR 权限边界、玩家/航天员角色、共享空间/标定、窗口状态与迟到快照，以及 PC/Test Client/XR 参数启动冒烟。当前环境没有两台真实 PICO/OpenXR 设备，因此上述六项保留未勾选，禁止以 headless 结果替代真机签字。证据矩阵、启动命令、30 分钟记录项和签字栏见 `GodotSpace/docs/testing/phase1_acceptance_2026-07-16.md`。
+任务 1.7 自动化前置验收记录（2026-07-16，2026-07-17 增强）：`run_phase1_validation.ps1` 已再次完整通过（退出码 0，用时 89.2 秒）。独立 OS 进程 ENet 测试现在使用不同端口和显式阶段屏障覆盖 Server→Ground→Astronaut（含 Ground 掉线/重连）、Server→Astronaut→Ground、两个 Ground 同时申请席位并将第二个降级为 Astronaut，以及 Client 观察 Server 关闭；真实 loopback ENet 集成测试还覆盖窗口拖动预览中断线不落盘、lease 释放、离线期间状态变化、重连完整快照、降级角色拒权和 Server 关闭后两端窗口状态清空。正式运行时恢复用例使用真实 `NetworkHandler.start_server/start_client` 进入 `ARSpace.tscn`，在协作、标定和窗口状态均非空后关闭 Server，并验证 Client 收到双清理信号、恢复 Offline peer、清空角色与三类状态并返回 `StartMenu.tscn`。玩家/航天员角色、共享空间/标定、PC/Test Client/XR 参数启动冒烟和其余第一阶段回归均通过。当前环境没有两台真实 PICO/OpenXR 设备，因此上述六项保留未勾选，禁止以 headless 结果替代真机签字。证据矩阵、启动命令、30 分钟记录项和签字栏见 `GodotSpace/docs/testing/phase1_acceptance_2026-07-16.md`。
 
 ---
 

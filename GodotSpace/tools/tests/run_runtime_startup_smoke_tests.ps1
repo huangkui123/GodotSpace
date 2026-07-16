@@ -26,6 +26,8 @@ function New-SmokeProcess {
         -PassThru `
         -RedirectStandardOutput $StdOutPath `
         -RedirectStandardError $StdErrPath
+    # Retain the native handle so ExitCode remains observable after a fast exit.
+    $null = $Process.Handle
     $Record = [pscustomobject]@{
         Name = $Name
         Process = $Process
@@ -65,6 +67,29 @@ function Wait-SmokeProcesses {
     throw "Runtime startup smoke process timeout: $($RunningNames -join ', ')"
 }
 
+function Wait-SmokeLogToken {
+    param(
+        [object]$Record,
+        [string]$Token,
+        [int]$Timeout
+    )
+
+    $Deadline = [DateTime]::UtcNow.AddSeconds($Timeout)
+    while ([DateTime]::UtcNow -lt $Deadline) {
+        $StdOut = Get-Content -LiteralPath $Record.StdOutPath -Raw -ErrorAction SilentlyContinue
+        if (-not [string]::IsNullOrEmpty($StdOut) -and $StdOut.Contains($Token)) {
+            return
+        }
+        if ($Record.Process.HasExited) {
+            $StdErr = Get-Content -LiteralPath $Record.StdErrPath -Raw -ErrorAction SilentlyContinue
+            throw "Runtime startup smoke process $($Record.Name) exited before emitting $Token.`n$StdOut`n$StdErr"
+        }
+        Start-Sleep -Milliseconds 100
+    }
+
+    throw "Runtime startup smoke process $($Record.Name) timed out before emitting $Token."
+}
+
 function Assert-SmokeProcess {
     param(
         [object]$Record,
@@ -83,11 +108,39 @@ function Assert-SmokeProcess {
         Write-Host $StdErr.TrimEnd()
     }
     $ExitCode = $Record.Process.ExitCode
-    if ($null -ne $ExitCode -and [int]$ExitCode -ne 0) {
+    if ($null -eq $ExitCode) {
+        throw "Runtime startup smoke process $($Record.Name) did not expose an exit code."
+    }
+    if ([int]$ExitCode -ne 0) {
         throw "Runtime startup smoke process $($Record.Name) failed with exit code $ExitCode."
     }
-    if (-not $StdOut.Contains($PassToken)) {
-        throw "Runtime startup smoke process $($Record.Name) did not emit $PassToken."
+    $PassCount = [regex]::Matches($StdOut, [regex]::Escape($PassToken)).Count
+    if ($PassCount -ne 1) {
+        throw "Runtime startup smoke process $($Record.Name) emitted $PassToken $PassCount times; expected exactly once."
+    }
+    $CombinedOutput = "$StdOut`n$StdErr"
+    $FailurePatterns = @(
+        'SCRIPT ERROR:',
+        'Parse Error:',
+        'Failed to load script',
+        'RUNTIME_STARTUP_SMOKE_[A-Z_]+:'
+    )
+    foreach ($Pattern in $FailurePatterns) {
+        if ($CombinedOutput -match $Pattern) {
+            throw "Runtime startup smoke process $($Record.Name) emitted a failure pattern: $Pattern"
+        }
+    }
+    $OutputWithoutKnownHeadlessNoise = $CombinedOutput `
+        -replace [regex]::Escape('ERROR: SubViewport is not a child of a SubViewportContainer. get_screen_transform doesn''t return the actual screen position.'), '' `
+        -replace [regex]::Escape('ERROR: Parameter "material" is null.'), '' `
+        -replace [regex]::Escape('ERROR: Parameter "m" is null.'), ''
+    if ($Record.Name -eq 'shutdown_client') {
+        # This custom engine renders push_warning() as an ERROR-prefixed line.
+        $OutputWithoutKnownHeadlessNoise = $OutputWithoutKnownHeadlessNoise `
+            -replace [regex]::Escape('ERROR: Ground Server disconnected. Returning to the start menu.'), ''
+    }
+    if ($OutputWithoutKnownHeadlessNoise.Contains('ERROR:')) {
+        throw "Runtime startup smoke process $($Record.Name) emitted an unexpected Godot error."
     }
 }
 
@@ -125,10 +178,7 @@ try {
         '--runtime-startup-smoke-role=server',
         '--voice-role=server'
     )
-    Start-Sleep -Milliseconds 750
-    if ($Server.Process.HasExited) {
-        Assert-SmokeProcess -Record $Server -PassToken 'RUNTIME_STARTUP_SMOKE_SERVER PASS'
-    }
+    Wait-SmokeLogToken -Record $Server -Token 'RUNTIME_STARTUP_SMOKE_SERVER READY' -Timeout $TimeoutSeconds
 
     $TestClient = New-SmokeProcess -Name 'test_client' -Arguments @(
         '--headless',
@@ -156,6 +206,38 @@ try {
     )
     Wait-SmokeProcesses -Records @($XrConfig) -Timeout $TimeoutSeconds
     Assert-SmokeProcess -Record $XrConfig -PassToken 'RUNTIME_STARTUP_SMOKE_XR_CONFIG PASS'
+
+    Assert-GamePortAvailable
+    $ShutdownServer = New-SmokeProcess -Name 'shutdown_server' -Arguments @(
+        '--headless',
+        '--path', $QuotedProject,
+        $PeerScene,
+        '--',
+        '--runtime-startup-smoke-role=shutdown_server',
+        '--voice-role=server'
+    )
+    Wait-SmokeLogToken `
+        -Record $ShutdownServer `
+        -Token 'RUNTIME_STARTUP_SMOKE_SHUTDOWN_SERVER READY' `
+        -Timeout $TimeoutSeconds
+
+    $ShutdownClient = New-SmokeProcess -Name 'shutdown_client' -Arguments @(
+        '--headless',
+        '--path', $QuotedProject,
+        $PeerScene,
+        '--',
+        '--runtime-startup-smoke-role=shutdown_client',
+        '--testmode',
+        '--voice-role=client',
+        '--server-ip=127.0.0.1'
+    )
+    Wait-SmokeProcesses -Records @($ShutdownServer, $ShutdownClient) -Timeout $TimeoutSeconds
+    Assert-SmokeProcess `
+        -Record $ShutdownServer `
+        -PassToken 'RUNTIME_STARTUP_SMOKE_SHUTDOWN_SERVER PASS'
+    Assert-SmokeProcess `
+        -Record $ShutdownClient `
+        -PassToken 'RUNTIME_STARTUP_SMOKE_SHUTDOWN_CLIENT PASS'
 
     Write-Host 'All runtime startup smoke tests passed.'
 }

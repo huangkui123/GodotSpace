@@ -5,6 +5,8 @@ const SPAWNER_SCRIPT: Script = preload("res://Assets/ARSpace/Scripts/Network/mul
 const ANNOTATION_MANAGER_SCRIPT: Script = preload("res://Assets/ARSpace/Scripts/VirtualAnnotation/virtual_annotation_manager.gd")
 const ROLE_ARG: String = "--collab-process-role="
 const PORT_ARG: String = "--collab-process-port="
+const SCENARIO_ARG: String = "--collab-process-scenario="
+const CONTROL_DIR_ARG: String = "--collab-control-dir="
 const DEFAULT_PORT: int = 43280
 const STAGE_TIMEOUT_MSEC: int = 12000
 const ROLE_PC_GROUND: String = "pc_ground"
@@ -15,7 +17,9 @@ const SECOND_ANNOTATION_TEXT: String = "Ground VR reconnected annotation"
 const FORGED_ASTRONAUT_ANNOTATION_TEXT: String = "Astronaut forged annotation"
 
 var _role: String = ""
+var _scenario: String = "baseline"
 var _port: int = DEFAULT_PORT
+var _control_dir: String = ""
 var _world: Node3D
 var _peer: ENetMultiplayerPeer
 var _annotation_manager: Node
@@ -25,9 +29,13 @@ var _failures: Array[String] = []
 func _ready() -> void:
 	_disable_unrelated_services()
 	_role = _get_user_arg(ROLE_ARG).to_lower()
+	var scenario_value := _get_user_arg(SCENARIO_ARG).to_lower()
+	if not scenario_value.is_empty():
+		_scenario = scenario_value
 	var port_text := _get_user_arg(PORT_ARG)
 	if port_text.is_valid_int():
 		_port = int(port_text)
+	_control_dir = _get_user_arg(CONTROL_DIR_ARG)
 	call_deferred("_run")
 
 
@@ -42,6 +50,19 @@ func _disable_unrelated_services() -> void:
 
 
 func _run() -> void:
+	match _scenario:
+		"baseline":
+			await _run_baseline_scenario()
+		"astronaut_first":
+			await _run_astronaut_first_scenario()
+		"ground_contention":
+			await _run_ground_contention_scenario()
+		_:
+			_failures.append("Unknown collaboration process scenario: %s" % _scenario)
+	await _finish()
+
+
+func _run_baseline_scenario() -> void:
 	match _role:
 		"server":
 			await _run_server()
@@ -51,7 +72,144 @@ func _run() -> void:
 			await _run_astronaut_client()
 		_:
 			_failures.append("Unknown collaboration process role: %s" % _role)
-	await _finish()
+
+
+func _run_astronaut_first_scenario() -> void:
+	match _role:
+		"server":
+			await _run_order_server()
+		"astronaut_client":
+			await _run_order_astronaut_client()
+		"ground_client":
+			await _run_order_ground_client()
+		_:
+			_failures.append("Unknown astronaut-first process role: %s" % _role)
+
+
+func _run_ground_contention_scenario() -> void:
+	match _role:
+		"server":
+			await _run_contention_server()
+		"ground_client":
+			await _run_contention_first_ground()
+		"competing_ground_client":
+			await _run_contention_second_ground()
+		_:
+			_failures.append("Unknown Ground contention process role: %s" % _role)
+
+
+func _start_scenario_server() -> bool:
+	_peer = ENetMultiplayerPeer.new()
+	_check(_peer.create_server(_port, 2, 3) == OK, "server should bind port %d" % _port)
+	if not _failures.is_empty():
+		return false
+	multiplayer.multiplayer_peer = _peer
+	_world = _create_world("ServerWorld")
+	_check(_write_control_marker("server.ready"), "server should publish its ready marker")
+	return true
+
+
+func _run_order_server() -> void:
+	if not _start_scenario_server():
+		return
+	_check(await _wait_for_player_count(2), "astronaut-first server should observe the Astronaut before Ground VR")
+	_check(await _wait_for_role_count(2), "astronaut-first server should receive the first role assignment")
+	_check(_count_role(ROLE_ASTRONAUT) == 1, "first non-server peer should remain Astronaut")
+	_check(_count_role(ROLE_GROUND_VR) == 0, "Ground VR slot must stay empty before the Ground peer joins")
+	_check(await _wait_for_player_count(3), "astronaut-first server should later observe Ground VR")
+	_check(
+		await _wait_for_role_distribution(1, 1, 1),
+		"astronaut-first server should register the resolved PC/Ground/Astronaut roles"
+	)
+	_check(_count_role(ROLE_PC_GROUND) == 1, "astronaut-first session should keep one PC Ground")
+	_check(_count_role(ROLE_GROUND_VR) == 1, "astronaut-first session should assign one Ground VR")
+	_check(_count_role(ROLE_ASTRONAUT) == 1, "astronaut-first session should keep one Astronaut")
+	_check(await _wait_for_player_roles(), "astronaut-first player replicas should match authoritative roles")
+	_check(await _wait_for_remote_avatars(2), "astronaut-first server should receive both remote poses")
+	_check(await _wait_for_control_marker("astronaut_client.done"), "astronaut-first client should finish before Server shutdown")
+	_check(await _wait_for_control_marker("ground_client.done"), "late Ground client should finish before Server shutdown")
+	_close_server_and_publish_marker()
+
+
+func _run_order_astronaut_client() -> void:
+	_check(await _connect_client("AstronautFirstWorld"), "astronaut-first client should connect")
+	if not _failures.is_empty():
+		return
+	_check(await _wait_for_local_role(ROLE_ASTRONAUT), "first client should be assigned Astronaut")
+	_check(await _wait_for_player_count(2), "first Astronaut should initially see PC Ground")
+	_check(_write_control_marker("first_client.ready"), "first Astronaut should publish its role-ready marker")
+	_check(await _wait_for_player_count(3), "first Astronaut should later observe Ground VR")
+	_check(await _wait_for_role_count(3), "first Astronaut should receive the complete role snapshot")
+	_check(await _wait_for_player_roles(), "first Astronaut replicas should match authoritative roles")
+	_check(await _wait_for_remote_avatars(2), "first Astronaut should receive both Ground poses")
+	_check(_write_control_marker("astronaut_client.done"), "first Astronaut should publish its completion marker")
+	_check(await _wait_for_server_shutdown(), "first Astronaut should observe Server transport shutdown")
+
+
+func _run_order_ground_client() -> void:
+	_check(await _connect_client("LateGroundWorld"), "late Ground VR should connect")
+	if not _failures.is_empty():
+		return
+	_check(await _wait_for_local_role(ROLE_GROUND_VR), "late Ground should acquire the available Ground VR slot")
+	_check(await _wait_for_player_count(3), "late Ground should receive all existing players")
+	_check(await _wait_for_role_count(3), "late Ground should receive all session roles")
+	_check(await _wait_for_player_roles(), "late Ground replicas should match authoritative roles")
+	_check(await _wait_for_remote_avatars(2), "late Ground should receive PC Ground and Astronaut poses")
+	_check(_write_control_marker("ground_client.done"), "late Ground should publish its completion marker")
+	_check(await _wait_for_server_shutdown(), "late Ground should observe Server transport shutdown")
+
+
+func _run_contention_server() -> void:
+	if not _start_scenario_server():
+		return
+	_check(await _wait_for_player_count(3), "contention server should observe both Ground claimants")
+	_check(
+		await _wait_for_role_distribution(1, 1, 1),
+		"contention server should resolve exactly one Ground claimant and one downgraded Astronaut"
+	)
+	_check(_count_role(ROLE_PC_GROUND) == 1, "contention session should keep one PC Ground")
+	_check(_count_role(ROLE_GROUND_VR) == 1, "contention session must grant exactly one Ground VR slot")
+	_check(_count_role(ROLE_ASTRONAUT) == 1, "second Ground claimant must be downgraded to Astronaut")
+	_check(await _wait_for_player_roles(), "contention player replicas should match authoritative roles")
+	_check(await _wait_for_remote_avatars(2), "contention server should receive both remote poses")
+	_check(await _wait_for_control_marker("ground_client.done"), "first Ground claimant should finish before Server shutdown")
+	_check(await _wait_for_control_marker("competing_ground_client.done"), "competing Ground claimant should finish before Server shutdown")
+	_check(int(_annotation_manager.call("get_annotation_count")) == 0, "downgraded claimant must not forge a Ground-only annotation")
+	_close_server_and_publish_marker()
+
+
+func _run_contention_first_ground() -> void:
+	_check(await _connect_client("FirstGroundWorld"), "first Ground claimant should connect")
+	if not _failures.is_empty():
+		return
+	_check(await _wait_for_local_role(ROLE_GROUND_VR), "first Ground claimant should receive the Ground VR slot")
+	_check(_write_control_marker("first_client.ready"), "first Ground claimant should publish its role-ready marker")
+	_check(await _wait_for_player_count(3), "first Ground claimant should observe its competitor")
+	_check(await _wait_for_role_count(3), "first Ground claimant should receive resolved roles")
+	var network_handler := _get_network_handler()
+	_check(network_handler != null and bool(network_handler.call("can_peer_annotate", multiplayer.get_unique_id())), "assigned Ground claimant should keep Ground-only permission")
+	_check(_write_control_marker("ground_client.done"), "first Ground claimant should publish its completion marker")
+	_check(await _wait_for_server_shutdown(), "first Ground claimant should observe Server transport shutdown")
+
+
+func _run_contention_second_ground() -> void:
+	_check(await _connect_client("CompetingGroundWorld"), "second Ground claimant should connect")
+	if not _failures.is_empty():
+		return
+	_check(await _wait_for_local_role(ROLE_ASTRONAUT), "second Ground claimant should be downgraded to Astronaut")
+	_check(await _wait_for_player_count(3), "downgraded claimant should still receive all players")
+	_check(await _wait_for_role_count(3), "downgraded claimant should receive resolved roles")
+	var network_handler := _get_network_handler()
+	_check(network_handler != null and not bool(network_handler.call("can_peer_annotate", multiplayer.get_unique_id())), "downgraded claimant must lose Ground-only permission")
+	_check(
+		int(_annotation_manager.call("create_annotation", _make_draft("Downgraded local forge", Vector3.ZERO))) == -1,
+		"downgraded claimant should be denied before a local Ground-only request"
+	)
+	_annotation_manager.rpc_id(1, "_server_create_annotation", 1, _make_draft("Downgraded RPC forge", Vector3.ZERO))
+	await _wait_frames(30)
+	_check(int(_annotation_manager.call("get_annotation_count")) == 0, "Server should reject downgraded claimant RPCs")
+	_check(_write_control_marker("competing_ground_client.done"), "competing Ground claimant should publish its completion marker")
+	_check(await _wait_for_server_shutdown(), "competing Ground claimant should observe Server transport shutdown")
 
 
 func _run_server() -> void:
@@ -61,6 +219,7 @@ func _run_server() -> void:
 		return
 	multiplayer.multiplayer_peer = _peer
 	_world = _create_world("ServerWorld")
+	_check(_write_control_marker("server.ready"), "server should publish its ready marker")
 	_check(await _wait_for_player_count(2), "server should observe the Ground VR client")
 	var first_ground_peer_id := await _wait_for_ground_vr_peer()
 	_check(first_ground_peer_id > 1, "server should authoritatively assign the Ground VR role")
@@ -71,7 +230,7 @@ func _run_server() -> void:
 	)
 
 	_check(await _wait_for_player_count(3), "server should observe the Astronaut client")
-	_check(await _wait_for_role_count(3), "server should register all three session roles")
+	_check(await _wait_for_role_distribution(1, 1, 1), "server should register all three resolved session roles")
 	_check(_count_role(ROLE_PC_GROUND) == 1, "server should keep exactly one PC Ground role")
 	_check(_count_role(ROLE_GROUND_VR) == 1, "server should keep exactly one Ground VR role")
 	_check(_count_role(ROLE_ASTRONAUT) == 1, "server should keep exactly one Astronaut role")
@@ -94,7 +253,9 @@ func _run_server() -> void:
 	_check(await _wait_for_player_roles(), "server reconnect replicas should match the role registry")
 	_check(await _wait_for_remote_avatars(2), "server should receive reconnected remote poses")
 	_check(_has_unique_player_names(), "server should end with unique player instances")
-	await get_tree().create_timer(0.75).timeout
+	_check(await _wait_for_control_marker("ground_client.done"), "Ground reconnect assertions should finish before Server shutdown")
+	_check(await _wait_for_control_marker("astronaut_client.done"), "Astronaut reconnect assertions should finish before Server shutdown")
+	_close_server_and_publish_marker()
 
 
 func _run_ground_client() -> void:
@@ -112,14 +273,16 @@ func _run_ground_client() -> void:
 	)
 	_check(await _wait_for_annotation_count(1), "Ground VR should receive its confirmed annotation")
 	_check(_annotation_text_count(FIRST_ANNOTATION_TEXT) == 1, "Ground VR should render its annotation once")
+	_check(_write_control_marker("first_client.ready"), "Ground VR should publish the first authoritative annotation checkpoint")
 
 	_check(await _wait_for_player_count(3), "Ground VR client should observe the Astronaut client")
 	_check(await _wait_for_role_count(3), "Ground VR should receive the three-role snapshot")
 	_check(await _wait_for_player_roles(), "Ground VR should identify PC Ground and Astronaut replicas")
 	_check(await _wait_for_remote_avatars(2), "Ground VR should receive PC Ground and Astronaut poses")
-	# Give the Astronaut process time to exercise its rejected create before this peer
-	# disconnects and releases the single Ground VR slot.
-	await get_tree().create_timer(2.0).timeout
+	_check(
+		await _wait_for_control_marker("astronaut_client.initial_done"),
+		"Ground VR should wait for the Astronaut authorization checks before disconnecting"
+	)
 	var old_peer_id := _peer.get_unique_id()
 	_disconnect_and_free_world()
 	await get_tree().create_timer(1.0).timeout
@@ -143,7 +306,8 @@ func _run_ground_client() -> void:
 	_check(await _wait_for_remote_avatars(2), "reconnected Ground VR should receive both remote poses")
 	_check(_has_unique_player_names(), "reconnected Ground VR should end with unique player instances")
 	_check(first_peer_id == old_peer_id, "Ground VR peer identity should remain stable before disconnect")
-	await get_tree().create_timer(1.0).timeout
+	_check(_write_control_marker("ground_client.done"), "reconnected Ground VR should publish its completion marker")
+	_check(await _wait_for_server_shutdown(), "reconnected Ground VR should observe Server transport shutdown")
 
 
 func _run_astronaut_client() -> void:
@@ -170,6 +334,7 @@ func _run_astronaut_client() -> void:
 	_check(_annotation_text_count(FORGED_ASTRONAUT_ANNOTATION_TEXT) == 0, "forged Astronaut annotation must not be synchronized")
 	_check(await _wait_for_player_roles(), "Astronaut client should identify both Ground replicas")
 	_check(await _wait_for_remote_avatars(2), "Astronaut client should receive both Ground poses")
+	_check(_write_control_marker("astronaut_client.initial_done"), "Astronaut should publish its authorization checkpoint")
 
 	_check(await _wait_for_player_count(2), "Astronaut client should observe Ground VR cleanup")
 	_check(await _wait_for_ground_vr_release(), "Astronaut client should observe the released Ground VR slot")
@@ -183,7 +348,8 @@ func _run_astronaut_client() -> void:
 	_check(await _wait_for_player_roles(), "Astronaut reconnect replicas should match the role registry")
 	_check(await _wait_for_remote_avatars(2), "Astronaut client should receive reconnected Ground VR poses")
 	_check(_has_unique_player_names(), "Astronaut client should end with unique player instances")
-	await get_tree().create_timer(0.75).timeout
+	_check(_write_control_marker("astronaut_client.done"), "Astronaut should publish its reconnect completion marker")
+	_check(await _wait_for_server_shutdown(), "Astronaut should observe Server transport shutdown")
 
 
 func _connect_client(world_name: String) -> bool:
@@ -249,6 +415,11 @@ func _disconnect_and_free_world() -> void:
 		old_peer.close()
 
 
+func _close_server_and_publish_marker() -> void:
+	_disconnect_and_free_world()
+	_check(_write_control_marker("server.closed"), "Server should publish its shutdown marker")
+
+
 func _wait_for_player_count(expected_count: int) -> bool:
 	var deadline := Time.get_ticks_msec() + STAGE_TIMEOUT_MSEC
 	while Time.get_ticks_msec() < deadline:
@@ -299,6 +470,17 @@ func _wait_for_role_count(expected_count: int) -> bool:
 		var network_handler := _get_network_handler()
 		if network_handler != null \
 				and (network_handler.call("get_peer_roles") as Dictionary).size() == expected_count:
+			return true
+		await get_tree().process_frame
+	return false
+
+
+func _wait_for_role_distribution(pc_ground_count: int, ground_vr_count: int, astronaut_count: int) -> bool:
+	var deadline := Time.get_ticks_msec() + STAGE_TIMEOUT_MSEC
+	while Time.get_ticks_msec() < deadline:
+		if _count_role(ROLE_PC_GROUND) == pc_ground_count \
+				and _count_role(ROLE_GROUND_VR) == ground_vr_count \
+				and _count_role(ROLE_ASTRONAUT) == astronaut_count:
 			return true
 		await get_tree().process_frame
 	return false
@@ -366,6 +548,10 @@ func _wait_for_remote_avatars(expected_count: int) -> bool:
 
 func _count_visible_remote_avatars() -> int:
 	if _world == null or not is_instance_valid(_world):
+		return 0
+	if not multiplayer.has_multiplayer_peer() or multiplayer.multiplayer_peer == null:
+		return 0
+	if multiplayer.multiplayer_peer.get_connection_status() != MultiplayerPeer.CONNECTION_CONNECTED:
 		return 0
 	var local_peer_id := multiplayer.get_unique_id()
 	var count := 0
@@ -455,6 +641,40 @@ func _get_network_handler() -> Node:
 func _wait_frames(frame_count: int) -> void:
 	for _frame in range(frame_count):
 		await get_tree().process_frame
+
+
+func _write_control_marker(marker_name: String) -> bool:
+	if _control_dir.is_empty():
+		return false
+	var marker_file := FileAccess.open(_control_dir.path_join(marker_name), FileAccess.WRITE)
+	if marker_file == null:
+		return false
+	marker_file.store_string("ready\n")
+	marker_file.close()
+	return true
+
+
+func _wait_for_control_marker(marker_name: String) -> bool:
+	if _control_dir.is_empty():
+		return false
+	var marker_path := _control_dir.path_join(marker_name)
+	var deadline := Time.get_ticks_msec() + STAGE_TIMEOUT_MSEC
+	while Time.get_ticks_msec() < deadline:
+		if FileAccess.file_exists(marker_path):
+			return true
+		await get_tree().process_frame
+	return false
+
+
+func _wait_for_server_shutdown() -> bool:
+	if not await _wait_for_control_marker("server.closed"):
+		return false
+	var deadline := Time.get_ticks_msec() + STAGE_TIMEOUT_MSEC
+	while Time.get_ticks_msec() < deadline:
+		if _peer == null or _peer.get_connection_status() == MultiplayerPeer.CONNECTION_DISCONNECTED:
+			return true
+		await get_tree().process_frame
+	return false
 
 
 func _get_user_arg(prefix: String) -> String:
