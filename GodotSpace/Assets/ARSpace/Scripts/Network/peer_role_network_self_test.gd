@@ -3,7 +3,7 @@ extends SceneTree
 const NETWORK_HANDLER_SCRIPT: Script = preload("res://Assets/ARSpace/Scripts/Network/network_handler.gd")
 const TOKEN_ENV: String = "GODOTSPACE_GROUND_VR_TOKEN"
 const ROLE_GROUND_VR: String = "ground_vr"
-const ROLE_SKY: String = "sky"
+const ROLE_ASTRONAUT: String = "astronaut"
 const CONNECT_TIMEOUT_FRAMES: int = 300
 const ROLE_TIMEOUT_FRAMES: int = 180
 
@@ -52,12 +52,12 @@ func _run() -> void:
 	var second_id := second_client_peer.get_unique_id()
 	second_handler.rpc_id(1, "_server_request_session_role", ROLE_GROUND_VR, "")
 	_expect(
-		await _wait_for_role(server_handler, second_id, ROLE_SKY),
-		"Server should keep a competing Ground VR claimant in the Sky role."
+		await _wait_for_role(server_handler, second_id, ROLE_ASTRONAUT),
+		"Server should keep a competing Ground VR claimant in the Astronaut role."
 	)
 	_expect(
-		await _wait_for_role(second_handler, second_id, ROLE_SKY),
-		"Rejected Ground VR claimant should receive the Sky assignment."
+		await _wait_for_role(second_handler, second_id, ROLE_ASTRONAUT),
+		"Rejected Ground VR claimant should receive the Astronaut assignment."
 	)
 	_expect(bool(server_handler.call("can_peer_annotate", first_id)), "Assigned Ground VR should annotate on the Server.")
 	_expect(not bool(server_handler.call("can_peer_annotate", second_id)), "Competing claimant should not annotate on the Server.")
@@ -66,7 +66,7 @@ func _run() -> void:
 	for _frame in range(10):
 		await process_frame
 	_expect(
-		str(server_handler.call("get_peer_role", second_id)) == ROLE_SKY,
+		str(server_handler.call("get_peer_role", second_id)) == ROLE_ASTRONAUT,
 		"A repeated role request must not change the Server assignment."
 	)
 
@@ -89,7 +89,7 @@ func _run() -> void:
 	)
 	_expect(
 		await _wait_for_role(second_handler, replacement_id, ROLE_GROUND_VR),
-		"Existing Sky peers should receive the replacement Ground VR role snapshot."
+		"Existing Astronaut peers should receive the replacement Ground VR role snapshot."
 	)
 	_finish()
 

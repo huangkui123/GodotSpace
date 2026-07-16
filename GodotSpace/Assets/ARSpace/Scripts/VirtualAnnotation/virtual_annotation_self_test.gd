@@ -50,8 +50,8 @@ func _run() -> void:
 	)
 	_check(not draft.is_empty(), "make_draft_from_hit should accept a shared-space target")
 	_check(str(draft.get("target_path", "")) == "TargetPanel", "target path should be relative to SharedSpaceOrigin")
-	RuntimeProfile.select_session_mode(RuntimeProfile.Preset.SKY_XR_CLIENT, false)
-	_check(manager.create_annotation(draft) == -1, "a disconnected Sky client must remain view-only")
+	RuntimeProfile.select_session_mode(RuntimeProfile.Preset.ASTRONAUT_XR_CLIENT, false)
+	_check(manager.create_annotation(draft) == -1, "a disconnected Astronaut client must remain view-only")
 	RuntimeProfile.clear_session_override()
 	draft["text"] = "一".repeat(100)
 	var first_id := manager.create_annotation(draft)
@@ -123,19 +123,19 @@ func _run() -> void:
 	excluded_mesh.mesh = BoxMesh.new()
 	surface_root.add_child(excluded_mesh)
 
-	RuntimeProfile.select_session_mode(RuntimeProfile.Preset.SKY_XR_CLIENT, false)
-	var sky_builder = BuilderScript.new()
-	sky_builder.name = "SkySurfaceBuilder"
-	sky_builder.auto_build = false
-	sky_builder.shared_space_origin_path = NodePath("..")
-	sky_builder.target_root_path = NodePath("..")
-	sky_builder.scan_root_path = NodePath("../SurfaceRoot")
-	shared_origin.add_child(sky_builder)
-	sky_builder.start_build()
+	RuntimeProfile.select_session_mode(RuntimeProfile.Preset.ASTRONAUT_XR_CLIENT, false)
+	var astronaut_builder = BuilderScript.new()
+	astronaut_builder.name = "AstronautSurfaceBuilder"
+	astronaut_builder.auto_build = false
+	astronaut_builder.shared_space_origin_path = NodePath("..")
+	astronaut_builder.target_root_path = NodePath("..")
+	astronaut_builder.scan_root_path = NodePath("../SurfaceRoot")
+	shared_origin.add_child(astronaut_builder)
+	astronaut_builder.start_build()
 	await process_frame
-	_check(not sky_builder.is_ready_for_annotations(), "Sky clients must not build annotation collision surfaces")
-	_check(included_mesh.get_child_count() == 0, "Sky clients must leave annotation meshes without local proxies")
-	sky_builder.free()
+	_check(not astronaut_builder.is_ready_for_annotations(), "Astronaut clients must not build annotation collision surfaces")
+	_check(included_mesh.get_child_count() == 0, "Astronaut clients must leave annotation meshes without local proxies")
+	astronaut_builder.free()
 
 	RuntimeProfile.select_session_mode(RuntimeProfile.Preset.VR_GROUND_CLIENT, false)
 	var builder = BuilderScript.new()

@@ -38,7 +38,7 @@ function Start-CollaborationPeer {
         $ModeArgument = switch ($PeerRole) {
             'server' { '--testmode' }
             'ground_client' { '--ground-vr-client' }
-            'sky_client' { '--testmode' }
+            'astronaut_client' { '--testmode' }
             default { throw "Unknown collaboration peer role: $PeerRole" }
         }
         $Lines = & $GodotPath --headless --path $ProjectPath $ScenePath -- `
@@ -59,7 +59,7 @@ try {
     Start-Sleep -Milliseconds 750
     $Jobs += Start-CollaborationPeer -Role 'ground_client' -VoiceRole 'client'
     Start-Sleep -Milliseconds 1250
-    $Jobs += Start-CollaborationPeer -Role 'sky_client' -VoiceRole 'client'
+    $Jobs += Start-CollaborationPeer -Role 'astronaut_client' -VoiceRole 'client'
 
     $null = Wait-Job -Job $Jobs -Timeout 60
     $Results = @()

@@ -46,36 +46,36 @@ func _run() -> void:
 		"assigned Ground VR should use the Ground VR color"
 	)
 
-	var sky_player := PLAYER_SCENE.instantiate()
-	sky_player.name = "7"
-	get_tree().root.add_child(sky_player)
+	var astronaut_player := PLAYER_SCENE.instantiate()
+	astronaut_player.name = "7"
+	get_tree().root.add_child(astronaut_player)
 	await get_tree().process_frame
-	var sky_label := sky_player.get_node_or_null("NetworkHead/PresenceLabel") as Label3D
-	_check(sky_label != null and sky_label.text.contains("天上端 7"), "remote peer should use sky label")
+	var astronaut_label := astronaut_player.get_node_or_null("NetworkHead/PresenceLabel") as Label3D
+	_check(astronaut_label != null and astronaut_label.text.contains("航天端 7"), "remote peer should use astronaut label")
 
 	var head := Transform3D(Basis.IDENTITY, Vector3(1.0, 1.7, -2.0))
 	var left_hand := Transform3D(Basis.IDENTITY, Vector3(0.7, 1.3, -2.2))
 	var right_hand := Transform3D(Basis.IDENTITY, Vector3(1.3, 1.3, -2.2))
-	_check(bool(sky_player.call("_is_valid_pose_transform", head)), "finite unit pose should be accepted")
+	_check(bool(astronaut_player.call("_is_valid_pose_transform", head)), "finite unit pose should be accepted")
 	var invalid_pose := Transform3D(Basis.IDENTITY, Vector3(2000.0, 0.0, 0.0))
-	_check(not bool(sky_player.call("_is_valid_pose_transform", invalid_pose)), "out-of-range pose should be rejected")
+	_check(not bool(astronaut_player.call("_is_valid_pose_transform", invalid_pose)), "out-of-range pose should be rejected")
 	var mirrored_pose := Transform3D(Basis(Vector3.LEFT, Vector3.UP, Vector3.BACK), Vector3.ZERO)
-	_check(not bool(sky_player.call("_is_valid_pose_transform", mirrored_pose)), "mirrored pose bases should be rejected")
+	_check(not bool(astronaut_player.call("_is_valid_pose_transform", mirrored_pose)), "mirrored pose bases should be rejected")
 	var sheared_pose := Transform3D(Basis(Vector3.RIGHT, Vector3(0.2, 1.0, 0.0), Vector3.BACK), Vector3.ZERO)
-	_check(not bool(sky_player.call("_is_valid_pose_transform", sheared_pose)), "sheared pose bases should be rejected")
+	_check(not bool(astronaut_player.call("_is_valid_pose_transform", sheared_pose)), "sheared pose bases should be rejected")
 	ground_player.set("_replica_ready_peer_ids", {7: true})
 	ground_player.call("_on_peer_disconnected", 7)
 	_check(not (ground_player.get("_replica_ready_peer_ids") as Dictionary).has(7), "disconnect should clear replica-ready state")
-	_check(bool(sky_player.call("_accept_remote_pose", 4, head, left_hand, right_hand)), "new pose sequence should be accepted")
-	_check(not bool(sky_player.call("_accept_remote_pose", 4, head, left_hand, right_hand)), "duplicate pose sequence should be rejected")
-	var network_head := sky_player.get_node_or_null("NetworkHead") as Node3D
+	_check(bool(astronaut_player.call("_accept_remote_pose", 4, head, left_hand, right_hand)), "new pose sequence should be accepted")
+	_check(not bool(astronaut_player.call("_accept_remote_pose", 4, head, left_hand, right_hand)), "duplicate pose sequence should be rejected")
+	var network_head := astronaut_player.get_node_or_null("NetworkHead") as Node3D
 	_check(network_head != null and network_head.visible, "accepted pose should reveal remote avatar")
 	var expected_global_head := shared_origin.global_transform * head.origin
 	_check(network_head != null and network_head.global_position.is_equal_approx(expected_global_head), "shared-space pose should respect a transformed SharedSpaceOrigin")
 
 	ground_player.queue_free()
 	ground_vr_player.queue_free()
-	sky_player.queue_free()
+	astronaut_player.queue_free()
 	shared_origin.queue_free()
 	await get_tree().process_frame
 

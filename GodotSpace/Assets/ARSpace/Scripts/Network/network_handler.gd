@@ -11,13 +11,13 @@ const SERVER_PEER_ID: int = 1
 const ROLE_UNKNOWN: String = "unknown"
 const ROLE_PC_GROUND: String = "pc_ground"
 const ROLE_GROUND_VR: String = "ground_vr"
-const ROLE_SKY: String = "sky"
+const ROLE_ASTRONAUT: String = "astronaut"
 const GROUND_VR_TOKEN_ENV: String = "GODOTSPACE_GROUND_VR_TOKEN"
 const VALID_SESSION_ROLES: Array[String] = [
 	ROLE_UNKNOWN,
 	ROLE_PC_GROUND,
 	ROLE_GROUND_VR,
-	ROLE_SKY,
+	ROLE_ASTRONAUT,
 ]
 
 signal network_ready
@@ -58,7 +58,7 @@ func _on_peer_connected(peer_id: int) -> void:
 	# A new peer is safe-by-default. The Server may promote exactly one peer to
 	# Ground VR after processing its request. RPC payloads never determine the
 	# effective role directly.
-	_set_peer_role(peer_id, ROLE_SKY)
+	_set_peer_role(peer_id, ROLE_ASTRONAUT)
 	call_deferred("_send_peer_role_snapshot", peer_id)
 
 
@@ -254,7 +254,7 @@ func _get_requested_local_role() -> String:
 			and profile.has_method("uses_xr") \
 			and bool(profile.call("uses_xr")):
 		return ROLE_GROUND_VR
-	return ROLE_SKY
+	return ROLE_ASTRONAUT
 
 
 @rpc("any_peer", "call_remote", "reliable", 0)
@@ -275,7 +275,7 @@ func _assign_requested_role(peer_id: int, requested_role: String, pairing_token:
 		return get_peer_role(peer_id)
 
 	var normalized_request := requested_role.strip_edges().to_lower()
-	var assigned_role := ROLE_SKY
+	var assigned_role := ROLE_ASTRONAUT
 	var rejection_reason := ""
 	if normalized_request == ROLE_GROUND_VR:
 		if _ground_vr_peer_id > SERVER_PEER_ID and _ground_vr_peer_id != peer_id:
@@ -284,7 +284,7 @@ func _assign_requested_role(peer_id: int, requested_role: String, pairing_token:
 			rejection_reason = "invalid_ground_vr_token"
 		else:
 			assigned_role = ROLE_GROUND_VR
-	elif normalized_request != ROLE_SKY:
+	elif normalized_request != ROLE_ASTRONAUT:
 		rejection_reason = "unsupported_role_request"
 
 	_resolved_role_requests[peer_id] = true

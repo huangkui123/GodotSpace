@@ -76,7 +76,7 @@ func _get_registered_peer_role(peer_id: int) -> String:
 	var network_handler := get_node_or_null("/root/NetworkHandler")
 	if network_handler != null and network_handler.has_method("get_peer_role"):
 		return str(network_handler.call("get_peer_role", peer_id))
-	return "pc_ground" if peer_id == SERVER_PEER_ID else "sky"
+	return "pc_ground" if peer_id == SERVER_PEER_ID else "astronaut"
 
 func remove_player(id: int) -> void:
 	if not multiplayer.is_server() or id == SERVER_PEER_ID:

@@ -53,7 +53,7 @@ func _on_network_role_selected(is_server_role: bool) -> void:
 	if not runtime_profile.has_explicit_mode:
 		var preset := RuntimeProfile.Preset.PC_GROUND_SERVER \
 			if is_server_role \
-			else RuntimeProfile.Preset.SKY_XR_CLIENT
+			else RuntimeProfile.Preset.ASTRONAUT_XR_CLIENT
 		runtime_profile = RuntimeProfile.select_session_mode(preset)
 	elif runtime_profile.is_server() != is_server_role:
 		push_error("Network role does not match runtime profile %s" % runtime_profile.get_mode_label())

@@ -9,10 +9,10 @@ const DEFAULT_PORT: int = 43280
 const STAGE_TIMEOUT_MSEC: int = 12000
 const ROLE_PC_GROUND: String = "pc_ground"
 const ROLE_GROUND_VR: String = "ground_vr"
-const ROLE_SKY: String = "sky"
+const ROLE_ASTRONAUT: String = "astronaut"
 const FIRST_ANNOTATION_TEXT: String = "Ground VR initial annotation"
 const SECOND_ANNOTATION_TEXT: String = "Ground VR reconnected annotation"
-const FORGED_SKY_ANNOTATION_TEXT: String = "Sky forged annotation"
+const FORGED_ASTRONAUT_ANNOTATION_TEXT: String = "Astronaut forged annotation"
 
 var _role: String = ""
 var _port: int = DEFAULT_PORT
@@ -47,8 +47,8 @@ func _run() -> void:
 			await _run_server()
 		"ground_client", "first_client":
 			await _run_ground_client()
-		"sky_client", "late_client":
-			await _run_sky_client()
+		"astronaut_client", "late_client":
+			await _run_astronaut_client()
 		_:
 			_failures.append("Unknown collaboration process role: %s" % _role)
 	await _finish()
@@ -70,11 +70,11 @@ func _run_server() -> void:
 		"server should record the authenticated Ground VR creator"
 	)
 
-	_check(await _wait_for_player_count(3), "server should observe the Sky client")
+	_check(await _wait_for_player_count(3), "server should observe the Astronaut client")
 	_check(await _wait_for_role_count(3), "server should register all three session roles")
 	_check(_count_role(ROLE_PC_GROUND) == 1, "server should keep exactly one PC Ground role")
 	_check(_count_role(ROLE_GROUND_VR) == 1, "server should keep exactly one Ground VR role")
-	_check(_count_role(ROLE_SKY) == 1, "server should keep exactly one Sky role")
+	_check(_count_role(ROLE_ASTRONAUT) == 1, "server should keep exactly one Astronaut role")
 	_check(await _wait_for_player_roles(), "server player replicas should match the role registry")
 	_check(await _wait_for_remote_avatars(2), "server should receive both remote player poses")
 
@@ -113,11 +113,11 @@ func _run_ground_client() -> void:
 	_check(await _wait_for_annotation_count(1), "Ground VR should receive its confirmed annotation")
 	_check(_annotation_text_count(FIRST_ANNOTATION_TEXT) == 1, "Ground VR should render its annotation once")
 
-	_check(await _wait_for_player_count(3), "Ground VR client should observe the Sky client")
+	_check(await _wait_for_player_count(3), "Ground VR client should observe the Astronaut client")
 	_check(await _wait_for_role_count(3), "Ground VR should receive the three-role snapshot")
-	_check(await _wait_for_player_roles(), "Ground VR should identify PC Ground and Sky replicas")
-	_check(await _wait_for_remote_avatars(2), "Ground VR should receive PC Ground and Sky poses")
-	# Give the Sky process time to exercise its rejected create before this peer
+	_check(await _wait_for_player_roles(), "Ground VR should identify PC Ground and Astronaut replicas")
+	_check(await _wait_for_remote_avatars(2), "Ground VR should receive PC Ground and Astronaut poses")
+	# Give the Astronaut process time to exercise its rejected create before this peer
 	# disconnects and releases the single Ground VR slot.
 	await get_tree().create_timer(2.0).timeout
 	var old_peer_id := _peer.get_unique_id()
@@ -146,43 +146,43 @@ func _run_ground_client() -> void:
 	await get_tree().create_timer(1.0).timeout
 
 
-func _run_sky_client() -> void:
-	_check(await _connect_client("SkyClientWorld"), "Sky client should connect")
+func _run_astronaut_client() -> void:
+	_check(await _connect_client("AstronautClientWorld"), "Astronaut client should connect")
 	if not _failures.is_empty():
 		return
-	_check(await _wait_for_local_role(ROLE_SKY), "Sky client should receive its Server-assigned role")
-	_check(await _wait_for_player_count(3), "Sky client should receive all existing players")
-	_check(await _wait_for_role_count(3), "Sky client should receive all session roles")
-	_check(await _wait_for_annotation_count(1), "late Sky client should receive the annotation snapshot")
-	_check(_annotation_text_count(FIRST_ANNOTATION_TEXT) == 1, "late Sky snapshot should contain the annotation once")
+	_check(await _wait_for_local_role(ROLE_ASTRONAUT), "Astronaut client should receive its Server-assigned role")
+	_check(await _wait_for_player_count(3), "Astronaut client should receive all existing players")
+	_check(await _wait_for_role_count(3), "Astronaut client should receive all session roles")
+	_check(await _wait_for_annotation_count(1), "late Astronaut client should receive the annotation snapshot")
+	_check(_annotation_text_count(FIRST_ANNOTATION_TEXT) == 1, "late Astronaut snapshot should contain the annotation once")
 	_check(
-		int(_annotation_manager.call("create_annotation", _make_draft("Sky local annotation", Vector3.ZERO))) == -1,
-		"Sky client should be denied before sending a local annotation request"
+		int(_annotation_manager.call("create_annotation", _make_draft("Astronaut local annotation", Vector3.ZERO))) == -1,
+		"Astronaut client should be denied before sending a local annotation request"
 	)
 	_annotation_manager.rpc_id(
 		1,
 		"_server_create_annotation",
 		1,
-		_make_draft(FORGED_SKY_ANNOTATION_TEXT, Vector3.ZERO)
+		_make_draft(FORGED_ASTRONAUT_ANNOTATION_TEXT, Vector3.ZERO)
 	)
 	await _wait_frames(20)
-	_check(int(_annotation_manager.call("get_annotation_count")) == 1, "Server should reject a forged Sky annotation request")
-	_check(_annotation_text_count(FORGED_SKY_ANNOTATION_TEXT) == 0, "forged Sky annotation must not be synchronized")
-	_check(await _wait_for_player_roles(), "Sky client should identify both Ground replicas")
-	_check(await _wait_for_remote_avatars(2), "Sky client should receive both Ground poses")
+	_check(int(_annotation_manager.call("get_annotation_count")) == 1, "Server should reject a forged Astronaut annotation request")
+	_check(_annotation_text_count(FORGED_ASTRONAUT_ANNOTATION_TEXT) == 0, "forged Astronaut annotation must not be synchronized")
+	_check(await _wait_for_player_roles(), "Astronaut client should identify both Ground replicas")
+	_check(await _wait_for_remote_avatars(2), "Astronaut client should receive both Ground poses")
 
-	_check(await _wait_for_player_count(2), "Sky client should observe Ground VR cleanup")
-	_check(await _wait_for_ground_vr_release(), "Sky client should observe the released Ground VR slot")
-	_check(int(_annotation_manager.call("get_annotation_count")) == 1, "Sky should retain annotations while Ground VR reconnects")
+	_check(await _wait_for_player_count(2), "Astronaut client should observe Ground VR cleanup")
+	_check(await _wait_for_ground_vr_release(), "Astronaut client should observe the released Ground VR slot")
+	_check(int(_annotation_manager.call("get_annotation_count")) == 1, "Astronaut should retain annotations while Ground VR reconnects")
 
-	_check(await _wait_for_player_count(3), "Sky client should observe Ground VR reconnection")
+	_check(await _wait_for_player_count(3), "Astronaut client should observe Ground VR reconnection")
 	var replacement_ground_peer_id := await _wait_for_ground_vr_peer()
-	_check(replacement_ground_peer_id > 1, "Sky client should observe the replacement Ground VR role")
-	_check(await _wait_for_annotation_count(2), "Sky client should receive the post-reconnect annotation")
-	_check(_has_unique_annotations(), "Sky client should end with two unique synchronized annotations")
-	_check(await _wait_for_player_roles(), "Sky reconnect replicas should match the role registry")
-	_check(await _wait_for_remote_avatars(2), "Sky client should receive reconnected Ground VR poses")
-	_check(_has_unique_player_names(), "Sky client should end with unique player instances")
+	_check(replacement_ground_peer_id > 1, "Astronaut client should observe the replacement Ground VR role")
+	_check(await _wait_for_annotation_count(2), "Astronaut client should receive the post-reconnect annotation")
+	_check(_has_unique_annotations(), "Astronaut client should end with two unique synchronized annotations")
+	_check(await _wait_for_player_roles(), "Astronaut reconnect replicas should match the role registry")
+	_check(await _wait_for_remote_avatars(2), "Astronaut client should receive reconnected Ground VR poses")
+	_check(_has_unique_player_names(), "Astronaut client should end with unique player instances")
 	await get_tree().create_timer(0.75).timeout
 
 

@@ -3,7 +3,7 @@ extends SceneTree
 const TOKEN_ENV: String = "GODOTSPACE_GROUND_VR_TOKEN"
 const ROLE_PC_GROUND: String = "pc_ground"
 const ROLE_GROUND_VR: String = "ground_vr"
-const ROLE_SKY: String = "sky"
+const ROLE_ASTRONAUT: String = "astronaut"
 
 var _failures: Array[String] = []
 var _previous_token: String = ""
@@ -29,14 +29,14 @@ func _run() -> void:
 	var first_ground := str(network_handler.call("_assign_requested_role", 7, ROLE_GROUND_VR, ""))
 	var competing_ground := str(network_handler.call("_assign_requested_role", 8, ROLE_GROUND_VR, ""))
 	_expect(first_ground == ROLE_GROUND_VR, "The first approved Ground VR request should fill the unique slot.")
-	_expect(competing_ground == ROLE_SKY, "A second Ground VR request must be assigned Sky.")
+	_expect(competing_ground == ROLE_ASTRONAUT, "A second Ground VR request must be assigned Astronaut.")
 	_expect(bool(network_handler.call("can_peer_annotate", 7)), "The Server-assigned Ground VR peer should annotate.")
 	_expect(not bool(network_handler.call("can_peer_annotate", 8)), "A rejected Ground VR claimant must not annotate.")
 
 	var attempted_role_switch := str(network_handler.call("_assign_requested_role", 8, ROLE_GROUND_VR, ""))
-	_expect(attempted_role_switch == ROLE_SKY, "A peer must not change its assigned role with a later request.")
+	_expect(attempted_role_switch == ROLE_ASTRONAUT, "A peer must not change its assigned role with a later request.")
 	var forged_pc_ground := str(network_handler.call("_assign_requested_role", 9, ROLE_PC_GROUND, ""))
-	_expect(forged_pc_ground == ROLE_SKY, "A Client request for PC Ground must be downgraded to Sky.")
+	_expect(forged_pc_ground == ROLE_ASTRONAUT, "A Client request for PC Ground must be downgraded to Astronaut.")
 	_expect(not bool(network_handler.call("can_peer_annotate", 9)), "A forged PC Ground request must not grant annotation permission.")
 
 	network_handler.call("_remove_peer_role", 7)
@@ -47,7 +47,7 @@ func _run() -> void:
 	network_handler.call("_reset_peer_roles", true)
 	var bad_token_role := str(network_handler.call("_assign_requested_role", 11, ROLE_GROUND_VR, "wrong-token"))
 	var authenticated_role := str(network_handler.call("_assign_requested_role", 12, ROLE_GROUND_VR, "test-pairing-token"))
-	_expect(bad_token_role == ROLE_SKY, "An invalid pairing token must not receive Ground VR.")
+	_expect(bad_token_role == ROLE_ASTRONAUT, "An invalid pairing token must not receive Ground VR.")
 	_expect(authenticated_role == ROLE_GROUND_VR, "A matching pairing token should receive the Ground VR slot.")
 	_expect(not bool(network_handler.call("can_peer_annotate", 11)), "Invalid-token peers must remain unable to annotate.")
 	_expect(bool(network_handler.call("can_peer_annotate", 12)), "Authenticated Ground VR should be allowed to annotate.")

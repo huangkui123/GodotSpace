@@ -13,7 +13,7 @@ signal dictation_failed(session_id: String, code: int, message: String)
 const SERVER_PEER_ID := 1
 const SERVER_SOURCE_ID := 1
 const XR_CLIENT_ARG := "--xr-client"
-const GROUND_VR_ARG := "--ground-vr"
+const GROUND_VR_CLIENT_ARG := "--ground-vr-client"
 const XR_MODE_ARG := "--xr-mode"
 const VOICE_ROLE_ARG := "--voice-role="
 const VOICE_TEST_TONE_ARG := "--voice-test-tone"
@@ -1234,7 +1234,7 @@ func _is_vr_mode_requested() -> bool:
 	var profile = RuntimeProfileScript.current()
 	if profile != null and profile.is_valid():
 		return profile.uses_xr()
-	if OS.has_feature("android") or _has_cmdline_arg(GROUND_VR_ARG):
+	if OS.has_feature("android") or _has_cmdline_arg(GROUND_VR_CLIENT_ARG):
 		return true
 	var role := _get_arg_value(VOICE_ROLE_ARG).to_lower()
 	return role in ["client", "vr"] or _has_cmdline_arg(XR_CLIENT_ARG) or _has_xr_mode_on_arg()

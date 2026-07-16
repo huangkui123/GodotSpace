@@ -10,7 +10,7 @@ var _peers: Array[ENetMultiplayerPeer] = []
 
 
 class MockPeerAuthority extends Node:
-	var local_role: String = "sky"
+	var local_role: String = "astronaut"
 	var annotating_peers: Dictionary = {}
 
 	func get_local_assigned_role() -> String:
@@ -85,22 +85,22 @@ func _run() -> void:
 	var late_client_api := SceneMultiplayer.new()
 	late_client_api.multiplayer_peer = late_client_peer
 	var late_client_branch := _create_branch("LateClientBranch", late_client_api)
-	_add_peer_authority(late_client_branch, "sky")
+	_add_peer_authority(late_client_branch, "astronaut")
 	var late_client_manager = _add_annotation_manager(late_client_branch)
 	_check(await _wait_for_connection(late_client_peer), "late client should connect")
 	_check(await _wait_for_count(late_client_manager, 2), "late client should receive the authoritative snapshot")
 	_check(not late_client_manager.get_annotation(keep_a).is_empty(), "late snapshot should contain keep A")
 	_check(not late_client_manager.get_annotation(keep_b).is_empty(), "late snapshot should contain keep B")
 	_check(late_client_manager.get_annotation(remove_id).is_empty(), "late snapshot should omit the deleted annotation")
-	_check(late_client_manager.create_annotation(_make_draft("Sky local bypass", Vector3.ZERO)) == -1, "Sky should be denied before sending an annotation request")
+	_check(late_client_manager.create_annotation(_make_draft("Astronaut local bypass", Vector3.ZERO)) == -1, "Astronaut should be denied before sending an annotation request")
 	late_client_manager.rpc_id(
 		SERVER_PEER_ID,
 		"_server_create_annotation",
 		1,
-		_make_draft("Sky forged request", Vector3.ZERO)
+		_make_draft("Astronaut forged request", Vector3.ZERO)
 	)
 	await _wait_frames(10)
-	_check(_find_annotation_by_text(server_manager, "Sky forged request") == -1, "Server should reject a forged Sky create request")
+	_check(_find_annotation_by_text(server_manager, "Astronaut forged request") == -1, "Server should reject a forged Astronaut create request")
 
 	var invalid_ground_draft := _make_draft("Invalid Ground request", Vector3.ZERO)
 	invalid_ground_draft["shared_position"] = Vector3(NAN, 0.0, 0.0)

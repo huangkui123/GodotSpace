@@ -303,7 +303,7 @@ subUI = NodePath("UI/SubViewportContainer/SubViewport/Camera3D")
 [node name="GroundVRAnchor" type="Node3D" parent="SharedSpaceOrigin"]
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -0.155226, 0, 0.436745)
 
-[node name="SkyXRAnchor" type="Node3D" parent="SharedSpaceOrigin"]
+[node name="AstronautXRAnchor" type="Node3D" parent="SharedSpaceOrigin"]
 
 [node name="VirtualAnnotations" parent="SharedSpaceOrigin" instance=ExtResource("72_annotation_system")]
 

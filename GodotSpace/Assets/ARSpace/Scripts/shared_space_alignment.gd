@@ -10,7 +10,7 @@ signal alignment_succeeded(role: String, anchor: Node3D)
 signal alignment_failed(reason: String)
 
 @export var ground_anchor_path: NodePath = NodePath("../SharedSpaceOrigin/GroundVRAnchor")
-@export var sky_anchor_path: NodePath = NodePath("../SharedSpaceOrigin/SkyXRAnchor")
+@export var astronaut_anchor_path: NodePath = NodePath("../SharedSpaceOrigin/AstronautXRAnchor")
 @export var local_xr_origin_path: NodePath
 @export var auto_recenter: bool = true
 @export var show_recenter_controls: bool = true
@@ -87,7 +87,7 @@ func recenter() -> bool:
 	_is_aligned = true
 	_timeout_reported = false
 	_set_status("共享空间：已对齐")
-	alignment_succeeded.emit("ground" if _runtime_profile.is_ground() else "sky", anchor)
+	alignment_succeeded.emit("ground" if _runtime_profile.is_ground() else "astronaut", anchor)
 	return true
 
 
@@ -134,7 +134,7 @@ static func _yaw_basis(source: Basis) -> Basis:
 
 
 func _get_role_anchor() -> Node3D:
-	var anchor_path := ground_anchor_path if _runtime_profile.is_ground() else sky_anchor_path
+	var anchor_path := ground_anchor_path if _runtime_profile.is_ground() else astronaut_anchor_path
 	return get_node_or_null(anchor_path) as Node3D
 
 

@@ -7,7 +7,7 @@ const REMOTE_INTERPOLATION_DELAY: float = 0.1
 const MAX_QUEUED_POSE_SAMPLES: int = 12
 const MAX_SHARED_POSE_DISTANCE: float = 1000.0
 const TEST_MODE_ARG: String = "--testmode"
-const GROUND_VR_ARG: String = "--ground-vr"
+const GROUND_VR_CLIENT_ARG: String = "--ground-vr-client"
 const XR_CLIENT_ARG: String = "--xr-client"
 const TEST_TRIGGER_KEY := KEY_J
 const TEST_GRIP_KEY := KEY_K
@@ -16,10 +16,10 @@ const PC_RIGHT_HAND_OFFSET := Vector3(0.28, -0.22, -0.38)
 const ROLE_UNKNOWN: String = "unknown"
 const ROLE_PC_GROUND: String = "pc_ground"
 const ROLE_GROUND_VR: String = "ground_vr"
-const ROLE_SKY: String = "sky"
+const ROLE_ASTRONAUT: String = "astronaut"
 const PC_GROUND_ROLE_COLOR := Color(0.16, 0.78, 1.0, 1.0)
 const GROUND_VR_ROLE_COLOR := Color(0.22, 0.95, 0.55, 1.0)
-const SKY_ROLE_COLOR := Color(1.0, 0.62, 0.18, 1.0)
+const ASTRONAUT_ROLE_COLOR := Color(1.0, 0.62, 0.18, 1.0)
 
 const LOCAL_XR_NODE_PATHS: Array[NodePath] = [
 	NodePath("XROrigin3D"),
@@ -164,12 +164,12 @@ func _on_peer_role_changed(peer_id: int, assigned_role: String) -> void:
 
 func _normalize_session_role(assigned_role: String) -> String:
 	var normalized_role := assigned_role.strip_edges().to_lower()
-	return normalized_role if normalized_role in [ROLE_PC_GROUND, ROLE_GROUND_VR, ROLE_SKY] else ROLE_UNKNOWN
+	return normalized_role if normalized_role in [ROLE_PC_GROUND, ROLE_GROUND_VR, ROLE_ASTRONAUT] else ROLE_UNKNOWN
 
 func _resolved_session_role() -> String:
 	if _session_role != ROLE_UNKNOWN:
 		return _session_role
-	return ROLE_PC_GROUND if _get_peer_id_from_name() == SERVER_PEER_ID else ROLE_SKY
+	return ROLE_PC_GROUND if _get_peer_id_from_name() == SERVER_PEER_ID else ROLE_ASTRONAUT
 
 func _is_local_authority() -> bool:
 	if _has_active_multiplayer_peer():
@@ -192,7 +192,7 @@ func _uses_xr_presentation() -> bool:
 		return profile.uses_xr()
 	if _is_test_mode():
 		return false
-	if _has_command_line_argument(GROUND_VR_ARG):
+	if _has_command_line_argument(GROUND_VR_CLIENT_ARG):
 		return true
 	if OS.get_name() == "Android" or _has_command_line_argument(XR_CLIENT_ARG):
 		return true
@@ -605,7 +605,7 @@ func _set_network_avatar_visible(is_visible: bool) -> void:
 
 func _apply_role_appearance() -> void:
 	var assigned_role := _resolved_session_role()
-	var role_color := SKY_ROLE_COLOR
+	var role_color := ASTRONAUT_ROLE_COLOR
 	if assigned_role == ROLE_PC_GROUND:
 		role_color = PC_GROUND_ROLE_COLOR
 	elif assigned_role == ROLE_GROUND_VR:
@@ -630,5 +630,5 @@ func _apply_role_appearance() -> void:
 			ROLE_GROUND_VR:
 				label.text = "地面端 VR · 在线"
 			_:
-				label.text = "天上端 %d · 在线" % _get_peer_id_from_name()
+				label.text = "航天端 %d · 在线" % _get_peer_id_from_name()
 		label.modulate = role_color.lightened(0.25)

@@ -42,12 +42,7 @@ func _test_resources_load() -> void:
 
 func _test_runtime_contract() -> void:
 	var pc_ground = RuntimeProfile.from_args([], ["--voice-role=server"], false)
-	var vr_ground = RuntimeProfile.from_args(
-		["--xr-mode", "on", "--ground-vr", "--voice-role=server"],
-		["--ground-vr", "--voice-role=server"],
-		false
-	)
-	var sky_xr = RuntimeProfile.from_args(
+	var astronaut_xr = RuntimeProfile.from_args(
 		["--xr-mode", "on", "--xr-client", "--voice-role=client"],
 		["--xr-client", "--voice-role=client"],
 		false
@@ -58,11 +53,10 @@ func _test_runtime_contract() -> void:
 		false
 	)
 	_expect(pc_ground.is_server() and pc_ground.is_ground() and pc_ground.can_annotate(), "PC Ground profile contract failed")
-	_expect(vr_ground.is_server() and vr_ground.uses_xr() and not vr_ground.uses_passthrough(), "VR Ground profile contract failed")
 	_expect(vr_ground_client.is_client() and vr_ground_client.is_ground(), "VR Ground Client role contract failed")
 	_expect(vr_ground_client.uses_xr() and not vr_ground_client.uses_passthrough() and vr_ground_client.can_annotate(), "VR Ground Client capability contract failed")
-	_expect(sky_xr.is_client() and sky_xr.is_sky() and sky_xr.uses_passthrough(), "Sky XR profile contract failed")
-	_expect(not sky_xr.can_annotate(), "Sky XR must remain view-only")
+	_expect(astronaut_xr.is_client() and astronaut_xr.is_astronaut() and astronaut_xr.uses_passthrough(), "Astronaut XR profile contract failed")
+	_expect(not astronaut_xr.can_annotate(), "Astronaut XR must remain view-only")
 
 
 func _test_scene_contract() -> void:
@@ -71,7 +65,7 @@ func _test_scene_contract() -> void:
 		"[node name=\"SharedSpaceOrigin\"",
 		"groups=[\"shared_space_origin\"]",
 		"[node name=\"GroundVRAnchor\"",
-		"[node name=\"SkyXRAnchor\"",
+		"[node name=\"AstronautXRAnchor\"",
 		"[node name=\"VirtualAnnotations\"",
 		"[node name=\"SharedSpaceAlignment\"",
 		"[node name=\"MultiplayerSpawner\"",
@@ -87,7 +81,7 @@ func _test_scene_contract() -> void:
 	for node_path in [
 		"SharedSpaceOrigin",
 		"SharedSpaceOrigin/GroundVRAnchor",
-		"SharedSpaceOrigin/SkyXRAnchor",
+		"SharedSpaceOrigin/AstronautXRAnchor",
 		"SharedSpaceOrigin/VirtualAnnotations",
 		"SharedSpaceAlignment",
 		"MultiplayerSpawner",
