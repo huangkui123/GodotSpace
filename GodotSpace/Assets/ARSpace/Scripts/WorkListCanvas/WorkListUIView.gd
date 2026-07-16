@@ -227,45 +227,31 @@ func sample_data_init():
 	))
 	da_result.list.append(WorkListData.new(2, "无容器样品盒更换.png",
 		"无容器样品盒更换",
-		"共5步",
-		"1.步骤。2.步骤。3.步骤...",
-		info_data_result
+		"未配置",
+		"该任务尚未配置，入口仅用于标明复刻范围。",
+		null,
+		false
 	))
 	da_result.list.append(WorkListData.new(3, "高微柜悬浮实验.png",
 		"高微柜悬浮实验",
-		"共5步",
-		"1.步骤。2.步骤。3.步骤...",
-		info_data_result
+		"未配置",
+		"该任务尚未配置，入口仅用于标明复刻范围。",
+		null,
+		false
 	))
 	da_result.list.append(WorkListData.new(4, "水稻剪枝实验.png",
 		"水稻剪枝实验",
-		"共5步",
-		"1.步骤。2.步骤。3.步骤...",
-		info_data_result
+		"未配置",
+		"该任务尚未配置，入口仅用于标明复刻范围。",
+		null,
+		false
 	))
 	da_result.list.append(WorkListData.new(5, "细胞注射实验.png",
 		"细胞注射实验",
-		"共5步",
-		"1.步骤。2.步骤。3.步骤...",
-		info_data_result
-	))
-	da_result.list.append(WorkListData.new(6, "Group 155681.png",
-		"实验流程5",
-		"共5步",
-		"1.步骤。2.步骤。3.步骤...",
-		info_data_result
-	))
-	da_result.list.append(WorkListData.new(7, "Group 155682.png",
-		"实验流程6",
-		"共6步",
-		"1.步骤。2.步骤。3.步骤...",
-		info_data_result
-	))
-	da_result.list.append(WorkListData.new(8, "Group 155683.png",
-		"实验流程7",
-		"共7步",
-		"1.步骤。2.步骤。3.步骤...",
-		info_data_result
+		"未配置",
+		"该任务尚未配置，入口仅用于标明复刻范围。",
+		null,
+		false
 	))
 
 	on_refresh_data_change_view(da_result)

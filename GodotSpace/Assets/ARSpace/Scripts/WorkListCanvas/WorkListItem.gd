@@ -3,6 +3,9 @@ extends Control
 class_name WorkListItem
 
 const DEBUG_LOGS := false
+const UNCONFIGURED_SUFFIX := "（未配置）"
+
+signal unconfigured_task_selected(task_id: int, task_title: String)
 
 @export var item_data: WorkListData
 
@@ -17,10 +20,9 @@ func _ready():
 func click_btn():
 	if DEBUG_LOGS: print(self.name, ": click_btn")
 
-	if item_data.id > 1:
-		if DEBUG_LOGS: print(self.name, ": 该实验流程暂未开放")
-		# if InfoToastManager and MainMenuUIView:
-		# 	InfoToastManager.show_info_toast_window(InfoState.FAIL, "该实验流程暂未开放", MainMenuUIView.instance)
+	if not item_data.is_configured:
+		push_warning("任务“%s”未配置，保留入口但不会打开任务步骤。" % item_data.title)
+		unconfigured_task_selected.emit(item_data.id, item_data.title)
 		return
 
 	if DEBUG_LOGS: print(self.name, ": Step = 1")
@@ -55,11 +57,11 @@ func refresh_info(data: WorkListData):
 			if DEBUG_LOGS: print("Error loading texture from file:", file_path)
 
 	if title_label:
-		title_label.text = data.title
+		title_label.text = data.title if data.is_configured else "%s%s" % [data.title, UNCONFIGURED_SUFFIX]
 	if num_label:
-		num_label.text = data.step_count_text
+		num_label.text = data.step_count_text if data.is_configured else "未配置"
 	if info_label:
-		info_label.text = data.brief_description
+		info_label.text = data.brief_description if data.is_configured else "该任务尚未配置，入口仅用于标明复刻范围。"
 
 func get_media_path(root_directory_name: String, file_name: String):
 	var base_path: String

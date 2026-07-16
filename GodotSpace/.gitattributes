@@ -1,2 +1,7 @@
 # Normalize EOL for all files that Git considers text files.
 * text=auto eol=lf
+
+# The repository root routes these extensions through Git LFS. Reassert their
+# binary nature here so this nested file cannot apply LF normalization to them.
+*.mp4 -text -eol
+*.bin -text -eol
