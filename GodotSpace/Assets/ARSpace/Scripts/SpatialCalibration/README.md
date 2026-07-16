@@ -21,7 +21,7 @@
    这样 Godot 仍然可以使用默认地址 `http://127.0.0.1:8765/predict`。如果确实需要绕过隧道并让 Godot 直连其他地址，可以设置环境变量 `GODOTSPACE_DEPTH_PREDICTION_ENDPOINT`，例如 `http://116.177.253.45:8765/predict`。
 6. 在 server 面板中的 PICO 预览画面上点击一个点。面板会先等待深度预测；预测成功后，在三维场景中显示预览点。
 7. 如有需要，用鼠标滚轮沿当前射线方向微调深度。
-8. 用鼠标右键确认当前点。确认后的点会通过 `NetworkHandler.send_remote_annotation()` 同步到 client/VR 进程中显示。
+8. 用鼠标右键确认当前点。确认点会写入 Server 权威的 `SpatialCalibrationState`，并通过可靠版本化快照同步到 client/VR 进程中显示。
 
 ## 交互方式
 
@@ -32,6 +32,8 @@
 ## 说明
 
 - 当前版本使用 server 端虚拟相机位姿作为反投影依据。PICO metadata 仍会被解析并作为调试/参考信息保留，但不会作为最终标定坐标来源。
+- 投影所得 world 点在 Server 发送前只转换一次为 `SharedSpaceOrigin` 局部坐标。标定状态保存绝对原点 transform 和 revision，不发送或累加 world-space delta。
+- 完整坐标合同和重连/重标定语义见 `res://docs/network/shared_space_coordinate_contract.md`。
 - 使用 `PSA2` 视频帧协议和 `PAA1` ACK 协议。
 - 深度预测是 best-effort 的辅助功能。如果 HTTP 服务没有启动、加载失败或预测失败，面板仍然可以使用手动深度流程。
 - 不建议把深度预测服务直接暴露到公网，除非你已经通过防火墙或反向代理做了访问控制。SSH 隧道方案可以让 HTTP 服务保持私有，同时让 Godot 继续使用 localhost 地址。

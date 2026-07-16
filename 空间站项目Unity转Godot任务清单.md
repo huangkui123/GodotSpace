@@ -187,12 +187,14 @@
 
 ### 任务 1.5（P0）固化共享空间坐标和标定闭环
 
-- [ ] 将 `SharedSpaceOrigin` 定义为所有网络空间数据的唯一坐标合同，禁止业务 RPC 直接传输未说明的 world transform。
-- [ ] 明确玩家位姿、窗口、自由线、模型实例、点式标注和标定点的局部/世界坐标转换时机。
-- [ ] 复核 PICO helper 帧中 metadata、Server 虚拟相机位姿、点选深度和最终反投影的坐标来源。
-- [ ] 实现标定结果版本、迟到客户端快照、清除和重标定。
+- [x] 将 `SharedSpaceOrigin` 定义为所有网络空间数据的唯一坐标合同，禁止业务 RPC 直接传输未说明的 world transform。
+- [x] 明确玩家位姿、窗口、自由线、模型实例、点式标注和标定点的局部/世界坐标转换时机。
+- [x] 复核 PICO helper 帧中 metadata、Server 虚拟相机位姿、点选深度和最终反投影的坐标来源。
+- [x] 实现标定结果版本、迟到客户端快照、清除和重标定。
 - [ ] 用真实 PICO/XR 设备比较 Godot 标定结果与 Unity 3 TagTracking 对齐结果的位置和方向误差。
-- [ ] 定义可接受误差、重定中时机、跟踪丢失超时和用户提示。
+- [x] 定义可接受误差、重定中时机、跟踪丢失超时和用户提示。
+
+任务 1.5 记录：`shared_space_contract.gd` 将所有网络空间量固定为 `SharedSpaceOrigin` 局部坐标（合同 v1、50 m 边界），玩家、虚拟标注与旧标定兼容 RPC 已接入同一转换入口。`SpatialCalibrationState` 由 Server 保存绝对原点 transform、单调 revision、预览与最多 128 个确认点，使用可靠快照处理 late join、重连、clear/recalibrate 和会话清理；`SpatialCalibrationReplica` 只在共享原点下应用局部点，重复 revision 不累加偏移。PICO metadata 只同步有界审计子集，最终射线仍明确来自 Server 虚拟相机，Depth Pro/人工输入仅给出沿射线深度。自动测试覆盖坐标往返、绝对替换、重连和 Server 关闭；真实 PICO 与 Unity `TagTrackingController.cs` 三 Tag 对照仍按 `docs/testing/task_1_5_pico_tagtracking_validation.md` 待验，目标为位置 RMS ≤ 0.05 m/最大 ≤ 0.10 m、水平朝向 RMS ≤ 3°/最大 ≤ 5°。
 
 **完成标准：** 三端中的柜体、玩家、标注和窗口使用统一坐标，重连或重标定后不会出现二次偏移。
 

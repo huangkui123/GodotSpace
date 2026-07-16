@@ -1,6 +1,7 @@
 extends Node
 
 const RuntimeProfileScript = preload("res://Assets/ARSpace/Scripts/runtime_profile.gd")
+const SharedSpaceContract = preload("res://Assets/ARSpace/Scripts/SpatialCalibration/shared_space_contract.gd")
 
 const IP_ADDRESS: String = "127.0.0.1"
 const PORT: int = 42069
@@ -25,7 +26,7 @@ signal network_role_selected(is_server: bool)
 signal connection_failed(reason: String)
 signal server_connection_lost
 signal session_closed
-signal remote_annotation_received(position: Vector3, data: Dictionary)
+signal remote_annotation_received(shared_position: Vector3, data: Dictionary)
 signal peer_role_changed(peer_id: int, assigned_role: String)
 signal local_role_assigned(assigned_role: String, can_annotate: bool)
 signal peer_role_request_rejected(peer_id: int, requested_role: String, reason: String)
@@ -430,20 +431,20 @@ func _has_connected_multiplayer_peer() -> bool:
 
 
 @rpc("authority", "call_local", "reliable")
-func create_marker_at_position(position: Vector3) -> void:
-	if marker_scene == null:
+func create_marker_at_position(shared_position: Vector3) -> void:
+	if marker_scene == null or not _is_valid_shared_position(shared_position):
 		return
 
 	var marker: Node = marker_scene.instantiate()
-	var main_scene := get_tree().current_scene
-	if main_scene == null:
+	var shared_origin := _get_shared_space_origin()
+	if shared_origin == null:
 		return
 
-	main_scene.add_child(marker)
+	shared_origin.add_child(marker)
 	if marker.has_method("setup"):
-		marker.setup(position)
+		marker.setup(shared_position)
 	elif marker is Node3D:
-		(marker as Node3D).global_position = position
+		(marker as Node3D).position = shared_position
 
 
 @rpc("authority", "call_local", "reliable")
@@ -469,26 +470,31 @@ func highlight_model_part(node_path: String, is_highlight: bool) -> void:
 	tree_list.update_tree_item_color(target_node, is_highlight)
 
 
-func send_spatial_calibration_preview(position: Vector3, data: Dictionary = {}) -> void:
-	if not multiplayer.is_server():
+func send_spatial_calibration_preview(shared_position: Vector3, data: Dictionary = {}) -> void:
+	if not multiplayer.is_server() or not _is_valid_shared_position(shared_position):
 		return
 
+	var payload := data.duplicate(true)
+	payload["coordinate_space"] = SharedSpaceContract.COORDINATE_SPACE
+	payload["coordinate_contract_version"] = SharedSpaceContract.CONTRACT_VERSION
 	for peer_id in multiplayer.get_peers():
-		rpc_id(peer_id, "_receive_spatial_calibration_preview", position, data)
+		rpc_id(peer_id, "_receive_spatial_calibration_preview", shared_position, payload)
 
 
 @rpc("authority", "call_local", "reliable")
-func _receive_spatial_calibration_preview(position: Vector3, data: Dictionary) -> void:
+func _receive_spatial_calibration_preview(shared_position: Vector3, data: Dictionary) -> void:
+	if not _is_shared_space_payload(shared_position, data):
+		return
 	if spatial_calibration_preview_marker == null or not is_instance_valid(spatial_calibration_preview_marker):
-		spatial_calibration_preview_marker = _create_simple_annotation_marker(position, data)
+		spatial_calibration_preview_marker = _create_simple_annotation_marker(shared_position, data)
 		spatial_calibration_preview_marker.name = "SpatialCalibrationPreviewMarker"
 		spatial_calibration_preview_marker.add_to_group("spatial_calibration_preview_marker")
 
-	var main_scene := get_tree().current_scene
-	if main_scene != null and spatial_calibration_preview_marker.get_parent() == null:
-		main_scene.add_child(spatial_calibration_preview_marker)
+	var shared_origin := _get_shared_space_origin()
+	if shared_origin != null and spatial_calibration_preview_marker.get_parent() == null:
+		shared_origin.add_child(spatial_calibration_preview_marker)
 
-	spatial_calibration_preview_marker.global_position = position
+	spatial_calibration_preview_marker.position = shared_position
 	spatial_calibration_preview_marker.visible = true
 
 
@@ -512,34 +518,39 @@ func _clear_spatial_calibration_preview() -> void:
 			marker_node.queue_free()
 
 
-func send_remote_annotation(position: Vector3, data: Dictionary = {}) -> void:
-	if not multiplayer.is_server():
+func send_remote_annotation(shared_position: Vector3, data: Dictionary = {}) -> void:
+	if not multiplayer.is_server() or not _is_valid_shared_position(shared_position):
 		return
 
+	var payload := data.duplicate(true)
+	payload["coordinate_space"] = SharedSpaceContract.COORDINATE_SPACE
+	payload["coordinate_contract_version"] = SharedSpaceContract.CONTRACT_VERSION
 	for peer_id in multiplayer.get_peers():
-		rpc_id(peer_id, "_receive_remote_annotation", position, data)
+		rpc_id(peer_id, "_receive_remote_annotation", shared_position, payload)
 
 
 @rpc("authority", "call_local", "reliable")
-func _receive_remote_annotation(position: Vector3, data: Dictionary) -> void:
-	remote_annotation_received.emit(position, data)
-	_create_annotation_marker(position, data)
+func _receive_remote_annotation(shared_position: Vector3, data: Dictionary) -> void:
+	if not _is_shared_space_payload(shared_position, data):
+		return
+	remote_annotation_received.emit(shared_position, data)
+	_create_annotation_marker(shared_position, data)
 
 
-func _create_annotation_marker(position: Vector3, data: Dictionary) -> void:
-	var marker: Node3D = _create_simple_annotation_marker(position, data)
-	var main_scene := get_tree().current_scene
-	if main_scene == null:
+func _create_annotation_marker(shared_position: Vector3, data: Dictionary) -> void:
+	var marker: Node3D = _create_simple_annotation_marker(shared_position, data)
+	var shared_origin := _get_shared_space_origin()
+	if shared_origin == null:
 		return
 
-	main_scene.add_child(marker)
-	marker.global_position = position
+	shared_origin.add_child(marker)
+	marker.position = shared_position
 
 
-func _create_simple_annotation_marker(position: Vector3, data: Dictionary) -> Node3D:
+func _create_simple_annotation_marker(shared_position: Vector3, data: Dictionary) -> Node3D:
 	var marker: Node3D = Node3D.new()
 	marker.name = "RemoteAnnotationMarker"
-	marker.global_position = position
+	marker.position = shared_position
 	marker.add_to_group("remote_annotation_marker")
 
 	var marker_size := float(data.get("size", 0.05))
@@ -620,7 +631,9 @@ func _add_pulse_animation(marker: Node3D, mesh_instance: MeshInstance3D) -> void
 func send_remote_annotations_batch(annotations: Array) -> void:
 	for annotation in annotations:
 		if annotation is Dictionary:
-			send_remote_annotation(annotation.get("position", Vector3.ZERO), annotation.get("data", {}))
+			if not annotation.has("shared_position"):
+				continue
+			send_remote_annotation(annotation.get("shared_position", Vector3.ZERO), annotation.get("data", {}))
 		elif annotation is Vector3:
 			send_remote_annotation(annotation)
 
@@ -641,3 +654,25 @@ func _clear_remote_annotations() -> void:
 		if marker_node != null and is_instance_valid(marker_node):
 			marker_node.queue_free()
 	_clear_spatial_calibration_preview()
+
+
+func _get_shared_space_origin() -> Node3D:
+	var grouped := get_tree().get_first_node_in_group("shared_space_origin") as Node3D
+	if grouped != null:
+		return grouped
+	var main_scene := get_tree().current_scene
+	if main_scene == null:
+		return null
+	return main_scene.get_node_or_null("SharedSpaceOrigin") as Node3D
+
+
+func _is_valid_shared_position(shared_position: Vector3) -> bool:
+	return SharedSpaceContract.is_valid_shared_point(shared_position)
+
+
+func _is_shared_space_payload(shared_position: Vector3, data: Dictionary) -> bool:
+	return (
+		_is_valid_shared_position(shared_position)
+		and str(data.get("coordinate_space", "")) == SharedSpaceContract.COORDINATE_SPACE
+		and int(data.get("coordinate_contract_version", 0)) == SharedSpaceContract.CONTRACT_VERSION
+	)

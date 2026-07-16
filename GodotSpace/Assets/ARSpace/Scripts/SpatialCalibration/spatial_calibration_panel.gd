@@ -3,6 +3,7 @@ extends Control
 const DEBUG_LOGS := false
 
 const FrameProtocol := preload("res://Assets/ARSpace/Scripts/SpatialCalibration/anchor_frame_protocol.gd")
+const SharedSpaceContract := preload("res://Assets/ARSpace/Scripts/SpatialCalibration/shared_space_contract.gd")
 
 const FRAME_MAGIC_PSA2 := FrameProtocol.FRAME_MAGIC_PSA2
 const ACK_MAGIC_PAA1 := FrameProtocol.ACK_MAGIC_PAA1
@@ -542,9 +543,9 @@ func _recompute_selection() -> void:
 		return
 
 	confirm_button.disabled = false
-	var position: Vector3 = projection.get("position", Vector3.ZERO)
-	_update_local_preview_marker(position)
-	_send_remote_preview(position, projection)
+	var world_position: Vector3 = projection.get("world_position", Vector3.ZERO)
+	_update_local_preview_marker(world_position)
+	_send_remote_preview(world_position, projection)
 	_set_result_text(_build_projection_text(projection))
 
 
@@ -566,10 +567,10 @@ func _project_video_point(image_position: Vector2, frame_size: Vector2i, depth_m
 	var origin: Vector3 = ray.get("origin", camera.global_position)
 	var direction: Vector3 = ray.get("direction", Vector3.FORWARD)
 	direction = direction.normalized()
-	var position := origin + direction * depth_m
+	var world_position := origin + direction * depth_m
 	var projection_frame_id := frame_id if frame_id >= 0 else selected_frame_id
 	return {
-		"position": position,
+		"world_position": world_position,
 		"camera_position": origin,
 		"ray_direction": direction,
 		"pixel": image_position,
@@ -578,6 +579,8 @@ func _project_video_point(image_position: Vector2, frame_size: Vector2i, depth_m
 		"camera_name": camera.name,
 		"camera_path": str(camera.get_path()),
 		"frame_id": projection_frame_id,
+		"projection_source": "server_virtual_camera",
+		"pico_metadata_role": "debug_reference_only",
 		"projection_aspect": float(ray.get("projection_aspect", 0.0)),
 		"camera_z_per_ray_meter": float(ray.get("camera_z_per_ray_meter", 1.0)),
 	}
@@ -647,9 +650,9 @@ func _build_projection_from_selection() -> Dictionary:
 		return {"error": "Invalid selected ray."}
 
 	var direction := selected_ray_direction.normalized()
-	var position := selected_ray_origin + direction * selected_depth_m
+	var world_position := selected_ray_origin + direction * selected_depth_m
 	return {
-		"position": position,
+		"world_position": world_position,
 		"camera_position": selected_ray_origin,
 		"ray_direction": direction,
 		"pixel": selected_image_position,
@@ -658,6 +661,8 @@ func _build_projection_from_selection() -> Dictionary:
 		"camera_name": selected_camera_name,
 		"camera_path": selected_camera_path,
 		"frame_id": selected_frame_id,
+		"projection_source": "server_virtual_camera",
+		"pico_metadata_role": "debug_reference_only",
 		"projection_aspect": _get_frame_aspect(selected_frame_size),
 		"camera_z_per_ray_meter": selected_camera_z_per_ray_meter,
 		"depth_source": selected_depth_source,
@@ -704,7 +709,7 @@ func _confirm_current_point() -> void:
 	if current_projection.is_empty() or current_projection.has("error"):
 		return
 
-	var position: Vector3 = current_projection.get("position", Vector3.ZERO)
+	var world_position: Vector3 = current_projection.get("world_position", Vector3.ZERO)
 	var confirmed_depth_m: float = float(current_projection.get("depth_m", selected_depth_m))
 	var confirmed_depth_source: String = str(current_projection.get("depth_source", selected_depth_source))
 	var confirmed_depth_text := depth_prediction_status_text
@@ -714,8 +719,8 @@ func _confirm_current_point() -> void:
 			confirmed_depth_source,
 		]
 	confirmed_point_count += 1
-	_add_local_confirmed_marker(position)
-	_send_confirmed_point(position, current_projection)
+	_add_local_confirmed_marker(world_position)
+	_send_confirmed_point(world_position, current_projection)
 	_clear_remote_preview()
 	_reset_selection(true)
 	_set_result_text(confirmed_depth_text)
@@ -763,7 +768,9 @@ func _get_marker_root() -> Node3D:
 	return marker_root
 
 
-func _update_local_preview_marker(position: Vector3) -> void:
+func _update_local_preview_marker(world_position: Vector3) -> void:
+	if _uses_spatial_calibration_replica():
+		return
 	var root := _get_marker_root()
 	if root == null:
 		return
@@ -772,7 +779,7 @@ func _update_local_preview_marker(position: Vector3) -> void:
 		preview_marker = _create_marker_mesh(Color(0.2, 1.0, 0.25, 1.0), PREVIEW_MARKER_RADIUS)
 		preview_marker.name = "PreviewSpatialCalibrationPoint"
 		root.add_child(preview_marker)
-	preview_marker.global_position = position
+	preview_marker.global_position = world_position
 	preview_marker.visible = true
 
 
@@ -781,7 +788,9 @@ func _hide_local_preview_marker() -> void:
 		preview_marker.visible = false
 
 
-func _add_local_confirmed_marker(position: Vector3) -> void:
+func _add_local_confirmed_marker(world_position: Vector3) -> void:
+	if _uses_spatial_calibration_replica():
+		return
 	var root := _get_marker_root()
 	if root == null:
 		return
@@ -789,7 +798,7 @@ func _add_local_confirmed_marker(position: Vector3) -> void:
 	var marker := _create_marker_mesh(Color(1.0, 0.08, 0.03, 1.0), CONFIRMED_MARKER_RADIUS)
 	marker.name = "SpatialCalibrationPoint%d" % confirmed_point_count
 	root.add_child(marker)
-	marker.global_position = position
+	marker.global_position = world_position
 	marker.visible = true
 
 
@@ -817,37 +826,63 @@ func _make_marker_material(color: Color) -> StandardMaterial3D:
 	return material
 
 
-func _send_remote_preview(position: Vector3, projection: Dictionary) -> void:
-	var network_handler := get_node_or_null("/root/NetworkHandler")
-	if network_handler == null or not network_handler.has_method("send_spatial_calibration_preview"):
+func _send_remote_preview(world_position: Vector3, projection: Dictionary) -> void:
+	var shared_position := _world_to_shared_position(world_position)
+	if not shared_position.is_finite():
+		_set_status("SharedSpaceOrigin unavailable; preview was not synchronized")
 		return
 
-	network_handler.send_spatial_calibration_preview(position, _build_marker_payload(
+	var payload := _build_marker_payload(
 		projection,
 		Color(0.2, 1.0, 0.25, 1.0),
 		PREVIEW_MARKER_RADIUS,
 		"spatial_calibration_preview"
-	))
+	)
+	var calibration_state := get_node_or_null("/root/SpatialCalibrationState")
+	if calibration_state != null and calibration_state.has_method("set_preview"):
+		calibration_state.set_preview(shared_position, payload)
+		return
+
+	var network_handler := get_node_or_null("/root/NetworkHandler")
+	if network_handler != null and network_handler.has_method("send_spatial_calibration_preview"):
+		network_handler.send_spatial_calibration_preview(shared_position, payload)
 
 
 func _clear_remote_preview() -> void:
+	var calibration_state := get_node_or_null("/root/SpatialCalibrationState")
+	if calibration_state != null and calibration_state.has_method("clear_preview"):
+		calibration_state.clear_preview()
+		return
 	var network_handler := get_node_or_null("/root/NetworkHandler")
 	if network_handler != null and network_handler.has_method("clear_spatial_calibration_preview"):
 		network_handler.clear_spatial_calibration_preview()
 
 
-func _send_confirmed_point(position: Vector3, projection: Dictionary) -> void:
-	var network_handler := get_node_or_null("/root/NetworkHandler")
-	if network_handler == null or not network_handler.has_method("send_remote_annotation"):
-		_set_status("NetworkHandler unavailable; point is local only")
+func _send_confirmed_point(world_position: Vector3, projection: Dictionary) -> void:
+	var shared_position := _world_to_shared_position(world_position)
+	if not shared_position.is_finite():
+		_set_status("SharedSpaceOrigin unavailable; point was not synchronized")
 		return
 
-	network_handler.send_remote_annotation(position, _build_marker_payload(
+	var payload := _build_marker_payload(
 		projection,
 		Color(1.0, 0.08, 0.03, 1.0),
 		CONFIRMED_MARKER_RADIUS,
 		"spatial_calibration"
-	))
+	)
+	var calibration_state := get_node_or_null("/root/SpatialCalibrationState")
+	if calibration_state != null and calibration_state.has_method("confirm_point"):
+		if calibration_state.confirm_point(shared_position, payload):
+			_set_status("Synced calibration point #%d" % confirmed_point_count)
+		else:
+			_set_status("Calibration point rejected by server authority")
+		return
+
+	var network_handler := get_node_or_null("/root/NetworkHandler")
+	if network_handler == null or not network_handler.has_method("send_remote_annotation"):
+		_set_status("NetworkHandler unavailable; point is local only")
+		return
+	network_handler.send_remote_annotation(shared_position, payload)
 	_set_status("Synced calibration point #%d" % confirmed_point_count)
 
 
@@ -870,6 +905,9 @@ func _build_marker_payload(
 		"uv": [uv.x, uv.y],
 		"camera_name": str(projection.get("camera_name", "")),
 		"camera_path": str(projection.get("camera_path", "")),
+		"projection_source": str(projection.get("projection_source", "server_virtual_camera")),
+		"pico_metadata_role": str(projection.get("pico_metadata_role", "debug_reference_only")),
+		"pico_metadata_audit": _build_pico_metadata_audit(),
 		"color": {"r": color.r, "g": color.g, "b": color.b, "a": color.a},
 		"size": size,
 		"lifetime": 0.0,
@@ -884,10 +922,62 @@ func _clear_confirmed_points() -> void:
 	confirmed_point_count = 0
 	_reset_selection(true)
 
-	var network_handler := get_node_or_null("/root/NetworkHandler")
-	if network_handler != null and network_handler.has_method("clear_all_remote_annotations"):
-		network_handler.clear_all_remote_annotations()
+	var calibration_state := get_node_or_null("/root/SpatialCalibrationState")
+	if calibration_state != null and calibration_state.has_method("clear_calibration"):
+		calibration_state.clear_calibration("operator_clear")
+		if calibration_state.has_method("begin_recalibration"):
+			calibration_state.begin_recalibration("operator_clear")
+	else:
+		var network_handler := get_node_or_null("/root/NetworkHandler")
+		if network_handler != null and network_handler.has_method("clear_all_remote_annotations"):
+			network_handler.clear_all_remote_annotations()
 	_set_status("Cleared spatial calibration points")
+
+
+func _uses_spatial_calibration_replica() -> bool:
+	var calibration_state := get_node_or_null("/root/SpatialCalibrationState")
+	return calibration_state != null and calibration_state.has_method("set_preview")
+
+
+func _get_shared_space_origin() -> Node3D:
+	var grouped := get_tree().get_first_node_in_group("shared_space_origin") as Node3D
+	if grouped != null:
+		return grouped
+	var scene := get_tree().current_scene
+	if scene == null:
+		return null
+	return scene.get_node_or_null("SharedSpaceOrigin") as Node3D
+
+
+func _world_to_shared_position(world_position: Vector3) -> Vector3:
+	var shared_origin := _get_shared_space_origin()
+	if shared_origin == null:
+		return Vector3(INF, INF, INF)
+	return SharedSpaceContract.world_to_shared_point(shared_origin.global_transform, world_position)
+
+
+func _build_pico_metadata_audit() -> Dictionary:
+	const AUDIT_KEYS: Array[String] = [
+		"schema_version",
+		"selected_camera_index",
+		"head_pose_provider",
+		"head_pose_bind_state",
+		"head_pose_available",
+		"head_pose_confidence",
+		"camera_intrinsics_status",
+		"camera_intrinsics_available",
+		"camera_extrinsics_status",
+		"camera_extrinsics_available",
+	]
+	var audit: Dictionary = {}
+	for key in AUDIT_KEYS:
+		if last_frame_metadata.has(key):
+			var value = last_frame_metadata[key]
+			if value is bool or value is int or value is float:
+				audit[key] = value
+			elif value is String:
+				audit[key] = (value as String).left(96)
+	return audit
 
 
 func _update_click_marker_position() -> void:

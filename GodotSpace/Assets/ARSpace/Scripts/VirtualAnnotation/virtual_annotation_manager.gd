@@ -21,6 +21,7 @@ const SERVER_SNAPSHOT_MIN_INTERVAL_MSEC: int = 250
 const DEFAULT_NORMAL: Vector3 = Vector3.UP
 const MARKER_COLLISION_LAYER: int = 1 << 24
 const RuntimeProfile := preload("res://Assets/ARSpace/Scripts/runtime_profile.gd")
+const SharedSpaceContract := preload("res://Assets/ARSpace/Scripts/SpatialCalibration/shared_space_contract.gd")
 
 @export_node_path("Node3D") var shared_space_origin_path: NodePath = NodePath("../..")
 @export_node_path("Node") var target_root_path: NodePath
@@ -249,13 +250,16 @@ func find_annotation_id_from_collider(collider: Object) -> int:
 func make_draft_from_hit(global_position: Vector3, global_normal: Vector3, collider: Object = null) -> Dictionary:
 	var shared_origin := _get_shared_space_origin()
 	var target_root := _get_target_root()
-	if shared_origin == null or target_root == null or not _is_finite_vector(global_position) or not _is_valid_normal(global_normal):
+	if shared_origin == null or target_root == null or not SharedSpaceContract.is_valid_world_point(global_position) or not _is_valid_normal(global_normal):
 		return {}
 
 	var normal := global_normal.normalized()
+	var shared_position := SharedSpaceContract.world_to_shared_point(shared_origin.global_transform, global_position)
+	if not SharedSpaceContract.is_valid_shared_point(shared_position):
+		return {}
 	var draft := {
-		"shared_position": shared_origin.to_local(global_position),
-		"shared_normal": _world_normal_to_local(shared_origin, normal),
+		"shared_position": shared_position,
+		"shared_normal": SharedSpaceContract.world_to_shared_normal(shared_origin.global_transform, normal),
 		"target_path": "",
 		"target_local_position": Vector3.ZERO,
 		"target_local_normal": DEFAULT_NORMAL,
@@ -277,7 +281,7 @@ func validate_annotation_record(annotation: Dictionary) -> bool:
 		return false
 	if int(annotation.get("revision", 0)) <= 0:
 		return false
-	if not _is_finite_vector(annotation.get("shared_position", Vector3.INF)):
+	if not _is_valid_shared_position(annotation.get("shared_position", Vector3.INF)):
 		return false
 	if not _is_valid_normal(annotation.get("shared_normal", Vector3.ZERO)):
 		return false
@@ -455,7 +459,7 @@ func _rpc_clear_annotations(server_revision: int) -> void:
 func _normalize_draft(draft: Dictionary) -> Dictionary:
 	var shared_position = draft.get("shared_position", Vector3.INF)
 	var shared_normal = draft.get("shared_normal", Vector3.ZERO)
-	if not _is_finite_vector(shared_position):
+	if not _is_valid_shared_position(shared_position):
 		_reject("标注位置无效。")
 		return {}
 	if not _is_valid_normal(shared_normal):
@@ -645,7 +649,7 @@ func _get_remote_draft_error(draft: Dictionary) -> String:
 		return "标注请求包含过多字段。"
 	if _annotations.size() >= MAX_ANNOTATIONS:
 		return "本次会话已达到 %d 个虚拟标注的上限。" % MAX_ANNOTATIONS
-	if not _is_finite_vector(draft.get("shared_position", Vector3.INF)):
+	if not _is_valid_shared_position(draft.get("shared_position", Vector3.INF)):
 		return "标注位置无效。"
 	if not _is_valid_normal(draft.get("shared_normal", Vector3.ZERO)):
 		return "标注表面法线无效。"
@@ -749,6 +753,10 @@ func _is_finite_vector(value: Variant) -> bool:
 		return false
 	var vector := value as Vector3
 	return is_finite(vector.x) and is_finite(vector.y) and is_finite(vector.z)
+
+
+func _is_valid_shared_position(value: Variant) -> bool:
+	return value is Vector3 and SharedSpaceContract.is_valid_shared_point(value as Vector3)
 
 
 func _world_normal_to_local(target: Node3D, world_normal: Vector3) -> Vector3:

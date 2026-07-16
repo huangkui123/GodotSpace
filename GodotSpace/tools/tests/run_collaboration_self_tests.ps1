@@ -8,6 +8,8 @@ $ErrorActionPreference = 'Stop'
 $ScriptTests = @(
     'res://Assets/ARSpace/Scripts/runtime_profile_self_test.gd',
     'res://Assets/ARSpace/Scripts/shared_space_alignment_self_test.gd',
+    'res://Assets/ARSpace/Scripts/SpatialCalibration/shared_space_contract_self_test.gd',
+    'res://Assets/ARSpace/Scripts/SpatialCalibration/spatial_calibration_state_network_self_test.gd',
     'res://Assets/ARSpace/Scripts/runtime_mode_integration_self_test.gd',
     'res://Assets/ARSpace/Scripts/Network/network_startup_recovery_self_test.gd',
     'res://Assets/ARSpace/Scripts/Network/collaboration_state_self_test.gd',

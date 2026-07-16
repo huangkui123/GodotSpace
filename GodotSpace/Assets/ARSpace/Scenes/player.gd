@@ -2,11 +2,12 @@ extends Node3D
 
 const RuntimeProfileScript = preload("res://Assets/ARSpace/Scripts/runtime_profile.gd")
 const AvatarPoseState = preload("res://Assets/ARSpace/Characters/Astronaut/avatar_pose_state.gd")
+const SharedSpaceContract = preload("res://Assets/ARSpace/Scripts/SpatialCalibration/shared_space_contract.gd")
 const SERVER_PEER_ID: int = 1
 const POSE_SEND_INTERVAL: float = 1.0 / 30.0
 const REMOTE_INTERPOLATION_DELAY: float = 0.1
 const MAX_QUEUED_POSE_SAMPLES: int = 12
-const MAX_SHARED_POSE_DISTANCE: float = 1000.0
+const MAX_SHARED_POSE_DISTANCE: float = SharedSpaceContract.MAX_SHARED_DISTANCE_METERS
 const TEST_MODE_ARG: String = "--testmode"
 const GROUND_VR_CLIENT_ARG: String = "--ground-vr-client"
 const XR_CLIENT_ARG: String = "--xr-client"
@@ -700,11 +701,11 @@ func _is_finite_vector3(value: Vector3) -> bool:
 
 func _global_to_shared(value: Transform3D) -> Transform3D:
 	var shared_origin := _get_shared_space_origin()
-	return shared_origin.global_transform.affine_inverse() * value if shared_origin != null else value
+	return SharedSpaceContract.world_to_shared_transform(shared_origin.global_transform, value) if shared_origin != null else value
 
 func _shared_to_global(value: Transform3D) -> Transform3D:
 	var shared_origin := _get_shared_space_origin()
-	return shared_origin.global_transform * value if shared_origin != null else value
+	return SharedSpaceContract.shared_to_world_transform(shared_origin.global_transform, value) if shared_origin != null else value
 
 func _get_shared_space_origin() -> Node3D:
 	if is_instance_valid(_shared_space_origin):

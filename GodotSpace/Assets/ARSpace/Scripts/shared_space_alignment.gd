@@ -22,6 +22,8 @@ var _retry_seconds: float = 0.0
 var _waiting_seconds: float = 0.0
 var _timeout_reported: bool = false
 var _is_aligned: bool = false
+var _tracking_lost_seconds: float = 0.0
+var _last_calibration_revision: int = 0
 var _recenter_canvas: CanvasLayer
 var _recenter_button: Button
 var _status_label: Label
@@ -35,6 +37,7 @@ func _ready() -> void:
 		return
 	if show_recenter_controls and DisplayServer.get_name() != "headless":
 		_build_recenter_controls()
+	_bind_calibration_state()
 	set_process(auto_recenter)
 
 
@@ -48,6 +51,22 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _process(delta: float) -> void:
+	if _is_aligned:
+		if _has_head_tracking():
+			_tracking_lost_seconds = 0.0
+			return
+		_tracking_lost_seconds += delta
+		if _tracking_lost_seconds < tracking_timeout_seconds:
+			return
+		_is_aligned = false
+		_tracking_lost_seconds = 0.0
+		_waiting_seconds = 0.0
+		_timeout_reported = false
+		alignment_failed.emit("Head tracking was lost after shared-space alignment")
+		push_warning("Shared-space head tracking was lost. Waiting to recenter after tracking recovers.")
+		_set_status("共享空间：跟踪已丢失，请保持头显可见并等待自动重对齐")
+		return
+
 	_waiting_seconds += delta
 	_retry_seconds += delta
 	if _retry_seconds < retry_interval_seconds:
@@ -55,7 +74,6 @@ func _process(delta: float) -> void:
 	_retry_seconds = 0.0
 
 	if recenter():
-		set_process(false)
 		return
 
 	if _waiting_seconds >= tracking_timeout_seconds and not _timeout_reported:
@@ -63,7 +81,6 @@ func _process(delta: float) -> void:
 		alignment_failed.emit("Timed out waiting for the local XR player and head tracking")
 		push_warning("Shared-space alignment timed out. Use recenter() after tracking becomes available.")
 		_set_status("共享空间：等待跟踪，按 R 或按钮重试")
-		set_process(false)
 
 
 ## Aligns the current HMD's horizontal position and yaw with the role anchor.
@@ -85,6 +102,7 @@ func recenter() -> bool:
 
 	xr_origin.global_transform = compute_origin_transform(xr_camera.transform, anchor.global_transform)
 	_is_aligned = true
+	_tracking_lost_seconds = 0.0
 	_timeout_reported = false
 	_set_status("共享空间：已对齐")
 	alignment_succeeded.emit("ground" if _runtime_profile.is_ground() else "astronaut", anchor)
@@ -96,6 +114,7 @@ func request_recenter() -> void:
 	_retry_seconds = retry_interval_seconds
 	_timeout_reported = false
 	_is_aligned = false
+	_tracking_lost_seconds = 0.0
 	_set_status("共享空间：正在重新对齐…")
 	set_process(true)
 
@@ -175,6 +194,28 @@ func _bind_recenter_controllers(xr_origin: XROrigin3D) -> void:
 func _on_controller_button_pressed(button_name: String) -> void:
 	if StringName(button_name) == RECENTER_CONTROLLER_BUTTON:
 		request_recenter()
+
+
+func _bind_calibration_state() -> void:
+	var calibration_state := get_node_or_null("/root/SpatialCalibrationState")
+	if calibration_state == null or not calibration_state.has_signal("calibration_changed"):
+		return
+	var callback := Callable(self, "_on_calibration_changed")
+	if not calibration_state.is_connected("calibration_changed", callback):
+		calibration_state.connect("calibration_changed", callback)
+	if calibration_state.has_method("get_state"):
+		var state = calibration_state.get_state()
+		if state is Dictionary:
+			_last_calibration_revision = int(state.get("revision", 0))
+
+
+func _on_calibration_changed(state: Dictionary) -> void:
+	var revision := int(state.get("revision", 0))
+	if revision <= _last_calibration_revision:
+		return
+	_last_calibration_revision = revision
+	_set_status("共享空间：标定版本已更新，正在重新对齐…")
+	request_recenter()
 
 
 func _build_recenter_controls() -> void:

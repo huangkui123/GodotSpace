@@ -1,4 +1,4 @@
-[gd_scene load_steps=105 format=4 uid="uid://ca028g0q2kstx"]
+[gd_scene load_steps=106 format=4 uid="uid://ca028g0q2kstx"]
 
 [ext_resource type="Script" uid="uid://d1pt7mdt5llk4" path="res://XR_Main.gd" id="1_g432p"]
 [ext_resource type="Script" uid="uid://bt6aew4asx754" path="res://Assets/ARSpace/Scenes/SpaceBox.gd" id="2_wjh8v"]
@@ -70,6 +70,7 @@
 [ext_resource type="PackedScene" path="res://Assets/ARSpace/Scenes/voice_call_window_3d.tscn" id="70_voice_call"]
 [ext_resource type="Script" uid="uid://crvnkm0d7eggt" path="res://Assets/ARSpace/Scripts/shared_space_alignment.gd" id="71_shared_alignment"]
 [ext_resource type="PackedScene" path="res://Assets/ARSpace/Scenes/VirtualAnnotationSystem.tscn" id="72_annotation_system"]
+[ext_resource type="Script" path="res://Assets/ARSpace/Scripts/SpatialCalibration/spatial_calibration_replica.gd" id="73_spatial_replica"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_m4rif"]
 resource_name = "Default-Skybox"
@@ -306,6 +307,9 @@ transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -0.155226, 0, 0.436745)
 [node name="AstronautXRAnchor" type="Node3D" parent="SharedSpaceOrigin"]
 
 [node name="VirtualAnnotations" parent="SharedSpaceOrigin" instance=ExtResource("72_annotation_system")]
+
+[node name="SpatialCalibrationReplica" type="Node" parent="SharedSpaceOrigin"]
+script = ExtResource("73_spatial_replica")
 
 [node name="SharedSpaceAlignment" type="Node" parent="."]
 script = ExtResource("71_shared_alignment")

@@ -8,10 +8,9 @@ var pulse_duration: float = 0.3  # 每次呼吸周期时长（秒）
 var lifetime: float = 2.0  # 标记存在时间（秒）
 var tween: Tween
 
-# 设置标记位置
-@rpc("any_peer", "call_local", "reliable")
-func setup(position: Vector3):
-	global_position = position
+# 设置 SharedSpaceOrigin 局部位置。网络入口由 Server 权威的 NetworkHandler 提供。
+func setup(shared_position: Vector3) -> void:
+	position = shared_position
 	start_pulse_effect()
 	
 	# 设置延迟销毁
