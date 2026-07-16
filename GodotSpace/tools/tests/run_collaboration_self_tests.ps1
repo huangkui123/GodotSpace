@@ -10,6 +10,8 @@ $ScriptTests = @(
     'res://Assets/ARSpace/Scripts/shared_space_alignment_self_test.gd',
     'res://Assets/ARSpace/Scripts/runtime_mode_integration_self_test.gd',
     'res://Assets/ARSpace/Scripts/Network/network_startup_recovery_self_test.gd',
+    'res://Assets/ARSpace/Scripts/Network/collaboration_state_self_test.gd',
+    'res://Assets/ARSpace/Scripts/Network/collaboration_state_network_self_test.gd',
     'res://Assets/ARSpace/Scripts/Network/peer_role_registry_self_test.gd',
     'res://Assets/ARSpace/Scripts/Network/peer_role_network_self_test.gd',
     'res://Assets/ARSpace/Scripts/Network/voice_dictation_self_test.gd',

@@ -24,6 +24,7 @@ signal network_ready
 signal network_role_selected(is_server: bool)
 signal connection_failed(reason: String)
 signal server_connection_lost
+signal session_closed
 signal remote_annotation_received(position: Vector3, data: Dictionary)
 signal peer_role_changed(peer_id: int, assigned_role: String)
 signal local_role_assigned(assigned_role: String, can_annotate: bool)
@@ -168,12 +169,15 @@ func _return_client_to_start_menu() -> void:
 
 
 func _close_network_peer() -> void:
+	var had_session_peer := peer != null
 	_client_session_active = false
 	if peer != null:
 		peer.close()
 	peer = null
 	_reset_peer_roles(false)
 	_restore_offline_multiplayer_peer()
+	if had_session_peer:
+		session_closed.emit()
 
 
 func _restore_offline_multiplayer_peer() -> void:

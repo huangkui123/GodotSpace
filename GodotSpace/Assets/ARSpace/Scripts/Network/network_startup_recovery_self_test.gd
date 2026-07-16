@@ -3,6 +3,7 @@ extends SceneTree
 const GAME_PORT: int = 42069
 
 var _failures: Array[String] = []
+var _session_closed_count: int = 0
 
 
 func _initialize() -> void:
@@ -21,6 +22,10 @@ func _run() -> void:
 	network_handler.call("_close_network_peer")
 	_expect(root.multiplayer.multiplayer_peer is OfflineMultiplayerPeer, "Closing a session must restore OfflineMultiplayerPeer.")
 	_expect(root.multiplayer.get_unique_id() == 1, "Offline multiplayer must keep a safe local peer id.")
+	network_handler.session_closed.connect(_on_session_closed_for_test)
+	network_handler.set("peer", ENetMultiplayerPeer.new())
+	network_handler.call("_close_network_peer")
+	_expect(_session_closed_count == 1, "Closing an allocated ENet peer must emit one session_closed signal.")
 
 	# Simulate the recovery branch without deliberately causing a noisy ENet
 	# bind error in the regular test suite.
@@ -49,7 +54,12 @@ func _run() -> void:
 
 	network_handler.call("_close_network_peer")
 	_expect(root.multiplayer.multiplayer_peer is OfflineMultiplayerPeer, "Closing after recovery must preserve offline mode.")
+	_expect(_session_closed_count == 1, "Closing an already offline session must not emit a duplicate session_closed signal.")
 	_finish()
+
+
+func _on_session_closed_for_test() -> void:
+	_session_closed_count += 1
 
 
 func _finish() -> void:

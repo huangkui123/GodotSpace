@@ -6,6 +6,8 @@ const RESOURCE_PATHS := [
 	"res://Assets/ARSpace/Scenes/startmenu_ui.gd",
 	"res://Assets/ARSpace/Scenes/StartMenu.tscn",
 	"res://Assets/ARSpace/Scripts/Network/network_handler.gd",
+	"res://Assets/ARSpace/Scripts/Network/collaboration_state.gd",
+	"res://Assets/ARSpace/Scripts/Network/collaboration_state_schema.gd",
 	"res://Assets/ARSpace/Scripts/Network/voice_chat_ui.gd",
 	"res://Assets/ARSpace/Scripts/UI/unified_panel_ui.gd",
 	"res://XR_Main.gd",

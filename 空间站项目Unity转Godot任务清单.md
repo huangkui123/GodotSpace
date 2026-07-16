@@ -158,13 +158,15 @@
 
 ### 任务 1.3（P0）统一会话、权威和业务状态同步基础
 
-- [ ] 保留现有 ENet Server 权威角色注册，明确 PC Server peer ID、Ground VR 唯一席位和 Astronaut Client 默认角色。
-- [ ] 为业务状态建立独立的 `CollaborationState`/同类服务，不把所有 RPC 继续堆在 `NetworkHandler`。
-- [ ] 定义主菜单模式、活动窗口、工作任务/步骤、媒体播放、窗口变换、自由线和模型实例的网络数据结构。
-- [ ] 为每类状态定义修订号、最大数量、最大字节数、合法角色和服务器校验规则。
-- [ ] 实现迟到客户端快照，新 Client 加入后不依赖旧的一次性 RPC 重建当前场景。
-- [ ] 实现幂等请求和重放防护，避免断线重连后重复生成窗口、线条和模型。
-- [ ] 实现 Server 关闭、Client 掉线、场景切换和角色更换时的对称清理。
+- [x] 保留现有 ENet Server 权威角色注册，明确 PC Server peer ID、Ground VR 唯一席位和 Astronaut Client 默认角色。
+- [x] 为业务状态建立独立的 `CollaborationState`/同类服务，不把所有 RPC 继续堆在 `NetworkHandler`。
+- [x] 定义主菜单模式、活动窗口、工作任务/步骤、媒体播放、窗口变换、自由线和模型实例的网络数据结构。
+- [x] 为每类状态定义修订号、最大数量、最大字节数、合法角色和服务器校验规则。
+- [x] 实现迟到客户端快照，新 Client 加入后不依赖旧的一次性 RPC 重建当前场景。
+- [x] 实现幂等请求和重放防护，避免断线重连后重复生成窗口、线条和模型。
+- [x] 实现 Server 关闭、Client 掉线、场景切换和角色更换时的对称清理。
+
+任务 1.3 记录：`CollaborationState` 已注册为独立 Autoload，合同见 `GodotSpace/docs/network/collaboration_state_contract.md`。服务维护全局及 7 个 domain 的 revision，限制 64 KiB 请求、2 MiB 快照、集合数量、SharedSpaceOrigin 50 m 范围、合法角色和模型白名单；Server 分配 stroke/model ID。相同 `(peer_id, request_sequence, payload)` 返回缓存结果且不重复变更，同序号不同 payload 和旧序号被拒绝。真实 ENet 网络自测覆盖迟到快照、非法航天端菜单请求、精确重试、Ground VR 掉线/重连、Server 关闭和状态清理。
 
 **完成标准：** Server + 两个 Client 按不同顺序连接、断开和重连时，不出现重复玩家、错角色、残留节点或丢失当前业务状态。
 
