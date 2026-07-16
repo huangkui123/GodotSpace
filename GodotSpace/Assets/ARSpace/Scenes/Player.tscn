@@ -1,7 +1,8 @@
-[gd_scene load_steps=7 format=3 uid="uid://c0oao8sfhry88"]
+[gd_scene load_steps=8 format=3 uid="uid://c0oao8sfhry88"]
 
 [ext_resource type="Script" uid="uid://wnij2dalp1lv" path="res://Assets/ARSpace/Scenes/player.gd" id="1_71hh1"]
 [ext_resource type="PackedScene" uid="uid://xxvflxhi3tku" path="res://Assets/ARSpace/Scenes/Player_XR.tscn" id="1_j61gx"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Characters/Astronaut/AstronautAvatar.tscn" id="3_astronaut"]
 
 [sub_resource type="SphereMesh" id="SphereMesh_presence_head"]
 radius = 0.11
@@ -63,5 +64,8 @@ visible = false
 
 [node name="TorsoMesh" type="MeshInstance3D" parent="NetworkTorso"]
 mesh = SubResource("CapsuleMesh_presence_torso")
+
+[node name="AstronautAvatar" parent="." instance=ExtResource("3_astronaut")]
+visible = false
 
 [editable path="XROrigin3D"]

@@ -2,6 +2,7 @@ extends Node
 
 const PLAYER_SCENE: PackedScene = preload("res://Assets/ARSpace/Scenes/Player.tscn")
 const SPAWNER_SCRIPT: Script = preload("res://Assets/ARSpace/Scripts/Network/multiplayer_spawner.gd")
+const PoseState = preload("res://Assets/ARSpace/Characters/Astronaut/avatar_pose_state.gd")
 const CONNECT_TIMEOUT_FRAMES: int = 300
 const REPLICATION_TIMEOUT_FRAMES: int = 180
 
@@ -171,11 +172,21 @@ func _check_client_pose_relay(client_branch: Node, server_branch: Node, client_i
 	var head := Transform3D(Basis.IDENTITY, Vector3(2.0, 1.65, -1.0))
 	var left_hand := Transform3D(Basis.IDENTITY, Vector3(1.75, 1.25, -1.2))
 	var right_hand := Transform3D(Basis.IDENTITY, Vector3(2.25, 1.25, -1.2))
+	var pose_state := PoseState.from_actions(
+		PoseState.TRACKING_ALL,
+		PoseState.INPUT_MODE_LEFT_HAND,
+		0.75,
+		0.5,
+		0.25,
+		1.0,
+		PoseState.GESTURE_LEFT_TRIGGER_CLICK | PoseState.GESTURE_RIGHT_GRIP_CLICK
+	)
 	client_player.set_process(false)
-	client_player.rpc_id(1, "_server_receive_pose", 1000001, head, left_hand, right_hand)
+	client_player.rpc_id(1, "_server_receive_pose", 1000001, head, left_hand, right_hand, pose_state)
 	_check(await _wait_for_head_position(server_view, head.origin), "server should display the client pose")
 	var network_head := server_view.get_node_or_null("NetworkHead") as Node3D
 	_check(network_head != null and network_head.global_position.is_equal_approx(head.origin), "client pose should retain shared-space position")
+	_check(server_view.get("_last_applied_pose_state") == pose_state, "server should validate and retain bounded gesture state")
 
 func _check_stale_pose_rejected(client_branch: Node, server_branch: Node, client_id: int) -> void:
 	var client_player := client_branch.get_node_or_null(str(client_id))

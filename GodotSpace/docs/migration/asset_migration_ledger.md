@@ -12,7 +12,7 @@ Godot 目标工程：`F:\GodotSpace\GodotSpace`
 - 图片优先保留 PNG/JPEG；视频保留原编码文件并通过仓库现有 `*.mp4` LFS 规则跟踪。
 - 音频优先保留 WAV/OGG；步骤录音缺失时只记录缺口，不生成伪录音。
 - 业务目标按 `Assets/ARSpace/` 的模块目录放置；运行时直接枚举的媒体继续放在 `Assets/StreamingAssets/`，不得随意改名。
-- 大型二进制复制前执行 `git check-attr filter -- <file>` 和 `git count-objects -vH`。当前 `.gitattributes` 只覆盖 `*.mp4` 与 `*.bin`；大型 FBX、贴图或音频需先决定是否扩展 LFS。
+- 大型二进制复制前执行 `git check-attr filter -- <file>` 和 `git count-objects -vH`。根规则覆盖 `*.mp4` 与 `*.bin`；航天员目录已增加只作用于 `Source/*.fbx` 的 LFS 规则，其他大型 FBX、贴图或音频仍需逐项决定。
 
 ## 资产清单
 
@@ -23,8 +23,8 @@ Godot 目标工程：`F:\GodotSpace\GodotSpace`
 | 步骤图片/视频 | Unity `StreamingAssets/Images/step*.png`、`StreamingAssets/Videos/` | `Assets/StreamingAssets/Images/step*.png`、`Assets/StreamingAssets/Videos/` | 图片已原样迁入，视频待取回 LFS/补迁 | Unity/Godot 图片目录均为 182 张、54.66 MiB，逐文件 SHA-256 一致；第 12、13、16—20 步仍需按 Unity 主线修正映射；MP4 已由 LFS 规则覆盖 |
 | 步骤解说音频 | `Assets/Resources/Audios/1.mp3`—`20.mp3`，以及 `step1.mp3`—`step5.mp3` 和提示音 | 计划放入 `Assets/StreamingAssets/Audio/WorkList/` | 已确认源资产，第二阶段按需复制 | `WorkEffect.prefab` 的 20 个 `SoundCollider.soundName` 逐一引用 1—20；源目录 34 个 MP3、约 4.93 MiB；无录音时才使用平台 TTS 并保留文字降级 |
 | UI 图标与窗口贴图 | `Assets/ARSpace` UI prefab、Sprites/Textures | `Assets/ARSpace/Textures/`、`Prefabs/UI/` | 大部分已迁移 | 保留可追溯文件名；检查中文/空格路径和重复贴图，不批量重导入 |
-| 航天员全身模型、骨骼和纹理 | `Assets/ARSpace/Models/09_YuHangYuan 1/china_rig.fbx`、`Prefabs/china_rig.prefab`、`china_rig_VRIK.prefab`、同目录材质和纹理 | 计划 `Assets/ARSpace/Characters/Astronaut/` | 第一阶段待复制 | 源目录约 271.35 MiB；FBX 约 29.22 MiB、Humanoid、无导入动画；VRIK prefab 依赖 FinalIK，不复制该 Unity 运行时，Godot 侧重做程序化 IK |
-| XR 手部/手势资产 | `china_rig` 手指骨骼、Unity XR Player/Animator 与输入脚本引用 | 计划 `Assets/ARSpace/Characters/Astronaut/` 与 `Scripts/XR/` | 第一阶段待适配 | OpenXR action 只传有上限手势枚举；不复制 Unity XR SDK 或 FinalIK 二进制依赖 |
+| 航天员全身模型、骨骼和纹理 | `Assets/ARSpace/Models/09_YuHangYuan 1/china_rig.fbx`、`Prefabs/china_rig.prefab`、`china_rig_VRIK.prefab`、同目录材质和纹理 | `Assets/ARSpace/Characters/Astronaut/` | 第一阶段已迁移 | FBX 走目录级 LFS；44 张纹理生成 1024 上限副本和 4 个导入别名，目标约 49.1 MiB；导入为 8 网格、33 骨骼、无动画；详情见 `astronaut_avatar_migration.md` |
+| XR 手部/手势资产 | `china_rig` 手指骨骼、Unity XR Player/Animator 与输入脚本引用 | `Assets/ARSpace/Characters/Astronaut/` 与 `Player_XR.tscn` | 第一阶段已适配 | 自定义双骨 IK、单指链握拳/扣机、3 种主控模式和固定 7 字段网络状态已接入；未复制 Unity XR SDK 或 FinalIK；真实 PICO 视觉/输入待设备验收 |
 | 工具模型 | `Assets/ARSpace/Models/gongju/newgongju.fbx` 及同目录材质/纹理 | 计划 `Assets/ARSpace/Models/Tools/` | 主模型已转换，依赖待核对 | 源目录约 41.41 MiB；目标已有 FBX/材质，源 Blend 与 TGA 未迁入；按步骤引用补依赖，避免整库机械复制 |
 | 图片中心 | Unity `StreamingAssets/Images/` | `Assets/StreamingAssets/Images/` | 已迁移 | 运行时直接枚举，禁止随意改名；后续补缩略图和异常文件测试 |
 | 视频中心 | Unity `StreamingAssets/Videos/` | `Assets/StreamingAssets/Videos/` | 已迁移 | FFmpeg GDExtension 播放；验证编码、释放和黑屏恢复；MP4 走 LFS |

@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3 uid="uid://xxvflxhi3tku"]
+[gd_scene load_steps=12 format=3 uid="uid://xxvflxhi3tku"]
 
 [ext_resource type="ArrayMesh" uid="uid://d0brnbp1j6ao0" path="res://Assets/VRIK/Editor/CoreRes/Char/PlayerM/extracted/PlayerM.PlayerM_Head.mesh" id="1_lar5o"]
 [ext_resource type="PackedScene" uid="uid://bpdj5njb8nhot" path="res://addons/godot-xr-tools/hands/scenes/highpoly/left_fullglove_hand.tscn" id="2_afngy"]
@@ -8,6 +8,18 @@
 [ext_resource type="PackedScene" uid="uid://bl2nuu3qhlb5k" path="res://addons/godot-xr-tools/functions/movement_direct.tscn" id="5_lar5o"]
 [ext_resource type="PackedScene" uid="uid://d1tl07geqm5xq" path="res://addons/godot-xr-tools/hands/scenes/highpoly/right_fullglove_hand.tscn" id="5_roir7"]
 [ext_resource type="PackedScene" uid="uid://diyu06cw06syv" path="res://addons/godot-xr-tools/player/player_body.tscn" id="6_2xy6d"]
+[ext_resource type="Script" path="res://Assets/ARSpace/Characters/Astronaut/xr_input_router.gd" id="7_input_router"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_gaze"]
+shading_mode = 0
+albedo_color = Color(0.15, 0.85, 1, 0.8)
+emission_enabled = true
+emission = Color(0.05, 0.55, 1, 1)
+emission_energy_multiplier = 2.0
+
+[sub_resource type="BoxMesh" id="BoxMesh_gaze"]
+material = SubResource("StandardMaterial3D_gaze")
+size = Vector3(0.004, 0.004, 3)
 
 [node name="XROrigin3D" type="XROrigin3D"]
 
@@ -23,6 +35,11 @@ blend_shapes/I = 0.0
 blend_shapes/O = 0.0
 blend_shapes/U = 0.0
 blend_shapes/V = 0.0
+
+[node name="HeadGazeLaser" type="MeshInstance3D" parent="XRCamera3D"]
+visible = false
+position = Vector3(0, 0, -1.5)
+mesh = SubResource("BoxMesh_gaze")
 
 [node name="LeftHand" type="XRController3D" parent="."]
 tracker = &"left_hand"
@@ -51,3 +68,6 @@ strafe = true
 
 [node name="PlayerBody" parent="." instance=ExtResource("6_2xy6d")]
 player_head_height = 0.7
+
+[node name="XRInputRouter" type="Node" parent="."]
+script = ExtResource("7_input_router")

@@ -1,0 +1,203 @@
+extends Node
+
+const PoseState = preload("res://Assets/ARSpace/Characters/Astronaut/avatar_pose_state.gd")
+
+signal input_mode_changed(input_mode: int)
+signal interaction_state_changed(state: Dictionary)
+
+@export var camera_path: NodePath = NodePath("../XRCamera3D")
+@export var left_controller_path: NodePath = NodePath("../LeftHand")
+@export var right_controller_path: NodePath = NodePath("../RightHand")
+@export var left_pointer_path: NodePath = NodePath("../LeftHand/FunctionPointer")
+@export var right_pointer_path: NodePath = NodePath("../RightHand/FunctionPointer")
+@export var left_pickup_path: NodePath = NodePath("../LeftHand/LeftHand/FunctionPickup")
+@export var right_pickup_path: NodePath = NodePath("../RightHand/RightHand/FunctionPickup")
+@export var gaze_laser_path: NodePath = NodePath("../XRCamera3D/HeadGazeLaser")
+
+var _input_mode: int = PoseState.INPUT_MODE_RIGHT_HAND
+var _state: Dictionary = PoseState.make_default()
+var _previous_buttons: Dictionary = {}
+var _test_override_enabled: bool = false
+var _test_trigger: float = 0.0
+var _test_grip: float = 0.0
+
+@onready var _camera: XRCamera3D = get_node_or_null(camera_path) as XRCamera3D
+@onready var _left_controller: XRController3D = get_node_or_null(left_controller_path) as XRController3D
+@onready var _right_controller: XRController3D = get_node_or_null(right_controller_path) as XRController3D
+
+func _ready() -> void:
+	_apply_pointer_mode()
+
+func _process(_delta: float) -> void:
+	var tracking_mask := _sample_tracking_mask()
+	_handle_mode_buttons()
+	var resolved_mode := resolve_mode_for_tracking(_input_mode, tracking_mask)
+	if resolved_mode != _input_mode:
+		_input_mode = resolved_mode
+		input_mode_changed.emit(_input_mode)
+		_apply_pointer_mode()
+
+	var left_trigger := _read_axis(_left_controller, &"trigger")
+	var left_grip := _read_axis(_left_controller, &"grip")
+	var right_trigger := _read_axis(_right_controller, &"trigger")
+	var right_grip := _read_axis(_right_controller, &"grip")
+	if _test_override_enabled:
+		right_trigger = _test_trigger
+		right_grip = _test_grip
+
+	var gesture_bits := 0
+	if _read_button(_left_controller, &"ax_button"):
+		gesture_bits |= PoseState.GESTURE_LEFT_PRIMARY
+	if _read_button(_right_controller, &"ax_button"):
+		gesture_bits |= PoseState.GESTURE_RIGHT_PRIMARY
+	if left_trigger >= 0.65 or _read_button(_left_controller, &"trigger_click"):
+		gesture_bits |= PoseState.GESTURE_LEFT_TRIGGER_CLICK
+	if right_trigger >= 0.65 or _read_button(_right_controller, &"trigger_click"):
+		gesture_bits |= PoseState.GESTURE_RIGHT_TRIGGER_CLICK
+	if left_grip >= 0.65 or _read_button(_left_controller, &"grip_click"):
+		gesture_bits |= PoseState.GESTURE_LEFT_GRIP_CLICK
+	if right_grip >= 0.65 or _read_button(_right_controller, &"grip_click"):
+		gesture_bits |= PoseState.GESTURE_RIGHT_GRIP_CLICK
+
+	var next_state := PoseState.from_actions(
+		tracking_mask,
+		_input_mode,
+		left_trigger,
+		left_grip,
+		right_trigger,
+		right_grip,
+		gesture_bits
+	)
+	if next_state != _state:
+		_state = next_state
+		interaction_state_changed.emit(_state.duplicate(true))
+
+func set_input_mode(input_mode: int) -> void:
+	var normalized := clampi(input_mode, PoseState.INPUT_MODE_HEAD_GAZE, PoseState.INPUT_MODE_RIGHT_HAND)
+	if normalized == _input_mode:
+		return
+	_input_mode = normalized
+	input_mode_changed.emit(_input_mode)
+	_apply_pointer_mode()
+
+func get_input_mode() -> int:
+	return _input_mode
+
+func get_network_state() -> Dictionary:
+	return _state.duplicate(true)
+
+func set_test_input(trigger_value: float, grip_value: float, enabled: bool = true) -> void:
+	_test_override_enabled = enabled
+	_test_trigger = clampf(trigger_value, 0.0, 1.0)
+	_test_grip = clampf(grip_value, 0.0, 1.0)
+
+func get_active_ray_transform() -> Transform3D:
+	match _input_mode:
+		PoseState.INPUT_MODE_LEFT_HAND:
+			return _left_controller.global_transform if _left_controller != null else Transform3D.IDENTITY
+		PoseState.INPUT_MODE_RIGHT_HAND:
+			return _right_controller.global_transform if _right_controller != null else Transform3D.IDENTITY
+		_:
+			return _camera.global_transform if _camera != null else Transform3D.IDENTITY
+
+func is_select_pressed() -> bool:
+	match _input_mode:
+		PoseState.INPUT_MODE_LEFT_HAND:
+			return PoseState.dequantize_axis(_state["left_trigger_q"]) >= 0.65
+		PoseState.INPUT_MODE_RIGHT_HAND:
+			return PoseState.dequantize_axis(_state["right_trigger_q"]) >= 0.65
+		_:
+			return PoseState.dequantize_axis(_state["right_trigger_q"]) >= 0.65 \
+				or PoseState.dequantize_axis(_state["left_trigger_q"]) >= 0.65
+
+func is_grip_pressed() -> bool:
+	match _input_mode:
+		PoseState.INPUT_MODE_LEFT_HAND:
+			return PoseState.dequantize_axis(_state["left_grip_q"]) >= 0.65
+		PoseState.INPUT_MODE_RIGHT_HAND:
+			return PoseState.dequantize_axis(_state["right_grip_q"]) >= 0.65
+		_:
+			return false
+
+func get_scroll_axis() -> float:
+	var controller := _left_controller if _input_mode == PoseState.INPUT_MODE_LEFT_HAND else _right_controller
+	if controller == null or _input_mode == PoseState.INPUT_MODE_HEAD_GAZE:
+		return 0.0
+	return controller.get_vector2(&"primary").y
+
+func resolve_mode_for_tracking(requested_mode: int, tracking_mask: int) -> int:
+	if requested_mode == PoseState.INPUT_MODE_LEFT_HAND \
+			and (tracking_mask & PoseState.TRACKING_LEFT_HAND) != 0:
+		return requested_mode
+	if requested_mode == PoseState.INPUT_MODE_RIGHT_HAND \
+			and (tracking_mask & PoseState.TRACKING_RIGHT_HAND) != 0:
+		return requested_mode
+	if requested_mode == PoseState.INPUT_MODE_HEAD_GAZE:
+		return requested_mode
+	if (tracking_mask & PoseState.TRACKING_RIGHT_HAND) != 0:
+		return PoseState.INPUT_MODE_RIGHT_HAND
+	if (tracking_mask & PoseState.TRACKING_LEFT_HAND) != 0:
+		return PoseState.INPUT_MODE_LEFT_HAND
+	return PoseState.INPUT_MODE_HEAD_GAZE
+
+func _sample_tracking_mask() -> int:
+	if _test_override_enabled:
+		return PoseState.TRACKING_ALL
+	var mask := PoseState.TRACKING_HEAD
+	if _controller_has_tracking(_left_controller):
+		mask |= PoseState.TRACKING_LEFT_HAND
+	if _controller_has_tracking(_right_controller):
+		mask |= PoseState.TRACKING_RIGHT_HAND
+	return mask
+
+func _controller_has_tracking(controller: XRController3D) -> bool:
+	if controller == null or not controller.is_inside_tree():
+		return false
+	if controller.has_method("get_has_tracking_data"):
+		return bool(controller.call("get_has_tracking_data"))
+	if controller.has_method("get_is_active"):
+		return bool(controller.call("get_is_active"))
+	return controller.visible
+
+func _read_axis(controller: XRController3D, action: StringName) -> float:
+	if controller == null or not _controller_has_tracking(controller):
+		return 0.0
+	var value := controller.get_float(action)
+	return clampf(value, 0.0, 1.0) if is_finite(value) else 0.0
+
+func _read_button(controller: XRController3D, action: StringName) -> bool:
+	return controller != null and _controller_has_tracking(controller) and controller.is_button_pressed(action)
+
+func _handle_mode_buttons() -> void:
+	var left_select := _read_button(_left_controller, &"ax_button")
+	var right_select := _read_button(_right_controller, &"ax_button")
+	var gaze_select := _read_button(_left_controller, &"by_button") \
+		or _read_button(_right_controller, &"by_button")
+	if left_select and not bool(_previous_buttons.get("left", false)):
+		set_input_mode(PoseState.INPUT_MODE_LEFT_HAND)
+	elif right_select and not bool(_previous_buttons.get("right", false)):
+		set_input_mode(PoseState.INPUT_MODE_RIGHT_HAND)
+	elif gaze_select and not bool(_previous_buttons.get("gaze", false)):
+		set_input_mode(PoseState.INPUT_MODE_HEAD_GAZE)
+	_previous_buttons = {"left": left_select, "right": right_select, "gaze": gaze_select}
+
+func _apply_pointer_mode() -> void:
+	_set_pointer_enabled(get_node_or_null(left_pointer_path), _input_mode == PoseState.INPUT_MODE_LEFT_HAND)
+	_set_pointer_enabled(get_node_or_null(right_pointer_path), _input_mode == PoseState.INPUT_MODE_RIGHT_HAND)
+	_set_function_enabled(get_node_or_null(left_pickup_path), _input_mode == PoseState.INPUT_MODE_LEFT_HAND)
+	_set_function_enabled(get_node_or_null(right_pickup_path), _input_mode == PoseState.INPUT_MODE_RIGHT_HAND)
+	var gaze_laser := get_node_or_null(gaze_laser_path) as Node3D
+	if gaze_laser != null:
+		gaze_laser.visible = _input_mode == PoseState.INPUT_MODE_HEAD_GAZE
+
+func _set_pointer_enabled(pointer: Node, enabled: bool) -> void:
+	if pointer == null:
+		return
+	pointer.set("enabled", enabled)
+	pointer.set("show_laser", 1 if enabled else 0)
+	if pointer is Node3D:
+		(pointer as Node3D).visible = enabled
+
+func _set_function_enabled(function_node: Node, enabled: bool) -> void:
+	if function_node != null:
+		function_node.set("enabled", enabled)

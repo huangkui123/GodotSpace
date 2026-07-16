@@ -1,6 +1,7 @@
 extends Node3D
 
 const RuntimeProfileScript = preload("res://Assets/ARSpace/Scripts/runtime_profile.gd")
+const AvatarPoseState = preload("res://Assets/ARSpace/Characters/Astronaut/avatar_pose_state.gd")
 const SERVER_PEER_ID: int = 1
 const POSE_SEND_INTERVAL: float = 1.0 / 30.0
 const REMOTE_INTERPOLATION_DELAY: float = 0.1
@@ -69,6 +70,8 @@ var _has_received_network_pose: bool = false
 var _test_trigger_pressed: bool = false
 var _test_grip_pressed: bool = false
 var _session_role: String = ROLE_UNKNOWN
+var _local_pose_state: Dictionary = AvatarPoseState.make_default()
+var _last_applied_pose_state: Dictionary = AvatarPoseState.make_default()
 
 func _enter_tree() -> void:
 	set_multiplayer_authority(_get_peer_id_from_name(), true)
@@ -83,6 +86,7 @@ func _ready() -> void:
 	_runtime_profile = RuntimeProfileScript.current()
 	_connect_role_registry()
 	_refresh_session_role()
+	_configure_astronaut_avatar()
 	_apply_role_appearance()
 	_configure_local_xr_nodes(_is_local_authority())
 	_sync_network_pose_from_local_source()
@@ -141,6 +145,41 @@ func set_session_role(assigned_role: String) -> void:
 
 func get_session_role() -> String:
 	return _resolved_session_role()
+
+func set_input_mode(input_mode: int) -> bool:
+	var input_router := get_node_or_null("XROrigin3D/XRInputRouter")
+	if input_router == null or not input_router.has_method("set_input_mode"):
+		return false
+	input_router.call("set_input_mode", input_mode)
+	return true
+
+func get_input_mode() -> int:
+	return int(_local_pose_state.get("input_mode", AvatarPoseState.INPUT_MODE_HEAD_GAZE))
+
+func get_interaction_ray_transform() -> Transform3D:
+	var input_router := get_node_or_null("XROrigin3D/XRInputRouter")
+	if input_router != null and input_router.has_method("get_active_ray_transform"):
+		return input_router.call("get_active_ray_transform") as Transform3D
+	var head := get_node_or_null("NetworkHead") as Node3D
+	return head.global_transform if head != null else Transform3D.IDENTITY
+
+func is_interaction_select_pressed() -> bool:
+	var input_router := get_node_or_null("XROrigin3D/XRInputRouter")
+	return input_router != null \
+		and input_router.has_method("is_select_pressed") \
+		and bool(input_router.call("is_select_pressed"))
+
+func is_interaction_grip_pressed() -> bool:
+	var input_router := get_node_or_null("XROrigin3D/XRInputRouter")
+	return input_router != null \
+		and input_router.has_method("is_grip_pressed") \
+		and bool(input_router.call("is_grip_pressed"))
+
+func get_interaction_scroll_axis() -> float:
+	var input_router := get_node_or_null("XROrigin3D/XRInputRouter")
+	if input_router != null and input_router.has_method("get_scroll_axis"):
+		return float(input_router.call("get_scroll_axis"))
+	return 0.0
 
 func _connect_role_registry() -> void:
 	var network_handler := get_node_or_null("/root/NetworkHandler")
@@ -259,6 +298,10 @@ func _configure_local_xr_nodes(is_local_authority: bool) -> void:
 			collision_body.collision_mask = 1023 if player_body_enabled else 0
 
 	_set_network_avatar_visible(false)
+	var astronaut_avatar := get_node_or_null("AstronautAvatar") as Node3D
+	if astronaut_avatar != null:
+		astronaut_avatar.call("set_local_presentation", is_local_authority)
+		astronaut_avatar.visible = is_local_authority and local_xr_enabled and not _is_pc_ground_server()
 	if not is_local_authority:
 		# This is a fallback for players instantiated outside MultiplayerSpawner.
 		# Detach synchronously so later local players cannot discover this
@@ -291,6 +334,9 @@ func _configure_test_mode_local_visuals() -> void:
 	if left_pointer != null:
 		left_pointer.set("enabled", false)
 		left_pointer.visible = false
+	var input_router := get_node_or_null("XROrigin3D/XRInputRouter")
+	if input_router != null and input_router.has_method("set_test_input"):
+		input_router.call("set_test_input", 0.0, 0.0, true)
 
 func _remove_remote_xr_branch() -> void:
 	var xr_origin := get_node_or_null("XROrigin3D")
@@ -324,10 +370,19 @@ func _update_test_hand_pose() -> void:
 			1.0 if _test_grip_pressed else 0.0,
 			1.0 if _test_trigger_pressed else 0.0
 		)
+	var input_router := get_node_or_null("XROrigin3D/XRInputRouter")
+	if input_router != null and input_router.has_method("set_test_input"):
+		input_router.call(
+			"set_test_input",
+			1.0 if _test_trigger_pressed else 0.0,
+			1.0 if _test_grip_pressed else 0.0,
+			true
+		)
 
 func _sync_network_pose_from_local_source() -> void:
 	if not _is_local_authority():
 		return
+	_update_local_pose_state()
 	if _is_pc_ground_server():
 		_sync_pc_ground_proxy_pose()
 	else:
@@ -336,6 +391,52 @@ func _sync_network_pose_from_local_source() -> void:
 			var target := get_node_or_null(pair[1]) as Node3D
 			if source != null and target != null:
 				target.global_transform = source.global_transform
+
+func _update_local_pose_state() -> void:
+	var input_router := get_node_or_null("XROrigin3D/XRInputRouter")
+	if _is_pc_ground_server():
+		_local_pose_state = AvatarPoseState.from_actions(
+			AvatarPoseState.TRACKING_ALL,
+			AvatarPoseState.INPUT_MODE_HEAD_GAZE,
+			0.0,
+			0.0,
+			1.0 if _test_trigger_pressed else 0.0,
+			1.0 if _test_grip_pressed else 0.0,
+			0
+		)
+	elif input_router != null and input_router.has_method("get_network_state"):
+		var sampled_state: Variant = input_router.call("get_network_state")
+		var normalized_state := AvatarPoseState.normalize(sampled_state)
+		if not normalized_state.is_empty():
+			_local_pose_state = normalized_state
+	_apply_avatar_pose_state(_local_pose_state)
+
+func _configure_astronaut_avatar() -> void:
+	var avatar := get_node_or_null("AstronautAvatar") as Node3D
+	if avatar == null:
+		return
+	avatar.call(
+		"set_tracking_targets",
+		get_node_or_null("NetworkHead") as Node3D,
+		get_node_or_null("NetworkLeftHand") as Node3D,
+		get_node_or_null("NetworkRightHand") as Node3D
+	)
+	for node_path in NETWORK_AVATAR_MESHES:
+		var proxy_mesh := get_node_or_null(node_path) as MeshInstance3D
+		if proxy_mesh != null:
+			proxy_mesh.visible = false
+	var legacy_label := get_node_or_null("NetworkHead/PresenceLabel") as Label3D
+	if legacy_label != null:
+		legacy_label.visible = false
+
+func _apply_avatar_pose_state(pose_state: Dictionary) -> void:
+	var normalized_state := AvatarPoseState.normalize(pose_state)
+	if normalized_state.is_empty():
+		return
+	_last_applied_pose_state = normalized_state
+	var avatar := get_node_or_null("AstronautAvatar") as Node3D
+	if avatar != null and avatar.has_method("set_pose_state"):
+		avatar.call("set_pose_state", normalized_state)
 
 func _sync_pc_ground_proxy_pose() -> void:
 	var spectator_camera := _find_spectator_camera()
@@ -379,7 +480,13 @@ func _send_local_pose() -> void:
 
 	_local_pose_sequence += 1
 	if multiplayer.is_server():
-		_broadcast_pose_to_clients(_local_pose_sequence, head_transform, left_hand_transform, right_hand_transform)
+		_broadcast_pose_to_clients(
+			_local_pose_sequence,
+			head_transform,
+			left_hand_transform,
+			right_hand_transform,
+			_local_pose_state
+		)
 	else:
 		rpc_id(
 			SERVER_PEER_ID,
@@ -387,7 +494,8 @@ func _send_local_pose() -> void:
 			_local_pose_sequence,
 			head_transform,
 			left_hand_transform,
-			right_hand_transform
+			right_hand_transform,
+			_local_pose_state
 		)
 
 func _broadcast_pose_to_clients(
@@ -395,6 +503,7 @@ func _broadcast_pose_to_clients(
 	head_transform: Transform3D,
 	left_hand_transform: Transform3D,
 	right_hand_transform: Transform3D,
+	pose_state: Dictionary = {},
 	excluded_peer_id: int = 0
 ) -> void:
 	for peer_id_value in multiplayer.get_peers():
@@ -409,7 +518,8 @@ func _broadcast_pose_to_clients(
 			sequence,
 			head_transform,
 			left_hand_transform,
-			right_hand_transform
+			right_hand_transform,
+			pose_state
 		)
 
 func _notify_server_replica_ready() -> void:
@@ -435,7 +545,8 @@ func _server_receive_pose(
 	sequence: int,
 	head_transform: Transform3D,
 	left_hand_transform: Transform3D,
-	right_hand_transform: Transform3D
+	right_hand_transform: Transform3D,
+	pose_state: Dictionary = {}
 ) -> void:
 	if not multiplayer.is_server():
 		return
@@ -443,36 +554,49 @@ func _server_receive_pose(
 	var sender_id := multiplayer.get_remote_sender_id()
 	if sender_id != _get_peer_id_from_name():
 		return
-	if not _accept_remote_pose(sequence, head_transform, left_hand_transform, right_hand_transform):
+	if not _accept_remote_pose(sequence, head_transform, left_hand_transform, right_hand_transform, pose_state):
 		return
 
-	_broadcast_pose_to_clients(sequence, head_transform, left_hand_transform, right_hand_transform, sender_id)
+	_broadcast_pose_to_clients(
+		sequence,
+		head_transform,
+		left_hand_transform,
+		right_hand_transform,
+		_last_applied_pose_state,
+		sender_id
+	)
 
 @rpc("any_peer", "call_remote", "unreliable")
 func _client_receive_pose(
 	sequence: int,
 	head_transform: Transform3D,
 	left_hand_transform: Transform3D,
-	right_hand_transform: Transform3D
+	right_hand_transform: Transform3D,
+	pose_state: Dictionary = {}
 ) -> void:
 	if multiplayer.is_server() or multiplayer.get_remote_sender_id() != SERVER_PEER_ID:
 		return
 	if _is_local_authority():
 		return
-	_accept_remote_pose(sequence, head_transform, left_hand_transform, right_hand_transform)
+	_accept_remote_pose(sequence, head_transform, left_hand_transform, right_hand_transform, pose_state)
 
 func _accept_remote_pose(
 	sequence: int,
 	head_transform: Transform3D,
 	left_hand_transform: Transform3D,
-	right_hand_transform: Transform3D
+	right_hand_transform: Transform3D,
+	pose_state: Dictionary = {}
 ) -> bool:
 	if sequence <= _last_received_pose_sequence:
 		return false
 	if not _are_valid_pose_transforms(head_transform, left_hand_transform, right_hand_transform):
 		return false
+	var normalized_pose_state := AvatarPoseState.normalize(pose_state)
+	if normalized_pose_state.is_empty():
+		return false
 
 	_last_received_pose_sequence = sequence
+	_last_applied_pose_state = normalized_pose_state
 	var received_at := Time.get_ticks_usec() / 1000000.0
 	if not _remote_pose_samples.is_empty():
 		received_at = maxf(received_at, float(_remote_pose_samples[-1]["received_at"]) + 0.000001)
@@ -481,6 +605,7 @@ func _accept_remote_pose(
 		"head": head_transform,
 		"left_hand": left_hand_transform,
 		"right_hand": right_hand_transform,
+		"pose_state": normalized_pose_state,
 	})
 	while _remote_pose_samples.size() > MAX_QUEUED_POSE_SAMPLES:
 		_remote_pose_samples.pop_front()
@@ -488,7 +613,7 @@ func _accept_remote_pose(
 	_has_received_network_pose = true
 	_set_network_avatar_visible(true)
 	if _remote_pose_samples.size() == 1:
-		_apply_network_pose_shared(head_transform, left_hand_transform, right_hand_transform)
+		_apply_network_pose_shared(head_transform, left_hand_transform, right_hand_transform, normalized_pose_state)
 	return true
 
 func _update_remote_pose() -> void:
@@ -502,7 +627,7 @@ func _update_remote_pose() -> void:
 	var first := _remote_pose_samples[0]
 	if _remote_pose_samples.size() == 1:
 		if float(first["received_at"]) <= playback_time:
-			_apply_network_pose_shared(first["head"], first["left_hand"], first["right_hand"])
+			_apply_network_pose_shared(first["head"], first["left_hand"], first["right_hand"], first["pose_state"])
 		return
 
 	var second := _remote_pose_samples[1]
@@ -512,13 +637,15 @@ func _update_remote_pose() -> void:
 	_apply_network_pose_shared(
 		(first["head"] as Transform3D).interpolate_with(second["head"], weight),
 		(first["left_hand"] as Transform3D).interpolate_with(second["left_hand"], weight),
-		(first["right_hand"] as Transform3D).interpolate_with(second["right_hand"], weight)
+		(first["right_hand"] as Transform3D).interpolate_with(second["right_hand"], weight),
+		first["pose_state"] if weight < 0.5 else second["pose_state"]
 	)
 
 func _apply_network_pose_shared(
 	head_transform: Transform3D,
 	left_hand_transform: Transform3D,
-	right_hand_transform: Transform3D
+	right_hand_transform: Transform3D,
+	pose_state: Dictionary = {}
 ) -> void:
 	var head := get_node_or_null("NetworkHead") as Node3D
 	var left_hand := get_node_or_null("NetworkLeftHand") as Node3D
@@ -529,6 +656,7 @@ func _apply_network_pose_shared(
 		left_hand.global_transform = _shared_to_global(left_hand_transform)
 	if right_hand != null:
 		right_hand.global_transform = _shared_to_global(right_hand_transform)
+	_apply_avatar_pose_state(pose_state)
 	_update_torso_pose(head_transform)
 
 func _update_torso_pose(head_transform: Transform3D) -> void:
@@ -602,6 +730,9 @@ func _set_network_avatar_visible(is_visible: bool) -> void:
 		var avatar_root := get_node_or_null(node_path) as Node3D
 		if avatar_root != null:
 			avatar_root.visible = is_visible
+	var astronaut_avatar := get_node_or_null("AstronautAvatar") as Node3D
+	if astronaut_avatar != null:
+		astronaut_avatar.visible = is_visible
 
 func _apply_role_appearance() -> void:
 	var assigned_role := _resolved_session_role()
@@ -622,13 +753,19 @@ func _apply_role_appearance() -> void:
 		material.emission = role_color * 0.18
 		mesh_instance.material_override = material
 
+	var role_label_text := ""
+	match assigned_role:
+		ROLE_PC_GROUND:
+			role_label_text = "地面端 PC · 在线"
+		ROLE_GROUND_VR:
+			role_label_text = "地面端 VR · 在线"
+		_:
+			role_label_text = "航天端 %d · 在线" % _get_peer_id_from_name()
+
 	var label := get_node_or_null("NetworkHead/PresenceLabel") as Label3D
 	if label != null:
-		match assigned_role:
-			ROLE_PC_GROUND:
-				label.text = "地面端 PC · 在线"
-			ROLE_GROUND_VR:
-				label.text = "地面端 VR · 在线"
-			_:
-				label.text = "航天端 %d · 在线" % _get_peer_id_from_name()
+		label.text = role_label_text
 		label.modulate = role_color.lightened(0.25)
+	var astronaut_avatar := get_node_or_null("AstronautAvatar") as Node3D
+	if astronaut_avatar != null and astronaut_avatar.has_method("set_role_label"):
+		astronaut_avatar.call("set_role_label", role_label_text, role_color.lightened(0.25))
