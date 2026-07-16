@@ -2,7 +2,7 @@
 
 ## 结论
 
-第一阶段的软件实现与自动化准入门槛已通过；真实 PICO/OpenXR 三端联机、视觉手感和 30 分钟稳定性尚未执行，因此任务 1.7 仍为“待真机签字”，不能标记为最终验收完成。
+第一阶段的软件实现与自动化准入门槛已通过；真实 PICO/OpenXR 三端联机、视觉手感和 30 分钟稳定性尚未执行，因此任务 1.7 仍为“待真机签字”，不能标记为最终验收完成。另经源资产复核，Unity 航天员没有可导入的业务动画 clip/Controller；程序化 IK/手势替代已实现，但任务 1.4 的合并资产项必须等负责人接受该替代方案或补充动画资产后才能勾选。
 
 本次验证基于分支 `codex/unity-to-godot`，任务 1.1–1.6 的独立提交为：
 
@@ -12,6 +12,9 @@
 - `353cda6`：航天员角色、IK、手势与 XR 输入。
 - `6112156`：共享空间与标定闭环。
 - `36029bf`：Server 权威通用三维窗口框架。
+- `7ae7ecd`：收紧角色文案、WorkList 运行时和资产复制前置证据。
+- `218f244`：补齐角色变更临时网络状态清理与消费者重建回归。
+- `4e6d9d2`：如实纠正 Unity 航天员动画资产状态。
 
 ## 自动化执行结果
 
@@ -48,12 +51,24 @@
 
 `run_runtime_startup_smoke_tests.ps1` 还新增正式关闭恢复双进程用例：Server/桌面 Test Client 通过真实 `NetworkHandler.start_server/start_client` 进入 `ARSpace.tscn`；Server 先创建非零 CollaborationState 菜单状态、SpatialCalibrationState 确认点和 SpatialWindowRegistryService 窗口，Client 验证完整快照后才触发 Server 关闭；随后 Client 必须同时观察 `server_connection_lost` 与 `session_closed`，恢复 `OfflineMultiplayerPeer`，清空角色表、Ground 席位和三类状态，并由正式路径返回 `StartMenu.tscn`。runner 使用 READY 日志屏障、原生退出码、唯一 PASS token 与精确错误白名单，已独立复跑 12.9 秒通过。
 
+### 2026-07-17 本地闭环复核
+
+最新完整命令再次得到 `PHASE1_VALIDATION PASS`，退出码 `0`，用时 94.4 秒。除前述已归类的定制 headless/progress dialog、SubViewport 和 dummy renderer 空材质/空 Mesh 噪声外，没有脚本解析、资源缺失、RPC path、Autoload 或 GDExtension 新错误。新增证据包括：
+
+- WorkList 测试真实实例化 `WorkListView.tscn`，验证非 editor 运行时恰好创建任务 1—5、任务 1 的 20 个连续步骤、任务 2—5 的未配置显示/点击拒绝、任务 6—8 缺席和重复初始化幂等。
+- 同一已连接 Ground VR 被 Server 降级为 Astronaut 后，窗口 lease、请求序号、结果缓存、快照节流和 preview 序列均清理；已确认的共享 `focus_order` 按合同保留，后续 Ground-only 操作由 Server 以 `role_not_allowed` 拒绝且 revision 不变。
+- 在 ENet 连接保持期间销毁并重建 Astronaut 端 `CollaborationState` 和窗口 Registry，重复即时快照请求只应用一次，完整状态与 Server 精确相等，每个窗口只注册/变更一次。
+- StartMenu 三个中文标签已锁定为“PC 地面端 Server”“地面 VR 端 Client”“航天端 XR Client”；旧倒序“VR 地面端 Client”由测试禁止恢复。
+- 航天员迁移脚本复制前会硬性检查仓库边界、LFS filter、Git LFS 可用性和对象体积，并在修改复制件前执行 SHA-256 一致性校验。当前源 FBX/目标补丁件和 44+4 张纹理的尺寸、哈希与 LFS 状态已记录在资产台账。
+
+硬件就绪审计发现本机有 PICO Connect 自带 ADB 和 PICO Streaming OpenXR runtime，但 `adb devices -l` 返回空设备列表，系统也没有物理 PICO/Android PnP 设备。当前无法执行两台 PICO + PC 的真实三端、Unity 三 Tag 对照和 30 分钟稳定性验收；这属于外部设备前置条件，不以桌面模拟替代。
+
 ## 任务 1.7 证据矩阵
 
 | 验收项 | 自动化证据 | 当前判定 | 真机仍需确认 |
 | --- | --- | --- | --- |
 | PC Ground Server + Ground VR + Astronaut XR | `run_collaboration_multiprocess_self_test.ps1` 在三个独立 Godot 进程中运行三角色；`run_runtime_startup_smoke_tests.ps1` 检查正式参数入口 | 部分覆盖 | 两台真实 PICO 同时接入正式 `ARSpace.tscn` |
-| 连接顺序、第二 Ground VR、掉线/重连、Server 关闭 | 三套独立进程场景覆盖两种连接顺序、Ground 重连和第二 Ground 降级/拒权；正式运行时双进程用例覆盖非零业务状态下 ARSpace→StartMenu 的 Server 关闭与全量清理 | 部分覆盖 | 真实无线网络、头显休眠/唤醒和头显内界面提示 |
+| 连接顺序、第二 Ground VR、掉线/重连、角色变更、Server 关闭 | 三套独立进程场景覆盖两种连接顺序、Ground 重连和第二 Ground 降级/拒权；同连接角色降级验证临时状态清理，消费者重建验证快照去重；正式运行时双进程用例覆盖非零业务状态下 ARSpace→StartMenu 的 Server 关闭与全量清理 | 部分覆盖 | 真实无线网络、头显休眠/唤醒和头显内界面提示 |
 | 航天员全身 IK、头手、手势、名称、本地/远端隐藏 | `PlayerPresenceSelfTest.tscn`、`PlayerNetworkSelfTest.tscn`、`avatar_pose_state` 边界检查 | 部分覆盖 | 真实跟踪姿态、遮挡、手臂观感和长时骨骼稳定性 |
 | 共享原点、重定中、标定快照、迟到 Client | `shared_space_alignment_self_test.gd`、`shared_space_contract_self_test.gd`、`spatial_calibration_state_network_self_test.gd` | 部分覆盖 | PICO 实景三 Tag 对照、重定中后的实体对齐误差 |
 | 主菜单和至少四类业务窗口 | 5 项 SpatialWindow 自测；真实 ENet 覆盖预览、lease 断线释放、降级拒权、重连完整快照与 Server 关闭清理 | 部分覆盖 | PC 鼠标、PICO 近抓/远射线/摇杆、震动和两端视觉一致性 |

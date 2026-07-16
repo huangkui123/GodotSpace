@@ -108,7 +108,9 @@
 - VirtualAnnotation 已使用服务器权威、请求序列、状态版本和迟到快照，其网络模式可复用到自由绘制、模型放置和业务状态。
 - 空间标定已具备独立帧协议、长度限制、ACK、图像预览、深度请求、手动微调和结果同步，并有 Android companion app。
 
-### 2.3 当前最需要立即修正的不一致
+### 2.3 基线审计时发现的不一致
+
+本节保留首次审计发现，便于追溯为什么建立后续任务；完成状态以各阶段任务的 checkbox、任务记录和独立验收文档为准，不能把本节的初始描述当成当前实现状态。
 
 1. **角色名称正在统一**：映射已固定为 Unity AR → `ASTRONAUT_XR_CLIENT`、Unity VR → `VR_GROUND_CLIENT`、Unity PC → `PC_GROUND_SERVER`；还需持续清除旧航天端命名并完成三端验收。
 2. **角色外观不一致**：Unity 是头手驱动的中国航天员全身模型，Godot 远端仍是几何代理体。
@@ -140,7 +142,7 @@
 - [x] 按功能迭代需求将 Unity 原资产复制到 GodotSpace 对应业务目录，保留可追溯命名，并在复制大型二进制前检查 Git LFS 和仓库体积。
 - [x] 把任务 2—5 标记为“未配置”并保留入口；任务 6—8 从复刻基线和 UI 中移除。
 
-任务 1.1 记录：角色与功能合同见 `GodotSpace/docs/migration/phase_1_replication_baseline.md`，资产现状、复制规则、LFS 风险和未找到最终发布包的结论见 `GodotSpace/docs/migration/asset_migration_ledger.md`。现有主线所需图片、视频、实验柜、工具和步骤动画已在 Godot 目标目录登记；航天员等后续任务专用资产按对应任务复制，避免在基线任务中无差别复制约 271 MiB 源目录。工作清单基线由 `work_list_baseline_self_test.gd` 锁定。
+任务 1.1 记录：角色与功能合同见 `GodotSpace/docs/migration/phase_1_replication_baseline.md`，其输入依据为本清单“1.5 已确认的项目决策”；StartMenu、命令行、网络和测试统一使用“PC 地面端 / 地面 VR 端 / 航天端”。资产现状、复制规则、LFS 风险和未找到最终发布包的结论见 `GodotSpace/docs/migration/asset_migration_ledger.md`；航天员迁移脚本会在复制前硬性检查仓库边界、LFS、Git LFS 可用性和仓库体积，并在补丁前校验 FBX SHA-256。现有主线所需图片、视频、实验柜、工具和步骤动画已在 Godot 目标目录登记；航天员等任务专用资产按需复制，避免无差别复制约 271 MiB 源目录。工作清单在非 editor 运行时也会初始化任务 1—5，任务 2—5 明确拒绝打开、任务 6—8 不创建；`work_list_baseline_self_test.gd` 通过真实 `WorkListView.tscn` 实例和点击路径锁定该行为。
 
 **完成标准：** 任何人不需要阅读代码，也能说清三台设备的角色、启动参数、权限和验收范围。
 
@@ -152,7 +154,7 @@
 - [x] 为 StartMenu → ARSpace、Client 连接失败返回、Server 断开返回和重连建立自动/半自动回归步骤。
 - [x] 建立基线问题清单，将已知的 headless 退出清理噪声与真实解析/加载错误分开。
 
-任务 1.2 记录：统一入口为 `GodotSpace/tools/tests/run_phase1_validation.ps1`，开发机恢复与命令见 `GodotSpace/docs/testing/development_and_validation.md`，导入分类见 `headless_import_baseline.md`，会话半自动回归见 `phase1_session_regression.md`。2026-07-16 使用指定 Godot 4.4 构建完整运行 50.5 秒通过；导入退出码为 0，无脚本解析、缺失资源、Autoload 或 GDExtension 关键错误。Android build-tools、SubViewport 层级和 dummy renderer 空材质输出保留为待归因基线问题，未伪装成已知清理噪声。
+任务 1.2 记录：统一入口为 `GodotSpace/tools/tests/run_phase1_validation.ps1`，开发机恢复与命令见 `GodotSpace/docs/testing/development_and_validation.md`，导入分类见 `headless_import_baseline.md`，会话半自动回归见 `phase1_session_regression.md`。2026-07-17 使用指定 Godot 4.4 构建完整运行 94.4 秒通过；导入退出码为 0，无脚本解析、缺失资源、Autoload 或 GDExtension 关键错误。Android build-tools、SubViewport 层级和 dummy renderer 空材质/空 Mesh 输出保留为待归因基线问题，未伪装成已知清理噪声。
 
 **完成标准：** 新开发机可按文档恢复环境，并用同一 Godot 构建稳定重现烟雾检查和离线自测结果。
 
@@ -166,7 +168,7 @@
 - [x] 实现幂等请求和重放防护，避免断线重连后重复生成窗口、线条和模型。
 - [x] 实现 Server 关闭、Client 掉线、场景切换和角色更换时的对称清理。
 
-任务 1.3 记录：`CollaborationState` 已注册为独立 Autoload，合同见 `GodotSpace/docs/network/collaboration_state_contract.md`。服务维护全局及 7 个 domain 的 revision，限制 64 KiB 请求、2 MiB 快照、集合数量、SharedSpaceOrigin 50 m 范围、合法角色和模型白名单；Server 分配 stroke/model ID。相同 `(peer_id, request_sequence, payload)` 返回缓存结果且不重复变更，同序号不同 payload 和旧序号被拒绝。真实 ENet 网络自测覆盖迟到快照、非法航天端菜单请求、精确重试、Ground VR 掉线/重连、Server 关闭和状态清理。
+任务 1.3 记录：`CollaborationState` 已注册为独立 Autoload，合同见 `GodotSpace/docs/network/collaboration_state_contract.md`。服务维护全局及 7 个 domain 的 revision，限制 64 KiB 请求、2 MiB 快照、集合数量、SharedSpaceOrigin 50 m 范围、合法角色和模型白名单；Server 分配 stroke/model ID。相同 `(peer_id, request_sequence, payload)` 返回缓存结果且不重复变更，同序号不同 payload 和旧序号被拒绝。真实 ENet 网络自测覆盖迟到快照、非法航天端菜单请求、精确重试、Ground VR 掉线/重连、Server 关闭和状态清理；同一连接的 Ground VR 降级为 Astronaut 时会释放窗口 lease，并清除协作/窗口请求序号、结果缓存、快照节流和预览序列。测试还会在连接保持期间销毁并重建 Client 端两个状态消费者，确认只应用一次完整快照、窗口 ID 唯一且不重复发出注册/状态信号。
 
 **完成标准：** Server + 两个 Client 按不同顺序连接、断开和重连时，不出现重复玩家、错角色、残留节点或丢失当前业务状态。
 
@@ -224,7 +226,7 @@
 - [ ] 验证主菜单和至少 4 类业务窗口的拖动、缩放、吸附、焦点、震动和同步。
 - [ ] 在真实 XR/PICO 设备上运行至少 30 分钟，记录帧率、跟踪、内存、RPC 错误和残留节点。
 
-任务 1.7 自动化前置验收记录（2026-07-16，2026-07-17 增强）：`run_phase1_validation.ps1` 已再次完整通过（退出码 0，用时 89.2 秒）。独立 OS 进程 ENet 测试现在使用不同端口和显式阶段屏障覆盖 Server→Ground→Astronaut（含 Ground 掉线/重连）、Server→Astronaut→Ground、两个 Ground 同时申请席位并将第二个降级为 Astronaut，以及 Client 观察 Server 关闭；真实 loopback ENet 集成测试还覆盖窗口拖动预览中断线不落盘、lease 释放、离线期间状态变化、重连完整快照、降级角色拒权和 Server 关闭后两端窗口状态清空。正式运行时恢复用例使用真实 `NetworkHandler.start_server/start_client` 进入 `ARSpace.tscn`，在协作、标定和窗口状态均非空后关闭 Server，并验证 Client 收到双清理信号、恢复 Offline peer、清空角色与三类状态并返回 `StartMenu.tscn`。玩家/航天员角色、共享空间/标定、PC/Test Client/XR 参数启动冒烟和其余第一阶段回归均通过。当前环境没有两台真实 PICO/OpenXR 设备，因此上述六项保留未勾选，禁止以 headless 结果替代真机签字。证据矩阵、启动命令、30 分钟记录项和签字栏见 `GodotSpace/docs/testing/phase1_acceptance_2026-07-16.md`。
+任务 1.7 自动化前置验收记录（2026-07-16，2026-07-17 增强）：`run_phase1_validation.ps1` 已再次完整通过（退出码 0，用时 94.4 秒）。独立 OS 进程 ENet 测试使用不同端口和显式阶段屏障覆盖 Server→Ground→Astronaut（含 Ground 掉线/重连）、Server→Astronaut→Ground、两个 Ground 同时申请席位并将第二个降级为 Astronaut，以及 Client 观察 Server 关闭；真实 loopback ENet 集成测试还覆盖窗口拖动预览中断线不落盘、lease 释放、离线期间状态变化、重连完整快照、同连接角色降级的临时状态清理/后续拒权、Client 消费者销毁重建去重和 Server 关闭后两端窗口状态清空。正式运行时恢复用例使用真实 `NetworkHandler.start_server/start_client` 进入 `ARSpace.tscn`，在协作、标定和窗口状态均非空后关闭 Server，并验证 Client 收到双清理信号、恢复 Offline peer、清空角色与三类状态并返回 `StartMenu.tscn`。玩家/航天员角色、共享空间/标定、真实 WorkList 场景、PC/Test Client/XR 参数启动冒烟和其余第一阶段回归均通过。当前环境的 PICO ADB 设备列表为空，也没有两台真实 PICO/OpenXR 设备，因此上述六项保留未勾选，禁止以 headless 结果替代真机签字。证据矩阵、启动命令、30 分钟记录项和签字栏见 `GodotSpace/docs/testing/phase1_acceptance_2026-07-16.md`。
 
 ---
 
