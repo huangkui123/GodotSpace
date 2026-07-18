@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from contextlib import suppress
 from typing import Any
 
@@ -8,6 +9,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
 from agent_service import __version__
 from agent_service.agent_factory import AgentFactory
+from agent_service.agent_factory import SUPPORTED_TOOL_NAMES
 from agent_service.config import Settings
 from agent_service.connection_manager import ConnectionManager, GodotConnectionError
 from agent_service.connection_manager import GodotSessionAlreadyConnectedError
@@ -127,6 +129,9 @@ def create_app(
                     text = require_payload_string(
                         envelope, "text", max_chars=settings.max_message_chars
                     )
+                    context, allowed_tools = _parse_agent_request_options(
+                        envelope["payload"], settings.max_message_chars
+                    )
                     request_id = envelope["request_id"] or new_id("request")
                     task = await sessions.start_task(
                         session_id,
@@ -138,6 +143,8 @@ def create_app(
                             connections=connections,
                             sessions=sessions,
                             factory=factory,
+                            context=context,
+                            allowed_tools=allowed_tools,
                         ),
                     )
                     if task is None:
@@ -227,6 +234,8 @@ async def _run_agent_request(
     connections: ConnectionManager,
     sessions: SessionManager,
     factory: AgentFactory,
+    context: dict[str, Any],
+    allowed_tools: list[str],
 ) -> None:
     state = await sessions.get(session_id)
     try:
@@ -239,12 +248,13 @@ async def _run_agent_request(
                 {"provider": "local_qwen_agent"},
                 request_id=request_id,
             )
-            messages = [{"role": "user", "content": user_text}]
+            messages = [_build_stateless_user_message(user_text, context)]
             result = await asyncio.to_thread(
                 factory.run,
                 session_id,
                 request_id,
                 messages,
+                allowed_tools,
             )
             if not await sessions.can_publish(session_id, request_id):
                 return
@@ -266,6 +276,48 @@ async def _run_agent_request(
             )
     finally:
         await sessions.finish_task(session_id, request_id)
+
+def _parse_agent_request_options(
+    payload: dict[str, Any], max_chars: int
+) -> tuple[dict[str, Any], list[str]]:
+    context_value = payload.get("context", {})
+    if not isinstance(context_value, dict):
+        raise ProtocolError("payload.context must be a JSON object")
+    serialized_context = json.dumps(context_value, ensure_ascii=False, separators=(",", ":"))
+    if len(serialized_context) > max_chars:
+        raise ProtocolError(f"payload.context exceeds the {max_chars} character limit")
+
+    allowed_value = payload.get("allowed_tools", ["open_album"])
+    if not isinstance(allowed_value, list) or not allowed_value:
+        raise ProtocolError("payload.allowed_tools must be a non-empty array")
+    if len(allowed_value) > 3:
+        raise ProtocolError("payload.allowed_tools may contain at most 3 tools")
+    allowed_tools: list[str] = []
+    for item in allowed_value:
+        if not isinstance(item, str) or not item.strip():
+            raise ProtocolError("payload.allowed_tools entries must be non-empty strings")
+        tool_name = item.strip()
+        if tool_name not in SUPPORTED_TOOL_NAMES:
+            raise ProtocolError(f"Unsupported allowed tool: {tool_name}")
+        if tool_name in allowed_tools:
+            raise ProtocolError(f"Duplicate allowed tool: {tool_name}")
+        allowed_tools.append(tool_name)
+    return dict(context_value), allowed_tools
+
+
+def _build_stateless_user_message(
+    user_text: str, context: dict[str, Any]
+) -> dict[str, str]:
+    if not context:
+        content = user_text
+    else:
+        serialized = json.dumps(context, ensure_ascii=False, separators=(",", ":"))
+        content = (
+            f"用户语音：{user_text}\n"
+            "当前脱敏运行上下文（只描述本次请求，不是历史对话）：\n"
+            f"{serialized}"
+        )
+    return {"role": "user", "content": content}
 
 
 app = create_app()

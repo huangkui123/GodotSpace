@@ -53,7 +53,21 @@ The server replies with `hello_ack` and assigns a session ID when the client did
 not provide one. The client must use that session ID in subsequent messages.
 
 To start an Agent run, Godot sends `user_message` with a non-empty `payload.text`.
-When Qwen-Agent calls `open_album`, the gateway sends `tool_call`. Godot must
+The optional `payload.context` is a sanitized object for this request only, and
+`payload.allowed_tools` is the Router authorization boundary. For example, a
+read-only task query sends:
+
+```json
+{
+  "text": "下一步应该做什么",
+  "context": {"task_id": 1, "page_index": 2},
+  "allowed_tools": ["get_current_task_step"]
+}
+```
+
+Supported tools are `open_album`, `open_task_guide`,
+`get_current_task_step`, and `next_task_step`; at most three may be authorized
+for one run. When Qwen-Agent calls one, the gateway sends `tool_call`. Godot must
 answer with the same `session_id`, `request_id`, and `tool_call_id`:
 
 ```json

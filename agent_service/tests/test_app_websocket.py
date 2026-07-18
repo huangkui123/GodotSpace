@@ -37,6 +37,7 @@ class FakeAgentFactory:
         session_id: str,
         request_id: str,
         messages: list[dict[str, Any]],
+        allowed_tools: list[str] | None = None,
     ) -> AgentRunResult:
         self.run_count += 1
         result = self._connections.request_tool_sync(
@@ -79,6 +80,7 @@ class SerialAgentFactory:
         session_id: str,
         request_id: str,
         messages: list[dict[str, Any]],
+        allowed_tools: list[str] | None = None,
     ) -> AgentRunResult:
         with self._counter_lock:
             self.active_count += 1
@@ -98,6 +100,7 @@ class SerialAgentFactory:
 class RecordingAgentFactory:
     def __init__(self) -> None:
         self.messages: list[list[dict[str, Any]]] = []
+        self.allowed_tools: list[list[str] | None] = []
 
     @staticmethod
     def is_available() -> bool:
@@ -112,8 +115,10 @@ class RecordingAgentFactory:
         session_id: str,
         request_id: str,
         messages: list[dict[str, Any]],
+        allowed_tools: list[str] | None = None,
     ) -> AgentRunResult:
         self.messages.append(messages)
+        self.allowed_tools.append(allowed_tools)
         answer = f"done:{request_id}"
         return AgentRunResult(
             answer=answer,
@@ -140,6 +145,7 @@ class LateToolAgentFactory:
         session_id: str,
         request_id: str,
         messages: list[dict[str, Any]],
+        allowed_tools: list[str] | None = None,
     ) -> AgentRunResult:
         time.sleep(0.1)
         try:

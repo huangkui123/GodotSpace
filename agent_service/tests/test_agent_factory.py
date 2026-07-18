@@ -69,6 +69,34 @@ class AgentFactoryTests(unittest.TestCase):
         self.assertEqual(captured["function_list"][0].name, "open_album")
         self.assertEqual(captured["run"]["lang"], "zh")
 
+    @unittest.skipUnless(
+        importlib.util.find_spec("qwen_agent") is not None,
+        "qwen_agent is not installed in this Python environment",
+    )
+    def test_builds_only_the_authorized_task_tools(self) -> None:
+        factory = AgentFactory(Settings(), ConnectionManager())
+        tools = factory._build_tools(
+            "session-1",
+            "request-1",
+            ["get_current_task_step", "next_task_step"],
+        )
+
+        self.assertEqual(
+            [tool.name for tool in tools],
+            ["get_current_task_step", "next_task_step"],
+        )
+        self.assertFalse(tools[0]._state_changing)
+        self.assertTrue(tools[1]._state_changing)
+
+    @unittest.skipUnless(
+        importlib.util.find_spec("qwen_agent") is not None,
+        "qwen_agent is not installed in this Python environment",
+    )
+    def test_rejects_unsupported_authorized_tool(self) -> None:
+        factory = AgentFactory(Settings(), ConnectionManager())
+        with self.assertRaises(ValueError):
+            factory._build_tools("session-1", "request-1", ["call_node"])
+
 
 if __name__ == "__main__":
     unittest.main()
