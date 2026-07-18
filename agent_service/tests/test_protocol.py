@@ -51,6 +51,25 @@ class ProtocolTests(unittest.TestCase):
             validate_tool_result_payload(
                 {"ok": "yes", "data": {"visible": True}, "error": None}
             )
+        with self.assertRaises(ProtocolError):
+            validate_tool_result_payload(
+                {"ok": False, "data": {}, "error": None}
+            )
+        with self.assertRaises(ProtocolError):
+            validate_tool_result_payload(
+                {
+                    "ok": False,
+                    "data": {},
+                    "error": {"code": "", "message": "failed"},
+                }
+            )
+        validate_tool_result_payload(
+            {
+                "ok": False,
+                "data": {},
+                "error": {"code": "not_ready", "message": "Godot is not ready"},
+            }
+        )
 
 
 if __name__ == "__main__":

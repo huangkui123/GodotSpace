@@ -10,6 +10,7 @@ from agent_service import __version__
 from agent_service.agent_factory import AgentFactory
 from agent_service.config import Settings
 from agent_service.connection_manager import ConnectionManager, GodotConnectionError
+from agent_service.connection_manager import GodotSessionAlreadyConnectedError
 from agent_service.health import probe_model_server
 from agent_service.protocol import (
     PROTOCOL_VERSION,
@@ -19,7 +20,7 @@ from agent_service.protocol import (
     parse_envelope,
     require_payload_string,
 )
-from agent_service.session_manager import SessionManager
+from agent_service.session_manager import CancelOutcome, SessionManager
 
 
 def create_app(
@@ -31,7 +32,8 @@ def create_app(
 ) -> FastAPI:
     settings = settings or Settings.from_env()
     connections = connection_manager or ConnectionManager()
-    sessions = session_manager or SessionManager(settings.max_history_messages)
+    sessions = session_manager or SessionManager()
+    connections.set_request_lifecycle(sessions)
     factory = agent_factory or AgentFactory(settings, connections)
 
     app = FastAPI(title="GodotSpace Local Qwen Agent Gateway", version=__version__)
@@ -84,7 +86,18 @@ def create_app(
             if not client_id:
                 raise ProtocolError("payload.client_id must be a non-empty string")
             session_id = hello["session_id"] or new_id("session")
-            await connections.register(session_id, client_id, websocket)
+            try:
+                await connections.register(session_id, client_id, websocket)
+            except GodotSessionAlreadyConnectedError as exc:
+                await websocket.send_json(
+                    make_envelope(
+                        "run_error",
+                        {"code": "duplicate_session_id", "message": str(exc)},
+                        session_id=session_id,
+                    )
+                )
+                await websocket.close(code=1008, reason="Duplicate active session")
+                return
             await connections.send_event(
                 session_id,
                 "hello_ack",
@@ -144,9 +157,34 @@ def create_app(
                     request_id = envelope["request_id"]
                     if not request_id:
                         raise ProtocolError("cancel_run requires request_id")
-                    await sessions.cancel(session_id, request_id)
-                    with suppress(GodotConnectionError):
-                        await connections.cancel_request(session_id, request_id)
+                    outcome = await sessions.cancel(session_id, request_id)
+                    if outcome == CancelOutcome.CANCELLED:
+                        with suppress(GodotConnectionError):
+                            await connections.cancel_request(session_id, request_id)
+                        with suppress(GodotConnectionError):
+                            await connections.send_event(
+                                session_id,
+                                "run_error",
+                                {
+                                    "code": "cancelled",
+                                    "message": "Agent run was cancelled.",
+                                },
+                                request_id=request_id,
+                            )
+                    else:
+                        with suppress(GodotConnectionError):
+                            await connections.send_event(
+                                session_id,
+                                "run_error",
+                                {
+                                    "code": "too_late",
+                                    "message": (
+                                        "The request already crossed its cancellation "
+                                        "boundary or is no longer active."
+                                    ),
+                                },
+                                request_id=request_id,
+                            )
                 else:
                     raise ProtocolError(f"Unexpected client message type: {message_type}")
         except WebSocketDisconnect:
@@ -193,20 +231,23 @@ async def _run_agent_request(
     state = await sessions.get(session_id)
     try:
         async with state.run_lock:
+            if not await sessions.mark_model_running(session_id, request_id):
+                return
             await connections.send_event(
                 session_id,
                 "run_started",
                 {"provider": "local_qwen_agent"},
                 request_id=request_id,
             )
-            messages = await sessions.build_messages(session_id, user_text)
+            messages = [{"role": "user", "content": user_text}]
             result = await asyncio.to_thread(
                 factory.run,
                 session_id,
                 request_id,
                 messages,
             )
-            await sessions.append_turn(session_id, user_text, result.answer)
+            if not await sessions.can_publish(session_id, request_id):
+                return
             await connections.send_event(
                 session_id,
                 "assistant_final",
@@ -214,13 +255,6 @@ async def _run_agent_request(
                 request_id=request_id,
             )
     except asyncio.CancelledError:
-        with suppress(GodotConnectionError):
-            await connections.send_event(
-                session_id,
-                "run_error",
-                {"code": "cancelled", "message": "Agent run was cancelled."},
-                request_id=request_id,
-            )
         raise
     except Exception as exc:
         with suppress(GodotConnectionError):

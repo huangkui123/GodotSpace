@@ -3,27 +3,14 @@ from __future__ import annotations
 import asyncio
 import unittest
 
-from agent_service.session_manager import SessionManager
+from agent_service.session_manager import (
+    CancelOutcome,
+    RequestPhase,
+    SessionManager,
+)
 
 
 class SessionManagerTests(unittest.IsolatedAsyncioTestCase):
-    async def test_history_is_bounded(self) -> None:
-        manager = SessionManager(max_history_messages=4)
-        await manager.append_turn("session-1", "q1", "a1")
-        await manager.append_turn("session-1", "q2", "a2")
-        await manager.append_turn("session-1", "q3", "a3")
-        messages = await manager.build_messages("session-1", "q4")
-        self.assertEqual(
-            messages,
-            [
-                {"role": "user", "content": "q2"},
-                {"role": "assistant", "content": "a2"},
-                {"role": "user", "content": "q3"},
-                {"role": "assistant", "content": "a3"},
-                {"role": "user", "content": "q4"},
-            ],
-        )
-
     async def test_completed_request_id_remains_deduplicated(self) -> None:
         manager = SessionManager()
 
@@ -35,12 +22,16 @@ class SessionManagerTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertIsNotNone(task)
         await task
-        await manager.finish_task("session-1", "request-1")
+        await asyncio.sleep(0)
 
         duplicate = await manager.start_task(
             "session-1", "request-1", complete_immediately
         )
         self.assertIsNone(duplicate)
+        self.assertEqual(
+            await manager.phase("session-1", "request-1"),
+            RequestPhase.COMPLETED,
+        )
 
     async def test_task_is_registered_before_coroutine_runs(self) -> None:
         manager = SessionManager()
@@ -57,7 +48,7 @@ class SessionManagerTests(unittest.IsolatedAsyncioTestCase):
         await task
         self.assertEqual(registered, [True])
 
-    async def test_cancel_stops_an_active_task(self) -> None:
+    async def test_cancel_blocks_late_tool_dispatch(self) -> None:
         manager = SessionManager()
         started = asyncio.Event()
 
@@ -68,12 +59,38 @@ class SessionManagerTests(unittest.IsolatedAsyncioTestCase):
         task = await manager.start_task("session-1", "request-1", wait_forever)
         self.assertIsNotNone(task)
         await started.wait()
-        self.assertTrue(await manager.cancel("session-1", "request-1"))
+        self.assertTrue(await manager.mark_model_running("session-1", "request-1"))
+        self.assertEqual(
+            await manager.cancel("session-1", "request-1"),
+            CancelOutcome.CANCELLED,
+        )
         with self.assertRaises(asyncio.CancelledError):
             await task
-        await manager.finish_task("session-1", "request-1")
-        self.assertFalse(await manager.cancel("session-1", "request-1"))
-        self.assertTrue(await manager.has_seen_request("session-1", "request-1"))
+        self.assertFalse(await manager.begin_tool_call("session-1", "request-1"))
+        self.assertFalse(await manager.can_publish("session-1", "request-1"))
+
+    async def test_cancel_after_state_changing_dispatch_is_too_late(self) -> None:
+        manager = SessionManager()
+
+        async def wait_forever() -> None:
+            await asyncio.Event().wait()
+
+        task = await manager.start_task("session-1", "request-1", wait_forever)
+        self.assertIsNotNone(task)
+        self.assertTrue(await manager.mark_model_running("session-1", "request-1"))
+        self.assertTrue(await manager.begin_tool_call("session-1", "request-1"))
+        self.assertTrue(
+            await manager.commit_tool_dispatch(
+                "session-1", "request-1", state_changing=True
+            )
+        )
+        self.assertEqual(
+            await manager.cancel("session-1", "request-1"),
+            CancelOutcome.TOO_LATE,
+        )
+        self.assertFalse(task.done())
+        task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
 
     async def test_dedup_cache_does_not_evict_active_requests(self) -> None:
         manager = SessionManager(max_recent_request_ids=2)

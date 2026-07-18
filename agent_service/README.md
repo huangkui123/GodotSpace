@@ -30,7 +30,6 @@ Relevant environment variables:
 | `MODEL_NAME` | `Qwen/Qwen3-VL-2B-Instruct` |
 | `API_KEY` | `EMPTY` |
 | `AGENT_TOOL_TIMEOUT` | `5.0` |
-| `AGENT_MAX_HISTORY_MESSAGES` | `8` |
 | `AGENT_MAX_TOOL_CALLS` | `6` |
 | `AGENT_MAX_MESSAGE_CHARS` | `8000` |
 
@@ -75,9 +74,13 @@ answer with the same `session_id`, `request_id`, and `tool_call_id`:
 
 The run ends with `assistant_final` or `run_error`. Tool calls are correlated by
 ID, timeout independently, and fail when the owning Godot connection disconnects.
+The websocket `session_id` identifies only the transport connection. Every Agent
+request is stateless and contains only its current user text and request context;
+Qwen conversation history is not shared across requests or speakers.
 Within a session, each accepted `request_id` is idempotent: retransmitting an
 active or recently completed ID returns `duplicate_request_id` without rerunning
 the Agent. Recent IDs and idle sessions are retained in bounded in-memory caches.
+An already connected `session_id` cannot be replaced by a second websocket.
 
 ## Test
 
@@ -86,9 +89,9 @@ source .venv/bin/activate
 python -m unittest discover -s agent_service/tests -v
 ```
 
-The protocol, connection manager, timeout, disconnect, deduplication, cancellation,
-serial queueing, Agent configuration, tool registration, and session-history tests
-do not require a live vLLM or Godot instance.
+The protocol, connection manager, timeout, disconnect, deduplication, cancellation
+barrier, stateless request construction, serial queueing, Agent configuration, and
+tool registration tests do not require a live vLLM or Godot instance.
 
 To perform a live vLLM plus gateway smoke test and clean up both temporary
 processes automatically:

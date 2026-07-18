@@ -96,7 +96,8 @@ def require_payload_string(
 
 
 def validate_tool_result_payload(payload: dict[str, Any]) -> None:
-    if not isinstance(payload.get("ok"), bool):
+    ok = payload.get("ok")
+    if not isinstance(ok, bool):
         raise ProtocolError("tool_result payload.ok must be a boolean")
     data = payload.get("data", {})
     if not isinstance(data, dict):
@@ -104,3 +105,14 @@ def validate_tool_result_payload(payload: dict[str, Any]) -> None:
     error = payload.get("error")
     if error is not None and not isinstance(error, dict):
         raise ProtocolError("tool_result payload.error must be null or a JSON object")
+    if ok and error is not None:
+        raise ProtocolError("successful tool_result payload.error must be null")
+    if not ok:
+        if not isinstance(error, dict):
+            raise ProtocolError("failed tool_result payload.error must be an object")
+        for field_name in ("code", "message"):
+            value = error.get(field_name)
+            if not isinstance(value, str) or not value.strip():
+                raise ProtocolError(
+                    f"tool_result payload.error.{field_name} must be a non-empty string"
+                )

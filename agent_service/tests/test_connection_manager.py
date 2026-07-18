@@ -6,6 +6,8 @@ from typing import Any
 
 from agent_service.connection_manager import (
     ConnectionManager,
+    GodotRequestCancelledError,
+    GodotSessionAlreadyConnectedError,
     GodotToolTimeoutError,
     GodotUnavailableError,
 )
@@ -20,7 +22,46 @@ class FakeWebSocket:
         self.sent.append(data)
 
 
+class RejectingLifecycle:
+    async def begin_tool_call(self, session_id: str, request_id: str) -> bool:
+        return False
+
+    async def commit_tool_dispatch(
+        self,
+        session_id: str,
+        request_id: str,
+        *,
+        state_changing: bool,
+    ) -> bool:
+        raise AssertionError("cancelled request must not reach commit")
+
+    async def finish_tool_call(self, session_id: str, request_id: str) -> None:
+        raise AssertionError("cancelled request must not start a tool lifecycle")
+
+
 class ConnectionManagerTests(unittest.IsolatedAsyncioTestCase):
+    async def test_duplicate_active_session_is_rejected(self) -> None:
+        manager = ConnectionManager()
+        first = FakeWebSocket()
+        await manager.register("session-1", "godot-1", first)
+
+        with self.assertRaises(GodotSessionAlreadyConnectedError):
+            await manager.register("session-1", "godot-2", FakeWebSocket())
+
+        self.assertTrue(await manager.is_connected("session-1"))
+
+    async def test_cancelled_request_cannot_send_late_tool_call(self) -> None:
+        websocket = FakeWebSocket()
+        manager = ConnectionManager(RejectingLifecycle())
+        await manager.register("session-1", "godot", websocket)
+
+        with self.assertRaises(GodotRequestCancelledError):
+            await manager.request_tool(
+                "session-1", "request-1", "open_album", {}, 1.0
+            )
+
+        self.assertEqual(websocket.sent, [])
+
     async def test_tool_result_is_correlated(self) -> None:
         manager = ConnectionManager()
         websocket = FakeWebSocket()

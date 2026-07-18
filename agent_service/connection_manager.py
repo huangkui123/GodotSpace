@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import concurrent.futures
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Protocol
 
 from agent_service.protocol import make_envelope, new_id, validate_tool_result_payload
 
@@ -18,6 +18,28 @@ class GodotUnavailableError(GodotConnectionError):
 
 class GodotToolTimeoutError(GodotConnectionError):
     """Raised when Godot does not answer a tool call before its deadline."""
+
+
+class GodotSessionAlreadyConnectedError(GodotConnectionError):
+    """Raised when an active transport session would be replaced."""
+
+
+class GodotRequestCancelledError(GodotConnectionError):
+    """Raised when a cancelled request attempts a late tool dispatch."""
+
+
+class RequestLifecycle(Protocol):
+    async def begin_tool_call(self, session_id: str, request_id: str) -> bool: ...
+
+    async def commit_tool_dispatch(
+        self,
+        session_id: str,
+        request_id: str,
+        *,
+        state_changing: bool,
+    ) -> bool: ...
+
+    async def finish_tool_call(self, session_id: str, request_id: str) -> None: ...
 
 
 @dataclass(slots=True)
@@ -36,19 +58,21 @@ class GodotConnection:
 
 
 class ConnectionManager:
-    def __init__(self) -> None:
+    def __init__(self, request_lifecycle: RequestLifecycle | None = None) -> None:
         self._connections: dict[str, GodotConnection] = {}
         self._lock = asyncio.Lock()
         self._event_loop: asyncio.AbstractEventLoop | None = None
+        self._request_lifecycle = request_lifecycle
+
+    def set_request_lifecycle(self, request_lifecycle: RequestLifecycle) -> None:
+        self._request_lifecycle = request_lifecycle
 
     async def register(self, session_id: str, client_id: str, websocket: Any) -> None:
         loop = asyncio.get_running_loop()
         async with self._lock:
-            previous = self._connections.pop(session_id, None)
-            if previous is not None:
-                self._fail_pending(
-                    previous,
-                    GodotUnavailableError("Godot client was replaced by a newer connection"),
+            if session_id in self._connections:
+                raise GodotSessionAlreadyConnectedError(
+                    f"Godot session {session_id!r} is already connected"
                 )
             self._connections[session_id] = GodotConnection(
                 session_id=session_id,
@@ -108,13 +132,33 @@ class ConnectionManager:
         tool_name: str,
         arguments: dict[str, Any],
         timeout_seconds: float,
+        *,
+        state_changing: bool = True,
     ) -> dict[str, Any]:
+        lifecycle = self._request_lifecycle
+        lifecycle_started = False
+        if lifecycle is not None:
+            lifecycle_started = await lifecycle.begin_tool_call(session_id, request_id)
+            if not lifecycle_started:
+                raise GodotRequestCancelledError(
+                    f"Request {request_id!r} no longer permits tool calls"
+                )
         connection = await self._get_connection(session_id)
         tool_call_id = new_id("tool")
         loop = asyncio.get_running_loop()
         pending = PendingToolCall(request_id=request_id, future=loop.create_future())
         connection.pending_calls[tool_call_id] = pending
         try:
+            if lifecycle is not None:
+                permitted = await lifecycle.commit_tool_dispatch(
+                    session_id,
+                    request_id,
+                    state_changing=state_changing,
+                )
+                if not permitted:
+                    raise GodotRequestCancelledError(
+                        f"Request {request_id!r} was cancelled before tool dispatch"
+                    )
             await self.send_event(
                 session_id,
                 "tool_call",
@@ -130,6 +174,8 @@ class ConnectionManager:
                 ) from exc
         finally:
             connection.pending_calls.pop(tool_call_id, None)
+            if lifecycle is not None and lifecycle_started:
+                await lifecycle.finish_tool_call(session_id, request_id)
 
     def request_tool_sync(
         self,
@@ -138,6 +184,8 @@ class ConnectionManager:
         tool_name: str,
         arguments: dict[str, Any],
         timeout_seconds: float,
+        *,
+        state_changing: bool = True,
     ) -> dict[str, Any]:
         loop = self._event_loop
         if loop is None or loop.is_closed():
@@ -149,6 +197,7 @@ class ConnectionManager:
                 tool_name=tool_name,
                 arguments=arguments,
                 timeout_seconds=timeout_seconds,
+                state_changing=state_changing,
             ),
             loop,
         )

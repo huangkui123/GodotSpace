@@ -35,7 +35,6 @@ class Settings:
     api_key: str = "EMPTY"
     tool_timeout_seconds: float = 5.0
     vllm_health_timeout_seconds: float = 2.0
-    max_history_messages: int = 8
     max_tool_calls_per_run: int = 6
     max_message_chars: int = 8_000
 
@@ -49,7 +48,6 @@ class Settings:
             api_key=os.getenv("API_KEY", "EMPTY"),
             tool_timeout_seconds=_env_float("AGENT_TOOL_TIMEOUT", 5.0, minimum=0.1),
             vllm_health_timeout_seconds=_env_float("VLLM_HEALTH_TIMEOUT", 2.0, minimum=0.1),
-            max_history_messages=_env_int("AGENT_MAX_HISTORY_MESSAGES", 8),
             max_tool_calls_per_run=_env_int("AGENT_MAX_TOOL_CALLS", 6),
             max_message_chars=_env_int("AGENT_MAX_MESSAGE_CHARS", 8_000),
         )

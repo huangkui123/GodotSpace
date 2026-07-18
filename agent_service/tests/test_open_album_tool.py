@@ -69,7 +69,7 @@ class OpenAlbumToolTests(unittest.TestCase):
         result = json.loads(tool.call("{}"))
         self.assertFalse(result["ok"])
         self.assertEqual(result["data"], {})
-        self.assertEqual(result["error"]["code"], "godot_rpc_error")
+        self.assertEqual(result["error"]["code"], "target_offline")
         self.assertIn("not available", result["error"]["message"])
 
 
