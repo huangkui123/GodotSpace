@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-godot_exe="/mnt/d/Godot_v4.4-stable_win64.exe/Godot_v4.4-stable_win64.exe"
+godot_exe="/mnt/d/godot_modding/bin/godot.windows.editor.x86_64.llvm.console.exe"
 mock_log="/tmp/godotspace_mock_gateway.log"
 
 source "$repo_root/.venv/bin/activate"
@@ -20,7 +20,8 @@ set +e
 "$godot_exe" \
     --headless \
     --path 'F:\GodotSpace\GodotSpace' \
-    --script 'res://Assets/ARSpace/Scripts/AI/LocalAgent/local_agent_websocket_self_test.gd'
+    --script 'res://Assets/ARSpace/Scripts/AI/LocalAgent/local_agent_websocket_self_test.gd' \
+    -- --local-agent-testmode
 godot_status=$?
 set -e
 

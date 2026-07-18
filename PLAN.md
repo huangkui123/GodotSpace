@@ -2,9 +2,9 @@
 
 ## 0. 当前状态与决策
 
-- 阶段 1 Gateway 已实现 `/healthz`、`/readyz`、`/ws/godot`、Qwen-Agent、请求去重、取消入口和 Godot 工具 RPC；Ubuntu 20.04 WSL 中 27 项单测已通过。
+- 阶段 1 与阶段 2B Gateway 已完成：无状态请求、请求生命周期、取消屏障、重复活动 session 拒绝和按请求工具授权均已实现；Ubuntu 20.04 WSL 中 44 项单测已通过。
 - Godot Bridge、`open_album` 原型和 headless 自测位于 `feature/local-agent-voice-tools`。该分支是唯一 Agent 开发基线；不在 `codex/unity-to-godot` 上开发。
-- Bridge 基础闭环成立，但进入阶段 3 前必须补齐：无状态请求、取消屏障、目标 Client 上下文、查询/写入分离和相对操作前置条件。
+- 两个 WorkList View 的公开 API、`AssistantCommandRouter`、三项任务工具、查询/写入门控和原子页码前置条件已实现。本机目标与真实 Server + 远端 Client 双进程 mock E2E 均已通过；后者验证了 snapshot 和推进只落到说话者 Client。
 - 当前产品不使用视觉输入，不完全替换 DeepSeek，也不接入虚拟标注、视频、邮件、天气、3D、网络控制等扩展工具。
 
 ## 1. MVP 范围
@@ -261,7 +261,7 @@ MVP 明确只信任本机进程：服务绑定 `127.0.0.1`，`session_id` 是路
 - WSL、CUDA、vLLM、Qwen-Agent 和 27 项 Gateway 单测已通过。
 - 基础 WebSocket、工具 RPC、相册原型和错误返回已存在。
 
-### 阶段 2B：阶段 3 前置修正（预计 2～3 天）
+### 阶段 2B：阶段 3 前置修正（已完成）
 
 1. 禁用跨请求 Qwen 历史，改成无状态消息构造。
 2. 实现 request 生命周期和取消屏障，拒绝晚到工具调用。
@@ -270,20 +270,20 @@ MVP 明确只信任本机进程：服务绑定 `127.0.0.1`，`session_id` 是路
 5. 拒绝重复活动 `session_id`，文档明确本机信任边界。
 6. 给两个 WorkList View 增加上述最小公开接口和 headless 测试。
 
-阶段门槛：上述项目及回归测试全部通过，才能开始正式语音 Router。
+阶段门槛已通过：44 项 Gateway 单测、WorkList Adapter 和 Bridge headless 自测通过。
 
-### 阶段 3：Router 与目标 Client 最小闭环（预计 3～4 天）
+### 阶段 3：Router 与目标 Client 最小闭环（已完成）
 
 1. `AssistantCommandRouter` 成为 final transcript 的唯一消费者。
 2. Godot 保存 `request_id -> speaker_peer_id`，Gateway/模型不可见 speaker。
 3. 实现目标 Client snapshot 请求和固定操作 RPC。
 4. 实现 `NONE/READ_ONLY/OPEN_GUIDE/ADVANCE_STEP` 权限门控。
 5. DeepSeek 改由 Router 调用，并接收目标 Client 的当前步骤上下文。
-6. 首先用 mock Agent 和一台 Server、一台 Client 验证读写目标一致。
+6. 已通过 Server 本地目标以及一台 Server + 一台远端 Client 的 mock Agent E2E，读写目标一致。
 
 阶段门槛：同一说话者的 snapshot、工具执行和结果必须来自同一 Client；目标离线不得执行。
 
-### 阶段 4：三工具语音任务闭环（预计 2～3 天）
+### 阶段 4：三工具语音任务闭环（核心闭环已完成）
 
 1. 注册 `open_task_guide`、`get_current_task_step`、`next_task_step`。
 2. 工具 Schema 只包含任务 ID 1 及其标题/受控别名。
@@ -300,7 +300,7 @@ MVP 明确只信任本机进程：服务绑定 `127.0.0.1`，`session_id` 是路
 3. 增加脱敏指标：路由权限、目标、工具、耗时、取消阶段和错误码。
 4. 保留 `disabled/debug/enabled` 开关以及 DeepSeek 独立回退路径。
 
-预计剩余工期：9～13 天。该估算不包含新任务内容制作和任何非任务工具。
+预计剩余工期：2～4 天，主要用于阶段 5 并发、取消和真实模型稳定性验收。该估算不包含新任务内容制作和任何非任务工具。
 
 ## 10. 测试与量化验收
 
@@ -347,9 +347,7 @@ MVP 明确只信任本机进程：服务绑定 `127.0.0.1`，`session_id` 是路
 
 ## 12. 下一步
 
-先执行阶段 2B，不开始新增业务工具：
-
-1. 为无状态请求和取消屏障补 Python 回归测试，再修改 Gateway。
-2. 在 `feature/local-agent-voice-tools` 上为两个 WorkList View 增加最小公开接口及 headless 测试。
-3. 定义 task snapshot、权限和两类错误的协议 fixture。
-4. 完成后运行 27 项现有测试、新增测试和 Godot Bridge 自测，再进入阶段 3。
+1. 扩展双进程 E2E，覆盖远端打开相册、打开指导书、目标 Client 断线和 RPC 超时。
+2. 增加伪造 peer 响应、远端工具结果超时和 `too_late` 取消竞态测试。
+3. 建立 `task_intent_v1` 否定/疑问/条件回归集，确认所有未授权样本页码变化为 `0/N`。
+4. 增加两个说话者交替请求测试，再执行 Gateway 44 项单测、全部 headless 测试和真实 Qwen/vLLM smoke。
