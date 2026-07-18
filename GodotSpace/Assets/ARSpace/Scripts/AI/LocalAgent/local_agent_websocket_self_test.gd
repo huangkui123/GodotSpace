@@ -1,5 +1,7 @@
 extends SceneTree
 
+const OpenAlbumAdapterScript := preload("res://Assets/ARSpace/Scripts/AI/LocalAgent/open_album_tool_adapter.gd")
+
 class FakeAlbum:
 	extends Node
 	var call_count := 0
@@ -31,6 +33,10 @@ func _run() -> void:
 	var album := FakeAlbum.new()
 	root.add_child(album)
 	global_node.set("picture_canvas", album)
+	client.replace_tool(
+		"open_album",
+		Callable(OpenAlbumAdapterScript.new(func() -> Node: return album), "execute")
+	)
 	client.assistant_final_received.connect(func(_request_id: String, answer: String) -> void:
 		if answer == "rpc-test-passed":
 			_completed = true

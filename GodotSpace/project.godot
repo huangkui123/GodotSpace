@@ -46,6 +46,7 @@ NetworkHandler="*res://Assets/ARSpace/Scripts/Network/network_handler.gd"
 VoiceChat="*res://Assets/ARSpace/Scenes/voice_chat_service.tscn"
 LLMAssistantService="*res://Assets/ARSpace/Scripts/AI/llm_assistant.gd"
 LocalAgentClient="*res://Assets/ARSpace/Scripts/AI/LocalAgent/local_agent_client.gd"
+AssistantCommandRouter="*res://Assets/ARSpace/Scripts/AI/LocalAgent/assistant_command_router.gd"
 OrbitalManager="*res://addons/orbital_tools/orbital_manager.gd"
 
 [editor_plugins]

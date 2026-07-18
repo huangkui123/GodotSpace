@@ -16,13 +16,41 @@ func register_tool(tool_name: StringName, handler: Callable) -> bool:
 	return true
 
 
-func dispatch(tool_name: String, arguments: Dictionary) -> Dictionary:
+func replace_tool(tool_name: StringName, handler: Callable) -> bool:
+	var normalized := String(tool_name).strip_edges()
+	if normalized.is_empty() or not handler.is_valid() or not _handlers.has(normalized):
+		return false
+	_handlers[normalized] = handler
+	var owner := handler.get_object()
+	if owner != null:
+		_handler_owners[normalized] = owner
+	else:
+		_handler_owners.erase(normalized)
+	return true
+
+
+func dispatch(
+	tool_name: String,
+	arguments: Dictionary,
+	context: Dictionary = {}
+) -> Dictionary:
 	if not _handlers.has(tool_name):
 		return _error("unknown_tool", "Tool is not registered: %s" % tool_name)
-	var result: Variant = (_handlers[tool_name] as Callable).call(arguments.duplicate(true))
+	var handler := _handlers[tool_name] as Callable
+	var result: Variant
+	if handler.get_argument_count() >= 2:
+		result = handler.call(arguments.duplicate(true), context.duplicate(true))
+	else:
+		result = handler.call(arguments.duplicate(true))
+	if typeof(result) == TYPE_DICTIONARY and bool((result as Dictionary).get("__deferred__", false)):
+		return (result as Dictionary).duplicate(true)
 	if typeof(result) != TYPE_DICTIONARY:
 		return _error("invalid_tool_result", "Tool returned a non-dictionary result.")
 	return _normalize_result(result as Dictionary)
+
+
+func normalize_result(result: Dictionary) -> Dictionary:
+	return _normalize_result(result)
 
 
 func registered_tools() -> PackedStringArray:

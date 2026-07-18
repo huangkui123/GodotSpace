@@ -42,7 +42,10 @@ func _run() -> void:
 		WorkListInfoData.new(1, 1, "", "拆装前确认", "复述专家口令，确认实验柜断电、防静电手环有效，并核对工具规格和目标力矩。"),
 		WorkListInfoData.new(2, 1, "", "拆下样品盒", "当前步骤需要保持防静电接地，使用指定工具按目标力矩松开固定螺钉，发现卡滞应暂停并请求专家席确认。"),
 	])
-	canvas.call("on_refresh_data_change_view", task_result)
+	var opened: Dictionary = canvas.call("open_task", 1, task_result)
+	if not bool(opened.get("ok", false)):
+		_fail("Task guide did not open through its public API.")
+		return
 
 	var assistant: Node = root.get_node_or_null("LLMAssistantService")
 	if assistant == null:

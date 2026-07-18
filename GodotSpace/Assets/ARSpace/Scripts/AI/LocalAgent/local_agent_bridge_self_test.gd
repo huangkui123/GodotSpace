@@ -18,6 +18,20 @@ class FakeAlbum:
 			"error": null,
 		}
 
+class ContextAdapter:
+	extends RefCounted
+	var last_context: Dictionary = {}
+
+	func execute(arguments: Dictionary, context: Dictionary) -> Dictionary:
+		last_context = context.duplicate(true)
+		return {"ok": true, "data": arguments.duplicate(true), "error": null}
+
+class DeferredAdapter:
+	extends RefCounted
+
+	func execute(_arguments: Dictionary, _context: Dictionary) -> Dictionary:
+		return {"__deferred__": true}
+
 
 func _init() -> void:
 	call_deferred("_run")
@@ -87,6 +101,36 @@ func _run() -> void:
 	if not _check(_error_code(conflict) == "tool_call_conflict", "conflicting duplicate tool_call_id was accepted"):
 		return
 	if not _check(album.call_count == 2, "duplicate tool call executed more than once"):
+		return
+
+	var context_adapter := ContextAdapter.new()
+	if not _check(registry.register_tool("context_tool", Callable(context_adapter, "execute")), "context tool registration failed"):
+		return
+	var contextual := client.execute_tool_call_for_test(
+		"tool-context", "context_tool", {"value": 7}, "request-context"
+	)
+	if not _check(bool(contextual.get("ok", false)), "context-aware tool failed"):
+		return
+	if not _check(str(context_adapter.last_context.get("request_id", "")) == "request-context", "request context was not passed to the tool"):
+		return
+
+	var deferred_adapter := DeferredAdapter.new()
+	if not _check(registry.register_tool("deferred_tool", Callable(deferred_adapter, "execute")), "deferred tool registration failed"):
+		return
+	var deferred := client.execute_tool_call_for_test(
+		"tool-deferred", "deferred_tool", {}, "request-deferred"
+	)
+	if not _check(bool(deferred.get("__deferred__", false)), "deferred tool was completed synchronously"):
+		return
+	client.complete_deferred_tool_call("tool-deferred", {
+		"ok": true,
+		"data": {"completed": true},
+		"error": null,
+	})
+	var replayed_deferred := client.execute_tool_call_for_test(
+		"tool-deferred", "deferred_tool", {}, "request-deferred"
+	)
+	if not _check(bool((replayed_deferred.get("data", {}) as Dictionary).get("completed", false)), "deferred result was not cached after completion"):
 		return
 
 	var protocol_client := ClientScript.new()

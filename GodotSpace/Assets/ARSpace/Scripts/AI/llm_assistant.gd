@@ -57,6 +57,7 @@ var _qa_history: Array[Dictionary] = []
 var _listening_enabled := false
 var _active_request_log_id := ""
 var _active_request_started_msec := 0
+var _external_transcript_router_enabled := false
 
 
 func _ready() -> void:
@@ -269,6 +270,10 @@ func submit_transcript_data(data: Dictionary) -> void:
 	_handle_transcript_data(data, false)
 
 
+func set_external_transcript_router_enabled(enabled: bool) -> void:
+	_external_transcript_router_enabled = enabled
+
+
 func get_qa_history() -> Array:
 	return _qa_history.duplicate(true)
 
@@ -346,6 +351,8 @@ func _setup_http_request() -> void:
 
 
 func _on_voice_transcript_received(data: Dictionary) -> void:
+	if _external_transcript_router_enabled:
+		return
 	_handle_transcript_data(data, true)
 
 

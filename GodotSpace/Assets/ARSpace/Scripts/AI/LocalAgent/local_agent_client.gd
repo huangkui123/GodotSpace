@@ -27,11 +27,18 @@ var _last_pong_msec := 0
 var _tool_result_cache: Dictionary = {}
 var _last_error := ""
 var _last_error_msec := 0
+var _server_role_selected := false
 
 
 func _ready() -> void:
 	_registry = ToolRegistryScript.new()
 	_registry.register_tool("open_album", Callable(OpenAlbumAdapterScript.new(), "execute"))
+	var network_handler := get_node_or_null("/root/NetworkHandler")
+	if network_handler != null and network_handler.has_signal("network_role_selected"):
+		network_handler.network_role_selected.connect(_on_network_role_selected)
+	_server_role_selected = (
+		multiplayer.has_multiplayer_peer() and multiplayer.is_server()
+	) or _is_test_mode()
 	set_process(true)
 	_try_connect()
 
@@ -81,7 +88,65 @@ func get_debug_state() -> Dictionary:
 		"last_error": _last_error,
 		"last_error_msec": _last_error_msec,
 		"last_pong_msec": _last_pong_msec,
+		"server_role_selected": _server_role_selected,
 	}
+
+
+func register_tool(tool_name: StringName, handler: Callable) -> bool:
+	return _registry != null and _registry.register_tool(tool_name, handler)
+
+
+func replace_tool(tool_name: StringName, handler: Callable) -> bool:
+	return _registry != null and _registry.replace_tool(tool_name, handler)
+
+
+func submit_user_message(
+	request_id: String,
+	text: String,
+	context: Dictionary,
+	allowed_tools: PackedStringArray
+) -> bool:
+	if not _connected or request_id.strip_edges().is_empty() or text.strip_edges().is_empty():
+		return false
+	var tools: Array[String] = []
+	for tool_name in allowed_tools:
+		tools.append(str(tool_name))
+	return _send_envelope(
+		"user_message",
+		{
+			"text": text.strip_edges(),
+			"context": context.duplicate(true),
+			"allowed_tools": tools,
+		},
+		request_id
+	)
+
+
+func complete_deferred_tool_call(tool_call_id: String, result: Dictionary) -> bool:
+	if not _tool_result_cache.has(tool_call_id):
+		return false
+	var cached := _tool_result_cache[tool_call_id] as Dictionary
+	if not bool(cached.get("pending", false)):
+		return false
+	var normalized: Dictionary = _registry.normalize_result(result) if _registry != null else ToolRegistryScript._error(
+		"tool_registry_not_ready", "The Local Agent tool registry is not ready."
+	)
+	cached["pending"] = false
+	cached["result"] = normalized.duplicate(true)
+	_tool_result_cache[tool_call_id] = cached
+	return _send_envelope(
+		"tool_result",
+		normalized,
+		str(cached.get("request_id", "")),
+		tool_call_id
+	)
+
+
+func abandon_deferred_tool_calls_for_request(request_id: String) -> void:
+	for tool_call_id in _tool_result_cache.keys():
+		var cached := _tool_result_cache[tool_call_id] as Dictionary
+		if bool(cached.get("pending", false)) and str(cached.get("request_id", "")) == request_id:
+			_tool_result_cache.erase(tool_call_id)
 
 
 func set_tool_registry_for_test(registry: RefCounted) -> void:
@@ -193,6 +258,8 @@ func _handle_tool_call(envelope: Dictionary) -> void:
 		result = ToolRegistryScript._error("invalid_tool_call", "Malformed tool_call envelope.")
 	else:
 		result = _resolve_tool_call(request_id, tool_call_id, tool_name, arguments_value as Dictionary)
+	if bool(result.get("__deferred__", false)):
+		return
 	_send_envelope("tool_result", result, request_id, tool_call_id)
 
 
@@ -209,17 +276,41 @@ func _resolve_tool_call(
 				"tool_call_conflict",
 				"Duplicate tool_call_id does not match its original request_id and tool name."
 			)
+		if bool(cached.get("pending", false)):
+			return {"__deferred__": true}
 		return (cached.get("result", {}) as Dictionary).duplicate(true)
-	var result: Dictionary = _registry.dispatch(tool_name, arguments) if _registry != null else ToolRegistryScript._error(
+	var result: Dictionary = ToolRegistryScript._error(
 		"tool_registry_not_ready", "The Local Agent tool registry is not ready."
 	)
+	if _registry != null:
+		result = _registry.dispatch(tool_name, arguments, {
+			"request_id": request_id,
+			"tool_call_id": tool_call_id,
+			"tool_name": tool_name,
+		})
+	if bool(result.get("__deferred__", false)):
+		_tool_result_cache[tool_call_id] = {
+			"request_id": request_id,
+			"tool_name": tool_name,
+			"pending": true,
+		}
+		return result
 	_tool_result_cache[tool_call_id] = {
 		"request_id": request_id,
 		"tool_name": tool_name,
+		"pending": false,
 		"result": result.duplicate(true),
 	}
 	while _tool_result_cache.size() > MAX_CACHED_TOOL_RESULTS:
-		_tool_result_cache.erase(_tool_result_cache.keys()[0])
+		var evicted := false
+		for cached_id in _tool_result_cache.keys():
+			var entry := _tool_result_cache[cached_id] as Dictionary
+			if not bool(entry.get("pending", false)):
+				_tool_result_cache.erase(cached_id)
+				evicted = true
+				break
+		if not evicted:
+			break
 	return result
 
 
@@ -299,8 +390,24 @@ func _set_connected(value: bool) -> void:
 	connection_state_changed.emit(value)
 
 
+func _on_network_role_selected(is_server_role: bool) -> void:
+	_server_role_selected = is_server_role
+	if not is_server_role:
+		_disable_connection()
+	elif _peer == null:
+		_next_connect_msec = 0
+		_try_connect()
+
+
 func _is_enabled() -> bool:
-	return bool(ProjectSettings.get_setting("arspace/local_agent/enabled", true))
+	return (
+		bool(ProjectSettings.get_setting("arspace/local_agent/enabled", true))
+		and (_server_role_selected or _is_test_mode())
+	)
+
+
+func _is_test_mode() -> bool:
+	return OS.get_cmdline_user_args().has("--local-agent-testmode")
 
 
 func _endpoint_url() -> String:
