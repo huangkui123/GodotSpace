@@ -82,6 +82,7 @@ func get_debug_state() -> Dictionary:
 	return {
 		"connected": _connected,
 		"endpoint": _endpoint_url(),
+		"mode": _mode(),
 		"session_id": _session_id,
 		"registered_tools": _registry.registered_tools() if _registry != null else PackedStringArray(),
 		"cached_tool_result_count": _tool_result_cache.size(),
@@ -402,12 +403,17 @@ func _on_network_role_selected(is_server_role: bool) -> void:
 func _is_enabled() -> bool:
 	return (
 		bool(ProjectSettings.get_setting("arspace/local_agent/enabled", true))
+		and _mode() in ["enabled", "debug"]
 		and (_server_role_selected or _is_test_mode())
 	)
 
 
 func _is_test_mode() -> bool:
 	return OS.get_cmdline_user_args().has("--local-agent-testmode")
+
+
+func _mode() -> String:
+	return str(ProjectSettings.get_setting("arspace/local_agent/mode", "enabled")).strip_edges().to_lower()
 
 
 func _endpoint_url() -> String:

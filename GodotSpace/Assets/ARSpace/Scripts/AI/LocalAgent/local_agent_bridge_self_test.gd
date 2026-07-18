@@ -132,6 +132,13 @@ func _run() -> void:
 	)
 	if not _check(bool((replayed_deferred.get("data", {}) as Dictionary).get("completed", false)), "deferred result was not cached after completion"):
 		return
+	client.execute_tool_call_for_test(
+		"tool-abandoned", "deferred_tool", {}, "request-abandoned"
+	)
+	client.abandon_deferred_tool_calls_for_request("request-abandoned")
+	var cache_after_abandon := client.get("_tool_result_cache") as Dictionary
+	if not _check(not cache_after_abandon.has("tool-abandoned"), "abandoned deferred tool remained cached"):
+		return
 
 	var protocol_client := ClientScript.new()
 	protocol_client.set_tool_registry_for_test(registry)

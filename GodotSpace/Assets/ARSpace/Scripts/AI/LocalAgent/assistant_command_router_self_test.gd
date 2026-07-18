@@ -98,6 +98,52 @@ func _run() -> void:
 	if not _check(router.get_request_debug_state("too-late-request").get("status", "") == "tool_dispatched", "too_late incorrectly discarded an in-flight operation."):
 		return
 
+	requests["spoofed-snapshot"] = {
+		"speaker_peer_id": 99,
+		"intent": "READ_ONLY",
+		"status": "preparing",
+		"snapshot": {},
+	}
+	router.call("_server_receive_task_snapshot", "spoofed-snapshot", {
+		"ok": true,
+		"data": {"task_id": 1, "page_index": 19},
+		"error": null,
+	})
+	if not _check((router.get_request_debug_state("spoofed-snapshot").get("snapshot", {}) as Dictionary).is_empty(), "Snapshot from the wrong peer was accepted."):
+		return
+
+	requests["snapshot-timeout"] = {
+		"speaker_peer_id": 99,
+		"intent": "READ_ONLY",
+		"status": "preparing",
+		"snapshot": {},
+	}
+	router.call("_expire_snapshot_request", "snapshot-timeout", 0.01)
+	await create_timer(0.03).timeout
+	if not _check(router.get_request_debug_state("snapshot-timeout").is_empty(), "Timed-out snapshot request was not removed."):
+		return
+
+	var page_before_cancel := int(detail_view.page_index)
+	requests["cancelled-request"] = {
+		"speaker_peer_id": 1,
+		"intent": "ADVANCE_STEP",
+		"status": "agent_running",
+		"snapshot": (detail_view.call("get_task_snapshot", true) as Dictionary).get("data", {}),
+	}
+	router.call("_on_agent_error", "cancelled-request", "cancelled", "Cancelled before dispatch")
+	var cancelled_tool: Dictionary = router.call(
+		"_tool_next_task_step", {}, {"request_id": "cancelled-request", "tool_call_id": "cancelled-tool"}
+	)
+	if not _check(_error_code(cancelled_tool) == "permission_denied", "Cancelled request retained write permission."):
+		return
+	if not _check(int(detail_view.page_index) == page_before_cancel, "Cancelled request changed the task page."):
+		return
+	var router_debug: Dictionary = router.get_debug_state()
+	for event_value in router_debug.get("recent_events", []):
+		var event := event_value as Dictionary
+		if not _check(not event.has("speaker_peer_id") and not event.has("text"), "Router debug event leaked speaker or transcript data."):
+			return
+
 	print("Assistant command Router self test passed.")
 	quit(0)
 

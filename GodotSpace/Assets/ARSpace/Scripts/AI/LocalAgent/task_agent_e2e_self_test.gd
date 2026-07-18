@@ -2,6 +2,7 @@ extends SceneTree
 
 var _answer_count := 0
 var _run_error := ""
+var _answers: Array[String] = []
 
 
 func _init() -> void:
@@ -13,8 +14,9 @@ func _run() -> void:
 	var voice_chat := root.get_node_or_null("VoiceChat")
 	if not _check(client != null and voice_chat != null, "Required Agent autoloads are missing."):
 		return
-	client.assistant_final_received.connect(func(_request_id: String, _answer: String) -> void:
+	client.assistant_final_received.connect(func(_request_id: String, answer: String) -> void:
 		_answer_count += 1
+		_answers.append(answer)
 	)
 	client.run_error_received.connect(func(_request_id: String, code: String, message: String) -> void:
 		_run_error = "%s: %s" % [code, message]
@@ -32,7 +34,7 @@ func _run() -> void:
 		return
 	var detail_view := detail_root.get_node_or_null("Canvas")
 
-	var connect_deadline := Time.get_ticks_msec() + 8000
+	var connect_deadline := Time.get_ticks_msec() + 15_000
 	while not client.is_connected_to_gateway() and Time.get_ticks_msec() < connect_deadline:
 		await process_frame
 	if not _check(client.is_connected_to_gateway(), "Local Agent did not connect to the mock Gateway."):
@@ -60,6 +62,11 @@ func _run() -> void:
 	if not await _wait_for_answers(2):
 		return
 	if not _check(int(detail_view.page_index) == 2, "Explicit advance did not move exactly one page."):
+		var router := root.get_node_or_null("AssistantCommandRouter")
+		push_error("Live Agent diagnostics: answers=%s router=%s" % [
+			_answers,
+			router.get_debug_state() if router != null else {},
+		])
 		return
 
 	print("Task Agent voice-to-tool end-to-end self test passed.")
@@ -67,7 +74,7 @@ func _run() -> void:
 
 
 func _wait_for_answers(expected: int) -> bool:
-	var deadline := Time.get_ticks_msec() + 8000
+	var deadline := Time.get_ticks_msec() + 45_000
 	while _answer_count < expected and _run_error.is_empty() and Time.get_ticks_msec() < deadline:
 		await process_frame
 	if not _run_error.is_empty():

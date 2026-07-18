@@ -49,7 +49,7 @@ func _run_server() -> void:
 	voice_chat.voice_transcript_received.emit({
 		"speaker_peer_id": target_peer_id,
 		"speaker_name": "远端航天员",
-		"text": "下一步应该做什么",
+		"text": "打开相册",
 		"is_final": true,
 		"source": "asr",
 	})
@@ -58,11 +58,29 @@ func _run_server() -> void:
 	voice_chat.voice_transcript_received.emit({
 		"speaker_peer_id": target_peer_id,
 		"speaker_name": "远端航天员",
-		"text": "进入下一步",
+		"text": "打开无容器样品实验指导书",
 		"is_final": true,
 		"source": "asr",
 	})
 	if not await _wait_for_answers(2):
+		return
+	voice_chat.voice_transcript_received.emit({
+		"speaker_peer_id": target_peer_id,
+		"speaker_name": "远端航天员",
+		"text": "下一步应该做什么",
+		"is_final": true,
+		"source": "asr",
+	})
+	if not await _wait_for_answers(3):
+		return
+	voice_chat.voice_transcript_received.emit({
+		"speaker_peer_id": target_peer_id,
+		"speaker_name": "远端航天员",
+		"text": "进入下一步",
+		"is_final": true,
+		"source": "asr",
+	})
+	if not await _wait_for_answers(4):
 		return
 	# Let the Client observe completion and close its ENet peer first.
 	await create_timer(1.0).timeout
@@ -80,21 +98,24 @@ func _run_client() -> void:
 		return
 	var detail_scene: PackedScene = load("res://Assets/ARSpace/Prefabs/UI/WorkListInfoCanvas.tscn")
 	var list_scene: PackedScene = load("res://Assets/ARSpace/Prefabs/UI/WorkListCanvas/WorkListView.tscn")
+	var album_scene: PackedScene = load("res://Assets/ARSpace/Prefabs/UI/PictureCanvas.tscn")
 	var detail_root := detail_scene.instantiate()
 	var list_view := list_scene.instantiate()
+	var album_root := album_scene.instantiate()
 	root.add_child(detail_root)
 	root.add_child(list_view)
+	root.add_child(album_root)
 	await process_frame
-	var opened: Dictionary = list_view.call("open_task_by_id", 1)
-	if not bool(opened.get("ok", false)):
-		_fail("Remote Client task guide did not open.")
-		return
 	var detail_view := detail_root.get_node_or_null("Canvas")
+	var album_view := album_root.get_node_or_null("Canvas")
 	var deadline := Time.get_ticks_msec() + 15_000
-	while int(detail_view.page_index) != 2 and Time.get_ticks_msec() < deadline:
+	while (int(detail_view.page_index) != 2 or not album_view.visible) and Time.get_ticks_msec() < deadline:
 		await process_frame
 	if int(detail_view.page_index) != 2:
 		_fail("Remote Client task page did not advance exactly once.")
+		return
+	if not album_view.visible:
+		_fail("Remote Client album did not open.")
 		return
 	# Keep the peer alive long enough for the reliable tool_result RPC to flush.
 	await create_timer(0.25).timeout

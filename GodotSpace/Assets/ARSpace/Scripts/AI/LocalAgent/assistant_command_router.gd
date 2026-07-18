@@ -10,10 +10,12 @@ const INTENT_EXPLAIN_STEP := "EXPLAIN_STEP"
 const INTENT_GENERAL := "GENERAL"
 const SERVER_PEER_ID := 1
 const SNAPSHOT_TIMEOUT_SECONDS := 3.0
+const MAX_DEBUG_EVENTS := 64
 const OpenAlbumAdapterScript := preload("res://Assets/ARSpace/Scripts/AI/LocalAgent/open_album_tool_adapter.gd")
 
 var _requests: Dictionary = {}
 var _operation_to_request: Dictionary = {}
+var _recent_events: Array[Dictionary] = []
 
 
 func _ready() -> void:
@@ -37,7 +39,7 @@ func classify_text(text: String) -> String:
 	var clean := text.strip_edges()
 	if clean.is_empty():
 		return INTENT_GENERAL
-	if _contains_any(clean, ["不要", "不用", "别", "无需"]):
+	if _contains_any(clean, ["不要", "不用", "别", "无需", "还没", "没有", "没说"]):
 		return INTENT_GENERAL
 	if clean.find("相册") >= 0 and _contains_any(clean, ["打开", "调出", "显示", "看看"]):
 		return INTENT_OPEN_ALBUM
@@ -46,9 +48,9 @@ func classify_text(text: String) -> String:
 	if clean.find("下一步") >= 0:
 		if clean.ends_with("吗") or clean.ends_with("？") or clean.ends_with("?"):
 			return INTENT_READ_STEP
-		if _contains_any(clean, ["如果", "假如", "是否", "能不能", "可以吗", "会不会", "他说", "这句话"]):
+		if _contains_any(clean, ["如果", "假如", "是否", "是不是", "能不能", "不能", "可以吗", "会不会", "他说", "引用", "这句话"]):
 			return INTENT_READ_STEP
-		if _contains_any(clean, ["是什么", "做什么", "应该", "该怎么", "怎么做", "告诉我"]):
+		if _contains_any(clean, ["是什么", "做什么", "应该", "该做", "该怎么", "怎么做", "告诉我"]):
 			return INTENT_READ_STEP
 		if _contains_any(clean, ["进入", "切换", "前往", "继续", "开始"]):
 			return INTENT_ADVANCE_STEP
@@ -69,6 +71,14 @@ func route_transcript_for_test(data: Dictionary) -> String:
 
 func get_request_debug_state(request_id: String) -> Dictionary:
 	return (_requests.get(request_id, {}) as Dictionary).duplicate(true)
+
+
+func get_debug_state() -> Dictionary:
+	return {
+		"active_request_count": _requests.size(),
+		"pending_remote_operation_count": _operation_to_request.size(),
+		"recent_events": _recent_events.duplicate(true),
+	}
 
 
 func _on_voice_transcript_received(data: Dictionary) -> void:
@@ -100,7 +110,12 @@ func _route_final_transcript(data: Dictionary) -> String:
 		"text": text,
 		"status": "preparing",
 		"snapshot": {},
+		"created_msec": Time.get_ticks_msec(),
 	}
+	_record_event("routed", request_id, {
+		"intent": intent,
+		"target": "local" if _is_local_target(speaker_peer_id) else "remote",
+	})
 	command_routed.emit(request_id, intent, speaker_peer_id)
 	if intent in [INTENT_READ_STEP, INTENT_ADVANCE_STEP, INTENT_EXPLAIN_STEP]:
 		_request_target_snapshot(request_id, speaker_peer_id)
@@ -144,14 +159,18 @@ func _receive_snapshot(request_id: String, result: Dictionary) -> void:
 	var record := _requests[request_id] as Dictionary
 	record["snapshot"] = (result.get("data", {}) as Dictionary).duplicate(true)
 	_requests[request_id] = record
+	_record_event("snapshot_received", request_id, {"intent": str(record.get("intent", ""))})
 	if str(record.get("intent", "")) == INTENT_EXPLAIN_STEP:
 		_ask_deepseek_with_snapshot(request_id)
 	else:
 		_submit_agent_request(request_id)
 
 
-func _expire_snapshot_request(request_id: String) -> void:
-	await get_tree().create_timer(SNAPSHOT_TIMEOUT_SECONDS).timeout
+func _expire_snapshot_request(
+	request_id: String,
+	timeout_seconds: float = SNAPSHOT_TIMEOUT_SECONDS
+) -> void:
+	await get_tree().create_timer(timeout_seconds).timeout
 	if not _requests.has(request_id):
 		return
 	var record := _requests[request_id] as Dictionary
@@ -252,6 +271,10 @@ func _execute_or_defer_target_tool(
 	var speaker_peer_id := int(record.get("speaker_peer_id", 0))
 	record["status"] = "tool_dispatched"
 	_requests[request_id] = record
+	_record_event("tool_dispatched", request_id, {
+		"operation": operation,
+		"target": "local" if _is_local_target(speaker_peer_id) else "remote",
+	})
 	if _is_local_target(speaker_peer_id):
 		return _execute_target_tool(operation, arguments)
 	if not _is_peer_connected(speaker_peer_id):
@@ -289,6 +312,10 @@ func _server_receive_task_tool_result(
 	if str(_operation_to_request.get(tool_call_id, "")) != request_id:
 		return
 	_operation_to_request.erase(tool_call_id)
+	_record_event("tool_result_received", request_id, {
+		"ok": bool(result.get("ok", false)),
+		"target": "remote",
+	})
 	var agent := get_node_or_null("/root/LocalAgentClient")
 	if agent != null:
 		agent.complete_deferred_tool_call(tool_call_id, result)
@@ -371,6 +398,9 @@ func _on_agent_answer(request_id: String, answer: String) -> void:
 	var record := _requests[request_id] as Dictionary
 	record["status"] = "completed"
 	_requests[request_id] = record
+	_record_event("completed", request_id, {
+		"elapsed_msec": Time.get_ticks_msec() - int(record.get("created_msec", Time.get_ticks_msec())),
+	})
 	_publish_answer(answer)
 	_clear_operations_for_request(request_id)
 	_requests.erase(request_id)
@@ -381,6 +411,7 @@ func _on_agent_error(request_id: String, code: String, message: String) -> void:
 		var active_record := _requests[request_id] as Dictionary
 		active_record["status"] = "tool_dispatched"
 		_requests[request_id] = active_record
+		_record_event("cancel_too_late", request_id, {"code": code})
 		return
 	if _requests.has(request_id):
 		var record := _requests[request_id] as Dictionary
@@ -390,6 +421,11 @@ func _on_agent_error(request_id: String, code: String, message: String) -> void:
 
 
 func _fail_request(request_id: String, code: String, message: String) -> void:
+	var record := _requests.get(request_id, {}) as Dictionary
+	_record_event("failed", request_id, {
+		"code": code,
+		"elapsed_msec": Time.get_ticks_msec() - int(record.get("created_msec", Time.get_ticks_msec())),
+	})
 	_publish_answer("操作未完成：%s（%s）" % [message, code])
 	var agent := get_node_or_null("/root/LocalAgentClient")
 	if agent != null and agent.has_method("abandon_deferred_tool_calls_for_request"):
@@ -427,6 +463,19 @@ func _contains_any(text: String, patterns: Array[String]) -> bool:
 
 func _new_id(prefix: String) -> String:
 	return "%s-%d-%d" % [prefix, Time.get_ticks_usec(), randi()]
+
+
+func _record_event(event_name: String, request_id: String, details: Dictionary) -> void:
+	var event := {
+		"event": event_name,
+		"request_id": request_id,
+		"timestamp_msec": Time.get_ticks_msec(),
+	}
+	for key in details.keys():
+		event[key] = details[key]
+	_recent_events.append(event)
+	while _recent_events.size() > MAX_DEBUG_EVENTS:
+		_recent_events.pop_front()
 
 
 func _success(data: Dictionary) -> Dictionary:
