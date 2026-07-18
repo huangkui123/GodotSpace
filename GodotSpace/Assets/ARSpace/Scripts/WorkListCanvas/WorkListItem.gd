@@ -26,9 +26,8 @@ func click_btn():
 	if DEBUG_LOGS: print(self.name, ": Step = 1")
 
 	var work_info = Global.work_list_info_canvas
-	if work_info:
-		work_info.visible = true
-		work_info.on_refresh_data_change_view(item_data.info_data_result)
+	if work_info and work_info.has_method("open_task"):
+		work_info.call("open_task", item_data.id, item_data.info_data_result)
 
 	if DEBUG_LOGS: print(self.name, ": Index = ", item_data.id)
 
