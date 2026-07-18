@@ -22,6 +22,9 @@ bash scripts/start_agent_gateway.sh           # serve the gateway on port 7861
 python -m unittest discover -s agent_service/tests -v
 bash scripts/smoke_agent_gateway.sh           # temporary live vLLM + gateway check
 bash scripts/test_godot_bridge.sh             # mock Gateway + Godot headless RPC check
+bash scripts/test_task_agent_remote_e2e.sh    # Server + target Client task RPC check
+bash scripts/test_task_agent_multi_client_e2e.sh # two-speaker isolation check
+bash scripts/smoke_task_agent_live.sh         # real Qwen voice-to-tool smoke check
 python scripts/check_agent_gateway.py         # inspect readiness
 ```
 

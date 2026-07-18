@@ -2,9 +2,10 @@
 
 ## 0. 当前状态与决策
 
-- 阶段 1 与阶段 2B Gateway 已完成：无状态请求、请求生命周期、取消屏障、重复活动 session 拒绝和按请求工具授权均已实现；Ubuntu 20.04 WSL 中 44 项单测已通过。
+- 阶段 1 与阶段 2B Gateway 已完成：无状态请求、请求生命周期、取消屏障、重复活动 session 拒绝和按请求工具授权均已实现；Ubuntu 20.04 WSL 中 45 项单测已通过。
 - Godot Bridge、`open_album` 原型和 headless 自测位于 `feature/local-agent-voice-tools`。该分支是唯一 Agent 开发基线；不在 `codex/unity-to-godot` 上开发。
 - 两个 WorkList View 的公开 API、`AssistantCommandRouter`、三项任务工具、查询/写入门控和原子页码前置条件已实现。本机目标与真实 Server + 远端 Client 双进程 mock E2E 均已通过；后者验证了 snapshot 和推进只落到说话者 Client。
+- 两名远端 Client 交替请求隔离、100 条 `task_intent_v1`（未授权推进 0/100）以及最终提示版本下连续 3 次真实 Qwen/vLLM 语音到工具 smoke 已通过。获授权请求若没有真实 tool call，Gateway 会失败关闭，不能把模型复述当成执行成功。
 - 当前产品不使用视觉输入，不完全替换 DeepSeek，也不接入虚拟标注、视频、邮件、天气、3D、网络控制等扩展工具。
 
 ## 1. MVP 范围
@@ -270,7 +271,7 @@ MVP 明确只信任本机进程：服务绑定 `127.0.0.1`，`session_id` 是路
 5. 拒绝重复活动 `session_id`，文档明确本机信任边界。
 6. 给两个 WorkList View 增加上述最小公开接口和 headless 测试。
 
-阶段门槛已通过：44 项 Gateway 单测、WorkList Adapter 和 Bridge headless 自测通过。
+阶段门槛已通过：45 项 Gateway 单测、WorkList Adapter 和 Bridge headless 自测通过。
 
 ### 阶段 3：Router 与目标 Client 最小闭环（已完成）
 
@@ -293,14 +294,14 @@ MVP 明确只信任本机进程：服务绑定 `127.0.0.1`，`session_id` 是路
 
 阶段门槛：查询零写入、显式推进一次只加一页、重复/结果丢失不二次推进。
 
-### 阶段 5：并发、取消与稳定性（预计 2～3 天）
+### 阶段 5：并发、取消与稳定性（软件范围已完成）
 
 1. 两个 Client 交替/同时说话，验证无历史、snapshot 和目标串线。
 2. 覆盖断线、超时、Gateway 重启、取消竞态和晚到 Agent 线程。
 3. 增加脱敏指标：路由权限、目标、工具、耗时、取消阶段和错误码。
 4. 保留 `disabled/debug/enabled` 开关以及 DeepSeek 独立回退路径。
 
-预计剩余工期：2～4 天，主要用于阶段 5 并发、取消和真实模型稳定性验收。该估算不包含新任务内容制作和任何非任务工具。
+已完成两 Client 交替请求、取消/`too_late` 屏障、伪造 snapshot 拒绝、snapshot 超时、目标 Client RPC、脱敏调试事件和真实模型 smoke。核心软件开发无剩余工期；仍需在实际 VR 设备和正式网络环境中做现场验收，该工作不包含新任务内容制作和任何非任务工具。
 
 ## 10. 测试与量化验收
 
@@ -345,9 +346,9 @@ MVP 明确只信任本机进程：服务绑定 `127.0.0.1`，`session_id` 是路
 9. Qwen/vLLM/Gateway 不可用时不阻塞 VoiceChat、Godot 和 DeepSeek 主链路。
 10. 模型不能指定 peer、NodePath、文件路径、脚本、方法或任意 RPC。
 
-## 12. 下一步
+## 12. 交付后现场验收
 
-1. 扩展双进程 E2E，覆盖远端打开相册、打开指导书、目标 Client 断线和 RPC 超时。
-2. 增加伪造 peer 响应、远端工具结果超时和 `too_late` 取消竞态测试。
-3. 建立 `task_intent_v1` 否定/疑问/条件回归集，确认所有未授权样本页码变化为 `0/N`。
-4. 增加两个说话者交替请求测试，再执行 Gateway 44 项单测、全部 headless 测试和真实 Qwen/vLLM smoke。
+1. 在实际 PC Server + VR Client 上复跑相册、指导书、查询和推进四条语音链路，观察 ASR 文本和 UI 延迟。
+2. 使用正式麦克风采集的误识别样本扩充 `task_intent_v1`，保持所有未授权样本真实页码变化为 `0/N`。
+3. 做一次 Gateway/vLLM 中途重启和 VR Client 断网演练，确认 UI 不二次推进、DeepSeek 仍可独立使用。
+4. 现场验收不通过时优先补 fixture 和固定 Router 规则，不放宽模型写权限，也不增加任意 NodePath/RPC 工具。

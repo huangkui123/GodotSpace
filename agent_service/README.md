@@ -107,9 +107,18 @@ The protocol, connection manager, timeout, disconnect, deduplication, cancellati
 barrier, stateless request construction, serial queueing, Agent configuration, and
 tool registration tests do not require a live vLLM or Godot instance.
 
+The Gateway rejects a Qwen final answer when an authorized tool was never called;
+this prevents a state-changing voice command from being reported as complete after
+the model merely repeats it.
+
 To perform a live vLLM plus gateway smoke test and clean up both temporary
 processes automatically:
 
 ```bash
 bash scripts/smoke_agent_gateway.sh
 ```
+
+Use `bash scripts/smoke_task_agent_live.sh` for the real Qwen + Godot
+voice-to-tool path. The mock `test_task_agent_remote_e2e.sh` and
+`test_task_agent_multi_client_e2e.sh` scripts validate target-Client isolation
+without depending on model sampling.

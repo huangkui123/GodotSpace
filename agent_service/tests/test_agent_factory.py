@@ -53,6 +53,7 @@ class AgentFactoryTests(unittest.TestCase):
 
             def run(self, **kwargs: Any) -> Any:
                 captured["run"] = kwargs
+                captured["function_list"][0].call("{}")
                 yield [{"role": "assistant", "content": "已完成。"}]
 
         factory = AgentFactory(Settings(), ConnectionManager())
@@ -68,6 +69,28 @@ class AgentFactoryTests(unittest.TestCase):
         self.assertEqual(len(captured["function_list"]), 1)
         self.assertEqual(captured["function_list"][0].name, "open_album")
         self.assertEqual(captured["run"]["lang"], "zh")
+
+    @unittest.skipUnless(
+        importlib.util.find_spec("qwen_agent") is not None,
+        "qwen_agent is not installed in this Python environment",
+    )
+    def test_run_rejects_final_answer_without_required_tool_call(self) -> None:
+        class FakeFnCallAgent:
+            def __init__(self, **_kwargs: Any) -> None:
+                pass
+
+            def run(self, **_kwargs: Any) -> Any:
+                yield [{"role": "assistant", "content": "进入下一步"}]
+
+        factory = AgentFactory(Settings(), ConnectionManager())
+        with patch("qwen_agent.agents.FnCallAgent", FakeFnCallAgent):
+            with self.assertRaisesRegex(RuntimeError, "required authorized tool"):
+                factory.run(
+                    "session-1",
+                    "request-1",
+                    [{"role": "user", "content": "进入下一步"}],
+                    ["next_task_step"],
+                )
 
     @unittest.skipUnless(
         importlib.util.find_spec("qwen_agent") is not None,

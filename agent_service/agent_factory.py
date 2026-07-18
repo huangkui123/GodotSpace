@@ -22,6 +22,11 @@ For task guidance, a question such as "下一步是什么" or "下一步应该�
 read-only and must use get_current_task_step. Only an explicit command such as
 "进入下一步" or "这一步做完了，继续" may use next_task_step. The available tool
 list is an authorization boundary: never invent or request a tool that is absent.
+Whenever one or more tools are available for the current request, you MUST call
+exactly one available tool before answering, even if the supplied context appears
+to contain the answer. Never merely repeat or acknowledge an operation request.
+For an authorized advance request, call next_task_step and base the final answer
+only on its result. A final answer without the required tool result is invalid.
 Return the final answer as concise plain Chinese text without Markdown."""
 
 EXPECTED_QWEN_AGENT_VERSION = "0.0.34"
@@ -85,6 +90,10 @@ class AgentFactory:
             final_messages = response
 
         serialized = [_message_to_dict(message) for message in final_messages]
+        if tools and not any(tool._call_count > 0 for tool in tools):
+            raise RuntimeError(
+                "Qwen-Agent completed without calling the required authorized tool"
+            )
         answer = _extract_final_answer(serialized)
         if not answer:
             raise RuntimeError("Qwen-Agent completed without a final assistant answer")

@@ -8,7 +8,7 @@ server_log="/tmp/godotspace_task_agent_remote_server.log"
 client_log="/tmp/godotspace_task_agent_remote_client.log"
 
 source "$repo_root/.venv/bin/activate"
-python "$repo_root/scripts/mock_task_agent_gateway.py" >"$mock_log" 2>&1 &
+TASK_AGENT_SCENARIO=remote_full python "$repo_root/scripts/mock_task_agent_gateway.py" >"$mock_log" 2>&1 &
 gateway_pid=$!
 "$godot_exe" \
     --headless \
