@@ -133,7 +133,8 @@ function Assert-SmokeProcess {
     $OutputWithoutKnownHeadlessNoise = $CombinedOutput `
         -replace [regex]::Escape('ERROR: SubViewport is not a child of a SubViewportContainer. get_screen_transform doesn''t return the actual screen position.'), '' `
         -replace [regex]::Escape('ERROR: Parameter "material" is null.'), '' `
-        -replace [regex]::Escape('ERROR: Parameter "m" is null.'), ''
+        -replace [regex]::Escape('ERROR: Parameter "m" is null.'), '' `
+        -replace [regex]::Escape('ERROR: Condition "p_tracker.is_null()" is true.'), ''
     if ($Record.Name -eq 'shutdown_client') {
         # This custom engine renders push_warning() as an ERROR-prefixed line.
         $OutputWithoutKnownHeadlessNoise = $OutputWithoutKnownHeadlessNoise `

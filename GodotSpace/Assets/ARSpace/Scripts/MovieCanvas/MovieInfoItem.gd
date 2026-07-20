@@ -13,23 +13,34 @@ var icons: Array[Texture2D] = [
 ]
 var is_playing: bool = true
 
-func set_video(name: String):
+func set_video(name: String) -> bool:
 	var file_path = get_media_path("Videos", name)
+	is_playing = false
+	texture_button.disabled = true
+	texture_button.texture_normal = icons[0]
+	banner_video.stop()
+	banner_video.stream = null
 
-	if file_path != "":
-		var stream = ClassDB.instantiate("FFmpegVideoStream")
-		if stream:
-			if DEBUG_LOGS: print("✅ 成功创建 FFmpegVideoStream 实例")
-			stream.set_file(file_path)
-			is_playing = true
-			banner_video.stream = stream
-			banner_video.volume_db = -80  # 静音视频
-			banner_video.play()
-			texture_button.texture_normal = icons[1] # 设置为暂停图标
-			# await get_tree().create_timer(0.5).timeout
-			# banner_video.paused = true
-		else:
-			push_error("❌ 无法创建 FFmpegVideoStream，说明插件没有正确加载")
+	if file_path == "":
+		push_warning("Video file is unavailable: %s" % name)
+		return false
+	if not ClassDB.class_exists("FFmpegVideoStream"):
+		push_warning("FFmpeg video playback is unavailable on this platform: %s" % name)
+		return false
+
+	var stream = ClassDB.instantiate("FFmpegVideoStream")
+	if stream == null:
+		push_warning("FFmpeg video stream could not be created: %s" % name)
+		return false
+
+	stream.set_file(file_path)
+	is_playing = true
+	banner_video.stream = stream
+	banner_video.volume_db = -80
+	banner_video.play()
+	texture_button.disabled = false
+	texture_button.texture_normal = icons[1]
+	return true
 
 func destory():
 	if banner_video:
@@ -57,6 +68,8 @@ func get_media_path(root_directory_name: String, file_name: String):
 	return ""
 
 func _on_texture_button_pressed():
+	if banner_video == null or banner_video.stream == null:
+		return
 	if is_playing:
 		# 停止视频播放
 		texture_button.texture_normal = icons[0] # 设置为播放图标

@@ -27,7 +27,7 @@ func refresh_info(data: MovieListData):
 	var file_name = data.banner_path.get_file()
 	var file_path = get_media_path("Videos", file_name)
 
-	if file_path != "" and ENABLE_VIDEO_PREVIEWS:
+	if file_path != "" and ENABLE_VIDEO_PREVIEWS and ClassDB.class_exists("FFmpegVideoStream"):
 		var stream = ClassDB.instantiate("FFmpegVideoStream")
 		if stream:
 			stream.set_file(file_path)

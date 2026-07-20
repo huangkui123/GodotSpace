@@ -2,12 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://do56unxliasbg"
-valid=false
+uid="uid://lysp0xaodqss"
+path="res://.godot/imported/1668416234826.png-4562bc0d61d4dd16c19f03ff72e465d3.ctex"
+metadata={
+"vram_texture": false
+}
 
 [deps]
 
-source_file="res://Assets/ARSpace/Textures/MovieTetures/1668416234826.jpg"
+source_file="res://Assets/ARSpace/Textures/MovieTetures/1668416234826.png"
+dest_files=["res://.godot/imported/1668416234826.png-4562bc0d61d4dd16c19f03ff72e465d3.ctex"]
 
 [params]
 

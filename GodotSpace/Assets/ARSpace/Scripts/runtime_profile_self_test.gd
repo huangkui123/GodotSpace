@@ -180,12 +180,17 @@ func _run_cases() -> void:
 		["--ground-vr-client", "--voice-role=client"],
 		true
 	)
-	_expect(not android_ground_client.is_valid(), "Android Ground VR Client should be rejected")
+	_expect(android_ground_client.is_valid(), "Android Ground VR Client should be valid on a native PICO headset")
+	_expect(android_ground_client.is_client() and android_ground_client.is_ground(), "Android Ground VR Client should keep the Ground client role")
+	_expect(android_ground_client.uses_xr() and not android_ground_client.uses_passthrough(), "Android Ground VR Client should use opaque XR")
+	_expect(android_ground_client.selection_locked, "explicit Android Ground VR arguments should lock the role selector")
 
 	var android_default = RuntimeProfile.from_args([], [], true)
 	_expect(android_default.is_valid(), "default Android profile should be valid")
 	_expect(android_default.is_client() and android_default.is_astronaut(), "default Android profile should be Astronaut Client")
 	_expect(android_default.uses_xr() and android_default.uses_passthrough(), "default Android profile should use passthrough XR")
+	_expect(android_default.has_explicit_mode, "Android should preserve its native Astronaut default when StartMenu opens")
+	_expect(not android_default.selection_locked, "the shared Android PICO APK should allow choosing Ground VR in StartMenu")
 
 	RuntimeProfile.clear_session_override()
 	var menu_ground_client = RuntimeProfile.select_session_mode(RuntimeProfile.Preset.VR_GROUND_CLIENT, false)
@@ -197,8 +202,12 @@ func _run_cases() -> void:
 	var menu_astronaut_client = RuntimeProfile.select_session_mode(RuntimeProfile.Preset.ASTRONAUT_XR_CLIENT, false)
 	_expect(menu_astronaut_client.is_client() and menu_astronaut_client.is_astronaut(), "menu Astronaut XR Client should use the Astronaut role")
 	_expect(menu_astronaut_client.uses_xr() and menu_astronaut_client.uses_passthrough(), "menu Astronaut XR Client should use passthrough XR")
-	var rejected_android_ground_client_menu = RuntimeProfile.select_session_mode(RuntimeProfile.Preset.VR_GROUND_CLIENT, true)
-	_expect(not rejected_android_ground_client_menu.is_valid(), "Android menu must reject Ground VR Client")
+	var android_ground_client_menu = RuntimeProfile.select_session_mode(RuntimeProfile.Preset.VR_GROUND_CLIENT, true)
+	_expect(android_ground_client_menu.is_valid(), "Android menu must allow the native PICO Ground VR Client")
+	_expect(android_ground_client_menu.is_client() and android_ground_client_menu.is_ground(), "Android menu Ground VR selection should preserve the Ground client role")
+	_expect(android_ground_client_menu.uses_xr() and not android_ground_client_menu.uses_passthrough(), "Android menu Ground VR selection should use opaque XR")
+	var android_server_menu = RuntimeProfile.select_session_mode(RuntimeProfile.Preset.PC_GROUND_SERVER, true)
+	_expect(not android_server_menu.is_valid(), "Android menu must reject the PC Ground Server preset")
 	RuntimeProfile.clear_session_override()
 
 

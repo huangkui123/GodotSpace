@@ -63,6 +63,14 @@
 
 硬件就绪审计发现本机有 PICO Connect 自带 ADB 和 PICO Streaming OpenXR runtime，但 `adb devices -l` 返回空设备列表，系统也没有物理 PICO/Android PnP 设备。当前无法执行两台 PICO + PC 的真实三端、Unity 三 Tag 对照和 30 分钟稳定性验收；这属于外部设备前置条件，不以桌面模拟替代。
 
+### 2026-07-20 PICO 验收前收口
+
+针对真机前置再次从空 `.godot` 缓存审计，修复了三项会影响同一 PICO APK 验收的阻断：Android 不再拒绝 Ground VR Client，原生默认仍为 Astronaut 但 StartMenu 角色选择保持解锁；恢复 Godot OpenXR Vendors 4.0.0 的 PICO debug/release AAR、Android arm64 库和编辑器库，并补齐 hand-tracking 项目设置；`Android PICO` 预设固定为 arm64、Gradle、PICO vendor、Internet/录音权限和包名 `com.yaoling.godotspace`。新增 `run_pico_hardware_preflight.ps1`，现已并入总验证入口。
+
+仓库中的 EIRTeam FFmpeg 扩展没有 Android 二进制。为避免 APK 引用不存在的 `.so`，Android 声明已移除，视频详情/工作清单改为显式不可用降级；Windows/Linux 保持原扩展。一个内容实际为 PNG、扩展名却为 `.jpg` 的图片也已改正。fresh import 退出码为 `0`，用时 104.2 秒，并精确定位、记录了七个旧非主线源模型缺失路径和 Kepler FBX 的内嵌图片错误；航天员 `china_rig.fbx` 随后独立导入成功。最终完整 `run_phase1_validation.ps1` 退出码为 `0`，用时 58.2 秒，最终输出 `PHASE1_VALIDATION PASS`。
+
+当前复核机没有 `ANDROID_HOME`/`ANDROID_SDK_ROOT`、项目 Android Gradle build template、Godot Android export templates 或可用 `adb`，因此没有伪造 APK 构建/安装结论。真机执行人应先按 `pico_hardware_preflight.md` 配置打包环境、生成 `GodotSpace-PICO.apk`，再执行本文签字项。六项真机复选框继续保持未勾选。
+
 ## 任务 1.7 证据矩阵
 
 | 验收项 | 自动化证据 | 当前判定 | 真机仍需确认 |
@@ -84,7 +92,7 @@
 # PC Ground Server
 & $Godot --path $Project -- --voice-role=server
 
-# Ground VR Client
+# Ground VR Client（桌面/OpenXR 调试参数；原生 PICO 可在 StartMenu 直接选择）
 & $Godot --path $Project --xr-mode on -- --ground-vr-client --voice-role=client --server-ip=<SERVER_IP>
 
 # Astronaut XR Client

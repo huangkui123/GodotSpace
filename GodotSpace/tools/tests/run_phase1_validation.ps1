@@ -53,6 +53,8 @@ if (-not $SkipImport) {
         'Failed to load script',
         'Failed loading resource',
         'Cannot open file.*res://',
+        'Error loading image: ''res://',
+        'Error importing ''res://',
         '(?:GDExtension.*(?:failed|could not|cannot|can''t|error)|(?:failed|could not|cannot|can''t|error).*GDExtension)',
         'Error loading extension:',
         '(?:autoload|Autoload).*(?:failed|invalid)'
@@ -62,7 +64,37 @@ if (-not $SkipImport) {
             throw "Headless import matched critical pattern '$Pattern'. See $ImportLog"
         }
     }
+
+    # These paths are embedded references in legacy, non-phase-1 source
+    # models. Keep the list exact so a new missing file cannot silently join
+    # the historical import baseline.
+    $KnownMissingResourcePaths = @(
+        'res://Scene_Main/ori/SM_Tri.mtl',
+        'res://Assets/ChatRes/Models/YuanGongNan/images/nan_Color.1002.tif',
+        'res://Assets/ChatRes/Models/YuanGongNan/images/yifu_Color.1002.tif',
+        'res://Assets/ChatRes/Models/YuanGongNan/images/nan_Color.1001.tif',
+        'res://Assets/Visual Design Cafe/Nature Shaders Demo/Art/Ferns/Source Assets/RnD_Fern_Albedo.png',
+        'res://Assets/Visual Design Cafe/Nature Shaders Demo/Art/Ferns/Source Assets/RnD_Fern_Opp.png',
+        'res://Assets/Resource/Model/FBX/Generic/Mala.psd'
+    )
+    $MissingPathPattern = [regex]"(?:Can't open file from path|Couldn't open MTL file) '(?<path>res://[^']+)'"
+    foreach ($Match in $MissingPathPattern.Matches($ImportText)) {
+        $MissingPath = $Match.Groups['path'].Value
+        if ($MissingPath -notin $KnownMissingResourcePaths) {
+            throw "Headless import found a new missing resource: $MissingPath. See $ImportLog"
+        }
+    }
     Write-Host 'Headless import completed without critical parse/resource/autoload/GDExtension errors.'
+}
+
+$PicoPreflightRunner = Join-Path $PSScriptRoot 'run_pico_hardware_preflight.ps1'
+if (-not (Test-Path -LiteralPath $PicoPreflightRunner -PathType Leaf)) {
+    throw "PICO hardware preflight runner is missing: $PicoPreflightRunner"
+}
+Write-Host 'Running PICO hardware-package preflight checks'
+& $PicoPreflightRunner -Project $Project
+if ($LASTEXITCODE -ne 0) {
+    throw 'PICO hardware preflight checks failed.'
 }
 
 $CollaborationRunner = Join-Path $PSScriptRoot 'run_collaboration_self_tests.ps1'

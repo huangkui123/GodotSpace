@@ -228,6 +228,8 @@
 
 任务 1.7 自动化前置验收记录（2026-07-16，2026-07-17 增强）：`run_phase1_validation.ps1` 已再次完整通过（退出码 0，用时 94.4 秒）。独立 OS 进程 ENet 测试使用不同端口和显式阶段屏障覆盖 Server→Ground→Astronaut（含 Ground 掉线/重连）、Server→Astronaut→Ground、两个 Ground 同时申请席位并将第二个降级为 Astronaut，以及 Client 观察 Server 关闭；真实 loopback ENet 集成测试还覆盖窗口拖动预览中断线不落盘、lease 释放、离线期间状态变化、重连完整快照、同连接角色降级的临时状态清理/后续拒权、Client 消费者销毁重建去重和 Server 关闭后两端窗口状态清空。正式运行时恢复用例使用真实 `NetworkHandler.start_server/start_client` 进入 `ARSpace.tscn`，在协作、标定和窗口状态均非空后关闭 Server，并验证 Client 收到双清理信号、恢复 Offline peer、清空角色与三类状态并返回 `StartMenu.tscn`。玩家/航天员角色、共享空间/标定、真实 WorkList 场景、PC/Test Client/XR 参数启动冒烟和其余第一阶段回归均通过。当前环境的 PICO ADB 设备列表为空，也没有两台真实 PICO/OpenXR 设备，因此上述六项保留未勾选，禁止以 headless 结果替代真机签字。证据矩阵、启动命令、30 分钟记录项和签字栏见 `GodotSpace/docs/testing/phase1_acceptance_2026-07-16.md`。
 
+任务 1.7 PICO 验收前收口记录（2026-07-20）：恢复完整 Godot OpenXR Vendors 4.0.0/PICO Android arm64 插件，固定 `Android PICO` Gradle/arm64/vendor/权限/包名预设；同一 APK 默认航天端但允许在 StartMenu 切换为 Ground VR Client 并输入 PC 局域网 IP，且 Android 菜单不再显示/接受 PC Server。移除 FFmpeg 对仓库中不存在的 Android `.so` 声明，视频在 PICO 上改为明确不可用降级；新增并接入 `tools/tests/run_pico_hardware_preflight.ps1`。空缓存 fresh import 退出码 0（104.2 秒），最终完整 `run_phase1_validation.ps1` 再次输出 `PHASE1_VALIDATION PASS`（58.2 秒）。当前机器缺 Android SDK 环境变量、项目 Gradle build template、Android export templates 和 ADB，因此 APK 生成/安装及上述六项仍由真机执行人按 `GodotSpace/docs/testing/pico_hardware_preflight.md` 完成，复选框保持未勾选。
+
 ---
 
 ## 4. 第二阶段：跑通 Unity 核心作业与专家协同闭环

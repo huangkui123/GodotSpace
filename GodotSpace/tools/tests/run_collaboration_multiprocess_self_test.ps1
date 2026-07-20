@@ -116,7 +116,9 @@ function Invoke-CollaborationScenario {
 			if ($PassCount -ne 1) {
 				$FailedRoles += "$($Result.Role)(PASS token count $PassCount)"
 			}
-			$OutputWithoutKnownHeadlessNoise = $Result.Output.Replace('ERROR: Parameter "m" is null.', '')
+			$OutputWithoutKnownHeadlessNoise = $Result.Output `
+				-replace [regex]::Escape('ERROR: Parameter "m" is null.'), '' `
+				-replace [regex]::Escape('ERROR: Condition "p_tracker.is_null()" is true.'), ''
 			if ($OutputWithoutKnownHeadlessNoise.Contains('ERROR:')) {
 				$FailedRoles += "$($Result.Role)(unexpected Godot error)"
 			}

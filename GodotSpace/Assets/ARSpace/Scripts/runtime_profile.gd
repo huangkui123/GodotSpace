@@ -124,15 +124,18 @@ static func from_args(all_args: Array, user_args: Array, is_android: bool = fals
 
 	profile.xr_mode_requested = xr_mode_value == "on"
 	profile.xr_mode_disabled = xr_mode_value == "off"
-	profile.has_explicit_mode = is_android \
-		or wants_removed_xr_server \
+	var has_explicit_selection := wants_removed_xr_server \
 		or wants_ground_vr_client \
 		or wants_xr_client \
 		or wants_test_mode \
 		or not voice_role.is_empty() \
 		or profile.xr_mode_disabled \
 		or (not xr_mode_value.is_empty() and xr_mode_value not in ["on", "off"])
-	profile.selection_locked = profile.has_explicit_mode
+	# A native Android build still defaults to Astronaut XR, but the shared
+	# PICO APK must let the operator choose Ground VR from StartMenu. Only an
+	# explicit application role (or an incompatible XR flag) locks the selector.
+	profile.has_explicit_mode = is_android or has_explicit_selection
+	profile.selection_locked = has_explicit_selection
 
 	if not xr_mode_value.is_empty() and xr_mode_value not in ["on", "off"]:
 		errors.append("Unsupported --xr-mode value: %s" % xr_mode_value)
@@ -158,8 +161,6 @@ static func from_args(all_args: Array, user_args: Array, is_android: bool = fals
 		errors.append("--xr-mode on cannot be combined with --testmode")
 	if is_android and role_requests_server:
 		errors.append("Ground Server is not supported on Android")
-	if is_android and wants_ground_vr_client:
-		errors.append("Ground VR Client is not supported on Android")
 	if role_requests_server and profile.xr_mode_requested and not wants_test_mode:
 		errors.append("XR Server launch is not supported; use the PC Ground Server")
 	var requests_xr_presentation := wants_ground_vr_client \
@@ -204,8 +205,6 @@ static func select_session_mode(preset: int, is_android: bool = OS.has_feature("
 			profile.presentation = Presentation.XR
 			profile.environment = EnvironmentMode.OPAQUE
 			profile.xr_mode_requested = true
-			if is_android:
-				profile.validation_error = "Ground VR Client is not supported on Android"
 		Preset.ASTRONAUT_XR_CLIENT:
 			profile.network_role = NetworkRole.CLIENT
 			profile.semantic_role = SemanticRole.ASTRONAUT
@@ -217,6 +216,8 @@ static func select_session_mode(preset: int, is_android: bool = OS.has_feature("
 			profile.semantic_role = SemanticRole.GROUND
 			profile.presentation = Presentation.DESKTOP
 			profile.environment = EnvironmentMode.OPAQUE
+			if is_android:
+				profile.validation_error = "Ground Server is not supported on Android"
 	_session_override = profile
 	return profile
 

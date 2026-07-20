@@ -20,9 +20,9 @@ func _ready():
 func set_video_name(name: String):
 	if not self.visible:
 		PanelWindowZoom.set_window_visible(self, true)
-	title_label.text = name
 	videoname = name
-	p_info.set_video(name)
+	var playback_available := bool(p_info.set_video(name))
+	title_label.text = name if playback_available else "%s（当前平台不支持播放）" % name
 
 func _on_close_button_pressed():
 	if self.visible:

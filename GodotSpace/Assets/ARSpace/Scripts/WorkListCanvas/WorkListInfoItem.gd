@@ -45,13 +45,18 @@ func refresh_info(data: WorkListInfoData):
 			var file_name: String = data.path.get_file()
 			var file_path: String = get_media_path("Videos", file_name)
 
-			if file_path != "":
+			if file_path != "" and ClassDB.class_exists("FFmpegVideoStream"):
 				var stream = ClassDB.instantiate("FFmpegVideoStream")
 				if stream:
 					stream.set_file(file_path)
 					banner_video.stream = stream
 					banner_video.volume_db = -80  # 静音视频
 					banner_video.play()
+			else:
+				banner_video.stop()
+				banner_video.stream = null
+				banner_video.visible = false
+				push_warning("Work-list video playback is unavailable on this platform: %s" % file_name)
 
 		3: # Animation
 			pass
