@@ -138,6 +138,66 @@ func _check_player_scene_contract(player: Node) -> void:
 		"NetworkTorso/TorsoMesh",
 	]:
 		_check(player.get_node_or_null(path) != null, "missing player presence node: %s" % path)
+	var player_body := player.get_node_or_null("XROrigin3D/PlayerBody") as CollisionObject3D
+	_check(player_body != null, "local player should retain XRTools PlayerBody locomotion")
+	if player_body != null:
+		_check(
+			player_body.collision_layer == 0 and player_body.collision_mask == 0,
+			"local XR player body must remain non-colliding"
+		)
+		_check(
+			int(player_body.get("ground_control")) == XRToolsPlayerBody.GroundControl.ALWAYS,
+			"ghost XR player should accept direct movement without a ground contact"
+		)
+	var gravity_override := player.get_node_or_null("XROrigin3D/GhostGravityOverride")
+	_check(
+		gravity_override != null and gravity_override.is_in_group("movement_providers"),
+		"local XR player should register the ghost gravity movement provider"
+	)
+	if gravity_override != null and player_body is XRToolsPlayerBody:
+		var xr_player_body := player_body as XRToolsPlayerBody
+		var movement_direct := player.get_node_or_null("XROrigin3D/RightHand/MovementDirect")
+		_check(movement_direct != null, "local XR player should retain right-stick direct movement")
+		if movement_direct != null:
+			_check(
+				is_equal_approx(float(movement_direct.get("max_speed")), 1.5),
+				"right-stick movement speed should use the reduced comfort value"
+			)
+			_check(
+				int(gravity_override.get("order")) > int(movement_direct.get("order")),
+				"ghost stop provider must run after direct movement input is sampled"
+			)
+		xr_player_body.gravity = Vector3.DOWN * 9.8
+		gravity_override.call("physics_pre_movement", 1.0 / 60.0, xr_player_body)
+		_check(
+			xr_player_body.gravity.is_zero_approx(),
+			"ghost gravity provider should prevent a non-colliding player from falling"
+		)
+		xr_player_body.up_player = Vector3.UP
+		xr_player_body.ground_control_velocity = Vector2.ZERO
+		xr_player_body.velocity = Vector3(1.2, 0.4, -0.8)
+		gravity_override.call(
+			"physics_movement",
+			1.0 / 60.0,
+			xr_player_body,
+			false
+		)
+		_check(
+			xr_player_body.velocity.is_equal_approx(Vector3(0.0, 0.4, 0.0)),
+			"right-stick release should stop horizontal velocity in the same physics frame"
+		)
+		xr_player_body.ground_control_velocity = Vector2(0.0, 0.5)
+		xr_player_body.velocity = Vector3(1.2, 0.4, -0.8)
+		gravity_override.call(
+			"physics_movement",
+			1.0 / 60.0,
+			xr_player_body,
+			false
+		)
+		_check(
+			xr_player_body.velocity.is_equal_approx(Vector3(1.2, 0.4, -0.8)),
+			"active right-stick input must not be canceled by the stop provider"
+		)
 
 func _check(condition: bool, message: String) -> void:
 	if not condition:

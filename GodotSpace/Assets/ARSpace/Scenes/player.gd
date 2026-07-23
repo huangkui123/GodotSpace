@@ -256,8 +256,10 @@ func _configure_local_xr_nodes(is_local_authority: bool) -> void:
 		player_body.set("enabled", player_body_enabled)
 		if player_body is CollisionObject3D:
 			var collision_body := player_body as CollisionObject3D
-			collision_body.collision_layer = 524288 if player_body_enabled else 0
-			collision_body.collision_mask = 1023 if player_body_enabled else 0
+			# Keep XR locomotion active, but make the local avatar a ghost for
+			# movement physics. Annotation rays use their own layer-24 proxies.
+			collision_body.collision_layer = 0
+			collision_body.collision_mask = 0
 
 	_set_network_avatar_visible(false)
 	if not is_local_authority:

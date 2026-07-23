@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3 uid="uid://xxvflxhi3tku"]
+[gd_scene load_steps=10 format=3 uid="uid://xxvflxhi3tku"]
 
 [ext_resource type="ArrayMesh" uid="uid://d0brnbp1j6ao0" path="res://Assets/VRIK/Editor/CoreRes/Char/PlayerM/extracted/PlayerM.PlayerM_Head.mesh" id="1_lar5o"]
 [ext_resource type="PackedScene" uid="uid://bpdj5njb8nhot" path="res://addons/godot-xr-tools/hands/scenes/highpoly/left_fullglove_hand.tscn" id="2_afngy"]
@@ -8,6 +8,7 @@
 [ext_resource type="PackedScene" uid="uid://bl2nuu3qhlb5k" path="res://addons/godot-xr-tools/functions/movement_direct.tscn" id="5_lar5o"]
 [ext_resource type="PackedScene" uid="uid://d1tl07geqm5xq" path="res://addons/godot-xr-tools/hands/scenes/highpoly/right_fullglove_hand.tscn" id="5_roir7"]
 [ext_resource type="PackedScene" uid="uid://diyu06cw06syv" path="res://addons/godot-xr-tools/player/player_body.tscn" id="6_2xy6d"]
+[ext_resource type="Script" path="res://Assets/ARSpace/Scripts/ghost_player_movement_provider.gd" id="7_ghost_movement"]
 
 [node name="XROrigin3D" type="XROrigin3D"]
 
@@ -41,6 +42,7 @@ step_turn_angle = 45.0
 tracker = &"right_hand"
 
 [node name="MovementDirect" parent="RightHand" instance=ExtResource("5_lar5o")]
+max_speed = 1.5
 strafe = true
 
 [node name="RightHand" parent="RightHand" instance=ExtResource("5_roir7")]
@@ -49,5 +51,9 @@ strafe = true
 
 [node name="FunctionPointer" parent="RightHand" instance=ExtResource("4_roir7")]
 
+[node name="GhostGravityOverride" type="Node" parent="." groups=["movement_providers"]]
+script = ExtResource("7_ghost_movement")
+
 [node name="PlayerBody" parent="." instance=ExtResource("6_2xy6d")]
 player_head_height = 0.7
+ground_control = 2
