@@ -727,13 +727,18 @@ func _get_shared_space_origin() -> Node3D:
 	return _shared_space_origin
 
 func _set_network_avatar_visible(is_visible: bool) -> void:
+	# PC Ground is a spectator/operator endpoint, not an embodied XR role.
+	# Its camera pose is still replicated for shared-space operations, but
+	# remote peers must never render that camera as an astronaut.
+	var role_allows_avatar := _resolved_session_role() != ROLE_PC_GROUND
+	var should_show_avatar := is_visible and role_allows_avatar
 	for node_path in NETWORK_AVATAR_ROOTS:
 		var avatar_root := get_node_or_null(node_path) as Node3D
 		if avatar_root != null:
-			avatar_root.visible = is_visible
+			avatar_root.visible = should_show_avatar
 	var astronaut_avatar := get_node_or_null("AstronautAvatar") as Node3D
 	if astronaut_avatar != null:
-		astronaut_avatar.visible = is_visible
+		astronaut_avatar.visible = should_show_avatar
 
 func _apply_role_appearance() -> void:
 	var assigned_role := _resolved_session_role()
@@ -770,3 +775,7 @@ func _apply_role_appearance() -> void:
 	var astronaut_avatar := get_node_or_null("AstronautAvatar") as Node3D
 	if astronaut_avatar != null and astronaut_avatar.has_method("set_role_label"):
 		astronaut_avatar.call("set_role_label", role_label_text, role_color.lightened(0.25))
+	if assigned_role == ROLE_PC_GROUND:
+		_set_network_avatar_visible(false)
+	elif not _is_local_authority() and _has_received_network_pose:
+		_set_network_avatar_visible(true)

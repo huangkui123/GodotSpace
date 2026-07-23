@@ -19,11 +19,11 @@
 
 ## 统一场景和程序化 IK
 
-`AstronautAvatar.tscn` 把导入模型、角色标签和驱动脚本分开。`Player.tscn` 保留 `NetworkHead/NetworkLeftHand/NetworkRightHand` 作为跟踪目标与网络插值节点，航天员场景只消费这些节点，不拥有网络权威。远端玩家进入树前仍移除完整 XR 本地分支，因此不会重复注册移动或输入功能。
+`AstronautAvatar.tscn` 把导入模型、角色标签和驱动脚本分开。`Player.tscn` 保留 `NetworkHead/NetworkLeftHand/NetworkRightHand` 作为跟踪目标与网络插值节点，航天员场景只消费这些节点，不拥有网络权威。远端玩家进入树前仍移除完整 XR 本地分支，因此不会重复注册移动或输入功能。PC Ground 是无形的观察/操作端：其观察相机位姿仍参与共享空间和网络合同，但任何远端都不得把它渲染成航天员或旧代理人物；Ground VR 与 Astronaut 才保留 XR 人物显示。
 
-Godot 的 `ImportedModel.scale=10` 与 FBX 内部 `0.01` 单位换算共同得到 Skeleton3D 的 `0.1` 世界缩放；节点同时绕 Y 轴旋转 180°，把 Unity 的 `+Z` 正面转换为 Godot 的 `-Z` 正面并保持命名左右骨骼位于正确身体侧。33 根 rest bone 的世界高度为约 `1.798 m`，因此不是 10 倍巨人。自动测试将可接受高度锁在 `1.6–2.1 m`。Unity `china_rig_VRIK.prefab` 中关闭的 `DETAIL/PANT/STRIP` 在 Godot 也永久关闭，只保留 `Basemesh/TORSO/HELMET_GLASS/HELMET/GLOVES`；实际使用它的 AstronautSync Sender/Listener prefab variant 只覆盖这些对象的 Layer，没有重新启用三个网格。
+Godot 的 `ImportedModel.scale=10` 与 FBX 内部 `0.01` 单位换算共同得到 Skeleton3D 的 `0.1` 世界缩放；节点同时绕 Y 轴旋转 180°，把 Unity 的 `+Z` 正面转换为 Godot 的 `-Z` 正面并保持命名左右骨骼位于正确身体侧。33 根 rest bone 的世界高度为约 `1.798 m`，因此不是 10 倍巨人。自动测试将可接受高度锁在 `1.6–2.1 m`。Unity 完整外观 prefab `china_rig.prefab` 的 8 个网格全部启用；`china_rig_VRIK.prefab` 为半身 VRIK 表现关闭了 `DETAIL/PANT/STRIP`。Godot 的远端验收目标是完整航天员，因此启用 `Basemesh/TORSO/HELMET_GLASS/HELMET/GLOVES/PANT/DETAIL/STRIP` 全部 8 个网格，而不是继续复制半身 prefab 的显隐状态。
 
-五个启用网格使用显式 Godot 材质覆盖，不再依赖 FBX 的不完整内嵌材质。Basemesh 保持 Unity 的白色、不透明、非金属/全粗糙合同；TORSO、HELMET、GLOVES 从 Unity metallic-gloss 贴图的 R/Alpha 分别还原金属度与 `1-smoothness` 粗糙度；HELMET_GLASS 按 Unity 源材质保持不透明、全金属、全光滑并绑定 `A.PNG`，不擅自改成透明面罩。
+八个启用网格都使用显式 Godot 材质覆盖，不再依赖 FBX 的不完整内嵌材质。Basemesh 保持 Unity 的白色、不透明、非金属/全粗糙合同；TORSO、HELMET、GLOVES、PANT、DETAIL、STRIP 从各自 Unity metallic-gloss 贴图的 R/Alpha 分别还原金属度与 `1-smoothness` 粗糙度，并按源材质使用法线贴图；HELMET_GLASS 按 Unity 源材质保持不透明、全金属、全光滑并绑定 `A.PNG`，不擅自改成透明面罩。
 
 `astronaut_avatar.gd` 使用自定义程序化双骨解算：
 
@@ -51,7 +51,7 @@ Godot 的 `ImportedModel.scale=10` 与 FBX 内部 `0.01` 单位换算共同得�
 
 ## 验证与剩余风险
 
-自动回归覆盖 FBX 骨骼合同、Unity/Godot 正面转换、左右手不交换、双骨有限解、长度限制、逐骨 basis 正交性、数米房间尺度平移与首帧重定中、五个可见网格的精确材质路径、手势量化/越界拒绝、追踪降级，以及真实 ENet 的位姿和手势中继。最终视觉仍必须在两台 PICO/真实 OpenXR Client 上检查：
+自动回归覆盖 FBX 骨骼合同、Unity/Godot 正面转换、左右手不交换、双骨有限解、长度限制、逐骨 basis 正交性、数米房间尺度平移与首帧重定中、远端 8 个完整身体网格的可见性与精确材质路径、手势量化/越界拒绝、追踪降级，以及真实 ENet 的位姿和手势中继。最终视觉仍必须在两台 PICO/真实 OpenXR Client 上检查：
 
 1. 分别以左手、右手、凝视模式连续点击、抓取和滚动。
 2. 遮挡/关闭单个手柄，再关闭两个手柄，确认射线按合同降级且重获时不跳动。
@@ -63,3 +63,7 @@ Godot 的 `ImportedModel.scale=10` 与 FBX 内部 `0.01` 单位换算共同得�
 2026-07-23 首次 PICO Streaming 检查发现并修复了三个真机阻断：`Spine2TMP` 覆盖携带单位缩放导致上半身骨骼爆炸、启动首帧 tracking 未就绪导致输入永久卡在不可交互凝视模式、以及 Astronaut 射线触发窗口打开/关闭/聚焦时被共享窗口权限拒绝。自动回归现在会驱动真实骨架后检查正交 basis、验证 Unity 网格/材质合同，并用实际 `XRToolsViewport2DIn3D` + `Button` 完成一次 analog trigger 点击；最终完整 `run_phase1_validation.ps1` 输出 `PHASE1_VALIDATION PASS`（60.8 秒）。PICO 视觉和手感仍需重新真机签字。
 
 同日第二轮 PICO 截图中，白/黑/红表面被拉成贯穿场景的长三角，外观上像材质错误，实际是同一 TORSO 蒙皮同时受“停在舞台原点的髋/脊柱”和“跟随 HMD 世界位置的头/手”两组相距数米的骨骼影响。离线探针把 HMD 水平移动约 3 m 后可把 TORSO 世界深度从约 `0.51 m` 拉到 `3.51 m`；根节点跟随后恢复到约 `0.51 m`。修复同时补齐 180° 正面转换、rest-basis 旋转重定向、世界空间手臂求解和大幅重定中首帧保护。稳定版 Godot 离屏渲染已得到无长三角的完整模型，定制版与 4.4 stable 的 `PlayerPresenceSelfTest` 均通过；完整第一阶段验证再次输出 `PHASE1_VALIDATION PASS`（60.9 秒）。该结论仍需用重新启动后的当前分支进程在 PICO 中确认。
+
+随后地面 VR 观察 PC Server 时发现 PC 观察相机也被渲染为航天员。根因是收到首个位姿包后 `_set_network_avatar_visible(true)` 没有检查会话角色。现在 PC Ground 位姿仍正常复制，但 `NetworkHead/NetworkLeftHand/NetworkRightHand/NetworkTorso` 和 `AstronautAvatar` 在所有远端保持不可见；Ground VR 与 Astronaut 的人物显示不受影响。本地角色测试和真实 loopback ENet 测试都锁定了该差异。
+
+PC 随后观察地面 VR 时，截图显示骨骼长三角已消失，但人物只剩悬空的头盔、上身和手套。复核两个 Unity prefab 后确认这是把半身 `china_rig_VRIK.prefab` 的三项禁用状态误当成完整外观合同；完整 `china_rig.prefab` 的 `PANT/DETAIL/STRIP` 实际全部启用。Godot 现恢复三项网格并新增 `pant.tres/detail.tres/strip.tres`，分别绑定原始底色、metallic-gloss 和法线贴图。稳定版 4.4 离屏渲染已确认头盔、躯干、裤装、双腿、手套和外部细节形成完整人形；角色、真实 ENet 与三种多进程连接顺序测试通过，完整 `run_phase1_validation.ps1` 输出 `PHASE1_VALIDATION PASS`（62.0 秒）。仍等待同一 PC→VR 视角真机复核。

@@ -141,7 +141,8 @@ func _run_order_astronaut_client() -> void:
 	_check(await _wait_for_player_count(3), "first Astronaut should later observe Ground VR")
 	_check(await _wait_for_role_count(3), "first Astronaut should receive the complete role snapshot")
 	_check(await _wait_for_player_roles(), "first Astronaut replicas should match authoritative roles")
-	_check(await _wait_for_remote_avatars(2), "first Astronaut should receive both Ground poses")
+	_check(await _wait_for_remote_pose_replicas(2), "first Astronaut should receive both Ground poses")
+	_check(await _wait_for_remote_avatars(1), "first Astronaut should render Ground VR but not PC Ground")
 	_check(_write_control_marker("astronaut_client.done"), "first Astronaut should publish its completion marker")
 	_check(await _wait_for_server_shutdown(), "first Astronaut should observe Server transport shutdown")
 
@@ -154,7 +155,8 @@ func _run_order_ground_client() -> void:
 	_check(await _wait_for_player_count(3), "late Ground should receive all existing players")
 	_check(await _wait_for_role_count(3), "late Ground should receive all session roles")
 	_check(await _wait_for_player_roles(), "late Ground replicas should match authoritative roles")
-	_check(await _wait_for_remote_avatars(2), "late Ground should receive PC Ground and Astronaut poses")
+	_check(await _wait_for_remote_pose_replicas(2), "late Ground should receive PC Ground and Astronaut poses")
+	_check(await _wait_for_remote_avatars(1), "late Ground should render Astronaut but not PC Ground")
 	_check(_write_control_marker("ground_client.done"), "late Ground should publish its completion marker")
 	_check(await _wait_for_server_shutdown(), "late Ground should observe Server transport shutdown")
 
@@ -266,7 +268,8 @@ func _run_ground_client() -> void:
 	_check(await _wait_for_local_role(ROLE_GROUND_VR), "Ground VR client should receive its Server-assigned role")
 	_check(await _wait_for_player_count(2), "Ground VR client should initially see itself and PC Ground")
 	_check(await _wait_for_player_roles(), "Ground VR replicas should match the first role snapshot")
-	_check(await _wait_for_remote_avatars(1), "Ground VR should receive the PC Ground pose")
+	_check(await _wait_for_remote_pose_replicas(1), "Ground VR should receive the PC Ground spectator pose")
+	_check(await _wait_for_remote_avatars(0), "Ground VR should receive but not render the PC Ground spectator pose")
 	_check(
 		int(_annotation_manager.call("create_annotation", _make_draft(FIRST_ANNOTATION_TEXT, Vector3(1.0, 0.5, -2.0)))) == 0,
 		"Ground VR create should be queued to Server authority"
@@ -278,7 +281,8 @@ func _run_ground_client() -> void:
 	_check(await _wait_for_player_count(3), "Ground VR client should observe the Astronaut client")
 	_check(await _wait_for_role_count(3), "Ground VR should receive the three-role snapshot")
 	_check(await _wait_for_player_roles(), "Ground VR should identify PC Ground and Astronaut replicas")
-	_check(await _wait_for_remote_avatars(2), "Ground VR should receive PC Ground and Astronaut poses")
+	_check(await _wait_for_remote_pose_replicas(2), "Ground VR should receive PC Ground and Astronaut poses")
+	_check(await _wait_for_remote_avatars(1), "Ground VR should render Astronaut but not PC Ground")
 	_check(
 		await _wait_for_control_marker("astronaut_client.initial_done"),
 		"Ground VR should wait for the Astronaut authorization checks before disconnecting"
@@ -303,7 +307,8 @@ func _run_ground_client() -> void:
 	_check(await _wait_for_annotation_count(2), "reconnected Ground VR should receive the second annotation")
 	_check(_has_unique_annotations(), "reconnected Ground VR should end with two unique annotations")
 	_check(await _wait_for_player_roles(), "reconnected Ground VR replicas should match the role registry")
-	_check(await _wait_for_remote_avatars(2), "reconnected Ground VR should receive both remote poses")
+	_check(await _wait_for_remote_pose_replicas(2), "reconnected Ground VR should receive both remote poses")
+	_check(await _wait_for_remote_avatars(1), "reconnected Ground VR should render Astronaut but not PC Ground")
 	_check(_has_unique_player_names(), "reconnected Ground VR should end with unique player instances")
 	_check(first_peer_id == old_peer_id, "Ground VR peer identity should remain stable before disconnect")
 	_check(_write_control_marker("ground_client.done"), "reconnected Ground VR should publish its completion marker")
@@ -333,7 +338,8 @@ func _run_astronaut_client() -> void:
 	_check(int(_annotation_manager.call("get_annotation_count")) == 1, "Server should reject a forged Astronaut annotation request")
 	_check(_annotation_text_count(FORGED_ASTRONAUT_ANNOTATION_TEXT) == 0, "forged Astronaut annotation must not be synchronized")
 	_check(await _wait_for_player_roles(), "Astronaut client should identify both Ground replicas")
-	_check(await _wait_for_remote_avatars(2), "Astronaut client should receive both Ground poses")
+	_check(await _wait_for_remote_pose_replicas(2), "Astronaut client should receive both Ground poses")
+	_check(await _wait_for_remote_avatars(1), "Astronaut client should render Ground VR but not PC Ground")
 	_check(_write_control_marker("astronaut_client.initial_done"), "Astronaut should publish its authorization checkpoint")
 
 	_check(await _wait_for_player_count(2), "Astronaut client should observe Ground VR cleanup")
@@ -346,7 +352,8 @@ func _run_astronaut_client() -> void:
 	_check(await _wait_for_annotation_count(2), "Astronaut client should receive the post-reconnect annotation")
 	_check(_has_unique_annotations(), "Astronaut client should end with two unique synchronized annotations")
 	_check(await _wait_for_player_roles(), "Astronaut reconnect replicas should match the role registry")
-	_check(await _wait_for_remote_avatars(2), "Astronaut client should receive reconnected Ground VR poses")
+	_check(await _wait_for_remote_pose_replicas(2), "Astronaut client should receive reconnected Ground VR poses")
+	_check(await _wait_for_remote_avatars(1), "Astronaut client should render reconnected Ground VR but not PC Ground")
 	_check(_has_unique_player_names(), "Astronaut client should end with unique player instances")
 	_check(_write_control_marker("astronaut_client.done"), "Astronaut should publish its reconnect completion marker")
 	_check(await _wait_for_server_shutdown(), "Astronaut should observe Server transport shutdown")
@@ -544,6 +551,33 @@ func _wait_for_remote_avatars(expected_count: int) -> bool:
 			return true
 		await get_tree().process_frame
 	return false
+
+
+func _wait_for_remote_pose_replicas(expected_count: int) -> bool:
+	var deadline := Time.get_ticks_msec() + STAGE_TIMEOUT_MSEC
+	while Time.get_ticks_msec() < deadline:
+		if _count_remote_pose_replicas() == expected_count:
+			return true
+		await get_tree().process_frame
+	return false
+
+
+func _count_remote_pose_replicas() -> int:
+	if _world == null or not is_instance_valid(_world):
+		return 0
+	if not multiplayer.has_multiplayer_peer() or multiplayer.multiplayer_peer == null:
+		return 0
+	if multiplayer.multiplayer_peer.get_connection_status() != MultiplayerPeer.CONNECTION_CONNECTED:
+		return 0
+	var local_peer_id := multiplayer.get_unique_id()
+	var count := 0
+	for child in _world.get_children():
+		var peer_id_text := str(child.name)
+		if not peer_id_text.is_valid_int() or int(peer_id_text) == local_peer_id:
+			continue
+		if bool(child.get("_has_received_network_pose")):
+			count += 1
+	return count
 
 
 func _count_visible_remote_avatars() -> int:

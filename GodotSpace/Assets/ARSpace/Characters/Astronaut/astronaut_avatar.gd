@@ -10,7 +10,10 @@ const TRACKING_BLEND_SECONDS: float = 0.25
 const POSE_SMOOTH_SPEED: float = 14.0
 const BODY_ANCHOR_SMOOTH_SPEED: float = 10.0
 const BODY_ANCHOR_SNAP_DISTANCE_M: float = 0.5
-const UNITY_PREFAB_DISABLED_MESHES: Array[StringName] = [&"DETAIL", &"PANT", &"STRIP"]
+const FULL_BODY_MESHES: Array[StringName] = [
+	&"Basemesh", &"TORSO", &"HELMET_GLASS", &"HELMET",
+	&"GLOVES", &"PANT", &"DETAIL", &"STRIP",
+]
 const LOCAL_HIDDEN_MESHES: Array[StringName] = [&"HELMET", &"HELMET_GLASS", &"Basemesh"]
 const UNITY_MATERIAL_OVERRIDES: Dictionary = {
 	&"Basemesh": preload("res://Assets/ARSpace/Characters/Astronaut/Materials/basemesh.tres"),
@@ -18,6 +21,9 @@ const UNITY_MATERIAL_OVERRIDES: Dictionary = {
 	&"HELMET_GLASS": preload("res://Assets/ARSpace/Characters/Astronaut/Materials/helmet_glass.tres"),
 	&"HELMET": preload("res://Assets/ARSpace/Characters/Astronaut/Materials/helmet.tres"),
 	&"GLOVES": preload("res://Assets/ARSpace/Characters/Astronaut/Materials/gloves.tres"),
+	&"PANT": preload("res://Assets/ARSpace/Characters/Astronaut/Materials/pant.tres"),
+	&"DETAIL": preload("res://Assets/ARSpace/Characters/Astronaut/Materials/detail.tres"),
+	&"STRIP": preload("res://Assets/ARSpace/Characters/Astronaut/Materials/strip.tres"),
 }
 
 const REQUIRED_BONES: Array[StringName] = [
@@ -56,7 +62,7 @@ func _ready() -> void:
 	_body_floor_local_y = position.y
 	_model_root = get_node_or_null(model_root_path) as Node3D
 	_bind_skeleton()
-	_apply_source_prefab_visibility()
+	_apply_full_body_visibility()
 	_apply_source_materials()
 	_apply_local_visibility()
 
@@ -425,13 +431,13 @@ func _apply_local_visibility() -> void:
 		if mesh != null:
 			mesh.visible = not _local_presentation
 
-func _apply_source_prefab_visibility() -> void:
+func _apply_full_body_visibility() -> void:
 	if _model_root == null:
 		return
-	for mesh_name in UNITY_PREFAB_DISABLED_MESHES:
+	for mesh_name in FULL_BODY_MESHES:
 		var mesh := _model_root.find_child(mesh_name, true, false) as MeshInstance3D
 		if mesh != null:
-			mesh.visible = false
+			mesh.visible = true
 
 func _apply_source_materials() -> void:
 	if _model_root == null:

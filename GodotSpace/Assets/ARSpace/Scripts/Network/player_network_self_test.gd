@@ -158,9 +158,18 @@ func _check_server_pose_broadcast(server_branch: Node, client_branch: Node) -> v
 	var right_hand := Transform3D(Basis.IDENTITY, Vector3(-0.75, 1.3, 1.8))
 	server_player.set_process(false)
 	server_player.call("_broadcast_pose_to_clients", 1000001, head, left_hand, right_hand)
-	_check(await _wait_for_head_position(client_view, head.origin), "client should display the server pose")
+	_check(
+		await _wait_for_head_position(client_view, head.origin, false),
+		"client should receive the PC Ground spectator pose"
+	)
 	var network_head := client_view.get_node_or_null("NetworkHead") as Node3D
 	_check(network_head != null and network_head.global_position.is_equal_approx(head.origin), "server pose should retain shared-space position")
+	var astronaut_avatar := client_view.get_node_or_null("AstronautAvatar") as Node3D
+	_check(
+		network_head != null and not network_head.visible \
+			and astronaut_avatar != null and not astronaut_avatar.visible,
+		"client must not render the PC Ground spectator camera as an astronaut"
+	)
 
 func _check_client_pose_relay(client_branch: Node, server_branch: Node, client_id: int) -> void:
 	var client_player := client_branch.get_node_or_null(str(client_id))
@@ -214,11 +223,15 @@ func _check_spoofed_pose_rejected(attacker_branch: Node, server_branch: Node, vi
 	var network_head := server_view.get_node_or_null("NetworkHead") as Node3D
 	_check(network_head != null and not network_head.global_position.is_equal_approx(spoofed_head.origin), "server must reject a pose sent for another peer's player node")
 
-func _wait_for_head_position(player: Node, expected_position: Vector3) -> bool:
+func _wait_for_head_position(
+	player: Node,
+	expected_position: Vector3,
+	require_visible: bool = true
+) -> bool:
 	for _frame in range(REPLICATION_TIMEOUT_FRAMES):
 		var network_head := player.get_node_or_null("NetworkHead") as Node3D
 		if network_head != null \
-			and network_head.visible \
+			and (network_head.visible or not require_visible) \
 			and network_head.global_position.is_equal_approx(expected_position):
 			return true
 		await get_tree().process_frame

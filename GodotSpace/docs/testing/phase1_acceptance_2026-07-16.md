@@ -73,7 +73,7 @@
 
 ### 2026-07-23 首次 PICO 反馈修复
 
-首次 PICO Streaming 运行暴露出航天员上半身严重畸变和射线完全不可用。运行时量化确认 `Spine2TMP` 骨骼 basis 因 FBX 单位换算被放大到约 `7.7`；修复后各轴长度和 determinant 恢复为约 `1`。同时按 Unity VRIK prefab 关闭 `DETAIL/PANT/STRIP`，为五个启用网格绑定显式 Unity 对齐材质，保留约 `1.798 m` 的 rest bone 世界高度。
+首次 PICO Streaming 运行暴露出航天员上半身严重畸变和射线完全不可用。运行时量化确认 `Spine2TMP` 骨骼 basis 因 FBX 单位换算被放大到约 `7.7`；修复后各轴长度和 determinant 恢复为约 `1`。当时按 Unity 半身 VRIK prefab 关闭 `DETAIL/PANT/STRIP`，并先为其余五个网格绑定显式 Unity 对齐材质，保留约 `1.798 m` 的 rest bone 世界高度；后续 PC 视角真机反馈证明该半身显隐合同不适用于远端完整人物，现已由下述 8 网格合同取代。
 
 射线侧将“用户请求模式”和“当前 tracking 回退模式”分离，避免 PICO 首帧无 tracking 后永久停在 gaze；原装饰性 HeadGazeLaser 已替换为相机锚定的真实 FunctionPointer，并以 `trigger` float 的 `0.65/0.45` 迟滞阈值驱动点击。`PlayerPresenceSelfTest` 现会实际射中 `XRToolsViewport2DIn3D` 并精确触发一次 SubViewport Button。Astronaut 允许请求窗口打开、关闭、聚焦、显隐和最大化，但仍不能取得租约或修改空间 transform/尺寸/吸附。
 
@@ -86,6 +86,10 @@
 第二轮截图中航天员白/黑/红表面形成贯穿场景的长三角。其外观容易被判断为材质错误，但探针确认材质和 Unity prefab 可见性合同不变，真正根因是髋/脊柱停在舞台原点、头/手骨骼使用 HMD 世界位姿，导致同一蒙皮被相距数米的骨骼撕裂。HMD 水平偏移约 3 m 时，旧版 TORSO 世界深度由约 `0.51 m` 扩张到 `3.51 m`；让 Avatar 根节点跟随 HMD 地面投影后恢复到约 `0.51 m`。
 
 本次让完整身体根节点随 HMD 的共享地面投影和水平朝向移动，并对超过 `0.5 m` 的重定中位移首帧跟随；导入模型增加 Unity `+Z` 到 Godot `-Z` 的 180° Y 轴转换，头/手/躯干旋转保留 FBX rest basis，双臂改为世界空间求解后再转换回骨架。自动门禁新增命名左右骨骼身体侧、左右手目标不交叉、逐骨正交、数米房间尺度移动、重定中首帧人体边界与五个精确材质资源路径检查。定制版和 Godot 4.4 stable 的 `PlayerPresenceSelfTest` 均通过，稳定版离屏渲染无长三角；完整 `run_phase1_validation.ps1` 再次输出 `PHASE1_VALIDATION PASS`（60.9 秒）。PICO 复选框继续保持未勾选，等待当前提交重启进程后的真机复测。
+
+地面 VR 随后还确认 PC Server 的观察相机被错误显示为航天员。现将 PC Ground 固定为无形观察/操作端：网络仍复制它的相机位姿，但客户端永远隐藏该 peer 的四个网络代理根节点和 `AstronautAvatar`；Ground VR 与 Astronaut 仍显示 XR 人物。`PlayerPresenceSelfTest` 覆盖三角色可见性，`PlayerNetworkSelfTest` 通过真实 ENet 断言 Client 收到 PC 位姿但不渲染人物。
+
+PC 观察地面 VR 的下一张截图显示模型已不再爆炸，但缺少裤装、双腿和外部细节。源资产复核确认完整 `china_rig.prefab` 启用全部 8 个网格，而半身 `china_rig_VRIK.prefab` 才关闭 `PANT/DETAIL/STRIP`。为满足第一阶段“远端完整航天员”合同，Godot 现启用全部 8 个网格，并为恢复的三项分别绑定源底色、metallic-gloss 和法线贴图。自动测试要求远端三项可见并核对 8 个精确材质路径；Godot 4.4 stable 离屏渲染已得到带裤装、双腿和细节的完整人体。角色测试、真实 ENet、三种多进程连接顺序/重连均通过，最终完整 `run_phase1_validation.ps1` 输出 `PHASE1_VALIDATION PASS`（62.0 秒）。
 
 ## 任务 1.7 证据矩阵
 

@@ -59,6 +59,26 @@ func _run() -> void:
 	var head := Transform3D(Basis.IDENTITY, Vector3(1.0, 1.7, -2.0))
 	var left_hand := Transform3D(Basis.IDENTITY, Vector3(0.7, 1.3, -2.2))
 	var right_hand := Transform3D(Basis.IDENTITY, Vector3(1.3, 1.3, -2.2))
+	_check(
+		bool(ground_player.call("_accept_remote_pose", 1, head, left_hand, right_hand)),
+		"PC Ground camera pose should remain valid network state"
+	)
+	var pc_avatar := ground_player.get_node_or_null("AstronautAvatar") as Node3D
+	var pc_network_head := ground_player.get_node_or_null("NetworkHead") as Node3D
+	_check(
+		pc_avatar != null and not pc_avatar.visible \
+			and pc_network_head != null and not pc_network_head.visible,
+		"PC Ground must remain an invisible spectator on every remote endpoint"
+	)
+	_check(
+		bool(ground_vr_player.call("_accept_remote_pose", 1, head, left_hand, right_hand)),
+		"Ground VR pose should remain valid network state"
+	)
+	var ground_vr_avatar := ground_vr_player.get_node_or_null("AstronautAvatar") as Node3D
+	_check(
+		ground_vr_avatar != null and ground_vr_avatar.visible,
+		"Ground VR should retain its embodied XR avatar"
+	)
 	_check(bool(astronaut_player.call("_is_valid_pose_transform", head)), "finite unit pose should be accepted")
 	var invalid_pose := Transform3D(Basis.IDENTITY, Vector3(2000.0, 0.0, 0.0))
 	_check(not bool(astronaut_player.call("_is_valid_pose_transform", invalid_pose)), "out-of-range pose should be rejected")
@@ -96,6 +116,15 @@ func _run() -> void:
 	)
 	var network_head := astronaut_player.get_node_or_null("NetworkHead") as Node3D
 	_check(network_head != null and network_head.visible, "accepted pose should reveal remote avatar")
+	var remote_imported_model := astronaut_player.get_node_or_null("AstronautAvatar/ImportedModel")
+	for full_body_mesh_name in ["PANT", "DETAIL", "STRIP"]:
+		var full_body_mesh: MeshInstance3D = null
+		if remote_imported_model != null:
+			full_body_mesh = remote_imported_model.find_child(full_body_mesh_name, true, false) as MeshInstance3D
+		_check(
+			full_body_mesh != null and full_body_mesh.visible,
+			"remote astronaut should render the complete lower-body/detail mesh: %s" % full_body_mesh_name
+		)
 	var expected_global_head := shared_origin.global_transform * head.origin
 	_check(network_head != null and network_head.global_position.is_equal_approx(expected_global_head), "shared-space pose should respect a transformed SharedSpaceOrigin")
 
@@ -186,18 +215,15 @@ func _check_player_scene_contract(player: Node) -> void:
 			_check_avatar_pose_integrity(player, avatar, skeleton)
 		var imported_model := avatar.get_node_or_null("ImportedModel")
 		if imported_model != null:
-			for disabled_mesh_name in ["DETAIL", "PANT", "STRIP"]:
-				var disabled_mesh := imported_model.find_child(disabled_mesh_name, true, false) as MeshInstance3D
-				_check(
-					disabled_mesh != null and not disabled_mesh.visible,
-					"astronaut should match Unity prefab disabled mesh: %s" % disabled_mesh_name
-				)
 			var expected_materials := {
 				"Basemesh": "res://Assets/ARSpace/Characters/Astronaut/Materials/basemesh.tres",
 				"TORSO": "res://Assets/ARSpace/Characters/Astronaut/Materials/torso.tres",
 				"HELMET_GLASS": "res://Assets/ARSpace/Characters/Astronaut/Materials/helmet_glass.tres",
 				"HELMET": "res://Assets/ARSpace/Characters/Astronaut/Materials/helmet.tres",
 				"GLOVES": "res://Assets/ARSpace/Characters/Astronaut/Materials/gloves.tres",
+				"PANT": "res://Assets/ARSpace/Characters/Astronaut/Materials/pant.tres",
+				"DETAIL": "res://Assets/ARSpace/Characters/Astronaut/Materials/detail.tres",
+				"STRIP": "res://Assets/ARSpace/Characters/Astronaut/Materials/strip.tres",
 			}
 			for enabled_mesh_name: String in expected_materials:
 				var enabled_mesh := imported_model.find_child(enabled_mesh_name, true, false) as MeshInstance3D
