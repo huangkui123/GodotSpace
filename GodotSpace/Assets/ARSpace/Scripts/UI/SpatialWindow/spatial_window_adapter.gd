@@ -15,6 +15,8 @@ const MODE_SNAPPED := "snapped"
 const MODE_CLOSED := "closed"
 const PointerEvent = preload("res://addons/godot-xr-tools/events/pointer_event.gd")
 const INTERACTOR_PATH := NodePath("/root/SpatialWindowInteractorService")
+const GRIP_PRESS_THRESHOLD := 0.65
+const GRIP_RELEASE_THRESHOLD := 0.45
 
 @export var window_id: String = ""
 @export var window_type: String = "generic"
@@ -58,7 +60,9 @@ var _is_focused: bool = false
 var _local_interaction_active: bool = false
 var _focus_visual: Node3D
 var _interaction_pointer: Node3D
+var _hover_pointer: Node3D
 var _pointer_interaction_kind: String = ""
+var _grip_interaction_active: bool = false
 var _last_pointer_position := Vector3.ZERO
 var _mouse_depth_axis: float = 0.0
 var _desktop_pointer: Node3D
@@ -109,6 +113,7 @@ func _process(_delta: float) -> void:
 	_resolve_content()
 	_sync_content_visibility()
 	_capture_legacy_renderer_drag()
+	_update_grip_interaction()
 	_update_pointer_interaction(_delta)
 
 
@@ -227,10 +232,9 @@ func request_operation(operation: String, payload: Dictionary = {}) -> bool:
 
 
 func get_state() -> Dictionary:
-	if _registry != null and _registry.has_method("get_window_state"):
-		var value = _registry.call("get_window_state", window_id)
-		if value is Dictionary and not (value as Dictionary).is_empty():
-			return (value as Dictionary).duplicate(true)
+	var registered_state := _get_registered_state()
+	if not registered_state.is_empty():
+		return registered_state
 	return _build_descriptor()
 
 
@@ -408,16 +412,19 @@ func _unbind_registry() -> void:
 
 
 func _register_with_registry() -> void:
+	_register_with_registry_for_authority(_is_local_server_authority())
+
+func _register_with_registry_for_authority(has_server_authority: bool) -> void:
 	if _registry == null or not _registry.has_method("register_window"):
 		return
 	# A late-joining Client may receive the absolute snapshot before ARSpace and
 	# its adapters enter the tree. Consume that replica immediately and never
 	# attempt client-side registration.
-	var state := get_state()
+	var state := _get_registered_state()
 	if not state.is_empty():
 		apply_window_state(state)
 		return
-	if not _is_local_server_authority():
+	if not has_server_authority:
 		return
 	_registered = bool(_registry.call("register_window", _build_descriptor()))
 	if not _registered:
@@ -427,6 +434,14 @@ func _register_with_registry() -> void:
 		apply_window_state(state)
 	if not starts_visible:
 		request_visibility(false)
+
+func _get_registered_state() -> Dictionary:
+	if _registry == null or not _registry.has_method("get_window_state"):
+		return {}
+	var value = _registry.call("get_window_state", window_id)
+	if value is Dictionary and not (value as Dictionary).is_empty():
+		return (value as Dictionary).duplicate(true)
+	return {}
 
 
 func _build_descriptor() -> Dictionary:
@@ -480,7 +495,9 @@ func _on_registry_operation_completed(result: Dictionary) -> void:
 	if bool(result.get("accepted", false)) or str(result.get("window_id", "")) != window_id:
 		return
 	var operation := str(result.get("operation", ""))
+	var reason := str(result.get("error", "operation_rejected"))
 	if operation not in ["acquire_lease", "transform_commit", "resize_commit", "snap"]:
+		interaction_rejected.emit(window_id, reason)
 		return
 	if _window != null and _window.has_method("_stop_dragging"):
 		_window.call("_stop_dragging")
@@ -489,7 +506,7 @@ func _on_registry_operation_completed(result: Dictionary) -> void:
 	var authoritative := get_state()
 	if not authoritative.is_empty():
 		apply_window_state(authoritative)
-	interaction_rejected.emit(window_id, str(result.get("error", "operation_rejected")))
+	interaction_rejected.emit(window_id, reason)
 
 
 func _on_window_pointer_event(event) -> void:
@@ -497,7 +514,13 @@ func _on_window_pointer_event(event) -> void:
 		return
 	var event_type := int(event.event_type)
 	_last_pointer_position = event.position
+	if event_type != PointerEvent.Type.EXITED:
+		_hover_pointer = event.pointer
+	elif _hover_pointer == event.pointer:
+		_hover_pointer = null
 	if event_type == PointerEvent.Type.PRESSED:
+		if _grip_interaction_active:
+			return
 		_interactor.call("focus_window", self)
 		var viewport_position: Vector2 = _get_viewport_position(event.position)
 		var viewport_size: Vector2 = _get_viewport_size()
@@ -521,9 +544,57 @@ func _on_window_pointer_event(event) -> void:
 			_interaction_pointer = event.pointer
 			_lock_pointer_target(_interaction_pointer, true)
 	elif event_type == PointerEvent.Type.RELEASED:
-		_finish_pointer_interaction(true)
+		if not _grip_interaction_active:
+			_finish_pointer_interaction(true)
 	elif event_type == PointerEvent.Type.EXITED and _interaction_pointer == event.pointer:
 		_finish_pointer_interaction(false)
+
+func _update_grip_interaction() -> void:
+	var pointer := _interaction_pointer if _grip_interaction_active else _hover_pointer
+	if pointer == null or not is_instance_valid(pointer):
+		if _grip_interaction_active:
+			_finish_pointer_interaction(false)
+		return
+	var grip_value := _get_pointer_grip_value(pointer)
+	if not _grip_interaction_active and grip_value >= GRIP_PRESS_THRESHOLD:
+		_begin_grip_pointer_interaction(pointer, _last_pointer_position)
+	elif _grip_interaction_active and grip_value <= GRIP_RELEASE_THRESHOLD:
+		_finish_pointer_interaction(true)
+
+func _begin_grip_pointer_interaction(pointer: Node3D, hit_position: Vector3) -> bool:
+	if _interactor == null or pointer == null or not is_instance_valid(pointer):
+		return false
+	var distance := pointer.global_position.distance_to(hit_position)
+	var hand := _get_pointer_hand(pointer)
+	var started := false
+	if distance <= 0.3:
+		started = bool(_interactor.call(
+			"begin_near_title_drag",
+			self,
+			pointer.global_transform,
+			hand
+		))
+		_pointer_interaction_kind = "near"
+	else:
+		var ray_direction := (hit_position - pointer.global_position).normalized()
+		if ray_direction.length_squared() <= 0.000001:
+			return false
+		started = bool(_interactor.call(
+			"begin_far_ray_drag",
+			self,
+			pointer.global_position,
+			ray_direction,
+			distance,
+			hand
+		))
+		_pointer_interaction_kind = "far"
+	if not started:
+		_pointer_interaction_kind = ""
+		return false
+	_grip_interaction_active = true
+	_interaction_pointer = pointer
+	_lock_pointer_target(pointer, true)
+	return true
 
 
 func _update_pointer_interaction(delta: float) -> void:
@@ -555,6 +626,7 @@ func _finish_pointer_interaction(commit: bool) -> void:
 	_lock_pointer_target(_interaction_pointer, false)
 	_interaction_pointer = null
 	_pointer_interaction_kind = ""
+	_grip_interaction_active = false
 	_mouse_depth_axis = 0.0
 
 
@@ -718,6 +790,19 @@ func _get_pointer_depth_axis(pointer: Node3D) -> float:
 			var axis = current.call("get_vector2", &"primary")
 			if axis is Vector2:
 				return (axis as Vector2).y
+		current = current.get_parent()
+	return 0.0
+
+func _get_pointer_grip_value(pointer: Node3D) -> float:
+	var current: Node = pointer
+	while current != null:
+		if current.has_method("get_float") and current.has_method("is_button_pressed"):
+			if bool(current.call("is_button_pressed", &"grip_click")):
+				return 1.0
+			var value = current.call("get_float", &"grip")
+			if value is float or value is int:
+				var numeric_value := float(value)
+				return clampf(numeric_value, 0.0, 1.0) if is_finite(numeric_value) else 0.0
 		current = current.get_parent()
 	return 0.0
 

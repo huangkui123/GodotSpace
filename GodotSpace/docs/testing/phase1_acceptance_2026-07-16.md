@@ -93,6 +93,14 @@ PC 观察地面 VR 的下一张截图显示模型已不再爆炸，但缺少裤�
 
 后续真机观察仍认为航天服整体复刻与手部姿态不可接受，因此当前验收基线已回退为虚拟头/手/躯干代理。两个 XR 角色的远端代理必须显示头球、朝向标记、双手球、胶囊躯干和标签；PC Ground 仍不可见；导入航天服必须隐藏且停止处理。该回退保留网络头手位姿与射线交互，但不再把全身 IK、身高/手臂适配和可见手势动画记作完成，第一阶段对应真机项仍待后续重做与签字。定向玩家测试通过；随后运行 `run_phase1_validation.ps1 -SkipRuntimeSmoke`，54.2 秒输出 `PHASE1_VALIDATION PASS`。启动冒烟本轮未重复执行，因为用户正在运行的手工 PC Server 占用正式 UDP 42069；没有为测试终止该进程。
 
+### 2026-07-23 PICO 窗口交互反馈修复
+
+真机反馈中，相册按钮 Trigger 后没有打开窗口、最大化/还原按钮无反应、Grip 无法拖动窗口。三者的共同业务根因是 `SpatialWindowAdapter` 使用会回退到本地默认描述符的 `get_state()` 检查注册状态，使 Server 在 Registry 实际为空时提前返回；7 个业务窗口因此没有注册，相册打开和最大化请求被 Server 拒绝，拖动也无法取得窗口 lease。现已把注册判定改为读取 Registry 的真实状态，并保留迟到 Client 的快照同步。
+
+PICO 输入兼容层现同时读取 `trigger`/`grip` 模拟量和 `trigger_click`/`grip_click` 数字量。Ground VR 射线悬停窗口时，Grip 的按下与释放边沿会进入统一的 `SpatialWindowInteractor`/Server lease 路径，分别开始拖动和提交最终状态；旧式本地拖动继续关闭，避免形成第二条非权威路径。相册打开、最大化等非空间操作遭拒时也会发送 `interaction_rejected`，不再静默失败。角色权限未改变：Ground VR/PC 可空间拖动、缩放和吸附；Astronaut 只允许内容交互及打开、关闭、聚焦、显隐和最大化。
+
+新增自动化覆盖数字 Trigger 触发选择、数字 Grip 状态、Grip 悬停开始/释放提交与目标锁定、Server 缺失注册恢复、非空间操作拒绝可观察性。正式 `ARSpace.tscn` 双进程启动冒烟还会断言 `main_menu`、`picture_browser`、`picture_detail`、`movie_browser`、`movie_detail`、`work_list`、`voice_call` 共 7 个窗口均已注册，并检查主菜单可见、相册初始关闭。真实 loopback ENet、三种独立进程连接顺序/重连和其余第一阶段测试全部通过；完整 `run_phase1_validation.ps1` 退出码为 `0`，62.6 秒输出 `PHASE1_VALIDATION PASS`。真机验收仍需重启当前提交的 PC Server 与 VR Client 后执行，复选框保持未勾选。
+
 ## 任务 1.7 证据矩阵
 
 | 验收项 | 自动化证据 | 当前判定 | 真机仍需确认 |

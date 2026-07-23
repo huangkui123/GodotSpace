@@ -240,6 +240,8 @@
 
 任务 1.7 航天服显示回退记录（2026-07-23）：连续真机反馈确认当前航天服复刻的整体观感和手部姿态不满足验收要求，产品决定暂时退出该模型的主线显示，恢复原有虚拟代理。PC Ground 继续作为无形观察者；Ground VR 与 Astronaut 的远端形象改为角色着色的头球、朝向标记、双手球、胶囊躯干和角色标签。`AstronautAvatar`、迁移资产和 IK 代码保留供后续重做，但运行时强制隐藏并停止处理；原有射线、位姿网络包和代理位置同步不变。自动门禁要求两个 XR 角色的六项代理视觉全部可见、PC 代理不可见、航天服节点隐藏且禁用处理。由于主线不再展示全身 IK 和手势动画，任务 1.4 对应三项重新标为未完成，任务 1.7 真机项继续不勾选。定向 `PlayerPresenceSelfTest`/`PlayerNetworkSelfTest` 通过；完整验证在保留当前手工 PC Server（占用正式 UDP 42069）的前提下使用 `-SkipRuntimeSmoke` 运行，54.2 秒输出 `PHASE1_VALIDATION PASS`。
 
+任务 1.7 第三次 PICO 交互反馈修复记录（2026-07-23）：相册 Trigger、窗口最大化和 Grip 拖动同时失效的共同根因是 `SpatialWindowAdapter` 用带默认描述符回退的 `get_state()` 判断窗口是否已注册，导致 Server 将未注册的 7 个业务窗口误判为已有状态；相册打开和最大化请求因此被拒绝，拖动也无法取得 lease。现改为查询 Registry 的真实注册状态，并保留迟到 Client 快照路径；PICO 输入同时兼容 `trigger`/`grip` 模拟量和 `trigger_click`/`grip_click` 数字量，Ground VR 的 Grip 按下/释放通过统一交互器进入已有的 Server lease 拖动与提交链路，非空间操作拒绝也会显式上报。权限边界未扩大：Ground VR/PC 可空间拖动，Astronaut 仍只允许内容交互及打开、关闭、聚焦、显隐和最大化。自动测试新增数字 Trigger/Grip、Grip 锁定与提交、缺失注册恢复、拒绝可观察性，并在正式 `ARSpace.tscn` 启动冒烟中断言 `main_menu`、图片/视频列表与详情、工作清单、语音通话共 7 个窗口完成注册。完整 `run_phase1_validation.ps1` 退出码为 0，62.6 秒输出 `PHASE1_VALIDATION PASS`；真机项等待重启 PC Server 与 VR Client 后复测，继续不勾选。
+
 ---
 
 ## 4. 第二阶段：跑通 Unity 核心作业与专家协同闭环

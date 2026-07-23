@@ -25,6 +25,8 @@ var _previous_buttons: Dictionary = {}
 var _test_override_enabled: bool = false
 var _test_trigger: float = 0.0
 var _test_grip: float = 0.0
+var _test_trigger_click: bool = false
+var _test_grip_click: bool = false
 var _pointer_select_pressed: bool = false
 var _pressed_pointer: Node = null
 
@@ -48,13 +50,13 @@ func _process(_delta: float) -> void:
 		input_mode_changed.emit(_input_mode)
 		_apply_pointer_mode()
 
-	var left_trigger := _read_axis(_left_controller, &"trigger")
-	var left_grip := _read_axis(_left_controller, &"grip")
-	var right_trigger := _read_axis(_right_controller, &"trigger")
-	var right_grip := _read_axis(_right_controller, &"grip")
+	var left_trigger := _read_action_value(_left_controller, &"trigger", &"trigger_click")
+	var left_grip := _read_action_value(_left_controller, &"grip", &"grip_click")
+	var right_trigger := _read_action_value(_right_controller, &"trigger", &"trigger_click")
+	var right_grip := _read_action_value(_right_controller, &"grip", &"grip_click")
 	if _test_override_enabled:
-		right_trigger = _test_trigger
-		right_grip = _test_grip
+		right_trigger = merge_axis_and_click(_test_trigger, _test_trigger_click)
+		right_grip = merge_axis_and_click(_test_grip, _test_grip_click)
 	_update_pointer_selection(left_trigger, right_trigger)
 
 	var gesture_bits := 0
@@ -100,10 +102,18 @@ func get_input_mode() -> int:
 func get_network_state() -> Dictionary:
 	return _state.duplicate(true)
 
-func set_test_input(trigger_value: float, grip_value: float, enabled: bool = true) -> void:
+func set_test_input(
+	trigger_value: float,
+	grip_value: float,
+	enabled: bool = true,
+	trigger_click: bool = false,
+	grip_click: bool = false
+) -> void:
 	_test_override_enabled = enabled
 	_test_trigger = clampf(trigger_value, 0.0, 1.0)
 	_test_grip = clampf(grip_value, 0.0, 1.0)
+	_test_trigger_click = trigger_click
+	_test_grip_click = grip_click
 
 func get_active_ray_transform() -> Transform3D:
 	match _input_mode:
@@ -178,6 +188,19 @@ func _read_axis(controller: XRController3D, action: StringName) -> float:
 		return 0.0
 	var value := controller.get_float(action)
 	return clampf(value, 0.0, 1.0) if is_finite(value) else 0.0
+
+func _read_action_value(
+	controller: XRController3D,
+	axis_action: StringName,
+	click_action: StringName
+) -> float:
+	return merge_axis_and_click(
+		_read_axis(controller, axis_action),
+		_read_button(controller, click_action)
+	)
+
+func merge_axis_and_click(axis_value: float, click_pressed: bool) -> float:
+	return 1.0 if click_pressed else clampf(axis_value, 0.0, 1.0)
 
 func _read_button(controller: XRController3D, action: StringName) -> bool:
 	return controller != null and _controller_has_tracking(controller) and controller.is_button_pressed(action)

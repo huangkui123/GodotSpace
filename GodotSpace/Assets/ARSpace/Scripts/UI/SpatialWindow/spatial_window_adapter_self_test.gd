@@ -32,6 +32,35 @@ class FakePointer:
 	var target: Node3D
 
 
+class FakeController:
+	extends Node3D
+
+	var tracker: StringName = &"right_hand"
+	var grip_value: float = 0.0
+	var grip_click: bool = false
+
+	func get_float(_action: StringName) -> float:
+		return grip_value
+
+	func is_button_pressed(_action: StringName) -> bool:
+		return grip_click
+
+
+class FakeRegistry:
+	extends Node
+
+	var register_calls: int = 0
+	var state: Dictionary = {}
+
+	func get_window_state(_window_id: String) -> Dictionary:
+		return state.duplicate(true)
+
+	func register_window(descriptor: Dictionary) -> bool:
+		register_calls += 1
+		state = descriptor.duplicate(true)
+		return true
+
+
 class FakeInteractor:
 	extends Node
 
@@ -133,8 +162,10 @@ func _run() -> void:
 	var fake_interactor := FakeInteractor.new()
 	shared_origin.add_child(fake_interactor)
 	adapter._interactor = fake_interactor
+	var fake_controller := FakeController.new()
+	shared_origin.add_child(fake_controller)
 	var pointer := FakePointer.new()
-	shared_origin.add_child(pointer)
+	fake_controller.add_child(pointer)
 	var hit_point := window.global_position
 	pointer.global_position = hit_point + Vector3(0.0, 0.0, 0.2)
 	body.mapped_position = Vector2(300.0, 40.0)
@@ -151,6 +182,26 @@ func _run() -> void:
 	_expect(fake_interactor.last_begin == "resize" and fake_interactor.last_handle == "Left", "Focused edge input must route to the matching one of eight resize handles.")
 	window.emit_signal("pointer_event", PointerEvent.new(PointerEvent.Type.EXITED, pointer, body, hit_point, hit_point))
 	_expect(fake_interactor.last_commit == false, "Pointer exit must cancel an active window manipulation.")
+	fake_interactor.last_begin = ""
+	fake_interactor.last_commit = null
+	body.mapped_position = Vector2(300.0, 250.0)
+	window.emit_signal("pointer_event", PointerEvent.new(PointerEvent.Type.ENTERED, pointer, body, hit_point, hit_point))
+	fake_controller.grip_click = true
+	adapter._update_grip_interaction()
+	_expect(
+		fake_interactor.last_begin == "far" \
+			and adapter._grip_interaction_active \
+			and pointer.target == body,
+		"A digital Grip edge while hovering must start and lock the migrated shared-window drag."
+	)
+	fake_controller.grip_click = false
+	adapter._update_grip_interaction()
+	_expect(
+		fake_interactor.last_commit == true \
+			and not adapter._grip_interaction_active \
+			and pointer.target == null,
+		"Releasing Grip must commit and unlock the migrated shared-window drag."
+	)
 	window.global_position = Vector3(15.0, 0.5, -1.0)
 	adapter._last_legacy_dragging = true
 	state["lease_token"] = "granted_during_drag"
@@ -158,6 +209,37 @@ func _run() -> void:
 	_expect(window.global_position.is_equal_approx(Vector3(15.0, 0.5, -1.0)), "Lease grant snapshots must not snap an actively grabbed legacy window back to its start pose.")
 	_expect(adapter._lease_token == "granted_during_drag", "Active drag must still consume the granted opaque lease token.")
 	adapter._last_legacy_dragging = false
+	var fake_registry := FakeRegistry.new()
+	shared_origin.add_child(fake_registry)
+	adapter._registry = fake_registry
+	adapter._registered = false
+	adapter._register_with_registry_for_authority(true)
+	_expect(
+		fake_registry.register_calls == 1 \
+			and not fake_registry.get_window_state("adapter_test").is_empty(),
+		"An authoritative adapter must register when the Registry has no state instead of mistaking its local descriptor for a snapshot."
+	)
+	adapter._register_with_registry_for_authority(true)
+	_expect(
+		fake_registry.register_calls == 1,
+		"An already registered adapter must consume Registry state without duplicate registration."
+	)
+	var rejection := {"count": 0, "reason": ""}
+	adapter.interaction_rejected.connect(func(_window_id: String, reason: String) -> void:
+		rejection["count"] = int(rejection["count"]) + 1
+		rejection["reason"] = reason
+	)
+	adapter._on_registry_operation_completed({
+		"accepted": false,
+		"window_id": "adapter_test",
+		"operation": "open",
+		"error": "server_registration_required",
+	})
+	_expect(
+		int(rejection["count"]) == 1 \
+			and str(rejection["reason"]) == "server_registration_required",
+		"Open/maximize/visibility failures must be observable instead of being silently discarded."
+	)
 
 	shared_origin.free()
 	_finish()

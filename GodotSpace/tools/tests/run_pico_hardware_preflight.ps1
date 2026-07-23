@@ -111,6 +111,11 @@ $XrInputRouter = Get-Content -Raw -LiteralPath (Join-Path $Project 'Assets\ARSpa
 Assert-Contains $XrInputRouter '_requested_input_mode' 'PICO tracking fallback recovery'
 Assert-Contains $XrInputRouter 'SELECT_PRESS_THRESHOLD: float = 0.65' 'PICO analog trigger press threshold'
 Assert-Contains $XrInputRouter 'SELECT_RELEASE_THRESHOLD: float = 0.45' 'PICO analog trigger release threshold'
+Assert-Contains $XrInputRouter 'merge_axis_and_click' 'PICO digital Trigger/Grip fallback'
+
+$SpatialWindowAdapter = Get-Content -Raw -LiteralPath (Join-Path $Project 'Assets\ARSpace\Scripts\UI\SpatialWindow\spatial_window_adapter.gd')
+Assert-Contains $SpatialWindowAdapter '_get_registered_state' 'Server application-window registration'
+Assert-Contains $SpatialWindowAdapter '_update_grip_interaction' 'Ground VR Grip window manipulation bridge'
 
 $ProjectConfig = Get-Content -Raw -LiteralPath (Join-Path $Project 'project.godot')
 Assert-Contains $ProjectConfig 'openxr/extensions/hand_tracking=true' 'Godot OpenXR hand-tracking settings'

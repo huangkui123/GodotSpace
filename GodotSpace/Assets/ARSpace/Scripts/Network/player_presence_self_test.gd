@@ -323,6 +323,23 @@ func _check_player_scene_contract(player: Node) -> void:
 			not bool(input_router.get("_pointer_select_pressed")),
 			"analog PICO trigger should release pointer below hysteresis threshold"
 		)
+		input_router.call("set_test_input", 0.0, 0.0, true, true, true)
+		input_router.call("_process", 0.0)
+		_check(
+			bool(input_router.get("_pointer_select_pressed")),
+			"digital trigger_click must select when the runtime does not expose an analog trigger value"
+		)
+		_check(
+			bool(input_router.call("is_grip_pressed")),
+			"digital grip_click must drive the same Grip state as the analog squeeze value"
+		)
+		input_router.call("set_test_input", 0.0, 0.0, true, false, false)
+		input_router.call("_process", 0.0)
+		_check(
+			not bool(input_router.get("_pointer_select_pressed")) \
+				and not bool(input_router.call("is_grip_pressed")),
+			"digital Trigger and Grip releases must clear their interaction states"
+		)
 	_check(
 		PoseState.normalize(PoseState.from_actions(7, 2, 0.5, 1.0, 0.25, 0.0, 63)).size() == 7,
 		"pose gesture schema should stay fixed-size and bounded"

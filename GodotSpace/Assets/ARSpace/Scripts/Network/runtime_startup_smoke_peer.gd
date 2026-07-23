@@ -17,6 +17,15 @@ const START_MENU_SCENE := "res://Assets/ARSpace/Scenes/StartMenu.tscn"
 const STAGE_TIMEOUT_MSEC: int = 12000
 const SHUTDOWN_STAGE_TIMEOUT_MSEC: int = 30000
 const SERVER_FINALIZE_DELAY_MSEC: int = 250
+const APPLICATION_WINDOW_IDS: Array[String] = [
+	"main_menu",
+	"picture_browser",
+	"picture_detail",
+	"movie_browser",
+	"movie_detail",
+	"work_list",
+	"voice_call",
+]
 
 var _smoke_role: String = ""
 var _runtime_profile
@@ -240,6 +249,8 @@ func _server_prepare_shutdown_state(client_scene_path: String) -> void:
 
 
 func _create_dirty_shutdown_state() -> bool:
+	if not _assert_application_windows_registered():
+		return false
 	CollaborationState.request_change(
 		CollaborationSchema.DOMAIN_MENU,
 		CollaborationSchema.OP_SET,
@@ -272,6 +283,24 @@ func _create_dirty_shutdown_state() -> bool:
 	if SpatialWindowRegistryService.get_revision() <= 0 \
 			or SpatialWindowRegistryService.get_windows_snapshot().is_empty():
 		_fail("Shutdown Server window registry remained empty.")
+		return false
+	return true
+
+func _assert_application_windows_registered() -> bool:
+	for window_id in APPLICATION_WINDOW_IDS:
+		var state := SpatialWindowRegistryService.get_window_state(window_id)
+		if state.is_empty():
+			_fail("ARSpace did not register application window '%s' on the Server." % window_id)
+			return false
+	var main_menu_state := SpatialWindowRegistryService.get_window_state("main_menu")
+	if str(main_menu_state.get("mode", "")) != "normal" \
+			or not bool(main_menu_state.get("visible", false)):
+		_fail("The main menu did not register as an initially visible NORMAL window.")
+		return false
+	var picture_state := SpatialWindowRegistryService.get_window_state("picture_browser")
+	if str(picture_state.get("mode", "")) != "closed" \
+			or bool(picture_state.get("visible", true)):
+		_fail("The picture browser did not register as an initially closed window.")
 		return false
 	return true
 
