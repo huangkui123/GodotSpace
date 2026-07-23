@@ -99,6 +99,19 @@ func _test_scene_contract() -> void:
 	if spawner_index >= 0:
 		var player_scene = _get_scene_node_property(arspace_state, spawner_index, &"network_player")
 		_expect(player_scene is PackedScene and (player_scene as PackedScene).resource_path.ends_with("/Player.tscn"), "MultiplayerSpawner must use Player.tscn")
+	var ground_anchor_index := _find_scene_node(arspace_state, "SharedSpaceOrigin/GroundVRAnchor")
+	var sky_anchor_index := _find_scene_node(arspace_state, "SharedSpaceOrigin/SkyXRAnchor")
+	if ground_anchor_index >= 0 and sky_anchor_index >= 0:
+		var ground_anchor_transform = _get_scene_node_property(arspace_state, ground_anchor_index, &"transform")
+		var sky_anchor_transform = _get_scene_node_property(arspace_state, sky_anchor_index, &"transform")
+		_expect(
+			ground_anchor_transform is Transform3D \
+				and sky_anchor_transform is Transform3D \
+				and (ground_anchor_transform as Transform3D).basis.is_equal_approx(
+					(sky_anchor_transform as Transform3D).basis
+				),
+			"Ground VR and Sky XR anchors must use the same initial orientation"
+		)
 
 	var system_text := _read_text("res://Assets/ARSpace/Scenes/VirtualAnnotationSystem.tscn")
 	for child_name in ["Manager", "SurfaceBuilder", "Interaction"]:

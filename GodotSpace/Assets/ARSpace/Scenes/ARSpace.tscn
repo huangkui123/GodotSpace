@@ -305,6 +305,7 @@ subUI = NodePath("UI/SubViewportContainer/SubViewport/Camera3D")
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -0.155226, 0, 0.436745)
 
 [node name="SkyXRAnchor" type="Node3D" parent="SharedSpaceOrigin"]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, 0, 0)
 
 [node name="AstronautViewAnchor" type="Node3D" parent="SharedSpaceOrigin"]
 position = Vector3(0, 1.35, -1.5)
