@@ -333,26 +333,24 @@ func _get_remote_client_view_node() -> Node3D:
 	if not multiplayer.has_multiplayer_peer() or not multiplayer.is_server():
 		return null
 
-	for peer_id in _get_remote_client_peer_ids():
-		var player := get_node_or_null(str(peer_id))
-		if player == null:
-			continue
+	var sky_peer_id := _get_sky_peer_id()
+	if sky_peer_id <= 0:
+		return null
+	var player := get_node_or_null(str(sky_peer_id))
+	if player == null:
+		return null
 
-		var network_head := player.get_node_or_null("NetworkHead") as Node3D
-		if network_head != null and network_head.visible:
-			return network_head
+	var network_head := player.get_node_or_null("NetworkHead") as Node3D
+	if network_head != null and network_head.visible:
+		return network_head
 
-		var camera := player.get_node_or_null("XROrigin3D/XRCamera3D") as Camera3D
-		if camera != null and camera.visible:
-			return camera
+	var camera := player.get_node_or_null("XROrigin3D/XRCamera3D") as Camera3D
+	if camera != null and camera.visible:
+		return camera
 
 	return null
 
-func _get_remote_client_peer_ids() -> Array:
-	var ids := []
-	for peer_id in multiplayer.get_peers():
-		var id := int(peer_id)
-		if id != _get_local_player_id():
-			ids.append(id)
-	ids.sort()
-	return ids
+func _get_sky_peer_id() -> int:
+	if NetworkHandler != null and NetworkHandler.has_method("get_sky_peer_id"):
+		return int(NetworkHandler.call("get_sky_peer_id"))
+	return 0

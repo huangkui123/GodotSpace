@@ -39,6 +39,7 @@ function Start-CollaborationPeer {
             'server' { '--testmode' }
             'ground_client' { '--ground-vr-client' }
             'sky_client' { '--testmode' }
+            'sky_candidate' { '--testmode' }
             default { throw "Unknown collaboration peer role: $PeerRole" }
         }
         $Lines = & $GodotPath --headless --path $ProjectPath $ScenePath -- `
@@ -60,6 +61,8 @@ try {
     $Jobs += Start-CollaborationPeer -Role 'ground_client' -VoiceRole 'client'
     Start-Sleep -Milliseconds 1250
     $Jobs += Start-CollaborationPeer -Role 'sky_client' -VoiceRole 'client'
+    Start-Sleep -Milliseconds 750
+    $Jobs += Start-CollaborationPeer -Role 'sky_candidate' -VoiceRole 'client'
 
     $null = Wait-Job -Job $Jobs -Timeout 60
     $Results = @()
@@ -76,6 +79,10 @@ try {
 		Write-Host $Result.Output
 		if ([int]$Result.ExitCode -ne 0) {
 			$FailedRoles += "$($Result.Role)($($Result.ExitCode))"
+		}
+		$ExpectedSentinel = "COLLABORATION_MULTIPROCESS_$($Result.Role.ToUpper()) PASS"
+		if (-not $Result.Output.Contains($ExpectedSentinel)) {
+			$FailedRoles += "$($Result.Role)(missing PASS sentinel)"
 		}
 		if ($Result.Output.Contains('previously freed')) {
 			$FailedRoles += "$($Result.Role)(stale XR Tools reference)"

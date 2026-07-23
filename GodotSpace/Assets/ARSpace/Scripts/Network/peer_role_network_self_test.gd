@@ -11,6 +11,7 @@ var _failures: Array[String] = []
 var _branches: Array[Node] = []
 var _peers: Array[ENetMultiplayerPeer] = []
 var _previous_token: String = ""
+var _rejections: Array[Dictionary] = []
 
 
 func _initialize() -> void:
@@ -45,29 +46,54 @@ func _run() -> void:
 	)
 
 	var second_client_peer := ENetMultiplayerPeer.new()
-	_expect(second_client_peer.create_client("127.0.0.1", port, 3) == OK, "Second role client should start connecting.")
-	var second_client_branch := _create_branch("RoleClientTwo", second_client_peer)
-	_expect(await _wait_for_connection(second_client_peer), "Second role client should connect.")
+	_expect(second_client_peer.create_client("127.0.0.1", port, 3) == OK, "Sky client should start connecting.")
+	var second_client_branch := _create_branch("RoleSkyClient", second_client_peer)
+	_expect(await _wait_for_connection(second_client_peer), "Sky client should connect.")
 	var second_handler := _add_role_handler(second_client_branch)
 	var second_id := second_client_peer.get_unique_id()
-	second_handler.rpc_id(1, "_server_request_session_role", ROLE_GROUND_VR, "")
+	second_handler.rpc_id(1, "_server_request_session_role", ROLE_SKY, "")
 	_expect(
 		await _wait_for_role(server_handler, second_id, ROLE_SKY),
-		"Server should keep a competing Ground VR claimant in the Sky role."
+		"Server should assign the first valid Sky request."
 	)
 	_expect(
 		await _wait_for_role(second_handler, second_id, ROLE_SKY),
-		"Rejected Ground VR claimant should receive the Sky assignment."
+		"Sky client should receive its authoritative role snapshot."
 	)
 	_expect(bool(server_handler.call("can_peer_annotate", first_id)), "Assigned Ground VR should annotate on the Server.")
-	_expect(not bool(server_handler.call("can_peer_annotate", second_id)), "Competing claimant should not annotate on the Server.")
+	_expect(not bool(server_handler.call("can_peer_annotate", second_id)), "Sky should not annotate on the Server.")
+	_expect(int(server_handler.call("get_sky_peer_id")) == second_id, "Server should expose the unique Sky peer id.")
 
 	second_handler.rpc_id(1, "_server_request_session_role", ROLE_GROUND_VR, "")
 	for _frame in range(10):
 		await process_frame
 	_expect(
 		str(server_handler.call("get_peer_role", second_id)) == ROLE_SKY,
-		"A repeated role request must not change the Server assignment."
+		"A resolved Sky peer must not change roles with a later request."
+	)
+
+	var candidate_peer := ENetMultiplayerPeer.new()
+	_expect(candidate_peer.create_client("127.0.0.1", port, 3) == OK, "Second Sky candidate should start connecting.")
+	var candidate_branch := _create_branch("RoleSkyCandidate", candidate_peer)
+	_expect(await _wait_for_connection(candidate_peer), "Second Sky candidate should connect for role admission.")
+	var candidate_handler := _add_role_handler(candidate_branch)
+	var candidate_id := candidate_peer.get_unique_id()
+	candidate_handler.rpc_id(1, "_server_request_session_role", ROLE_SKY, "")
+	_expect(
+		await _wait_for_rejection(candidate_id, "sky_slot_occupied", "RoleSkyCandidate"),
+		"Second Sky candidate should receive the explicit sky_slot_occupied rejection."
+	)
+	_expect(
+		await _wait_for_disconnection(candidate_peer),
+		"Rejected Sky candidate should be disconnected by the Server."
+	)
+	_expect(
+		str(server_handler.call("get_peer_role", candidate_id)) == "unknown",
+		"Rejected Sky candidate must never enter the role registry."
+	)
+	_expect(
+		int(server_handler.call("get_sky_peer_id")) == second_id,
+		"Rejecting a second Sky must not disturb the existing Sky slot."
 	)
 
 	first_client_peer.close()
@@ -96,7 +122,7 @@ func _run() -> void:
 
 func _start_loopback_server(peer: ENetMultiplayerPeer) -> int:
 	for port in range(43220, 43240):
-		if peer.create_server(port, 2, 3) == OK:
+		if peer.create_server(port, 3, 3) == OK:
 			return port
 	_expect(false, "Role registry test should bind a loopback port.")
 	return 0
@@ -118,6 +144,15 @@ func _add_role_handler(branch: Node) -> Node:
 	var handler: Node = NETWORK_HANDLER_SCRIPT.new()
 	handler.name = "NetworkHandler"
 	branch.add_child(handler)
+	handler.peer_role_request_rejected.connect(
+		func(peer_id: int, requested_role: String, reason: String):
+			_rejections.append({
+				"handler": handler.get_parent().name,
+				"peer_id": peer_id,
+				"requested_role": requested_role,
+				"reason": reason,
+			})
+	)
 	return handler
 
 
@@ -134,6 +169,25 @@ func _wait_for_connection(peer: ENetMultiplayerPeer) -> bool:
 func _wait_for_role(handler: Node, peer_id: int, expected_role: String) -> bool:
 	for _frame in range(ROLE_TIMEOUT_FRAMES):
 		if str(handler.call("get_peer_role", peer_id)) == expected_role:
+			return true
+		await process_frame
+	return false
+
+
+func _wait_for_rejection(peer_id: int, expected_reason: String, expected_handler: String = "") -> bool:
+	for _frame in range(ROLE_TIMEOUT_FRAMES):
+		for rejection in _rejections:
+			if int(rejection.get("peer_id", 0)) == peer_id \
+					and str(rejection.get("reason", "")) == expected_reason \
+					and (expected_handler.is_empty() or str(rejection.get("handler", "")) == expected_handler):
+				return true
+		await process_frame
+	return false
+
+
+func _wait_for_disconnection(peer: ENetMultiplayerPeer) -> bool:
+	for _frame in range(CONNECT_TIMEOUT_FRAMES):
+		if peer.get_connection_status() == MultiplayerPeer.CONNECTION_DISCONNECTED:
 			return true
 		await process_frame
 	return false

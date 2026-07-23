@@ -1,4 +1,4 @@
-[gd_scene load_steps=105 format=4 uid="uid://ca028g0q2kstx"]
+[gd_scene load_steps=106 format=4 uid="uid://ca028g0q2kstx"]
 
 [ext_resource type="Script" uid="uid://d1pt7mdt5llk4" path="res://XR_Main.gd" id="1_g432p"]
 [ext_resource type="Script" uid="uid://bt6aew4asx754" path="res://Assets/ARSpace/Scenes/SpaceBox.gd" id="2_wjh8v"]
@@ -70,6 +70,7 @@
 [ext_resource type="PackedScene" path="res://Assets/ARSpace/Scenes/voice_call_window_3d.tscn" id="70_voice_call"]
 [ext_resource type="Script" uid="uid://crvnkm0d7eggt" path="res://Assets/ARSpace/Scripts/shared_space_alignment.gd" id="71_shared_alignment"]
 [ext_resource type="PackedScene" path="res://Assets/ARSpace/Scenes/VirtualAnnotationSystem.tscn" id="72_annotation_system"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Scenes/AstronautView/AstronautViewWindow3D.tscn" id="73_astronaut_view"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_m4rif"]
 resource_name = "Default-Skybox"
@@ -304,6 +305,11 @@ subUI = NodePath("UI/SubViewportContainer/SubViewport/Camera3D")
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -0.155226, 0, 0.436745)
 
 [node name="SkyXRAnchor" type="Node3D" parent="SharedSpaceOrigin"]
+
+[node name="AstronautViewAnchor" type="Node3D" parent="SharedSpaceOrigin"]
+position = Vector3(0, 1.35, -1.5)
+
+[node name="AstronautViewWindow3D" parent="SharedSpaceOrigin/AstronautViewAnchor" instance=ExtResource("73_astronaut_view")]
 
 [node name="VirtualAnnotations" parent="SharedSpaceOrigin" instance=ExtResource("72_annotation_system")]
 

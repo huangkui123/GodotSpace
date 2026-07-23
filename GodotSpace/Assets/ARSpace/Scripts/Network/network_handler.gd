@@ -13,6 +13,7 @@ const ROLE_PC_GROUND: String = "pc_ground"
 const ROLE_GROUND_VR: String = "ground_vr"
 const ROLE_SKY: String = "sky"
 const GROUND_VR_TOKEN_ENV: String = "GODOTSPACE_GROUND_VR_TOKEN"
+const REJECTED_PEER_DISCONNECT_DELAY_SEC: float = 0.5
 const VALID_SESSION_ROLES: Array[String] = [
 	ROLE_UNKNOWN,
 	ROLE_PC_GROUND,
@@ -39,7 +40,9 @@ var _last_start_error: String = ""
 var _peer_roles: Dictionary = {}
 var _resolved_role_requests: Dictionary = {}
 var _ground_vr_peer_id: int = 0
+var _sky_peer_id: int = 0
 var _peer_role_revision: int = 0
+var _role_rejection_pending: bool = false
 
 
 func _ready() -> void:
@@ -55,10 +58,9 @@ func _on_peer_connected(peer_id: int) -> void:
 	if not multiplayer.is_server() or peer_id <= SERVER_PEER_ID:
 		return
 	_ensure_server_role_registry()
-	# A new peer is safe-by-default. The Server may promote exactly one peer to
-	# Ground VR after processing its request. RPC payloads never determine the
-	# effective role directly.
-	_set_peer_role(peer_id, ROLE_SKY)
+	# Peers remain unregistered until the Server validates their role request.
+	# This prevents a second Sky client from briefly entering the shared scene.
+	_set_peer_role(peer_id, ROLE_UNKNOWN)
 	call_deferred("_send_peer_role_snapshot", peer_id)
 
 
@@ -101,6 +103,7 @@ func start_client(ip: String = IP_ADDRESS) -> bool:
 
 	multiplayer.multiplayer_peer = peer
 	_reset_peer_roles(false)
+	_role_rejection_pending = false
 	_client_session_active = true
 	_returning_to_menu = false
 	network_role_selected.emit(false)
@@ -149,6 +152,8 @@ func _on_connection_failed() -> void:
 
 func _on_server_disconnected() -> void:
 	if not _client_session_active:
+		return
+	if _role_rejection_pending:
 		return
 	push_warning("Ground Server disconnected. Returning to the start menu.")
 	server_connection_lost.emit()
@@ -201,6 +206,10 @@ func get_ground_vr_peer_id() -> int:
 	return _ground_vr_peer_id
 
 
+func get_sky_peer_id() -> int:
+	return _sky_peer_id
+
+
 func is_peer_ground(peer_id: int) -> bool:
 	return get_peer_role(peer_id) in [ROLE_PC_GROUND, ROLE_GROUND_VR]
 
@@ -220,6 +229,7 @@ func _reset_peer_roles(is_server_session: bool) -> void:
 	_peer_roles.clear()
 	_resolved_role_requests.clear()
 	_ground_vr_peer_id = 0
+	_sky_peer_id = 0
 	_peer_role_revision = 0
 	if is_server_session:
 		_peer_roles[SERVER_PEER_ID] = ROLE_PC_GROUND
@@ -275,7 +285,7 @@ func _assign_requested_role(peer_id: int, requested_role: String, pairing_token:
 		return get_peer_role(peer_id)
 
 	var normalized_request := requested_role.strip_edges().to_lower()
-	var assigned_role := ROLE_SKY
+	var assigned_role := ROLE_UNKNOWN
 	var rejection_reason := ""
 	if normalized_request == ROLE_GROUND_VR:
 		if _ground_vr_peer_id > SERVER_PEER_ID and _ground_vr_peer_id != peer_id:
@@ -284,14 +294,62 @@ func _assign_requested_role(peer_id: int, requested_role: String, pairing_token:
 			rejection_reason = "invalid_ground_vr_token"
 		else:
 			assigned_role = ROLE_GROUND_VR
-	elif normalized_request != ROLE_SKY:
+	elif normalized_request == ROLE_SKY:
+		if _sky_peer_id > SERVER_PEER_ID and _sky_peer_id != peer_id:
+			rejection_reason = "sky_slot_occupied"
+		else:
+			assigned_role = ROLE_SKY
+	else:
 		rejection_reason = "unsupported_role_request"
 
 	_resolved_role_requests[peer_id] = true
 	_set_peer_role(peer_id, assigned_role)
 	if not rejection_reason.is_empty():
 		peer_role_request_rejected.emit(peer_id, normalized_request, rejection_reason)
+		if assigned_role == ROLE_UNKNOWN:
+			_notify_hard_role_rejection(peer_id, normalized_request, rejection_reason)
 	return assigned_role
+
+
+func _notify_hard_role_rejection(peer_id: int, requested_role: String, reason: String) -> void:
+	if not multiplayer.is_server() or peer_id not in multiplayer.get_peers():
+		return
+	rpc_id(peer_id, "_client_receive_role_rejection", requested_role, reason)
+	call_deferred("_disconnect_rejected_peer", peer_id)
+
+
+func _disconnect_rejected_peer(peer_id: int) -> void:
+	await get_tree().create_timer(REJECTED_PEER_DISCONNECT_DELAY_SEC).timeout
+	if not multiplayer.is_server() or peer_id not in multiplayer.get_peers():
+		return
+	var multiplayer_peer := multiplayer.multiplayer_peer
+	if multiplayer_peer != null:
+		multiplayer_peer.disconnect_peer(peer_id)
+
+
+@rpc("authority", "call_remote", "reliable", 0)
+func _client_receive_role_rejection(requested_role: String, reason: String) -> void:
+	if multiplayer.is_server() or multiplayer.get_remote_sender_id() != SERVER_PEER_ID:
+		return
+	var local_peer_id := _get_safe_local_peer_id()
+	_role_rejection_pending = true
+	_last_start_error = _format_role_rejection_message(requested_role, reason)
+	peer_role_request_rejected.emit(local_peer_id, requested_role, reason)
+	connection_failed.emit(_last_start_error)
+	if _client_session_active:
+		call_deferred("_return_client_to_start_menu")
+
+
+func _format_role_rejection_message(requested_role: String, reason: String) -> String:
+	match reason:
+		"sky_slot_occupied":
+			return "天上端名额已被占用（sky_slot_occupied），本次连接已拒绝。"
+		"ground_vr_slot_occupied":
+			return "地面 VR 名额已被占用（ground_vr_slot_occupied），本次连接已拒绝。"
+		"invalid_ground_vr_token":
+			return "地面 VR 配对凭据无效（invalid_ground_vr_token），本次连接已拒绝。"
+		_:
+			return "会话角色 %s 被拒绝：%s" % [requested_role, reason]
 
 
 func _is_valid_ground_vr_pairing_token(pairing_token: String) -> bool:
@@ -325,9 +383,17 @@ func _set_peer_role(peer_id: int, assigned_role: String) -> void:
 		return
 	if previous_role == ROLE_GROUND_VR and _ground_vr_peer_id == peer_id:
 		_ground_vr_peer_id = 0
+	if previous_role == ROLE_SKY and _sky_peer_id == peer_id:
+		_sky_peer_id = 0
+	if normalized_role == ROLE_SKY \
+			and _sky_peer_id > SERVER_PEER_ID \
+			and _sky_peer_id != peer_id:
+		normalized_role = ROLE_UNKNOWN
 	_peer_roles[peer_id] = normalized_role
 	if normalized_role == ROLE_GROUND_VR:
 		_ground_vr_peer_id = peer_id
+	elif normalized_role == ROLE_SKY:
+		_sky_peer_id = peer_id
 	_peer_role_revision += 1
 	peer_role_changed.emit(peer_id, normalized_role)
 	if peer_id == _get_safe_local_peer_id():
@@ -340,6 +406,8 @@ func _remove_peer_role(peer_id: int) -> void:
 	var previous_role := get_peer_role(peer_id)
 	if previous_role == ROLE_GROUND_VR and _ground_vr_peer_id == peer_id:
 		_ground_vr_peer_id = 0
+	if previous_role == ROLE_SKY and _sky_peer_id == peer_id:
+		_sky_peer_id = 0
 	_peer_roles.erase(peer_id)
 	_resolved_role_requests.erase(peer_id)
 	_peer_role_revision += 1
@@ -372,10 +440,13 @@ func _client_receive_peer_roles(revision: int, roles: Dictionary) -> void:
 	_peer_roles = roles.duplicate(true)
 	_peer_role_revision = revision
 	_ground_vr_peer_id = 0
+	_sky_peer_id = 0
 	for peer_id_value in _peer_roles:
 		var peer_id := int(peer_id_value)
 		if str(_peer_roles[peer_id_value]) == ROLE_GROUND_VR:
 			_ground_vr_peer_id = peer_id
+		elif str(_peer_roles[peer_id_value]) == ROLE_SKY:
+			_sky_peer_id = peer_id
 	_emit_role_changes(previous_roles, _peer_roles)
 	var local_peer_id := _get_safe_local_peer_id()
 	local_role_assigned.emit(get_peer_role(local_peer_id), can_peer_annotate(local_peer_id))
@@ -385,6 +456,7 @@ func _validate_peer_role_snapshot(roles: Dictionary) -> bool:
 	if str(roles.get(SERVER_PEER_ID, ROLE_UNKNOWN)) != ROLE_PC_GROUND:
 		return false
 	var ground_vr_count := 0
+	var sky_count := 0
 	for peer_id_value in roles:
 		var peer_id := int(peer_id_value)
 		var assigned_role := str(roles[peer_id_value])
@@ -396,7 +468,9 @@ func _validate_peer_role_snapshot(roles: Dictionary) -> bool:
 			return false
 		if assigned_role == ROLE_GROUND_VR:
 			ground_vr_count += 1
-	return ground_vr_count <= 1
+		elif assigned_role == ROLE_SKY:
+			sky_count += 1
+	return ground_vr_count <= 1 and sky_count <= 1
 
 
 func _emit_role_changes(previous_roles: Dictionary, current_roles: Dictionary) -> void:

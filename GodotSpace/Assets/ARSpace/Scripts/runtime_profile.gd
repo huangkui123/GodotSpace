@@ -73,6 +73,9 @@ class Profile extends RefCounted:
 	func uses_passthrough() -> bool:
 		return environment == EnvironmentMode.PASSTHROUGH
 
+	func shows_astronaut_view() -> bool:
+		return is_ground() and uses_xr()
+
 	func can_annotate() -> bool:
 		return is_ground()
 

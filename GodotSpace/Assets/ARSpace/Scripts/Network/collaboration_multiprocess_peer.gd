@@ -20,6 +20,9 @@ var _world: Node3D
 var _peer: ENetMultiplayerPeer
 var _annotation_manager: Node
 var _failures: Array[String] = []
+var _last_rejected_peer_id: int = 0
+var _last_rejection_reason: String = ""
+var _candidate_own_player_seen: bool = false
 
 
 func _ready() -> void:
@@ -49,6 +52,8 @@ func _run() -> void:
 			await _run_ground_client()
 		"sky_client", "late_client":
 			await _run_sky_client()
+		"sky_candidate":
+			await _run_sky_candidate()
 		_:
 			_failures.append("Unknown collaboration process role: %s" % _role)
 	await _finish()
@@ -56,10 +61,14 @@ func _run() -> void:
 
 func _run_server() -> void:
 	_peer = ENetMultiplayerPeer.new()
-	_check(_peer.create_server(_port, 2, 3) == OK, "server should bind port %d" % _port)
+	_check(_peer.create_server(_port, 3, 3) == OK, "server should bind port %d" % _port)
 	if not _failures.is_empty():
 		return
 	multiplayer.multiplayer_peer = _peer
+	var network_handler := _get_network_handler()
+	if network_handler != null \
+			and not network_handler.peer_role_request_rejected.is_connected(_on_role_request_rejected):
+		network_handler.peer_role_request_rejected.connect(_on_role_request_rejected)
 	_world = _create_world("ServerWorld")
 	_check(await _wait_for_player_count(2), "server should observe the Ground VR client")
 	var first_ground_peer_id := await _wait_for_ground_vr_peer()
@@ -77,6 +86,14 @@ func _run_server() -> void:
 	_check(_count_role(ROLE_SKY) == 1, "server should keep exactly one Sky role")
 	_check(await _wait_for_player_roles(), "server player replicas should match the role registry")
 	_check(await _wait_for_remote_avatars(2), "server should receive both remote player poses")
+	var rejected_candidate_id := await _wait_for_sky_candidate_rejection()
+	_check(rejected_candidate_id > 1, "server should explicitly reject the second Sky candidate")
+	_check(
+		rejected_candidate_id <= 1 or _world.get_node_or_null(str(rejected_candidate_id)) == null,
+		"rejected Sky candidate must never receive a production Player node"
+	)
+	_check(_count_player_nodes() == 3, "Sky candidate rejection must keep exactly three admitted players")
+	_check(_count_role(ROLE_SKY) == 1, "Sky candidate rejection must keep exactly one Sky role")
 
 	_check(await _wait_for_player_count(2), "server should remove the disconnected Ground VR client")
 	_check(await _wait_for_ground_vr_release(), "server should release the Ground VR slot after disconnect")
@@ -184,6 +201,35 @@ func _run_sky_client() -> void:
 	_check(await _wait_for_remote_avatars(2), "Sky client should receive reconnected Ground VR poses")
 	_check(_has_unique_player_names(), "Sky client should end with unique player instances")
 	await get_tree().create_timer(0.75).timeout
+
+
+func _run_sky_candidate() -> void:
+	var network_handler := _get_network_handler()
+	if network_handler != null \
+			and not network_handler.peer_role_request_rejected.is_connected(_on_role_request_rejected):
+		network_handler.peer_role_request_rejected.connect(_on_role_request_rejected)
+	_check(await _connect_client("SkyCandidateWorld"), "second Sky candidate should connect for admission")
+	if not _failures.is_empty():
+		return
+	var candidate_peer_id := _peer.get_unique_id()
+	var deadline := Time.get_ticks_msec() + STAGE_TIMEOUT_MSEC
+	while Time.get_ticks_msec() < deadline:
+		if _world != null and _world.get_node_or_null(str(candidate_peer_id)) != null:
+			_candidate_own_player_seen = true
+		if _last_rejected_peer_id == candidate_peer_id \
+				and _last_rejection_reason == "sky_slot_occupied" \
+				and _peer.get_connection_status() == MultiplayerPeer.CONNECTION_DISCONNECTED:
+			break
+		await get_tree().process_frame
+	_check(
+		_last_rejected_peer_id == candidate_peer_id and _last_rejection_reason == "sky_slot_occupied",
+		"second Sky candidate should receive sky_slot_occupied"
+	)
+	_check(
+		_peer.get_connection_status() == MultiplayerPeer.CONNECTION_DISCONNECTED,
+		"second Sky candidate should be disconnected after rejection"
+	)
+	_check(not _candidate_own_player_seen, "second Sky candidate must never see its own Player node")
 
 
 func _connect_client(world_name: String) -> bool:
@@ -326,6 +372,15 @@ func _wait_for_ground_vr_release() -> bool:
 	return false
 
 
+func _wait_for_sky_candidate_rejection() -> int:
+	var deadline := Time.get_ticks_msec() + STAGE_TIMEOUT_MSEC
+	while Time.get_ticks_msec() < deadline:
+		if _last_rejected_peer_id > 1 and _last_rejection_reason == "sky_slot_occupied":
+			return _last_rejected_peer_id
+		await get_tree().process_frame
+	return 0
+
+
 func _wait_for_player_roles() -> bool:
 	var deadline := Time.get_ticks_msec() + STAGE_TIMEOUT_MSEC
 	while Time.get_ticks_msec() < deadline:
@@ -450,6 +505,11 @@ func _count_role(expected_role: String) -> int:
 
 func _get_network_handler() -> Node:
 	return get_node_or_null("/root/NetworkHandler")
+
+
+func _on_role_request_rejected(peer_id: int, _requested_role: String, reason: String) -> void:
+	_last_rejected_peer_id = peer_id
+	_last_rejection_reason = reason
 
 
 func _wait_frames(frame_count: int) -> void:

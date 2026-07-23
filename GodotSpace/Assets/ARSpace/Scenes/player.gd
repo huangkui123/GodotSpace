@@ -66,6 +66,7 @@ var _last_received_pose_sequence: int = -1
 var _remote_pose_samples: Array[Dictionary] = []
 var _replica_ready_peer_ids: Dictionary = {}
 var _has_received_network_pose: bool = false
+var _last_network_pose_received_usec: int = 0
 var _test_trigger_pressed: bool = false
 var _test_grip_pressed: bool = false
 var _session_role: String = ROLE_UNKNOWN
@@ -486,10 +487,23 @@ func _accept_remote_pose(
 		_remote_pose_samples.pop_front()
 
 	_has_received_network_pose = true
+	_last_network_pose_received_usec = Time.get_ticks_usec()
 	_set_network_avatar_visible(true)
 	if _remote_pose_samples.size() == 1:
 		_apply_network_pose_shared(head_transform, left_hand_transform, right_hand_transform)
 	return true
+
+
+func get_network_viewpoint() -> Node3D:
+	return get_node_or_null("NetworkHead") as Node3D
+
+
+func has_received_network_pose() -> bool:
+	return _has_received_network_pose
+
+
+func get_last_network_pose_received_msec() -> int:
+	return _last_network_pose_received_usec / 1000
 
 func _update_remote_pose() -> void:
 	if not _has_received_network_pose or _remote_pose_samples.is_empty():

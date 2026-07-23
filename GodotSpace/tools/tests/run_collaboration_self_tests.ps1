@@ -12,6 +12,7 @@ $ScriptTests = @(
     'res://Assets/ARSpace/Scripts/Network/network_startup_recovery_self_test.gd',
     'res://Assets/ARSpace/Scripts/Network/peer_role_registry_self_test.gd',
     'res://Assets/ARSpace/Scripts/Network/peer_role_network_self_test.gd',
+    'res://Assets/ARSpace/Scripts/AstronautView/astronaut_view_source_self_test.gd',
     'res://Assets/ARSpace/Scripts/Network/voice_dictation_self_test.gd',
     'res://Assets/ARSpace/Scripts/VirtualAnnotation/virtual_annotation_self_test.gd',
     'res://Assets/ARSpace/Scripts/VirtualAnnotation/virtual_annotation_network_self_test.gd',

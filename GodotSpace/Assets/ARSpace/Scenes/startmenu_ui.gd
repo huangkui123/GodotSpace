@@ -27,6 +27,9 @@ func _ready():
 	_update_runtime_ui()
 	_setup_network_controls()
 	_setup_audio_controls()
+	var previous_error := NetworkHandler.get_last_start_error()
+	if not previous_error.is_empty():
+		_set_status(previous_error, true)
 
 func _on_start_pressed():
 	var profile = RuntimeProfile.current()
