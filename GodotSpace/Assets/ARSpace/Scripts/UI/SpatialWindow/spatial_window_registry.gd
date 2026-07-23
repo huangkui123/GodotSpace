@@ -291,7 +291,7 @@ func _process_server_operation(
 	if not _is_safe_request(window_id, operation, payload):
 		return _make_result(false, window_id, operation, "invalid_or_oversized_request")
 	var role := _get_peer_role(peer_id)
-	if not State.is_ground_role(role):
+	if not _role_can_request_operation(role, operation):
 		return _make_result(false, window_id, operation, "role_not_allowed")
 	if operation == OP_OPEN:
 		return _process_open(peer_id, payload)
@@ -488,6 +488,21 @@ func _process_transform_preview(peer_id: int, window_id: String, payload: Dictio
 	if _is_server_authority():
 		rpc("_client_receive_transform_preview", window_id, transform_value, broadcast_sequence)
 	return true
+
+
+func _role_can_request_operation(role: String, operation: String) -> bool:
+	if State.is_ground_role(role):
+		return true
+	# Astronaut XR must be able to activate the UI it is pointing at. Keep
+	# spatial manipulation Ground-authoritative: no lease, transform, resize,
+	# preview or snap permission is granted here.
+	return role == State.ROLE_ASTRONAUT and operation in [
+		OP_OPEN,
+		OP_SET_MODE,
+		OP_SET_VISIBLE,
+		OP_FOCUS,
+		OP_CLOSE,
+	]
 
 
 func _commit_record(record: Dictionary) -> bool:

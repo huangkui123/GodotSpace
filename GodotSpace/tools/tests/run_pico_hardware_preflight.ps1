@@ -104,6 +104,14 @@ foreach ($Binding in $PicoBindings) {
     Assert-Contains $ActionMap $Binding 'PICO 4 OpenXR action map'
 }
 
+$PlayerXrScene = Get-Content -Raw -LiteralPath (Join-Path $Project 'Assets\ARSpace\Scenes\Player_XR.tscn')
+Assert-Contains $PlayerXrScene 'name="HeadGazePointer"' 'PICO XR player scene'
+Assert-Contains $PlayerXrScene 'follow_active_controller = false' 'PICO head-gaze pointer anchoring'
+$XrInputRouter = Get-Content -Raw -LiteralPath (Join-Path $Project 'Assets\ARSpace\Characters\Astronaut\xr_input_router.gd')
+Assert-Contains $XrInputRouter '_requested_input_mode' 'PICO tracking fallback recovery'
+Assert-Contains $XrInputRouter 'SELECT_PRESS_THRESHOLD: float = 0.65' 'PICO analog trigger press threshold'
+Assert-Contains $XrInputRouter 'SELECT_RELEASE_THRESHOLD: float = 0.45' 'PICO analog trigger release threshold'
+
 $ProjectConfig = Get-Content -Raw -LiteralPath (Join-Path $Project 'project.godot')
 Assert-Contains $ProjectConfig 'openxr/extensions/hand_tracking=true' 'Godot OpenXR hand-tracking settings'
 

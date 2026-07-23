@@ -181,26 +181,26 @@ func _run() -> void:
 	)
 	_expect(
 		bool(astronaut_registry.call("request_operation", window_id, "focus", {})),
-		"Astronaut business mutation may be queued but must be validated by the Server."
+		"Astronaut should queue an allowlisted UI focus operation for Server validation."
 	)
 	_expect(await _wait_for_flag(astronaut_result, "received"), "Astronaut should receive an authoritative operation result.")
-	_expect(not bool(astronaut_result["accepted"]), "Astronaut must not mutate window business state by default.")
-	_expect(int(server_registry.call("get_revision")) == 5, "Rejected Astronaut mutation must not advance state.")
+	_expect(bool(astronaut_result["accepted"]), "Astronaut ray interaction should be allowed to focus a shared window.")
+	_expect(await _wait_for_revision(server_registry, 6), "Accepted Astronaut focus should advance authoritative state.")
 
 	_expect(
 		bool(ground_registry.call("request_operation", window_id, "acquire_lease", {"timeout_msec": 500})),
 		"Ground VR should acquire the minimum lease duration."
 	)
-	_expect(await _wait_for_revision(server_registry, 6), "Second lease grant should advance state.")
+	_expect(await _wait_for_revision(server_registry, 7), "Second lease grant should advance state.")
 	await create_timer(0.7).timeout
-	_expect(await _wait_for_revision(server_registry, 7), "Expired lease should be cleared by Server authority.")
+	_expect(await _wait_for_revision(server_registry, 8), "Expired lease should be cleared by Server authority.")
 	_expect(
 		int((server_registry.call("get_window_state", window_id) as Dictionary).get("lease_peer_id", -1)) == 0,
 		"Lease timeout must release ownership."
 	)
 
 	_expect(bool(ground_registry.call("request_operation", window_id, "acquire_lease", {"timeout_msec": 2000})), "Ground VR should reacquire the window.")
-	_expect(await _wait_for_revision(ground_registry, 8), "Reacquired lease should replicate.")
+	_expect(await _wait_for_revision(ground_registry, 9), "Reacquired lease should replicate.")
 	lease_token = str((ground_registry.call("get_window_state", window_id) as Dictionary).get("lease_token", ""))
 	var snap_transform := Transform3D(Basis.IDENTITY, Vector3(-0.8, 1.0, -1.0))
 	_expect(
@@ -212,7 +212,7 @@ func _run() -> void:
 		})),
 		"Ground VR should submit a final snap operation."
 	)
-	_expect(await _wait_for_revision(astronaut_registry, 9), "Snap should replicate reliably to Astronaut.")
+	_expect(await _wait_for_revision(astronaut_registry, 10), "Snap should replicate reliably to Astronaut.")
 	_expect(
 		str((astronaut_registry.call("get_window_state", window_id) as Dictionary).get("mode", "")) == State.MODE_SNAPPED,
 		"Replicated window should enter SNAPPED mode."
@@ -222,7 +222,7 @@ func _run() -> void:
 		"Snap must replicate its authoritative physical dimensions with the transform."
 	)
 	_expect(bool(ground_registry.call("request_operation", window_id, "close", {})), "Ground VR should close the window.")
-	_expect(await _wait_for_revision(astronaut_registry, 10), "Close state should replicate reliably.")
+	_expect(await _wait_for_revision(astronaut_registry, 11), "Close state should replicate reliably.")
 	var closed_state := astronaut_registry.call("get_window_state", window_id) as Dictionary
 	_expect(str(closed_state.get("mode", "")) == State.MODE_CLOSED, "Close should leave a stable CLOSED tombstone.")
 	_expect(not bool(closed_state.get("visible", true)), "Closed window content and presentation must be hidden together.")
@@ -231,7 +231,7 @@ func _run() -> void:
 		bool(ground_registry.call("request_operation", "", "open", descriptor)),
 		"Opening the same unique descriptor should reopen the stable ID."
 	)
-	_expect(await _wait_for_revision(server_registry, 11), "Unique reopen should update, not duplicate, state.")
+	_expect(await _wait_for_revision(server_registry, 12), "Unique reopen should update, not duplicate, state.")
 	_expect((server_registry.call("get_windows_snapshot") as Dictionary).size() == 1, "Unique reopen must not create a duplicate window.")
 	_expect(str((server_registry.call("get_window_state", window_id) as Dictionary).get("mode", "")) == State.MODE_NORMAL, "Unique reopen should restore NORMAL mode.")
 	_expect(
@@ -241,7 +241,7 @@ func _run() -> void:
 		})),
 		"Ground VR should request a bounded maximized mode and size together."
 	)
-	_expect(await _wait_for_revision(astronaut_registry, 12), "Maximized mode should replicate reliably.")
+	_expect(await _wait_for_revision(astronaut_registry, 13), "Maximized mode should replicate reliably.")
 	var maximized_state := astronaut_registry.call("get_window_state", window_id) as Dictionary
 	_expect(str(maximized_state.get("mode", "")) == State.MODE_MAXIMIZED, "Replicated window should enter MAXIMIZED mode.")
 	_expect(maximized_state.get("size_m", Vector2.ZERO) == Vector2(1.6, 0.9), "MAXIMIZED mode must carry the authoritative dimensions instead of a local scale factor.")

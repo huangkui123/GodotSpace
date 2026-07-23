@@ -1,0 +1,13 @@
+[gd_resource type="ShaderMaterial" load_steps=5 format=3]
+
+[ext_resource type="Shader" path="res://Assets/ARSpace/Characters/Astronaut/Materials/metallic_gloss.gdshader" id="1_shader"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Characters/Astronaut/Source/HELMET_HELMET_BaseColor.png" id="2_albedo"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Characters/Astronaut/Source/HELMET_HELMET_Metallic.png" id="3_metallic"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Characters/Astronaut/Source/HELMET_HELMET_Normal.png" id="4_normal"]
+
+[resource]
+shader = ExtResource("1_shader")
+shader_parameter/albedo_texture = ExtResource("2_albedo")
+shader_parameter/metallic_gloss_texture = ExtResource("3_metallic")
+shader_parameter/normal_texture = ExtResource("4_normal")
+shader_parameter/use_normal_map = true

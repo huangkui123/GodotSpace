@@ -215,7 +215,7 @@
 
 **完成标准：** PC 鼠标、XR 射线和 XR 近距离均能用相同语义操作窗口，Server/两个 Client 看到的窗口变换和显隐一致。
 
-任务 1.6 记录：新增可复用 `SpatialWindow3D.tscn`、输入无关的 `SpatialWindowInteractor`、旧 SubViewport 兼容 `SpatialWindowAdapter` 和 `SpatialWindowRegistryService` Autoload。所有持久 transform 均为 `SharedSpaceOrigin` 局部刚体变换，窗口尺寸为 0.2–3.0 m 的绝对值；PC/Ground VR 变更由 Server 校验角色、稳定 ID、50 m 范围与交互租约，拖动预览使用不可靠有序通道，最终状态与迟到快照可靠同步。旧 1.6 倍 scale 逻辑已由 `normal/maximized/snapped/closed` 状态机替代，主菜单、图片列表/详情、视频列表/详情、工作清单和语音通话共 7 个窗口完成首批接入。自动测试覆盖嵌套共享坐标、近/远拖动、八向/渐进缩放、朝向、吸附、焦点、震动、权限、断线租约清理、唯一/多开和真实 ENet 迟到快照；PC 鼠标与真实 PICO 近/远手感、两 Client 视觉一致性仍合并到任务 1.7 真机验收，合同见 `GodotSpace/docs/network/spatial_window_framework.md`。
+任务 1.6 记录：新增可复用 `SpatialWindow3D.tscn`、输入无关的 `SpatialWindowInteractor`、旧 SubViewport 兼容 `SpatialWindowAdapter` 和 `SpatialWindowRegistryService` Autoload。所有持久 transform 均为 `SharedSpaceOrigin` 局部刚体变换，窗口尺寸为 0.2–3.0 m 的绝对值；PC/Ground VR 全量变更及 Astronaut 的打开/关闭/聚焦/显隐/最大化白名单操作由 Server 校验，空间拖动、缩放、吸附和交互租约仍只允许 PC/Ground VR；拖动预览使用不可靠有序通道，最终状态与迟到快照可靠同步。旧 1.6 倍 scale 逻辑已由 `normal/maximized/snapped/closed` 状态机替代，主菜单、图片列表/详情、视频列表/详情、工作清单和语音通话共 7 个窗口完成首批接入。自动测试覆盖嵌套共享坐标、近/远拖动、八向/渐进缩放、朝向、吸附、焦点、震动、权限、断线租约清理、唯一/多开和真实 ENet 迟到快照；PC 鼠标与真实 PICO 近/远手感、两 Client 视觉一致性仍合并到任务 1.7 真机验收，合同见 `GodotSpace/docs/network/spatial_window_framework.md`。
 
 ### 任务 1.7（P0）第一阶段集成验收
 
@@ -229,6 +229,8 @@
 任务 1.7 自动化前置验收记录（2026-07-16，2026-07-17 增强）：`run_phase1_validation.ps1` 已再次完整通过（退出码 0，用时 94.4 秒）。独立 OS 进程 ENet 测试使用不同端口和显式阶段屏障覆盖 Server→Ground→Astronaut（含 Ground 掉线/重连）、Server→Astronaut→Ground、两个 Ground 同时申请席位并将第二个降级为 Astronaut，以及 Client 观察 Server 关闭；真实 loopback ENet 集成测试还覆盖窗口拖动预览中断线不落盘、lease 释放、离线期间状态变化、重连完整快照、同连接角色降级的临时状态清理/后续拒权、Client 消费者销毁重建去重和 Server 关闭后两端窗口状态清空。正式运行时恢复用例使用真实 `NetworkHandler.start_server/start_client` 进入 `ARSpace.tscn`，在协作、标定和窗口状态均非空后关闭 Server，并验证 Client 收到双清理信号、恢复 Offline peer、清空角色与三类状态并返回 `StartMenu.tscn`。玩家/航天员角色、共享空间/标定、真实 WorkList 场景、PC/Test Client/XR 参数启动冒烟和其余第一阶段回归均通过。当前环境的 PICO ADB 设备列表为空，也没有两台真实 PICO/OpenXR 设备，因此上述六项保留未勾选，禁止以 headless 结果替代真机签字。证据矩阵、启动命令、30 分钟记录项和签字栏见 `GodotSpace/docs/testing/phase1_acceptance_2026-07-16.md`。
 
 任务 1.7 PICO 验收前收口记录（2026-07-20）：恢复完整 Godot OpenXR Vendors 4.0.0/PICO Android arm64 插件，固定 `Android PICO` Gradle/arm64/vendor/权限/包名预设；同一 APK 默认航天端但允许在 StartMenu 切换为 Ground VR Client 并输入 PC 局域网 IP，且 Android 菜单不再显示/接受 PC Server。移除 FFmpeg 对仓库中不存在的 Android `.so` 声明，视频在 PICO 上改为明确不可用降级；新增并接入 `tools/tests/run_pico_hardware_preflight.ps1`。空缓存 fresh import 退出码 0（104.2 秒），最终完整 `run_phase1_validation.ps1` 再次输出 `PHASE1_VALIDATION PASS`（58.2 秒）。当前机器缺 Android SDK 环境变量、项目 Gradle build template、Android export templates 和 ADB，因此 APK 生成/安装及上述六项仍由真机执行人按 `GodotSpace/docs/testing/pico_hardware_preflight.md` 完成，复选框保持未勾选。
+
+任务 1.7 首次 PICO 反馈修复记录（2026-07-23）：PICO Streaming 暴露出航天员上半身骨骼爆炸和射线完全失效。修复 FBX 单位换算缩放被错误写入 `Spine2TMP` override、按 Unity VRIK prefab 关闭三层多余网格并绑定五个启用网格材质；将输入请求模式与 tracking 回退模式分离，把装饰性 gaze Mesh 换成真实 FunctionPointer，并用 PICO `trigger` float 的 `0.65/0.45` 迟滞阈值驱动点击。自动测试新增真实骨架正交/身高/网格材质门禁，以及 `XRToolsViewport2DIn3D` 到 SubViewport Button 的完整射线点击。Astronaut 可操作窗口内容与打开/关闭/聚焦/最大化，空间拖动/缩放/吸附租约继续由 PC/Ground VR 控制。旧日志中的 `trigger_pressed` 来自切分支后未重启的旧进程，复测必须重启所有游戏进程且不得再出现该 RPC 错误。最终完整 `run_phase1_validation.ps1` 输出 `PHASE1_VALIDATION PASS`（60.8 秒）；真机复选框在重新测试前保持未勾选。
 
 ---
 

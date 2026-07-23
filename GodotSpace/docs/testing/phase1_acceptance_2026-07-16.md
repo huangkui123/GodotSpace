@@ -69,7 +69,17 @@
 
 仓库中的 EIRTeam FFmpeg 扩展没有 Android 二进制。为避免 APK 引用不存在的 `.so`，Android 声明已移除，视频详情/工作清单改为显式不可用降级；Windows/Linux 保持原扩展。一个内容实际为 PNG、扩展名却为 `.jpg` 的图片也已改正。fresh import 退出码为 `0`，用时 104.2 秒，并精确定位、记录了七个旧非主线源模型缺失路径和 Kepler FBX 的内嵌图片错误；航天员 `china_rig.fbx` 随后独立导入成功。最终完整 `run_phase1_validation.ps1` 退出码为 `0`，用时 58.2 秒，最终输出 `PHASE1_VALIDATION PASS`。
 
-当前复核机没有 `ANDROID_HOME`/`ANDROID_SDK_ROOT`、项目 Android Gradle build template、Godot Android export templates 或可用 `adb`，因此没有伪造 APK 构建/安装结论。真机执行人应先按 `pico_hardware_preflight.md` 配置打包环境、生成 `GodotSpace-PICO.apk`，再执行本文签字项。六项真机复选框继续保持未勾选。
+2026-07-20 预检时复核机没有 `ANDROID_HOME`/`ANDROID_SDK_ROOT`、项目 Android Gradle build template、Godot Android export templates 或可用 `adb`，因此没有伪造 APK 构建/安装结论。2026-07-23 已可通过 PICO Connect 的 ADB 看到头显，但设备上没有本项目 Godot APK，首轮反馈来自 PC PICO Streaming/OpenXR。原生 APK 生成/安装仍须先按 `pico_hardware_preflight.md` 配置打包环境；六项真机复选框继续保持未勾选。
+
+### 2026-07-23 首次 PICO 反馈修复
+
+首次 PICO Streaming 运行暴露出航天员上半身严重畸变和射线完全不可用。运行时量化确认 `Spine2TMP` 骨骼 basis 因 FBX 单位换算被放大到约 `7.7`；修复后各轴长度和 determinant 恢复为约 `1`。同时按 Unity VRIK prefab 关闭 `DETAIL/PANT/STRIP`，为五个启用网格绑定显式 Unity 对齐材质，保留约 `1.798 m` 的 rest bone 世界高度。
+
+射线侧将“用户请求模式”和“当前 tracking 回退模式”分离，避免 PICO 首帧无 tracking 后永久停在 gaze；原装饰性 HeadGazeLaser 已替换为相机锚定的真实 FunctionPointer，并以 `trigger` float 的 `0.65/0.45` 迟滞阈值驱动点击。`PlayerPresenceSelfTest` 现会实际射中 `XRToolsViewport2DIn3D` 并精确触发一次 SubViewport Button。Astronaut 允许请求窗口打开、关闭、聚焦、显隐和最大化，但仍不能取得租约或修改空间 transform/尺寸/吸附。
+
+同次日志还记录到旧脚本持续发送已移除的 `trigger_pressed` RPC；当前分支没有该调用，说明切分支后复用了旧 Godot 运行进程。后续每次真机复测前必须完全退出 PC Server/Client 游戏进程并重新启动当前分支；日志不得再出现 `trigger_pressed` RPC 配置错误。上述修复通过自动化后仍需重新执行本页真机复选框。
+
+修复后的最终完整 `run_phase1_validation.ps1` 于 2026-07-23 输出 `PHASE1_VALIDATION PASS`（60.8 秒），覆盖资源导入、PICO 包预检、协作/玩家/角色/空间窗口、多人重连、工作清单、LLM 和三种启动冒烟测试。
 
 ## 任务 1.7 证据矩阵
 
@@ -121,7 +131,7 @@
 - [ ] PC 鼠标与 PICO 近抓、远射线分别完成标题拖动、四边/四角缩放和摇杆深度移动。
 - [ ] 验证最大化/恢复保留此前尺寸，吸附预览可确认、取消和拖离。
 - [ ] 验证选中、抓取、缩放刻度和吸附确认的震动；不发生误触、穿透或窗口跳变。
-- [ ] 操作时另一个 Ground 端竞争同一窗口，租约拒绝并发写；Astronaut 共享变更被拒绝。
+- [ ] 操作时另一个 Ground 端竞争同一窗口，租约拒绝并发写；Astronaut 可打开/关闭/聚焦/最大化窗口，但租约、拖动、缩放和吸附请求仍被拒绝。
 - [ ] 迟到 Client 与两台在线端看到相同 transform、尺寸、模式、焦点和显隐。
 
 ### 5. 30 分钟稳定性

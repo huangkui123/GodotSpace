@@ -1,0 +1,11 @@
+[gd_resource type="ShaderMaterial" load_steps=4 format=3]
+
+[ext_resource type="Shader" path="res://Assets/ARSpace/Characters/Astronaut/Materials/metallic_gloss.gdshader" id="1_shader"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Characters/Astronaut/Source/TORSO_TORSO_BaseColor.png" id="2_albedo"]
+[ext_resource type="Texture2D" path="res://Assets/ARSpace/Characters/Astronaut/Source/TORSO_TORSO_Metallic.png" id="3_metallic"]
+
+[resource]
+shader = ExtResource("1_shader")
+shader_parameter/albedo_texture = ExtResource("2_albedo")
+shader_parameter/metallic_gloss_texture = ExtResource("3_metallic")
+shader_parameter/use_normal_map = false

@@ -8,6 +8,15 @@ const MIN_HEIGHT_SCALE: float = 0.78
 const MAX_HEIGHT_SCALE: float = 1.22
 const TRACKING_BLEND_SECONDS: float = 0.25
 const POSE_SMOOTH_SPEED: float = 14.0
+const UNITY_PREFAB_DISABLED_MESHES: Array[StringName] = [&"DETAIL", &"PANT", &"STRIP"]
+const LOCAL_HIDDEN_MESHES: Array[StringName] = [&"HELMET", &"HELMET_GLASS", &"Basemesh"]
+const UNITY_MATERIAL_OVERRIDES: Dictionary = {
+	&"Basemesh": preload("res://Assets/ARSpace/Characters/Astronaut/Materials/basemesh.tres"),
+	&"TORSO": preload("res://Assets/ARSpace/Characters/Astronaut/Materials/torso.tres"),
+	&"HELMET_GLASS": preload("res://Assets/ARSpace/Characters/Astronaut/Materials/helmet_glass.tres"),
+	&"HELMET": preload("res://Assets/ARSpace/Characters/Astronaut/Materials/helmet.tres"),
+	&"GLOVES": preload("res://Assets/ARSpace/Characters/Astronaut/Materials/gloves.tres"),
+}
 
 const REQUIRED_BONES: Array[StringName] = [
 	&"Hips", &"Spine", &"Spine1TMP", &"Spine2TMP", &"NeckTMP", &"HeadTMP",
@@ -42,6 +51,8 @@ var _local_presentation: bool = false
 func _ready() -> void:
 	_model_root = get_node_or_null(model_root_path) as Node3D
 	_bind_skeleton()
+	_apply_source_prefab_visibility()
+	_apply_source_materials()
 	_apply_local_visibility()
 
 func _exit_tree() -> void:
@@ -247,6 +258,10 @@ func _drive_skeleton() -> void:
 	head_forward = head_forward.normalized()
 	var torso_world := Transform3D(Basis.looking_at(head_forward, Vector3.UP), _smoothed_head.origin + Vector3(0.0, -0.48, 0.02))
 	var torso_pose := inverse_skeleton * torso_world
+	# The imported FBX has a unit-conversion scale above Skeleton3D. Positions
+	# must stay in skeleton space, but carrying that inverse scale into a bone
+	# override stretches the whole descendant hierarchy ("bone explosion").
+	torso_pose.basis = torso_pose.basis.orthonormalized()
 	var spine_rest := _bone_global_rests[int(_bone_indices[&"Spine2TMP"])] as Transform3D
 	torso_pose.origin = spine_rest.origin
 	_set_global_override(&"Spine2TMP", torso_pose, 0.72)
@@ -322,7 +337,23 @@ func _set_global_override(bone_name: StringName, pose: Transform3D, weight: floa
 func _apply_local_visibility() -> void:
 	if _model_root == null:
 		return
-	for mesh_name in [&"HELMET", &"HELMET_GLASS", &"Basemesh"]:
+	for mesh_name in LOCAL_HIDDEN_MESHES:
 		var mesh := _model_root.find_child(mesh_name, true, false) as MeshInstance3D
 		if mesh != null:
 			mesh.visible = not _local_presentation
+
+func _apply_source_prefab_visibility() -> void:
+	if _model_root == null:
+		return
+	for mesh_name in UNITY_PREFAB_DISABLED_MESHES:
+		var mesh := _model_root.find_child(mesh_name, true, false) as MeshInstance3D
+		if mesh != null:
+			mesh.visible = false
+
+func _apply_source_materials() -> void:
+	if _model_root == null:
+		return
+	for mesh_name: StringName in UNITY_MATERIAL_OVERRIDES:
+		var mesh := _model_root.find_child(mesh_name, true, false) as MeshInstance3D
+		if mesh != null:
+			mesh.set_surface_override_material(0, UNITY_MATERIAL_OVERRIDES[mesh_name] as Material)

@@ -6,7 +6,7 @@
 
 `SpatialWindowRegistryService` 是 Autoload。窗口记录包含稳定 `window_id`、`window_type`、`content_key`、唯一/多开策略、`SharedSpaceOrigin` 局部刚体变换、米制尺寸、`normal/maximized/snapped/closed` 模式、可见性、焦点顺序、吸附槽和交互租约。
 
-- PC Server 与 Ground VR 可以请求变更；Astronaut 只能做本地选中，不能改变共享窗口。
+- PC Server 与 Ground VR 可以请求全部窗口变更。Astronaut 可通过射线请求打开、关闭、聚焦、显隐和最大化，从而操作窗口内业务 UI；空间拖动、缩放、吸附、预览和租约仍只允许 PC Server/Ground VR。
 - Server 校验角色、窗口 ID、50 m 共享空间边界、0.2–3.0 m 尺寸、请求大小、单调请求序号和租约令牌。
 - Client 请求租约后进入 pending；只有收到权威令牌才应用本地拖动/缩放，拒绝时恢复 Registry 当前绝对状态。
 - 拖动预览走 channel 1 的不可靠有序 RPC，不增加持久 revision；放手时 transform 与尺寸原子可靠提交，模式、吸附、打开和关闭也走可靠提交。

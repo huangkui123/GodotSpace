@@ -12,27 +12,38 @@ signal interaction_state_changed(state: Dictionary)
 @export var right_pointer_path: NodePath = NodePath("../RightHand/FunctionPointer")
 @export var left_pickup_path: NodePath = NodePath("../LeftHand/LeftHand/FunctionPickup")
 @export var right_pickup_path: NodePath = NodePath("../RightHand/RightHand/FunctionPickup")
-@export var gaze_laser_path: NodePath = NodePath("../XRCamera3D/HeadGazeLaser")
+@export var gaze_pointer_path: NodePath = NodePath("../XRCamera3D/HeadGazePointer")
+
+const POINTER_ACTION: String = "__xr_input_router_select"
+const SELECT_PRESS_THRESHOLD: float = 0.65
+const SELECT_RELEASE_THRESHOLD: float = 0.45
 
 var _input_mode: int = PoseState.INPUT_MODE_RIGHT_HAND
+var _requested_input_mode: int = PoseState.INPUT_MODE_RIGHT_HAND
 var _state: Dictionary = PoseState.make_default()
 var _previous_buttons: Dictionary = {}
 var _test_override_enabled: bool = false
 var _test_trigger: float = 0.0
 var _test_grip: float = 0.0
+var _pointer_select_pressed: bool = false
+var _pressed_pointer: Node = null
 
 @onready var _camera: XRCamera3D = get_node_or_null(camera_path) as XRCamera3D
 @onready var _left_controller: XRController3D = get_node_or_null(left_controller_path) as XRController3D
 @onready var _right_controller: XRController3D = get_node_or_null(right_controller_path) as XRController3D
 
 func _ready() -> void:
+	_configure_pointer(get_node_or_null(left_pointer_path))
+	_configure_pointer(get_node_or_null(right_pointer_path))
+	_configure_pointer(get_node_or_null(gaze_pointer_path))
 	_apply_pointer_mode()
 
 func _process(_delta: float) -> void:
 	var tracking_mask := _sample_tracking_mask()
 	_handle_mode_buttons()
-	var resolved_mode := resolve_mode_for_tracking(_input_mode, tracking_mask)
+	var resolved_mode := resolve_mode_for_tracking(_requested_input_mode, tracking_mask)
 	if resolved_mode != _input_mode:
+		_release_pointer_selection()
 		_input_mode = resolved_mode
 		input_mode_changed.emit(_input_mode)
 		_apply_pointer_mode()
@@ -44,6 +55,7 @@ func _process(_delta: float) -> void:
 	if _test_override_enabled:
 		right_trigger = _test_trigger
 		right_grip = _test_grip
+	_update_pointer_selection(left_trigger, right_trigger)
 
 	var gesture_bits := 0
 	if _read_button(_left_controller, &"ax_button"):
@@ -74,11 +86,13 @@ func _process(_delta: float) -> void:
 
 func set_input_mode(input_mode: int) -> void:
 	var normalized := clampi(input_mode, PoseState.INPUT_MODE_HEAD_GAZE, PoseState.INPUT_MODE_RIGHT_HAND)
-	if normalized == _input_mode:
-		return
-	_input_mode = normalized
-	input_mode_changed.emit(_input_mode)
-	_apply_pointer_mode()
+	_requested_input_mode = normalized
+	var resolved := resolve_mode_for_tracking(_requested_input_mode, _sample_tracking_mask())
+	if resolved != _input_mode:
+		_release_pointer_selection()
+		_input_mode = resolved
+		input_mode_changed.emit(_input_mode)
+		_apply_pointer_mode()
 
 func get_input_mode() -> int:
 	return _input_mode
@@ -184,11 +198,13 @@ func _handle_mode_buttons() -> void:
 func _apply_pointer_mode() -> void:
 	_set_pointer_enabled(get_node_or_null(left_pointer_path), _input_mode == PoseState.INPUT_MODE_LEFT_HAND)
 	_set_pointer_enabled(get_node_or_null(right_pointer_path), _input_mode == PoseState.INPUT_MODE_RIGHT_HAND)
+	_set_pointer_enabled(get_node_or_null(gaze_pointer_path), _input_mode == PoseState.INPUT_MODE_HEAD_GAZE)
 	_set_function_enabled(get_node_or_null(left_pickup_path), _input_mode == PoseState.INPUT_MODE_LEFT_HAND)
 	_set_function_enabled(get_node_or_null(right_pickup_path), _input_mode == PoseState.INPUT_MODE_RIGHT_HAND)
-	var gaze_laser := get_node_or_null(gaze_laser_path) as Node3D
-	if gaze_laser != null:
-		gaze_laser.visible = _input_mode == PoseState.INPUT_MODE_HEAD_GAZE
+
+func _configure_pointer(pointer: Node) -> void:
+	if pointer != null:
+		pointer.set("active_button_action", POINTER_ACTION)
 
 func _set_pointer_enabled(pointer: Node, enabled: bool) -> void:
 	if pointer == null:
@@ -201,3 +217,36 @@ func _set_pointer_enabled(pointer: Node, enabled: bool) -> void:
 func _set_function_enabled(function_node: Node, enabled: bool) -> void:
 	if function_node != null:
 		function_node.set("enabled", enabled)
+
+func _update_pointer_selection(left_trigger: float, right_trigger: float) -> void:
+	var select_value := 0.0
+	match _input_mode:
+		PoseState.INPUT_MODE_LEFT_HAND:
+			select_value = left_trigger
+		PoseState.INPUT_MODE_RIGHT_HAND:
+			select_value = right_trigger
+		_:
+			select_value = maxf(left_trigger, right_trigger)
+	if not _pointer_select_pressed and select_value >= SELECT_PRESS_THRESHOLD:
+		var pointer := _get_active_pointer()
+		if pointer != null and bool(pointer.get("enabled")):
+			_pointer_select_pressed = true
+			_pressed_pointer = pointer
+			pointer.call("_button_pressed")
+	elif _pointer_select_pressed and select_value <= SELECT_RELEASE_THRESHOLD:
+		_release_pointer_selection()
+
+func _release_pointer_selection() -> void:
+	if _pointer_select_pressed and is_instance_valid(_pressed_pointer):
+		_pressed_pointer.call("_button_released")
+	_pointer_select_pressed = false
+	_pressed_pointer = null
+
+func _get_active_pointer() -> Node:
+	match _input_mode:
+		PoseState.INPUT_MODE_LEFT_HAND:
+			return get_node_or_null(left_pointer_path)
+		PoseState.INPUT_MODE_RIGHT_HAND:
+			return get_node_or_null(right_pointer_path)
+		_:
+			return get_node_or_null(gaze_pointer_path)

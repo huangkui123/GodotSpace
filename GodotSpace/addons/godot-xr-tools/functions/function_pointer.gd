@@ -53,6 +53,11 @@ const SUPPRESS_MASK := 0b0000_0000_0100_0000_0000_0000_0000_0000
 ## Active button action
 @export var active_button_action : String = "trigger_click"
 
+## Follow the last controller that activated this pointer. Disable this for
+## pointers whose transform is provided by another tracked source (for example
+## a head-gaze pointer parented to XRCamera3D).
+@export var follow_active_controller : bool = true
+
 @export_group("Laser")
 
 ## Controls when the laser is visible
@@ -184,7 +189,7 @@ func _process(_delta):
 		return
 
 	# Track the active controller (if this pointer is not childed to a controller)
-	if _controller == null and _active_controller != null:
+	if follow_active_controller and _controller == null and _active_controller != null:
 		transform = _active_controller.transform
 
 	# Handle world-scale changes

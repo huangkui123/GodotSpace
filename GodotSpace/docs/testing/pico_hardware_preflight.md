@@ -47,9 +47,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File `
 
 ## 三端启动
 
+切换 Git 分支或更新脚本后，先完全退出旧的 PC Server/Client 游戏进程，再从当前分支重新启动三端。Godot 编辑器可保留，但不能复用切分支前已经运行的游戏实例；日志若出现已移除的 `trigger_pressed` RPC，说明混用了旧脚本，当前轮结果无效。
+
 1. PC 运行 Windows 版，选择“PC 地面端 Server”，记录界面显示的 LAN IPv4；防火墙允许 UDP `42069`。
 2. 第一台 PICO 选择“地面 VR 端 Client”，输入 PC IPv4 后启动；该角色使用不透明 XR，并拥有地面交互权限。
-3. 第二台 PICO 保持“航天端 XR Client”，输入同一 PC IPv4 后启动；该角色请求 passthrough，并且只有展示权限。
+3. 第二台 PICO 保持“航天端 XR Client”，输入同一 PC IPv4 后启动；该角色请求 passthrough，可用射线操作菜单内容以及窗口打开、关闭、聚焦和最大化，但窗口空间拖动、缩放与吸附仍由 PC/Ground VR 控制。
 4. 继续执行 `phase1_acceptance_2026-07-16.md` 的三端、重连、标定、窗口和 30 分钟检查表。
 
 ## 已知平台限制
