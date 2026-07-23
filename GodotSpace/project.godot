@@ -110,6 +110,7 @@ push_to_talk={
 3d_render/layer_20="AstronautViewExcluded"
 3d_physics/layer_24="VirtualAnnotationSurface"
 3d_physics/layer_25="VirtualAnnotationMarker"
+3d_physics/layer_26="WindowDockSlot"
 
 [rendering]
 

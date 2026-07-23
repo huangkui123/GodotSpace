@@ -1,4 +1,4 @@
-[gd_scene load_steps=106 format=4 uid="uid://ca028g0q2kstx"]
+[gd_scene load_steps=113 format=4 uid="uid://ca028g0q2kstx"]
 
 [ext_resource type="Script" uid="uid://d1pt7mdt5llk4" path="res://XR_Main.gd" id="1_g432p"]
 [ext_resource type="Script" uid="uid://bt6aew4asx754" path="res://Assets/ARSpace/Scenes/SpaceBox.gd" id="2_wjh8v"]
@@ -70,7 +70,14 @@
 [ext_resource type="PackedScene" path="res://Assets/ARSpace/Scenes/voice_call_window_3d.tscn" id="70_voice_call"]
 [ext_resource type="Script" uid="uid://crvnkm0d7eggt" path="res://Assets/ARSpace/Scripts/shared_space_alignment.gd" id="71_shared_alignment"]
 [ext_resource type="PackedScene" path="res://Assets/ARSpace/Scenes/VirtualAnnotationSystem.tscn" id="72_annotation_system"]
-[ext_resource type="PackedScene" path="res://Assets/ARSpace/Scenes/AstronautView/AstronautViewWindow3D.tscn" id="73_astronaut_view"]
+[ext_resource type="PackedScene" uid="uid://deybuhhyeh7gj" path="res://Assets/ARSpace/Scenes/AstronautView/AstronautViewWindow3D.tscn" id="73_astronaut_view"]
+[ext_resource type="Script" uid="uid://byonbbha8jhqv" path="res://Assets/ARSpace/Scripts/SpatialWindows/window_dock_manager.gd" id="74_dock_manager"]
+[ext_resource type="Script" uid="uid://bake68ig22vfw" path="res://Assets/ARSpace/Scripts/SpatialWindows/spatial_window_state_manager.gd" id="75_window_state"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Scenes/SpatialWindows/WindowDockSlot3D.tscn" id="76_dock_slot"]
+[ext_resource type="Script" uid="uid://dxx5up4wuhhih" path="res://Assets/ARSpace/Scripts/SpatialWindows/spatial_viewport_2d_in_3d.gd" id="77_spatial_viewport"]
+[ext_resource type="Script" uid="uid://bne1vany8gbbl" path="res://Assets/ARSpace/Scripts/SpatialWindows/spatial_window_controller.gd" id="78_window_controller"]
+[ext_resource type="Script" uid="uid://b8h6eq065pwfc" path="res://Assets/ARSpace/Scripts/SpatialWindows/spatial_viewport_2d_in_3d_body.gd" id="79_safe_body"]
+[ext_resource type="Script" path="res://Assets/ARSpace/Scripts/UI/shared_main_menu_state.gd" id="80_main_menu_state"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_m4rif"]
 resource_name = "Default-Skybox"
@@ -308,9 +315,107 @@ transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -0.155226, 0, 0.436745)
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, 0, 0)
 
 [node name="AstronautViewAnchor" type="Node3D" parent="SharedSpaceOrigin"]
-position = Vector3(0, 1.35, -1.5)
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, -0.539069, 1.16779, 0.732155)
 
 [node name="AstronautViewWindow3D" parent="SharedSpaceOrigin/AstronautViewAnchor" instance=ExtResource("73_astronaut_view")]
+
+[node name="SpatialWindows" type="Node3D" parent="SharedSpaceOrigin" groups=["spatial_windows"]]
+
+[node name="Manager" type="Node" parent="SharedSpaceOrigin/SpatialWindows"]
+script = ExtResource("75_window_state")
+shared_space_origin_path = NodePath("../..")
+dock_manager_path = NodePath("../../WindowDockSlots")
+
+[node name="MainMenuState" type="Node" parent="SharedSpaceOrigin/SpatialWindows"]
+script = ExtResource("80_main_menu_state")
+
+[node name="WindowDockSlots" type="Node3D" parent="SharedSpaceOrigin"]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, -3.4714, -0.330399, 0.899759)
+script = ExtResource("74_dock_manager")
+
+[node name="WallSlotA" parent="SharedSpaceOrigin/WindowDockSlots" instance=ExtResource("76_dock_slot")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -1.2, 1.85, 4.45)
+slot_id = &"wall_a"
+accepted_categories = PackedStringArray()
+max_window_size_m = Vector2(2.2, 1.7)
+target_size_m = Vector2(1.1196, 1.06497)
+
+[node name="WallSlotB" parent="SharedSpaceOrigin/WindowDockSlots" instance=ExtResource("76_dock_slot")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, 1.85, 4.45)
+slot_id = &"wall_b"
+accepted_categories = PackedStringArray()
+max_window_size_m = Vector2(2.2, 1.7)
+target_size_m = Vector2(1.1196, 1.06497)
+
+[node name="WallSlotC" parent="SharedSpaceOrigin/WindowDockSlots" instance=ExtResource("76_dock_slot")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 1.2, 1.85, 4.45)
+slot_id = &"wall_c"
+accepted_categories = PackedStringArray()
+max_window_size_m = Vector2(2.2, 1.7)
+target_size_m = Vector2(1.1196, 1.06497)
+
+[node name="WallSlotD" parent="SharedSpaceOrigin/WindowDockSlots" instance=ExtResource("76_dock_slot")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.2, 1.85, 2.4928)
+slot_id = &"wall_d"
+accepted_categories = PackedStringArray()
+max_window_size_m = Vector2(2.2, 1.7)
+target_size_m = Vector2(1.1196, 1.06497)
+
+[node name="WallSlotE" parent="SharedSpaceOrigin/WindowDockSlots" instance=ExtResource("76_dock_slot")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.85, 2.4928)
+slot_id = &"wall_e"
+accepted_categories = PackedStringArray()
+max_window_size_m = Vector2(2.2, 1.7)
+target_size_m = Vector2(1.1196, 1.06497)
+
+[node name="WallSlotF" parent="SharedSpaceOrigin/WindowDockSlots" instance=ExtResource("76_dock_slot")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.2, 1.85, 2.4928)
+slot_id = &"wall_f"
+accepted_categories = PackedStringArray()
+max_window_size_m = Vector2(2.2, 1.7)
+target_size_m = Vector2(1.1196, 1.06497)
+
+[node name="WallSlotG" parent="SharedSpaceOrigin/WindowDockSlots" instance=ExtResource("76_dock_slot")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -1.2, 0.85, 4.45)
+slot_id = &"wall_g"
+accepted_categories = PackedStringArray()
+max_window_size_m = Vector2(2.2, 1.7)
+target_size_m = Vector2(1.1196, 1.06497)
+
+[node name="WallSlotH" parent="SharedSpaceOrigin/WindowDockSlots" instance=ExtResource("76_dock_slot")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, 0.85, 4.45)
+slot_id = &"wall_h"
+accepted_categories = PackedStringArray()
+max_window_size_m = Vector2(2.2, 1.7)
+target_size_m = Vector2(1.1196, 1.06497)
+
+[node name="WallSlotI" parent="SharedSpaceOrigin/WindowDockSlots" instance=ExtResource("76_dock_slot")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 1.2, 0.85, 4.45)
+slot_id = &"wall_i"
+accepted_categories = PackedStringArray()
+max_window_size_m = Vector2(2.2, 1.7)
+target_size_m = Vector2(1.1196, 1.06497)
+
+[node name="WallSlotJ" parent="SharedSpaceOrigin/WindowDockSlots" instance=ExtResource("76_dock_slot")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.2, 0.85, 2.4928)
+slot_id = &"wall_j"
+accepted_categories = PackedStringArray()
+max_window_size_m = Vector2(2.2, 1.7)
+target_size_m = Vector2(1.1196, 1.06497)
+
+[node name="WallSlotK" parent="SharedSpaceOrigin/WindowDockSlots" instance=ExtResource("76_dock_slot")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.85, 2.4928)
+slot_id = &"wall_k"
+accepted_categories = PackedStringArray()
+max_window_size_m = Vector2(2.2, 1.7)
+target_size_m = Vector2(1.1196, 1.06497)
+
+[node name="WallSlotL" parent="SharedSpaceOrigin/WindowDockSlots" instance=ExtResource("76_dock_slot")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.2, 0.85, 2.4928)
+slot_id = &"wall_l"
+accepted_categories = PackedStringArray()
+max_window_size_m = Vector2(2.2, 1.7)
+target_size_m = Vector2(1.1196, 1.06497)
 
 [node name="VirtualAnnotations" parent="SharedSpaceOrigin" instance=ExtResource("72_annotation_system")]
 
@@ -339,12 +444,10 @@ surface_material_override/0 = ExtResource("3_2envh")
 [node name="MeshCollider" type="StaticBody3D" parent="SpaceBox/SpaceBox/FrontDor"]
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="SpaceBox/SpaceBox/FrontDor/MeshCollider"]
-visible = false
 shape = SubResource("ConcavePolygonShape3D_6yffd")
 
 [node name="RightPlane" type="Node3D" parent="SpaceBox/SpaceBox"]
 transform = Transform3D(-2.62268e-07, 0, -2, 0, 2, 0, 6, 0, -8.74228e-08, -1, 1, 3.07167)
-visible = false
 
 [node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/RightPlane"]
 material_override = SubResource("StandardMaterial3D_34xb6")
@@ -355,7 +458,6 @@ surface_material_override/0 = ExtResource("5_ievty")
 [node name="MeshCollider" type="StaticBody3D" parent="SpaceBox/SpaceBox/RightPlane"]
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="SpaceBox/SpaceBox/RightPlane/MeshCollider"]
-visible = false
 shape = SubResource("ConcavePolygonShape3D_pi7ob")
 
 [node name="LeftPlane" type="Node3D" parent="SpaceBox/SpaceBox"]
@@ -369,7 +471,6 @@ surface_material_override/0 = ExtResource("6_rrlaw")
 [node name="MeshCollider" type="StaticBody3D" parent="SpaceBox/SpaceBox/LeftPlane"]
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="SpaceBox/SpaceBox/LeftPlane/MeshCollider"]
-visible = false
 shape = SubResource("ConcavePolygonShape3D_eiau6")
 
 [node name="UpPlane" type="Node3D" parent="SpaceBox/SpaceBox"]
@@ -384,12 +485,11 @@ surface_material_override/0 = ExtResource("7_b6upf")
 [node name="MeshCollider" type="StaticBody3D" parent="SpaceBox/SpaceBox/UpPlane"]
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="SpaceBox/SpaceBox/UpPlane/MeshCollider"]
-visible = false
 shape = SubResource("ConcavePolygonShape3D_iqg2v")
 disabled = true
 
 [node name="DownPlane" type="Node3D" parent="SpaceBox/SpaceBox"]
-transform = Transform3D(-2.62268e-07, -2, 8.74228e-08, 0, -8.74228e-08, -2, 6, -8.74228e-08, 3.82137e-15, 0, 0, 3.07167)
+transform = Transform3D(-1.31134e-06, -10, 4.37114e-07, 0, -4.37114e-07, -10, 30, -4.37114e-07, 1.91069e-14, 0, 0, 3.07167)
 
 [node name="MeshRenderer" type="MeshInstance3D" parent="SpaceBox/SpaceBox/DownPlane"]
 gi_mode = 2
@@ -1963,9 +2063,6 @@ visible = true
 [node name="T_product_dot" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a/xiaoshiyangui_d/OldTips/Ani_effect" index="4"]
 transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, -0.68, 0)
 
-[node name="T_product_Left_bg" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a/xiaoshiyangui_d/OldTips/Ani_effect" index="5"]
-transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, 0, 0)
-
 [node name="xiaoshiyangui_d_new" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a" index="2"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, -10, -10)
 visible = false
@@ -1976,17 +2073,11 @@ visible = true
 [node name="T_product_dot" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a/xiaoshiyangui_d_new/NewTips/Ani_effect" index="4"]
 transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, -0.68, 0)
 
-[node name="T_product_Left_bg" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a/xiaoshiyangui_d_new/NewTips/Ani_effect" index="5"]
-transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, 0, 0)
-
 [node name="zhongxinjigouTips" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a" index="3"]
 visible = true
 
 [node name="T_product_dot" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a/zhongxinjigouTips/Ani_effect" index="4"]
 transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, -0.68, 0)
-
-[node name="T_product_Left_bg" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a/zhongxinjigouTips/Ani_effect" index="5"]
-transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, 0, 0)
 
 [node name="zhouxinjigou_a (1)" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou" index="2"]
 visible = false
@@ -2279,7 +2370,7 @@ bones/21/rotation = Quaternion(-0.0329693, 0.849871, 0.0272099, 0.525254)
 
 [node name="Root" parent="SpaceBox/SpaceBox/Environment_Life/Malamute/GeneralSkeleton" index="0"]
 transform = Transform3D(-11.9508, -19.1468, 97.4196, 22.0729, -96.1795, -16.1953, 96.7986, 19.5679, 15.7205, -0.497475, 16.6446, -5.7103)
-joint_offset = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00161468, -0.00416527, 0.00408978)
+joint_offset = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00161469, -0.00416527, 0.00408978)
 body_offset = Transform3D(99.9994, -0.348785, -0.0122204, 0.348841, 99.999, 0.271122, 0.0112667, -0.271174, 99.9997, 0.160065, 0.415977, -0.410088)
 
 [node name="AnimationPlayer" parent="SpaceBox/SpaceBox/Environment_Life/Malamute/GeneralSkeleton/Root" index="0"]
@@ -2292,11 +2383,12 @@ root_motion_track = NodePath("../..")
 skin = SubResource("Skin_33alu")
 
 [node name="MainMenuCanvas" parent="." instance=ExtResource("54_4gitt")]
-transform = Transform3D(-0.00299996, 1.53247e-05, 4.76738e-06, 1.53492e-05, 0.00299992, 1.55533e-05, -4.68778e-06, 1.55775e-05, -0.00299996, -0.0719683, 1.10385, 2.91889)
+transform = Transform3D(-0.0014152, 7.22926e-06, 2.24896e-06, 7.24082e-06, 0.00141518, 7.3371e-06, -2.21141e-06, 7.34852e-06, -0.0014152, -0.0719683, 1.10385, 2.91889)
+script = ExtResource("77_spatial_viewport")
 screen_size = Vector2(620, 460)
 scene = ExtResource("55_iecw7")
 viewport_size = Vector2(620, 460)
-unshaded = true
+allow_window_drag = false
 
 [node name="Viewport" parent="MainMenuCanvas" index="0"]
 size = Vector2i(620, 460)
@@ -2306,11 +2398,26 @@ mesh = SubResource("QuadMesh_34xb6")
 surface_material_override/0 = SubResource("StandardMaterial3D_ievty")
 
 [node name="StaticBody3D" parent="MainMenuCanvas" index="2"]
+script = ExtResource("79_safe_body")
 screen_size = Vector2(620, 460)
 viewport_size = Vector2(620, 460)
 
 [node name="CollisionShape3D" parent="MainMenuCanvas/StaticBody3D" index="0"]
 shape = SubResource("BoxShape3D_6yffd")
+
+[node name="ChildSpawnAnchor3D" type="Marker3D" parent="MainMenuCanvas"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 710.445, 0, 0)
+
+[node name="SpatialWindowController" type="Node" parent="MainMenuCanvas"]
+script = ExtResource("78_window_controller")
+window_id = &"main_menu"
+window_category = &"main_menu"
+window_size_m = Vector2(0.877435, 0.651)
+event_source_path = NodePath("..")
+child_spawn_anchor_path = NodePath("../ChildSpawnAnchor3D")
+dock_manager_path = NodePath("../../SharedSpaceOrigin/WindowDockSlots")
+state_manager_path = NodePath("../../SharedSpaceOrigin/SpatialWindows/Manager")
+shared_space_origin_path = NodePath("../../SharedSpaceOrigin")
 
 [node name="Light" type="Node3D" parent="."]
 
@@ -2344,40 +2451,135 @@ shape = SubResource("ConcavePolygonShape3D_cddhk")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.109527, 0)
 
 [node name="PictureCanvas" parent="GroupUI" instance=ExtResource("54_4gitt")]
-transform = Transform3D(-0.00299996, 1.53247e-05, 4.76738e-06, 1.53492e-05, 0.00299992, 1.55533e-05, -4.68778e-06, 1.55775e-05, -0.00299996, -2.03729, 0.967935, 4.1962)
+transform = Transform3D(-0.0014152, 7.22926e-06, 2.24896e-06, 7.24082e-06, 0.00141518, 7.3371e-06, -2.21141e-06, 7.34852e-06, -0.0014152, -2.03729, 0.967935, 4.1962)
+script = ExtResource("77_spatial_viewport")
 screen_size = Vector2(610, 460)
 scene = ExtResource("57_ijmol")
 viewport_size = Vector2(610, 500)
+allow_window_drag = false
+
+[node name="ChildSpawnAnchor3D" type="Marker3D" parent="GroupUI/PictureCanvas"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 700.445, 0, 0)
+
+[node name="SpatialWindowController" type="Node" parent="GroupUI/PictureCanvas"]
+script = ExtResource("78_window_controller")
+window_id = &"picture_list"
+window_category = &"media"
+window_size_m = Vector2(0.863283, 0.651)
+event_source_path = NodePath("..")
+child_spawn_anchor_path = NodePath("../ChildSpawnAnchor3D")
+dock_manager_path = NodePath("../../../SharedSpaceOrigin/WindowDockSlots")
+state_manager_path = NodePath("../../../SharedSpaceOrigin/SpatialWindows/Manager")
+shared_space_origin_path = NodePath("../../../SharedSpaceOrigin")
 
 [node name="PictureInfoCanvas" parent="GroupUI" instance=ExtResource("54_4gitt")]
-transform = Transform3D(-0.00299996, 1.53247e-05, 4.76738e-06, 1.53492e-05, 0.00299992, 1.55533e-05, -4.68778e-06, 1.55775e-05, -0.00299996, -3.94012, 0.967935, 4.00141)
+transform = Transform3D(-0.0014152, 7.22926e-06, 2.24896e-06, 7.24082e-06, 0.00141518, 7.3371e-06, -2.21141e-06, 7.34852e-06, -0.0014152, -3.94012, 0.967935, 4.00141)
+script = ExtResource("77_spatial_viewport")
 screen_size = Vector2(610, 460)
 scene = ExtResource("58_q6r6r")
 viewport_size = Vector2(610, 500)
+allow_window_drag = false
+
+[node name="ChildSpawnAnchor3D" type="Marker3D" parent="GroupUI/PictureInfoCanvas"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 700.445, 0, 0)
+
+[node name="SpatialWindowController" type="Node" parent="GroupUI/PictureInfoCanvas"]
+script = ExtResource("78_window_controller")
+window_id = &"picture_info"
+window_category = &"media"
+window_size_m = Vector2(0.863283, 0.651)
+event_source_path = NodePath("..")
+child_spawn_anchor_path = NodePath("../ChildSpawnAnchor3D")
+dock_manager_path = NodePath("../../../SharedSpaceOrigin/WindowDockSlots")
+state_manager_path = NodePath("../../../SharedSpaceOrigin/SpatialWindows/Manager")
+shared_space_origin_path = NodePath("../../../SharedSpaceOrigin")
 
 [node name="MovieCanvas" parent="GroupUI" instance=ExtResource("54_4gitt")]
-transform = Transform3D(-0.00299996, 1.53247e-05, 4.76738e-06, 1.53492e-05, 0.00299992, 1.55533e-05, -4.68778e-06, 1.55775e-05, -0.00299996, -2.03729, 0.967935, 4.1962)
+transform = Transform3D(-0.0014152, 7.22926e-06, 2.24896e-06, 7.24082e-06, 0.00141518, 7.3371e-06, -2.21141e-06, 7.34852e-06, -0.0014152, -2.03729, 0.967935, 4.1962)
+script = ExtResource("77_spatial_viewport")
 screen_size = Vector2(610, 460)
 scene = ExtResource("59_c4ac8")
 viewport_size = Vector2(610, 500)
+allow_window_drag = false
+
+[node name="ChildSpawnAnchor3D" type="Marker3D" parent="GroupUI/MovieCanvas"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 700.445, 0, 0)
+
+[node name="SpatialWindowController" type="Node" parent="GroupUI/MovieCanvas"]
+script = ExtResource("78_window_controller")
+window_id = &"movie_list"
+window_category = &"media"
+window_size_m = Vector2(0.863283, 0.651)
+event_source_path = NodePath("..")
+child_spawn_anchor_path = NodePath("../ChildSpawnAnchor3D")
+dock_manager_path = NodePath("../../../SharedSpaceOrigin/WindowDockSlots")
+state_manager_path = NodePath("../../../SharedSpaceOrigin/SpatialWindows/Manager")
+shared_space_origin_path = NodePath("../../../SharedSpaceOrigin")
 
 [node name="MovieInfoCanvas" parent="GroupUI" instance=ExtResource("54_4gitt")]
-transform = Transform3D(-0.00299996, 1.53247e-05, 4.76738e-06, 1.53492e-05, 0.00299992, 1.55533e-05, -4.68778e-06, 1.55775e-05, -0.00299996, -3.94012, 0.967935, 4.1962)
+transform = Transform3D(-0.0014152, 7.22926e-06, 2.24896e-06, 7.24082e-06, 0.00141518, 7.3371e-06, -2.21141e-06, 7.34852e-06, -0.0014152, -3.94012, 0.967935, 4.1962)
+script = ExtResource("77_spatial_viewport")
 screen_size = Vector2(610, 460)
 scene = ExtResource("60_qufia")
 viewport_size = Vector2(610, 500)
+allow_window_drag = false
+
+[node name="ChildSpawnAnchor3D" type="Marker3D" parent="GroupUI/MovieInfoCanvas"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 700.445, 0, 0)
+
+[node name="SpatialWindowController" type="Node" parent="GroupUI/MovieInfoCanvas"]
+script = ExtResource("78_window_controller")
+window_id = &"movie_info"
+window_category = &"media"
+window_size_m = Vector2(0.863283, 0.651)
+event_source_path = NodePath("..")
+child_spawn_anchor_path = NodePath("../ChildSpawnAnchor3D")
+dock_manager_path = NodePath("../../../SharedSpaceOrigin/WindowDockSlots")
+state_manager_path = NodePath("../../../SharedSpaceOrigin/SpatialWindows/Manager")
+shared_space_origin_path = NodePath("../../../SharedSpaceOrigin")
 
 [node name="WorkListInfoCanvas" parent="GroupUI" instance=ExtResource("54_4gitt")]
-transform = Transform3D(-0.00299996, 1.53247e-05, 4.76738e-06, 1.53492e-05, 0.00299992, 1.55533e-05, -4.68778e-06, 1.55775e-05, -0.00299996, -2.02817, 0.967935, 4.1911)
+transform = Transform3D(-0.0014152, 7.22926e-06, 2.24896e-06, 7.24082e-06, 0.00141518, 7.3371e-06, -2.21141e-06, 7.34852e-06, -0.0014152, -2.02817, 0.967935, 4.1911)
+script = ExtResource("77_spatial_viewport")
 screen_size = Vector2(610, 460)
 scene = ExtResource("61_8h1ek")
 viewport_size = Vector2(610, 500)
+allow_window_drag = false
+
+[node name="ChildSpawnAnchor3D" type="Marker3D" parent="GroupUI/WorkListInfoCanvas"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 700.445, 0, 0)
+
+[node name="SpatialWindowController" type="Node" parent="GroupUI/WorkListInfoCanvas"]
+script = ExtResource("78_window_controller")
+window_id = &"work_list_info"
+window_category = &"work"
+window_size_m = Vector2(0.863283, 0.651)
+event_source_path = NodePath("..")
+child_spawn_anchor_path = NodePath("../ChildSpawnAnchor3D")
+dock_manager_path = NodePath("../../../SharedSpaceOrigin/WindowDockSlots")
+state_manager_path = NodePath("../../../SharedSpaceOrigin/SpatialWindows/Manager")
+shared_space_origin_path = NodePath("../../../SharedSpaceOrigin")
 
 [node name="VoiceCallWindow3D" parent="GroupUI" instance=ExtResource("70_voice_call")]
-transform = Transform3D(-0.000815796, -1.07935e-05, 0.00288693, 1.53492e-05, 0.00299992, 1.55533e-05, -0.00288691, 1.90002e-05, -0.00081572, -1.23002, 0.905885, 1.72829)
+transform = Transform3D(-0.000351246, -4.6472e-06, 0.00124298, 6.60868e-06, 0.00129163, 6.69656e-06, -0.00124298, 8.18064e-06, -0.000351213, -1.23002, 0.905885, 1.72829)
 visible = false
-scene_properties_keys = PackedStringArray("voice_chat_ui.gd", "is_3d_panel")
-is_3d_panel = true
+script = ExtResource("77_spatial_viewport")
+allow_window_drag = false
+
+[node name="ChildSpawnAnchor3D" type="Marker3D" parent="GroupUI/VoiceCallWindow3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 670.097, 0, 0)
+
+[node name="SpatialWindowController" type="Node" parent="GroupUI/VoiceCallWindow3D"]
+script = ExtResource("78_window_controller")
+window_id = &"voice_call"
+window_category = &"communication"
+window_size_m = Vector2(0.737542, 0.651)
+event_source_path = NodePath("..")
+visibility_target_path = NodePath("..")
+child_spawn_anchor_path = NodePath("../ChildSpawnAnchor3D")
+dock_manager_path = NodePath("../../../SharedSpaceOrigin/WindowDockSlots")
+state_manager_path = NodePath("../../../SharedSpaceOrigin/SpatialWindows/Manager")
+shared_space_origin_path = NodePath("../../../SharedSpaceOrigin")
 
 [node name="MultiplayerSpawner" type="MultiplayerSpawner" parent="."]
 _spawnable_scenes = PackedStringArray("uid://c0oao8sfhry88")

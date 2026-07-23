@@ -3,6 +3,10 @@ extends Node
 const PLAYER_SCENE: PackedScene = preload("res://Assets/ARSpace/Scenes/Player.tscn")
 const SPAWNER_SCRIPT: Script = preload("res://Assets/ARSpace/Scripts/Network/multiplayer_spawner.gd")
 const ANNOTATION_MANAGER_SCRIPT: Script = preload("res://Assets/ARSpace/Scripts/VirtualAnnotation/virtual_annotation_manager.gd")
+const WINDOW_STATE_MANAGER_SCRIPT: Script = preload("res://Assets/ARSpace/Scripts/SpatialWindows/spatial_window_state_manager.gd")
+const WINDOW_DOCK_MANAGER_SCRIPT: Script = preload("res://Assets/ARSpace/Scripts/SpatialWindows/window_dock_manager.gd")
+const WINDOW_DOCK_SLOT_SCENE: PackedScene = preload("res://Assets/ARSpace/Scenes/SpatialWindows/WindowDockSlot3D.tscn")
+const MAIN_MENU_STATE_MANAGER_SCRIPT: Script = preload("res://Assets/ARSpace/Scripts/UI/shared_main_menu_state.gd")
 const ROLE_ARG: String = "--collab-process-role="
 const PORT_ARG: String = "--collab-process-port="
 const DEFAULT_PORT: int = 43280
@@ -13,16 +17,80 @@ const ROLE_SKY: String = "sky"
 const FIRST_ANNOTATION_TEXT: String = "Ground VR initial annotation"
 const SECOND_ANNOTATION_TEXT: String = "Ground VR reconnected annotation"
 const FORGED_SKY_ANNOTATION_TEXT: String = "Sky forged annotation"
+const SHARED_WINDOW_ID: StringName = &"collaboration_panel"
+const MAIN_MENU_MODE_LIFE: int = 0
+const MAIN_MENU_MODE_WORK: int = 1
+const SHARED_WINDOW_INITIAL_TRANSFORM := Transform3D(
+	Basis.IDENTITY,
+	Vector3(0.0, 1.1, -1.2)
+)
+const SHARED_WINDOW_FIRST_TRANSFORM := Transform3D(
+	Basis.IDENTITY,
+	Vector3(0.2, 1.25, -1.5)
+)
+const SHARED_WINDOW_GROUND_TRANSFORM := Transform3D(
+	Basis.IDENTITY,
+	Vector3(-0.6, 1.2, -1.7)
+)
+const SHARED_WINDOW_SKY_TRANSFORM := Transform3D(
+	Basis.IDENTITY,
+	Vector3(0.6, 1.2, -1.7)
+)
 
 var _role: String = ""
 var _port: int = DEFAULT_PORT
 var _world: Node3D
 var _peer: ENetMultiplayerPeer
 var _annotation_manager: Node
+var _window_manager: Node
+var _main_menu_state_manager: Node
 var _failures: Array[String] = []
 var _last_rejected_peer_id: int = 0
 var _last_rejection_reason: String = ""
 var _candidate_own_player_seen: bool = false
+
+
+class CollaborationWindowController extends Node:
+	var shared_transform: Transform3D = SHARED_WINDOW_INITIAL_TRANSFORM
+	var state: int = 1
+	var slot_id: StringName = &""
+	var visible: bool = true
+
+	func get_window_id() -> StringName:
+		return SHARED_WINDOW_ID
+
+	func get_window_config() -> Dictionary:
+		return {
+			"window_id": str(SHARED_WINDOW_ID),
+			"scope": 1,
+			"category": "collaboration",
+			"size_m": Vector2(0.9, 0.6),
+			"base_scale": Vector3.ONE,
+		}
+
+	func get_shared_transform() -> Transform3D:
+		return shared_transform
+
+	func get_current_slot_id() -> StringName:
+		return slot_id
+
+	func get_state() -> int:
+		return state
+
+	func is_window_open() -> bool:
+		return visible
+
+	func apply_authoritative_record(record: Dictionary) -> void:
+		shared_transform = record.get("transform", Transform3D.IDENTITY) as Transform3D
+		state = int(record.get("state", 0))
+		slot_id = StringName(str(record.get("slot_id", "")))
+		visible = bool(record.get("visible", false))
+
+	func apply_authoritative_drag_preview(
+		value: Transform3D,
+		_operator_peer_id: int
+	) -> void:
+		shared_transform = value
 
 
 func _ready() -> void:
@@ -42,6 +110,29 @@ func _disable_unrelated_services() -> void:
 		var service := get_node_or_null(service_path)
 		if service != null:
 			service.process_mode = Node.PROCESS_MODE_DISABLED
+			if service_path == NodePath("/root/VoiceChat"):
+				_disconnect_voice_service_signals(service)
+
+
+func _disconnect_voice_service_signals(service: Node) -> void:
+	_disconnect_signal(multiplayer.peer_connected, Callable(service, "_on_peer_connected"))
+	_disconnect_signal(multiplayer.peer_disconnected, Callable(service, "_on_peer_disconnected"))
+	_disconnect_signal(multiplayer.connected_to_server, Callable(service, "_on_connected_to_server"))
+	_disconnect_signal(multiplayer.connection_failed, Callable(service, "_on_connection_failed"))
+	_disconnect_signal(multiplayer.server_disconnected, Callable(service, "_on_server_disconnected"))
+	var network_handler := _get_network_handler()
+	if network_handler == null:
+		return
+	for signal_name in [&"network_role_selected", &"network_ready"]:
+		for connection in network_handler.get_signal_connection_list(signal_name):
+			var callback := connection.get("callable", Callable()) as Callable
+			if callback.get_object() == service:
+				network_handler.disconnect(signal_name, callback)
+
+
+func _disconnect_signal(source_signal: Signal, callback: Callable) -> void:
+	if source_signal.is_connected(callback):
+		source_signal.disconnect(callback)
 
 
 func _run() -> void:
@@ -73,10 +164,19 @@ func _run_server() -> void:
 	_check(await _wait_for_player_count(2), "server should observe the Ground VR client")
 	var first_ground_peer_id := await _wait_for_ground_vr_peer()
 	_check(first_ground_peer_id > 1, "server should authoritatively assign the Ground VR role")
+	_check(await _wait_for_remote_avatars(1), "server should receive the Ground VR pose before window control")
 	_check(await _wait_for_annotation_count(1), "server should accept the Ground VR annotation")
 	_check(
 		_annotation_creator(FIRST_ANNOTATION_TEXT) == first_ground_peer_id,
 		"server should record the authenticated Ground VR creator"
+	)
+	_check(
+		await _wait_for_window_transform(SHARED_WINDOW_FIRST_TRANSFORM),
+		"server should accept the Ground VR shared-window transform"
+	)
+	_check(
+		await _wait_for_main_menu_mode(MAIN_MENU_MODE_WORK),
+		"server should accept the Ground VR MainMenu WORK mode"
 	)
 
 	_check(await _wait_for_player_count(3), "server should observe the Sky client")
@@ -86,6 +186,14 @@ func _run_server() -> void:
 	_check(_count_role(ROLE_SKY) == 1, "server should keep exactly one Sky role")
 	_check(await _wait_for_player_roles(), "server player replicas should match the role registry")
 	_check(await _wait_for_remote_avatars(2), "server should receive both remote player poses")
+	_check(
+		await _wait_for_main_menu_mode(MAIN_MENU_MODE_LIFE),
+		"server should accept the Sky MainMenu LIFE mode"
+	)
+	_check(
+		await _wait_for_window_slot(&"slot_b"),
+		"server should accept Sky moving the shared window to slot_b"
+	)
 	var rejected_candidate_id := await _wait_for_sky_candidate_rejection()
 	_check(rejected_candidate_id > 1, "server should explicitly reject the second Sky candidate")
 	_check(
@@ -102,14 +210,18 @@ func _run_server() -> void:
 	_check(await _wait_for_player_count(3), "server should observe the reconnected Ground VR client")
 	var reconnected_ground_peer_id := await _wait_for_ground_vr_peer(first_ground_peer_id)
 	_check(reconnected_ground_peer_id > 1, "server should reassign the released Ground VR slot")
+	_check(await _wait_for_player_roles(), "server reconnect replicas should match the role registry")
+	_check(await _wait_for_remote_avatars(2), "server should receive reconnected remote poses")
 	_check(await _wait_for_annotation_count(2), "server should accept a post-reconnect Ground VR annotation")
+	_check(
+		await _wait_for_window_slot(&"slot_a"),
+		"server should accept reconnected Ground VR moving the shared window to slot_a"
+	)
 	_check(
 		_annotation_creator(SECOND_ANNOTATION_TEXT) == reconnected_ground_peer_id,
 		"server should bind the second annotation to the reconnected Ground VR peer"
 	)
 	_check(_has_unique_annotations(), "server should end with two unique authoritative annotations")
-	_check(await _wait_for_player_roles(), "server reconnect replicas should match the role registry")
-	_check(await _wait_for_remote_avatars(2), "server should receive reconnected remote poses")
 	_check(_has_unique_player_names(), "server should end with unique player instances")
 	await get_tree().create_timer(0.75).timeout
 
@@ -129,11 +241,43 @@ func _run_ground_client() -> void:
 	)
 	_check(await _wait_for_annotation_count(1), "Ground VR should receive its confirmed annotation")
 	_check(_annotation_text_count(FIRST_ANNOTATION_TEXT) == 1, "Ground VR should render its annotation once")
+	_check(
+		bool(_window_manager.call(
+			"request_settled_state",
+			SHARED_WINDOW_ID,
+			SHARED_WINDOW_FIRST_TRANSFORM,
+			&""
+		)),
+		"Ground VR should submit a shared-window transform"
+	)
+	_check(
+		await _wait_for_window_transform(SHARED_WINDOW_FIRST_TRANSFORM),
+		"Ground VR should receive the Server-confirmed shared-window transform"
+	)
+	_check(
+		bool(_main_menu_state_manager.call(
+			"request_active_mode",
+			MAIN_MENU_MODE_WORK
+		)),
+		"Ground VR should submit the MainMenu WORK mode"
+	)
+	_check(
+		await _wait_for_main_menu_mode(MAIN_MENU_MODE_WORK),
+		"Ground VR should receive the Server-confirmed MainMenu WORK mode"
+	)
 
 	_check(await _wait_for_player_count(3), "Ground VR client should observe the Sky client")
 	_check(await _wait_for_role_count(3), "Ground VR should receive the three-role snapshot")
 	_check(await _wait_for_player_roles(), "Ground VR should identify PC Ground and Sky replicas")
 	_check(await _wait_for_remote_avatars(2), "Ground VR should receive PC Ground and Sky poses")
+	_check(
+		await _wait_for_main_menu_mode(MAIN_MENU_MODE_LIFE),
+		"Ground VR should receive Sky's MainMenu LIFE mode"
+	)
+	_check(
+		await _wait_for_window_slot(&"slot_b"),
+		"Ground VR should receive Sky's slot_b window result"
+	)
 	# Give the Sky process time to exercise its rejected create before this peer
 	# disconnects and releases the single Ground VR slot.
 	await get_tree().create_timer(2.0).timeout
@@ -146,7 +290,21 @@ func _run_ground_client() -> void:
 	_check(await _wait_for_local_role(ROLE_GROUND_VR), "reconnected client should reclaim the Ground VR role")
 	_check(await _wait_for_player_count(3), "reconnected Ground VR should receive the current player snapshot")
 	_check(await _wait_for_annotation_count(1), "reconnected Ground VR should receive the annotation snapshot")
+	_check(
+		await _wait_for_window_slot(&"slot_b"),
+		"reconnected Ground VR should restore the shared-window slot snapshot"
+	)
+	_check(
+		await _wait_for_main_menu_mode(MAIN_MENU_MODE_LIFE),
+		"reconnected Ground VR should restore the MainMenu mode snapshot"
+	)
 	_check(_annotation_text_count(FIRST_ANNOTATION_TEXT) == 1, "reconnect snapshot should contain no duplicate annotation")
+	_check(await _wait_for_player_roles(), "reconnected Ground VR replicas should match roles before control")
+	_check(await _wait_for_remote_avatars(2), "reconnected Ground VR should receive poses before control")
+	# The local client seeing remote avatars does not prove that the Server has
+	# received this newly spawned client's first network pose yet. Allow one
+	# short pose-publication window before exercising distance-validated input.
+	await get_tree().create_timer(0.35).timeout
 	var new_peer_id := _peer.get_unique_id()
 	if new_peer_id != old_peer_id:
 		_check(_world.get_node_or_null(str(old_peer_id)) == null, "reconnected Ground VR should not retain its stale player id")
@@ -154,10 +312,21 @@ func _run_ground_client() -> void:
 		int(_annotation_manager.call("create_annotation", _make_draft(SECOND_ANNOTATION_TEXT, Vector3(-1.0, 1.0, -3.0)))) == 0,
 		"reconnected Ground VR create should be queued to Server authority"
 	)
+	_check(
+		bool(_window_manager.call(
+			"request_settled_state",
+			SHARED_WINDOW_ID,
+			SHARED_WINDOW_GROUND_TRANSFORM,
+			&"slot_a"
+		)),
+		"reconnected Ground VR should request slot_a"
+	)
 	_check(await _wait_for_annotation_count(2), "reconnected Ground VR should receive the second annotation")
+	_check(
+		await _wait_for_window_slot(&"slot_a"),
+		"reconnected Ground VR should converge on slot_a"
+	)
 	_check(_has_unique_annotations(), "reconnected Ground VR should end with two unique annotations")
-	_check(await _wait_for_player_roles(), "reconnected Ground VR replicas should match the role registry")
-	_check(await _wait_for_remote_avatars(2), "reconnected Ground VR should receive both remote poses")
 	_check(_has_unique_player_names(), "reconnected Ground VR should end with unique player instances")
 	_check(first_peer_id == old_peer_id, "Ground VR peer identity should remain stable before disconnect")
 	await get_tree().create_timer(1.0).timeout
@@ -173,6 +342,25 @@ func _run_sky_client() -> void:
 	_check(await _wait_for_annotation_count(1), "late Sky client should receive the annotation snapshot")
 	_check(_annotation_text_count(FIRST_ANNOTATION_TEXT) == 1, "late Sky snapshot should contain the annotation once")
 	_check(
+		await _wait_for_window_transform(SHARED_WINDOW_FIRST_TRANSFORM),
+		"late Sky should receive the Ground VR shared-window snapshot"
+	)
+	_check(
+		await _wait_for_main_menu_mode(MAIN_MENU_MODE_WORK),
+		"late Sky should receive the current MainMenu WORK snapshot"
+	)
+	_check(
+		bool(_main_menu_state_manager.call(
+			"request_active_mode",
+			MAIN_MENU_MODE_LIFE
+		)),
+		"registered Sky should submit the MainMenu LIFE mode"
+	)
+	_check(
+		await _wait_for_main_menu_mode(MAIN_MENU_MODE_LIFE),
+		"Sky should receive the Server-confirmed MainMenu LIFE mode"
+	)
+	_check(
 		int(_annotation_manager.call("create_annotation", _make_draft("Sky local annotation", Vector3.ZERO))) == -1,
 		"Sky client should be denied before sending a local annotation request"
 	)
@@ -187,6 +375,20 @@ func _run_sky_client() -> void:
 	_check(_annotation_text_count(FORGED_SKY_ANNOTATION_TEXT) == 0, "forged Sky annotation must not be synchronized")
 	_check(await _wait_for_player_roles(), "Sky client should identify both Ground replicas")
 	_check(await _wait_for_remote_avatars(2), "Sky client should receive both Ground poses")
+	await get_tree().create_timer(0.25).timeout
+	_check(
+		bool(_window_manager.call(
+			"request_settled_state",
+			SHARED_WINDOW_ID,
+			SHARED_WINDOW_SKY_TRANSFORM,
+			&"slot_b"
+		)),
+		"registered Sky should control the shared window"
+	)
+	_check(
+		await _wait_for_window_slot(&"slot_b"),
+		"Sky should receive its Server-confirmed slot_b result"
+	)
 
 	_check(await _wait_for_player_count(2), "Sky client should observe Ground VR cleanup")
 	_check(await _wait_for_ground_vr_release(), "Sky client should observe the released Ground VR slot")
@@ -196,6 +398,10 @@ func _run_sky_client() -> void:
 	var replacement_ground_peer_id := await _wait_for_ground_vr_peer()
 	_check(replacement_ground_peer_id > 1, "Sky client should observe the replacement Ground VR role")
 	_check(await _wait_for_annotation_count(2), "Sky client should receive the post-reconnect annotation")
+	_check(
+		await _wait_for_window_slot(&"slot_a"),
+		"Sky should receive reconnected Ground VR's slot_a result"
+	)
 	_check(_has_unique_annotations(), "Sky client should end with two unique synchronized annotations")
 	_check(await _wait_for_player_roles(), "Sky reconnect replicas should match the role registry")
 	_check(await _wait_for_remote_avatars(2), "Sky client should receive reconnected Ground VR poses")
@@ -272,6 +478,33 @@ func _create_world(_world_name: String) -> Node3D:
 	_annotation_manager.set("warn_on_rejection", false)
 	annotation_system.add_child(_annotation_manager)
 
+	var dock_manager: Node3D = WINDOW_DOCK_MANAGER_SCRIPT.new()
+	dock_manager.name = "WindowDockSlots"
+	shared_origin.add_child(dock_manager)
+	_add_collaboration_slot(dock_manager, &"slot_a", Vector3(-0.6, 1.2, -1.7))
+	_add_collaboration_slot(dock_manager, &"slot_b", Vector3(0.6, 1.2, -1.7))
+	dock_manager.call("refresh_slots")
+	var spatial_windows := Node3D.new()
+	spatial_windows.name = "SpatialWindows"
+	shared_origin.add_child(spatial_windows)
+	_window_manager = WINDOW_STATE_MANAGER_SCRIPT.new()
+	_window_manager.name = "Manager"
+	_window_manager.set("shared_space_origin_path", NodePath("../.."))
+	_window_manager.set("dock_manager_path", NodePath("../../WindowDockSlots"))
+	_window_manager.set("peer_authority_path", NodePath("/root/NetworkHandler"))
+	_window_manager.set("require_remote_interaction_pose", true)
+	_window_manager.set("warn_on_rejection", false)
+	spatial_windows.add_child(_window_manager)
+	var collaboration_window := CollaborationWindowController.new()
+	collaboration_window.name = str(SHARED_WINDOW_ID)
+	spatial_windows.add_child(collaboration_window)
+	_window_manager.call("register_window", collaboration_window)
+	_main_menu_state_manager = MAIN_MENU_STATE_MANAGER_SCRIPT.new()
+	_main_menu_state_manager.name = "MainMenuState"
+	_main_menu_state_manager.set("peer_authority_path", NodePath("/root/NetworkHandler"))
+	_main_menu_state_manager.set("warn_on_rejection", false)
+	spatial_windows.add_child(_main_menu_state_manager)
+
 	var spawner := SPAWNER_SCRIPT.new() as MultiplayerSpawner
 	spawner.name = "MultiplayerSpawner"
 	spawner.spawn_path = NodePath("..")
@@ -280,14 +513,26 @@ func _create_world(_world_name: String) -> Node3D:
 	return world
 
 
+func _add_collaboration_slot(
+	dock_manager: Node3D,
+	slot_id: StringName,
+	position: Vector3
+) -> void:
+	var slot := WINDOW_DOCK_SLOT_SCENE.instantiate() as Node3D
+	slot.name = str(slot_id)
+	slot.set("slot_id", slot_id)
+	slot.set("accepted_categories", PackedStringArray(["collaboration"]))
+	slot.position = position
+	dock_manager.add_child(slot)
+
+
 func _disconnect_and_free_world() -> void:
 	if _world != null and is_instance_valid(_world):
-		var parent := _world.get_parent()
-		if parent != null:
-			parent.remove_child(_world)
 		_world.queue_free()
 	_world = null
 	_annotation_manager = null
+	_window_manager = null
+	_main_menu_state_manager = null
 	var old_peer := _peer
 	_peer = null
 	multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
@@ -439,6 +684,46 @@ func _wait_for_annotation_count(expected_count: int) -> bool:
 	while Time.get_ticks_msec() < deadline:
 		if _annotation_manager != null \
 				and int(_annotation_manager.call("get_annotation_count")) == expected_count:
+			return true
+		await get_tree().process_frame
+	return false
+
+
+func _wait_for_window_transform(expected: Transform3D) -> bool:
+	var deadline := Time.get_ticks_msec() + STAGE_TIMEOUT_MSEC
+	while Time.get_ticks_msec() < deadline:
+		if _window_manager != null:
+			var record := _window_manager.call(
+				"get_window_state",
+				SHARED_WINDOW_ID
+			) as Dictionary
+			var transform_value = record.get("transform", null)
+			if transform_value is Transform3D \
+					and (transform_value as Transform3D).is_equal_approx(expected):
+				return true
+		await get_tree().process_frame
+	return false
+
+
+func _wait_for_window_slot(expected_slot: StringName) -> bool:
+	var deadline := Time.get_ticks_msec() + STAGE_TIMEOUT_MSEC
+	while Time.get_ticks_msec() < deadline:
+		if _window_manager != null:
+			var record := _window_manager.call(
+				"get_window_state",
+				SHARED_WINDOW_ID
+			) as Dictionary
+			if StringName(str(record.get("slot_id", ""))) == expected_slot:
+				return true
+		await get_tree().process_frame
+	return false
+
+
+func _wait_for_main_menu_mode(expected_mode: int) -> bool:
+	var deadline := Time.get_ticks_msec() + STAGE_TIMEOUT_MSEC
+	while Time.get_ticks_msec() < deadline:
+		if _main_menu_state_manager != null \
+				and int(_main_menu_state_manager.call("get_active_mode")) == expected_mode:
 			return true
 		await get_tree().process_frame
 	return false

@@ -10,11 +10,13 @@ const SOURCE_REFRESH_INTERVAL_MSEC: int = 250
 @export var network_handler_path: NodePath = NodePath("/root/NetworkHandler")
 @export var window_surface_path: NodePath = NodePath("WindowSurface")
 @export var default_source_path: NodePath = NodePath("VirtualCameraViewSource")
+@export var spatial_window_controller_path: NodePath = NodePath("SpatialWindowController")
 @export_range(1, 20, 1) var capture_exclusion_visual_layer: int = 20
 
 var _runtime_profile
 var _network_handler: Node
 var _window_surface: Node3D
+var _spatial_window_controller: Node
 var _panel: Node
 var _view_source: Node
 var _window_open: bool = true
@@ -29,6 +31,7 @@ var _metadata_callback: Callable
 
 func _ready() -> void:
 	_window_surface = get_node_or_null(window_surface_path) as Node3D
+	_spatial_window_controller = get_node_or_null(spatial_window_controller_path)
 	if _window_surface != null:
 		_default_surface_transform = _window_surface.transform
 		_apply_capture_exclusion_layer(_window_surface)
@@ -56,11 +59,17 @@ func refresh_profile() -> void:
 	_runtime_profile = RuntimeProfileScript.current()
 	var should_show := _profile_shows_astronaut_view()
 	visible = should_show
-	if _window_surface != null:
-		_window_surface.visible = should_show and _window_open
 	if should_show and _window_open:
+		if _spatial_window_controller != null:
+			_spatial_window_controller.call("open_window", null, false)
+		elif _window_surface != null:
+			_window_surface.visible = true
 		_refresh_source_binding(true)
 	else:
+		if _spatial_window_controller != null:
+			_spatial_window_controller.call("close_window")
+		elif _window_surface != null:
+			_window_surface.visible = false
 		_stop_source()
 
 
@@ -94,23 +103,34 @@ func get_bound_sky_peer_id() -> int:
 
 
 func is_window_open() -> bool:
+	if _spatial_window_controller != null:
+		return _window_open and bool(_spatial_window_controller.call("is_window_open"))
 	return _window_open
 
 
 func open_window() -> void:
 	_window_open = true
-	refresh_profile()
+	_runtime_profile = RuntimeProfileScript.current()
+	if _profile_shows_astronaut_view() and _spatial_window_controller != null:
+		_spatial_window_controller.call("open_window", null, true)
+		_refresh_source_binding(true)
+	else:
+		refresh_profile()
 
 
 func close_window() -> void:
 	_window_open = false
-	if _window_surface != null:
+	if _spatial_window_controller != null:
+		_spatial_window_controller.call("close_window")
+	elif _window_surface != null:
 		_window_surface.visible = false
 	_stop_source()
 
 
 func restore_window_position() -> void:
-	if _window_surface != null:
+	if _spatial_window_controller != null:
+		_spatial_window_controller.call("restore_window_position")
+	elif _window_surface != null:
 		_window_surface.transform = _default_surface_transform
 
 

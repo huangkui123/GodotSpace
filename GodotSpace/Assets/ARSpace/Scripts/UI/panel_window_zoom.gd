@@ -22,6 +22,11 @@ static func bind_max_button(panel_root: Node, zoom_factor: float = DEFAULT_ZOOM_
 
 
 static func toggle_window(panel_root: Node, zoom_factor: float = DEFAULT_ZOOM_FACTOR) -> void:
+	var spatial_controller := _get_spatial_window_controller(panel_root)
+	if spatial_controller != null:
+		spatial_controller.set("maximized_scale_factor", zoom_factor)
+		spatial_controller.call("toggle_zoom")
+		return
 	var target := _get_window_target(panel_root)
 	if target == null:
 		return
@@ -33,6 +38,13 @@ static func toggle_window(panel_root: Node, zoom_factor: float = DEFAULT_ZOOM_FA
 
 
 static func set_window_visible(panel_root: Node, is_visible: bool) -> void:
+	var spatial_controller := _get_spatial_window_controller(panel_root)
+	if spatial_controller != null:
+		if is_visible:
+			spatial_controller.call("open_window", null, true)
+		else:
+			spatial_controller.call("close_window")
+		return
 	var target := _get_window_target(panel_root)
 	if target != null:
 		target.visible = is_visible
@@ -74,3 +86,15 @@ static func _get_window_target(panel_root: Node) -> Node:
 			return viewport_parent
 
 	return panel_root
+
+
+static func _get_spatial_window_controller(panel_root: Node) -> Node:
+	var target := _get_window_target(panel_root)
+	if target == null:
+		return null
+	if target.has_method("toggle_zoom") and target.has_method("open_window"):
+		return target
+	for child in target.get_children():
+		if child.has_method("toggle_zoom") and child.has_method("open_window"):
+			return child
+	return null

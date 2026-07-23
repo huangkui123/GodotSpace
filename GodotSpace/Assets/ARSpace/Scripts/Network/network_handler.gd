@@ -220,6 +220,17 @@ func can_peer_annotate(peer_id: int) -> bool:
 	return is_peer_ground(peer_id)
 
 
+func can_peer_control_shared_windows(peer_id: int) -> bool:
+	# Shared spatial windows are the common three-end workspace. Unlike virtual
+	# annotations, their supported open/drag/snap operations are available to
+	# every Server-registered session role, including the unique Sky peer.
+	return get_peer_role(peer_id) in [
+		ROLE_PC_GROUND,
+		ROLE_GROUND_VR,
+		ROLE_SKY,
+	]
+
+
 func is_ground_vr_pairing_protected() -> bool:
 	return not OS.get_environment(GROUND_VR_TOKEN_ENV).is_empty()
 

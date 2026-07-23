@@ -64,7 +64,7 @@ try {
     Start-Sleep -Milliseconds 750
     $Jobs += Start-CollaborationPeer -Role 'sky_candidate' -VoiceRole 'client'
 
-    $null = Wait-Job -Job $Jobs -Timeout 60
+    $null = Wait-Job -Job $Jobs -Timeout 120
     $Results = @()
     foreach ($Job in $Jobs) {
         if ($Job.State -ne 'Completed') {
