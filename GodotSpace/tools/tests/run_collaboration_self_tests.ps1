@@ -24,6 +24,12 @@ $SceneTests = @(
     'res://Assets/ARSpace/Scenes/Tests/PlayerNetworkSelfTest.tscn'
 )
 
+Write-Host 'Refreshing imports and the global script class cache'
+& $Godot --headless --editor --path $Project --import --quit
+if ($LASTEXITCODE -ne 0) {
+    throw 'Godot import and global script class refresh failed'
+}
+
 foreach ($Test in $ScriptTests) {
     Write-Host "Running $Test"
     & $Godot --headless --path $Project --script $Test
