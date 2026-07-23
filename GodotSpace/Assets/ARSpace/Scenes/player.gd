@@ -301,8 +301,8 @@ func _configure_local_xr_nodes(is_local_authority: bool) -> void:
 	_set_network_avatar_visible(false)
 	var astronaut_avatar := get_node_or_null("AstronautAvatar") as Node3D
 	if astronaut_avatar != null:
-		astronaut_avatar.call("set_local_presentation", is_local_authority)
-		astronaut_avatar.visible = is_local_authority and local_xr_enabled and not _is_pc_ground_server()
+		astronaut_avatar.visible = false
+		astronaut_avatar.process_mode = Node.PROCESS_MODE_DISABLED
 	if not is_local_authority:
 		# This is a fallback for players instantiated outside MultiplayerSpawner.
 		# Detach synchronously so later local players cannot discover this
@@ -416,6 +416,10 @@ func _configure_astronaut_avatar() -> void:
 	var avatar := get_node_or_null("AstronautAvatar") as Node3D
 	if avatar == null:
 		return
+	# Keep the imported suit available for later iteration, but use the stable
+	# virtual head/hands/torso proxy as the phase-1 runtime representation.
+	avatar.visible = false
+	avatar.process_mode = Node.PROCESS_MODE_DISABLED
 	avatar.call(
 		"set_tracking_targets",
 		get_node_or_null("NetworkHead") as Node3D,
@@ -425,10 +429,10 @@ func _configure_astronaut_avatar() -> void:
 	for node_path in NETWORK_AVATAR_MESHES:
 		var proxy_mesh := get_node_or_null(node_path) as MeshInstance3D
 		if proxy_mesh != null:
-			proxy_mesh.visible = false
+			proxy_mesh.visible = true
 	var legacy_label := get_node_or_null("NetworkHead/PresenceLabel") as Label3D
 	if legacy_label != null:
-		legacy_label.visible = false
+		legacy_label.visible = true
 
 func _apply_avatar_pose_state(pose_state: Dictionary) -> void:
 	var normalized_state := AvatarPoseState.normalize(pose_state)
@@ -729,7 +733,7 @@ func _get_shared_space_origin() -> Node3D:
 func _set_network_avatar_visible(is_visible: bool) -> void:
 	# PC Ground is a spectator/operator endpoint, not an embodied XR role.
 	# Its camera pose is still replicated for shared-space operations, but
-	# remote peers must never render that camera as an astronaut.
+	# remote peers must never render that camera as an embodied proxy.
 	var role_allows_avatar := _resolved_session_role() != ROLE_PC_GROUND
 	var should_show_avatar := is_visible and role_allows_avatar
 	for node_path in NETWORK_AVATAR_ROOTS:
@@ -738,7 +742,7 @@ func _set_network_avatar_visible(is_visible: bool) -> void:
 			avatar_root.visible = should_show_avatar
 	var astronaut_avatar := get_node_or_null("AstronautAvatar") as Node3D
 	if astronaut_avatar != null:
-		astronaut_avatar.visible = should_show_avatar
+		astronaut_avatar.visible = false
 
 func _apply_role_appearance() -> void:
 	var assigned_role := _resolved_session_role()

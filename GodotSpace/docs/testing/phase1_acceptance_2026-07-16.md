@@ -91,13 +91,15 @@
 
 PC 观察地面 VR 的下一张截图显示模型已不再爆炸，但缺少裤装、双腿和外部细节。源资产复核确认完整 `china_rig.prefab` 启用全部 8 个网格，而半身 `china_rig_VRIK.prefab` 才关闭 `PANT/DETAIL/STRIP`。为满足第一阶段“远端完整航天员”合同，Godot 现启用全部 8 个网格，并为恢复的三项分别绑定源底色、metallic-gloss 和法线贴图。自动测试要求远端三项可见并核对 8 个精确材质路径；Godot 4.4 stable 离屏渲染已得到带裤装、双腿和细节的完整人体。角色测试、真实 ENet、三种多进程连接顺序/重连均通过，最终完整 `run_phase1_validation.ps1` 输出 `PHASE1_VALIDATION PASS`（62.0 秒）。
 
+后续真机观察仍认为航天服整体复刻与手部姿态不可接受，因此当前验收基线已回退为虚拟头/手/躯干代理。两个 XR 角色的远端代理必须显示头球、朝向标记、双手球、胶囊躯干和标签；PC Ground 仍不可见；导入航天服必须隐藏且停止处理。该回退保留网络头手位姿与射线交互，但不再把全身 IK、身高/手臂适配和可见手势动画记作完成，第一阶段对应真机项仍待后续重做与签字。定向玩家测试通过；随后运行 `run_phase1_validation.ps1 -SkipRuntimeSmoke`，54.2 秒输出 `PHASE1_VALIDATION PASS`。启动冒烟本轮未重复执行，因为用户正在运行的手工 PC Server 占用正式 UDP 42069；没有为测试终止该进程。
+
 ## 任务 1.7 证据矩阵
 
 | 验收项 | 自动化证据 | 当前判定 | 真机仍需确认 |
 | --- | --- | --- | --- |
 | PC Ground Server + Ground VR + Astronaut XR | `run_collaboration_multiprocess_self_test.ps1` 在三个独立 Godot 进程中运行三角色；`run_runtime_startup_smoke_tests.ps1` 检查正式参数入口 | 部分覆盖 | 两台真实 PICO 同时接入正式 `ARSpace.tscn` |
 | 连接顺序、第二 Ground VR、掉线/重连、角色变更、Server 关闭 | 三套独立进程场景覆盖两种连接顺序、Ground 重连和第二 Ground 降级/拒权；同连接角色降级验证临时状态清理，消费者重建验证快照去重；正式运行时双进程用例覆盖非零业务状态下 ARSpace→StartMenu 的 Server 关闭与全量清理 | 部分覆盖 | 真实无线网络、头显休眠/唤醒和头显内界面提示 |
-| 航天员全身 IK、头手、手势、名称、本地/远端隐藏 | `PlayerPresenceSelfTest.tscn`、`PlayerNetworkSelfTest.tscn`、`avatar_pose_state` 边界检查 | 部分覆盖 | 真实跟踪姿态、遮挡、手臂观感和长时骨骼稳定性 |
+| XR 角色虚拟头/手/躯干代理、名称、本地/远端隐藏 | `PlayerPresenceSelfTest.tscn`、`PlayerNetworkSelfTest.tscn`、`avatar_pose_state` 边界检查 | 回退代理已覆盖；全身 IK 未完成 | 真实跟踪姿态、代理观感与长时稳定性；后续重新验收全身模型 |
 | 共享原点、重定中、标定快照、迟到 Client | `shared_space_alignment_self_test.gd`、`shared_space_contract_self_test.gd`、`spatial_calibration_state_network_self_test.gd` | 部分覆盖 | PICO 实景三 Tag 对照、重定中后的实体对齐误差 |
 | 主菜单和至少四类业务窗口 | 5 项 SpatialWindow 自测；真实 ENet 覆盖预览、lease 断线释放、降级拒权、重连完整快照与 Server 关闭清理 | 部分覆盖 | PC 鼠标、PICO 近抓/远射线/摇杆、震动和两端视觉一致性 |
 | 真实设备运行至少 30 分钟 | 无 | 未执行 | 帧率、跟踪、内存、RPC 错误、残留节点和断线恢复 |

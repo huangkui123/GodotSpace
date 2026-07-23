@@ -75,9 +75,13 @@ func _run() -> void:
 		"Ground VR pose should remain valid network state"
 	)
 	var ground_vr_avatar := ground_vr_player.get_node_or_null("AstronautAvatar") as Node3D
+	var ground_vr_head_proxy := ground_vr_player.get_node_or_null("NetworkHead/HeadMesh") as MeshInstance3D
+	var ground_vr_torso_proxy := ground_vr_player.get_node_or_null("NetworkTorso/TorsoMesh") as MeshInstance3D
 	_check(
-		ground_vr_avatar != null and ground_vr_avatar.visible,
-		"Ground VR should retain its embodied XR avatar"
+		ground_vr_avatar != null and not ground_vr_avatar.visible \
+			and ground_vr_head_proxy != null and ground_vr_head_proxy.is_visible_in_tree() \
+			and ground_vr_torso_proxy != null and ground_vr_torso_proxy.is_visible_in_tree(),
+		"Ground VR should use the virtual head/hands/torso proxy instead of the imported suit"
 	)
 	_check(bool(astronaut_player.call("_is_valid_pose_transform", head)), "finite unit pose should be accepted")
 	var invalid_pose := Transform3D(Basis.IDENTITY, Vector3(2000.0, 0.0, 0.0))
@@ -116,14 +120,24 @@ func _run() -> void:
 	)
 	var network_head := astronaut_player.get_node_or_null("NetworkHead") as Node3D
 	_check(network_head != null and network_head.visible, "accepted pose should reveal remote avatar")
-	var remote_imported_model := astronaut_player.get_node_or_null("AstronautAvatar/ImportedModel")
-	for full_body_mesh_name in ["PANT", "DETAIL", "STRIP"]:
-		var full_body_mesh: MeshInstance3D = null
-		if remote_imported_model != null:
-			full_body_mesh = remote_imported_model.find_child(full_body_mesh_name, true, false) as MeshInstance3D
+	var remote_astronaut := astronaut_player.get_node_or_null("AstronautAvatar") as Node3D
+	_check(
+		remote_astronaut != null and not remote_astronaut.visible \
+			and remote_astronaut.process_mode == Node.PROCESS_MODE_DISABLED,
+		"the imported astronaut suit should stay hidden and inactive in the proxy fallback"
+	)
+	for proxy_path in [
+		"NetworkHead/HeadMesh",
+		"NetworkHead/FacingIndicator",
+		"NetworkHead/PresenceLabel",
+		"NetworkLeftHand/HandMesh",
+		"NetworkRightHand/HandMesh",
+		"NetworkTorso/TorsoMesh",
+	]:
+		var proxy_visual := astronaut_player.get_node_or_null(proxy_path) as Node3D
 		_check(
-			full_body_mesh != null and full_body_mesh.visible,
-			"remote astronaut should render the complete lower-body/detail mesh: %s" % full_body_mesh_name
+			proxy_visual != null and proxy_visual.is_visible_in_tree(),
+			"remote XR player should render the virtual proxy visual: %s" % proxy_path
 		)
 	var expected_global_head := shared_origin.global_transform * head.origin
 	_check(network_head != null and network_head.global_position.is_equal_approx(expected_global_head), "shared-space pose should respect a transformed SharedSpaceOrigin")
@@ -196,6 +210,11 @@ func _check_player_scene_contract(player: Node) -> void:
 	var avatar := player.get_node_or_null("AstronautAvatar")
 	_check(avatar != null, "player should contain the unified astronaut avatar")
 	if avatar != null:
+		_check(
+			not (avatar as Node3D).visible \
+				and avatar.process_mode == Node.PROCESS_MODE_DISABLED,
+			"imported astronaut suit should remain dormant while virtual proxies are active"
+		)
 		_check(bool(avatar.call("is_model_ready")), "astronaut avatar should bind all required skeleton bones")
 		var debug := avatar.call("get_debug_state") as Dictionary
 		_check(int(debug.get("bone_count", 0)) == 33, "astronaut FBX should retain the audited 33-bone skeleton")
@@ -475,7 +494,6 @@ func _check_avatar_pose_integrity(player: Node, avatar: Node, skeleton: Skeleton
 				< right_hand_world.distance_to(left_target.global_position),
 		"RightHand skin bone must follow the right controller without crossing the torso"
 	)
-
 	var posed_minimum := Vector3(INF, INF, INF)
 	var posed_maximum := Vector3(-INF, -INF, -INF)
 	for bone_index in skeleton.get_bone_count():

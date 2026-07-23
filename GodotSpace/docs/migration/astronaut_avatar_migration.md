@@ -67,3 +67,5 @@ Godot 的 `ImportedModel.scale=10` 与 FBX 内部 `0.01` 单位换算共同得�
 随后地面 VR 观察 PC Server 时发现 PC 观察相机也被渲染为航天员。根因是收到首个位姿包后 `_set_network_avatar_visible(true)` 没有检查会话角色。现在 PC Ground 位姿仍正常复制，但 `NetworkHead/NetworkLeftHand/NetworkRightHand/NetworkTorso` 和 `AstronautAvatar` 在所有远端保持不可见；Ground VR 与 Astronaut 的人物显示不受影响。本地角色测试和真实 loopback ENet 测试都锁定了该差异。
 
 PC 随后观察地面 VR 时，截图显示骨骼长三角已消失，但人物只剩悬空的头盔、上身和手套。复核两个 Unity prefab 后确认这是把半身 `china_rig_VRIK.prefab` 的三项禁用状态误当成完整外观合同；完整 `china_rig.prefab` 的 `PANT/DETAIL/STRIP` 实际全部启用。Godot 现恢复三项网格并新增 `pant.tres/detail.tres/strip.tres`，分别绑定原始底色、metallic-gloss 和法线贴图。稳定版 4.4 离屏渲染已确认头盔、躯干、裤装、双腿、手套和外部细节形成完整人形；角色、真实 ENet 与三种多进程连接顺序测试通过，完整 `run_phase1_validation.ps1` 输出 `PHASE1_VALIDATION PASS`（62.0 秒）。仍等待同一 PC→VR 视角真机复核。
+
+同日后续真机反馈确认，尽管蒙皮爆炸和缺失网格已分别修复，当前航天服复刻的整体比例、材质观感与手部姿态仍不适合作为第一阶段主线人物。按当前产品决定，运行时恢复稳定的几何代理：远端 XR 角色显示头球、朝向标记、双手球、胶囊躯干和角色标签，颜色继续区分 Ground VR 与 Astronaut；PC Ground 保持无形。`AstronautAvatar` 节点与迁移资产仍保留，但始终隐藏并设置为 `PROCESS_MODE_DISABLED`，不再执行不可见 IK。该回退不改动头手位姿网络同步或 XR 射线输入；全身 IK、身高/手臂适配和可见手势动画重新列为未完成，等待后续重做。
