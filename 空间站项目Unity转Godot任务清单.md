@@ -232,6 +232,8 @@
 
 任务 1.7 首次 PICO 反馈修复记录（2026-07-23）：PICO Streaming 暴露出航天员上半身骨骼爆炸和射线完全失效。修复 FBX 单位换算缩放被错误写入 `Spine2TMP` override、按 Unity VRIK prefab 关闭三层多余网格并绑定五个启用网格材质；将输入请求模式与 tracking 回退模式分离，把装饰性 gaze Mesh 换成真实 FunctionPointer，并用 PICO `trigger` float 的 `0.65/0.45` 迟滞阈值驱动点击。自动测试新增真实骨架正交/身高/网格材质门禁，以及 `XRToolsViewport2DIn3D` 到 SubViewport Button 的完整射线点击。Astronaut 可操作窗口内容与打开/关闭/聚焦/最大化，空间拖动/缩放/吸附租约继续由 PC/Ground VR 控制。旧日志中的 `trigger_pressed` 来自切分支后未重启的旧进程，复测必须重启所有游戏进程且不得再出现该 RPC 错误。最终完整 `run_phase1_validation.ps1` 输出 `PHASE1_VALIDATION PASS`（60.8 秒）；真机复选框在重新测试前保持未勾选。
 
+任务 1.7 第二次 PICO 航天员反馈修复记录（2026-07-23）：截图中疑似“材质错误”的白/黑/红长三角实际是蒙皮被两组相距数米的骨骼拉裂——髋/脊柱固定在舞台原点，而头/双手使用 HMD 世界位姿。探针在 HMD 水平偏移约 3 m 时把旧版 TORSO 世界深度从约 `0.51 m` 复现为 `3.51 m`。现让完整 Avatar 根节点跟随 HMD 的共享地面投影和水平朝向，超过 `0.5 m` 的重定中首帧跟随；同时补齐 Unity `+Z` 到 Godot `-Z` 的 180° Y 轴转换、保留 FBX rest basis 的头手躯干旋转重定向，以及世界空间双臂求解。Unity AstronautSync Sender/Listener variant 已复核只覆盖 Layer，未重新启用 `DETAIL/PANT/STRIP`，五个可见网格的材质路径继续与源 prefab 一致。自动门禁新增命名左右骨骼、手目标不交叉、逐骨正交、数米房间尺度平移、重定中首帧人体边界和精确材质路径；定制版与 Godot 4.4 stable 自检均通过，稳定版离屏渲染无长三角，完整 `run_phase1_validation.ps1` 再次输出 `PHASE1_VALIDATION PASS`（60.9 秒）。真机项等待重启当前提交后复测，仍不勾选。
+
 ---
 
 ## 4. 第二阶段：跑通 Unity 核心作业与专家协同闭环

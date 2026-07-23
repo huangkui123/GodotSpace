@@ -8,6 +8,8 @@ const MIN_HEIGHT_SCALE: float = 0.78
 const MAX_HEIGHT_SCALE: float = 1.22
 const TRACKING_BLEND_SECONDS: float = 0.25
 const POSE_SMOOTH_SPEED: float = 14.0
+const BODY_ANCHOR_SMOOTH_SPEED: float = 10.0
+const BODY_ANCHOR_SNAP_DISTANCE_M: float = 0.5
 const UNITY_PREFAB_DISABLED_MESHES: Array[StringName] = [&"DETAIL", &"PANT", &"STRIP"]
 const LOCAL_HIDDEN_MESHES: Array[StringName] = [&"HELMET", &"HELMET_GLASS", &"Basemesh"]
 const UNITY_MATERIAL_OVERRIDES: Dictionary = {
@@ -47,8 +49,11 @@ var _right_tracking_weight: float = 1.0
 var _height_scale: float = 1.0
 var _shoulder_width: float = 0.42
 var _local_presentation: bool = false
+var _body_floor_local_y: float = 0.0
+var _has_body_anchor: bool = false
 
 func _ready() -> void:
+	_body_floor_local_y = position.y
 	_model_root = get_node_or_null(model_root_path) as Node3D
 	_bind_skeleton()
 	_apply_source_prefab_visibility()
@@ -65,6 +70,7 @@ func _process(delta: float) -> void:
 	if _skeleton == null or _head_target == null:
 		return
 	_update_smoothed_targets(delta)
+	_update_body_anchor(delta)
 	_update_calibration(delta)
 	_drive_skeleton()
 
@@ -73,6 +79,7 @@ func set_tracking_targets(head: Node3D, left_hand: Node3D, right_hand: Node3D) -
 	_left_hand_target = left_hand
 	_right_hand_target = right_hand
 	_has_smoothed_pose = false
+	_has_body_anchor = false
 
 func set_pose_state(state: Dictionary) -> bool:
 	var normalized := PoseState.normalize(state)
@@ -111,7 +118,8 @@ func solve_two_bone_positions(
 	wrist_position: Vector3,
 	upper_length: float,
 	lower_length: float,
-	is_left: bool
+	is_left: bool,
+	pole_hint: Vector3 = Vector3.ZERO
 ) -> Dictionary:
 	if upper_length <= 0.0001 or lower_length <= 0.0001:
 		return {}
@@ -131,7 +139,7 @@ func solve_two_bone_positions(
 	var along := upper_length * cos_angle
 	var outward := sqrt(maxf(upper_length * upper_length - along * along, 0.0))
 	var side := -1.0 if is_left else 1.0
-	var pole := Vector3(side, -0.35, -0.45)
+	var pole := pole_hint if pole_hint.length_squared() >= 0.0001 else Vector3(side, -0.35, -0.45)
 	pole -= direction * pole.dot(direction)
 	if pole.length_squared() < 0.0001:
 		pole = Vector3.UP.cross(direction)
@@ -234,6 +242,38 @@ func _fallback_hand_transform(head: Transform3D, is_left: bool) -> Transform3D:
 	result.origin += head.basis * Vector3(0.28 * side, -0.38, -0.08)
 	return result
 
+func _update_body_anchor(delta: float) -> void:
+	var parent_3d := get_parent_node_3d()
+	var floor_origin := Vector3(0.0, _body_floor_local_y, 0.0)
+	var floor_up := Vector3.UP
+	if parent_3d != null:
+		floor_origin = parent_3d.global_transform * floor_origin
+		floor_up = parent_3d.global_transform.basis.y.normalized()
+	var head_forward := -_smoothed_head.basis.z
+	head_forward -= floor_up * head_forward.dot(floor_up)
+	if head_forward.length_squared() < 0.0001:
+		head_forward = -global_transform.basis.z
+		head_forward -= floor_up * head_forward.dot(floor_up)
+	if head_forward.length_squared() < 0.0001:
+		head_forward = Vector3.FORWARD
+	head_forward = head_forward.normalized()
+	var target_origin := _smoothed_head.origin
+	target_origin -= floor_up * (target_origin - floor_origin).dot(floor_up)
+	var target_transform := Transform3D(
+		Basis.looking_at(head_forward, floor_up).orthonormalized(),
+		target_origin
+	)
+	if not _has_body_anchor:
+		global_transform = target_transform
+		_has_body_anchor = true
+		return
+	if global_position.distance_to(target_origin) >= BODY_ANCHOR_SNAP_DISTANCE_M:
+		global_transform = target_transform
+		return
+	var blend := 1.0 - exp(-BODY_ANCHOR_SMOOTH_SPEED * maxf(delta, 0.0))
+	global_transform = global_transform.interpolate_with(target_transform, blend)
+	global_transform.basis = global_transform.basis.orthonormalized()
+
 func _update_calibration(delta: float) -> void:
 	var head_local := global_transform.affine_inverse() * _smoothed_head.origin
 	var target_height_scale := clampf(head_local.y / REFERENCE_EYE_HEIGHT, MIN_HEIGHT_SCALE, MAX_HEIGHT_SCALE)
@@ -247,8 +287,9 @@ func _update_calibration(delta: float) -> void:
 
 func _drive_skeleton() -> void:
 	var inverse_skeleton := _skeleton.global_transform.affine_inverse()
+	var head_rest := _bone_global_rests[int(_bone_indices[&"HeadTMP"])] as Transform3D
 	var head_pose := inverse_skeleton * _smoothed_head
-	head_pose.basis = head_pose.basis.orthonormalized()
+	head_pose.basis = _retarget_tracker_basis(head_rest.basis, _smoothed_head.basis)
 	_set_global_override(&"HeadTMP", head_pose, 1.0)
 
 	var head_forward := -_smoothed_head.basis.z
@@ -256,26 +297,34 @@ func _drive_skeleton() -> void:
 	if head_forward.length_squared() < 0.0001:
 		head_forward = Vector3.FORWARD
 	head_forward = head_forward.normalized()
-	var torso_world := Transform3D(Basis.looking_at(head_forward, Vector3.UP), _smoothed_head.origin + Vector3(0.0, -0.48, 0.02))
-	var torso_pose := inverse_skeleton * torso_world
-	# The imported FBX has a unit-conversion scale above Skeleton3D. Positions
-	# must stay in skeleton space, but carrying that inverse scale into a bone
-	# override stretches the whole descendant hierarchy ("bone explosion").
-	torso_pose.basis = torso_pose.basis.orthonormalized()
 	var spine_rest := _bone_global_rests[int(_bone_indices[&"Spine2TMP"])] as Transform3D
-	torso_pose.origin = spine_rest.origin
+	var neutral_forward := -global_transform.basis.orthonormalized().z
+	neutral_forward.y = 0.0
+	if neutral_forward.length_squared() < 0.0001:
+		neutral_forward = Vector3.FORWARD
+	neutral_forward = neutral_forward.normalized()
+	var torso_world_delta := _rotation_between(neutral_forward, head_forward)
+	var torso_pose := spine_rest
+	torso_pose.basis = _retarget_rest_basis(spine_rest.basis, torso_world_delta)
 	_set_global_override(&"Spine2TMP", torso_pose, 0.72)
 
 	var lateral := _smoothed_head.basis.x.normalized()
 	var shoulder_center := _smoothed_head.origin + Vector3(0.0, -0.24, 0.015)
 	var left_shoulder_world := shoulder_center - lateral * (_shoulder_width * 0.5)
 	var right_shoulder_world := shoulder_center + lateral * (_shoulder_width * 0.5)
-	_solve_arm(true, inverse_skeleton * left_shoulder_world, inverse_skeleton * _smoothed_left_hand)
-	_solve_arm(false, inverse_skeleton * right_shoulder_world, inverse_skeleton * _smoothed_right_hand)
+	var left_pole_world := -lateral + Vector3.DOWN * 0.35 + head_forward * 0.45
+	var right_pole_world := lateral + Vector3.DOWN * 0.35 + head_forward * 0.45
+	_solve_arm(true, left_shoulder_world, _smoothed_left_hand, left_pole_world)
+	_solve_arm(false, right_shoulder_world, _smoothed_right_hand, right_pole_world)
 	_apply_finger_curl(true)
 	_apply_finger_curl(false)
 
-func _solve_arm(is_left: bool, shoulder_position: Vector3, wrist_pose: Transform3D) -> void:
+func _solve_arm(
+	is_left: bool,
+	shoulder_world: Vector3,
+	wrist_world: Transform3D,
+	pole_world: Vector3
+) -> void:
 	var upper_name: StringName = &"LeftArm" if is_left else &"RightArm"
 	var lower_name: StringName = &"LeftForeArm" if is_left else &"RightForeArm"
 	var hand_name: StringName = &"LeftHand" if is_left else &"RightHand"
@@ -285,19 +334,24 @@ func _solve_arm(is_left: bool, shoulder_position: Vector3, wrist_pose: Transform
 	var upper_rest := _bone_global_rests[upper_index] as Transform3D
 	var lower_rest := _bone_global_rests[lower_index] as Transform3D
 	var hand_rest := _bone_global_rests[hand_index] as Transform3D
-	var upper_length := upper_rest.origin.distance_to(lower_rest.origin)
-	var lower_length := lower_rest.origin.distance_to(hand_rest.origin)
+	var skeleton_basis := _skeleton.global_transform.basis
+	var upper_length := (skeleton_basis * (lower_rest.origin - upper_rest.origin)).length()
+	var lower_length := (skeleton_basis * (hand_rest.origin - lower_rest.origin)).length()
 	var solution := solve_two_bone_positions(
-		shoulder_position,
-		wrist_pose.origin,
+		shoulder_world,
+		wrist_world.origin,
 		upper_length,
 		lower_length,
-		is_left
+		is_left,
+		pole_world
 	)
 	if solution.is_empty():
 		return
-	var elbow_position := solution["elbow"] as Vector3
-	wrist_pose.origin = solution["wrist"] as Vector3
+	var inverse_skeleton := _skeleton.global_transform.affine_inverse()
+	var shoulder_position := inverse_skeleton * shoulder_world
+	var elbow_position := inverse_skeleton * (solution["elbow"] as Vector3)
+	var wrist_pose := inverse_skeleton * wrist_world
+	wrist_pose.origin = inverse_skeleton * (solution["wrist"] as Vector3)
 
 	var upper_pose := Transform3D(
 		_align_rest_basis(upper_rest.basis, lower_rest.origin - upper_rest.origin, elbow_position - shoulder_position),
@@ -308,7 +362,7 @@ func _solve_arm(is_left: bool, shoulder_position: Vector3, wrist_pose: Transform
 		elbow_position
 	)
 	var hand_pose := wrist_pose
-	hand_pose.basis = hand_pose.basis.orthonormalized()
+	hand_pose.basis = _retarget_tracker_basis(hand_rest.basis, wrist_world.basis)
 	_skeleton.set_bone_global_pose_override(upper_index, upper_pose, 1.0, true)
 	_skeleton.set_bone_global_pose_override(lower_index, lower_pose, 1.0, true)
 	_skeleton.set_bone_global_pose_override(hand_index, hand_pose, 1.0, true)
@@ -316,8 +370,37 @@ func _solve_arm(is_left: bool, shoulder_position: Vector3, wrist_pose: Transform
 func _align_rest_basis(rest_basis: Basis, rest_direction: Vector3, target_direction: Vector3) -> Basis:
 	if rest_direction.length_squared() < 0.0001 or target_direction.length_squared() < 0.0001:
 		return rest_basis
-	var rotation := Quaternion(rest_direction.normalized(), target_direction.normalized())
-	return (Basis(rotation) * rest_basis).orthonormalized()
+	return (_rotation_between(rest_direction, target_direction) * rest_basis).orthonormalized()
+
+func _rotation_between(from_direction: Vector3, to_direction: Vector3) -> Basis:
+	if from_direction.length_squared() < 0.0001 or to_direction.length_squared() < 0.0001:
+		return Basis.IDENTITY
+	var from_normalized := from_direction.normalized()
+	var to_normalized := to_direction.normalized()
+	var cosine := clampf(from_normalized.dot(to_normalized), -1.0, 1.0)
+	if cosine >= 0.999999:
+		return Basis.IDENTITY
+	if cosine <= -0.999999:
+		var axis := from_normalized.cross(Vector3.UP)
+		if axis.length_squared() < 0.0001:
+			axis = from_normalized.cross(Vector3.RIGHT)
+		return Basis(Quaternion(axis.normalized(), PI))
+	var axis := from_normalized.cross(to_normalized).normalized()
+	return Basis(Quaternion(axis, acos(cosine)))
+
+func _retarget_tracker_basis(rest_basis: Basis, tracker_world_basis: Basis) -> Basis:
+	var avatar_world_basis := global_transform.basis.orthonormalized()
+	var tracker_delta_world := tracker_world_basis.orthonormalized() * avatar_world_basis.inverse()
+	return _retarget_rest_basis(rest_basis, tracker_delta_world)
+
+func _retarget_rest_basis(rest_basis: Basis, world_delta: Basis) -> Basis:
+	var skeleton_world_basis := _skeleton.global_transform.basis.orthonormalized()
+	return (
+		skeleton_world_basis.inverse()
+		* world_delta.orthonormalized()
+		* skeleton_world_basis
+		* rest_basis
+	).orthonormalized()
 
 func _apply_finger_curl(is_left: bool) -> void:
 	var grip_key := "left_grip_q" if is_left else "right_grip_q"

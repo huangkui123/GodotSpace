@@ -7,7 +7,7 @@
 script = ExtResource("1_avatar")
 
 [node name="ImportedModel" parent="." instance=ExtResource("2_model")]
-transform = Transform3D(10, 0, 0, 0, 10, 0, 0, 0, 10, 0, 0, 0)
+transform = Transform3D(-10, 0, 0, 0, 10, 0, 0, 0, -10, 0, 0, 0)
 
 [node name="RoleLabel" type="Label3D" parent="."]
 position = Vector3(0, 2.05, 0)

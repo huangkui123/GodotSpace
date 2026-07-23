@@ -183,6 +183,7 @@ func _check_player_scene_contract(player: Node) -> void:
 				rest_bounds.size.y >= 1.6 and rest_bounds.size.y <= 2.1,
 				"astronaut imported rest height should stay in human-scale meters"
 			)
+			_check_avatar_pose_integrity(player, avatar, skeleton)
 		var imported_model := avatar.get_node_or_null("ImportedModel")
 		if imported_model != null:
 			for disabled_mesh_name in ["DETAIL", "PANT", "STRIP"]:
@@ -191,10 +192,19 @@ func _check_player_scene_contract(player: Node) -> void:
 					disabled_mesh != null and not disabled_mesh.visible,
 					"astronaut should match Unity prefab disabled mesh: %s" % disabled_mesh_name
 				)
-			for enabled_mesh_name in ["Basemesh", "TORSO", "HELMET_GLASS", "HELMET", "GLOVES"]:
+			var expected_materials := {
+				"Basemesh": "res://Assets/ARSpace/Characters/Astronaut/Materials/basemesh.tres",
+				"TORSO": "res://Assets/ARSpace/Characters/Astronaut/Materials/torso.tres",
+				"HELMET_GLASS": "res://Assets/ARSpace/Characters/Astronaut/Materials/helmet_glass.tres",
+				"HELMET": "res://Assets/ARSpace/Characters/Astronaut/Materials/helmet.tres",
+				"GLOVES": "res://Assets/ARSpace/Characters/Astronaut/Materials/gloves.tres",
+			}
+			for enabled_mesh_name: String in expected_materials:
 				var enabled_mesh := imported_model.find_child(enabled_mesh_name, true, false) as MeshInstance3D
+				var override_material := enabled_mesh.get_surface_override_material(0) if enabled_mesh != null else null
 				_check(
-					enabled_mesh != null and enabled_mesh.get_surface_override_material(0) != null,
+					override_material != null \
+						and override_material.resource_path == str(expected_materials[enabled_mesh_name]),
 					"astronaut should bind the Unity material contract: %s" % enabled_mesh_name
 				)
 		var left_solution := avatar.call(
@@ -393,6 +403,119 @@ func _check_pointer_viewport_round_trip(player: Node) -> void:
 	viewport_window.queue_free()
 	await get_tree().process_frame
 	get_tree().root.multiplayer.multiplayer_peer = null
+
+func _check_avatar_pose_integrity(player: Node, avatar: Node, skeleton: Skeleton3D) -> void:
+	var head_target := player.get_node_or_null("NetworkHead") as Node3D
+	var left_target := player.get_node_or_null("NetworkLeftHand") as Node3D
+	var right_target := player.get_node_or_null("NetworkRightHand") as Node3D
+	if head_target == null or left_target == null or right_target == null:
+		_check(false, "astronaut pose integrity test requires all three tracking targets")
+		return
+	head_target.global_transform = Transform3D(Basis.IDENTITY, Vector3(0.0, 1.70, 0.0))
+	left_target.global_transform = Transform3D(Basis.IDENTITY, Vector3(-0.32, 1.28, -0.25))
+	right_target.global_transform = Transform3D(Basis.IDENTITY, Vector3(0.32, 1.28, -0.25))
+	avatar.call("set_tracking_targets", head_target, left_target, right_target)
+	avatar.call("set_pose_state", PoseState.make_default())
+	for frame in 10:
+		avatar.call("_process", 1.0 / 60.0)
+
+	var avatar_inverse := (avatar as Node3D).global_transform.affine_inverse()
+	var left_arm_index := skeleton.find_bone("LeftArm")
+	var right_arm_index := skeleton.find_bone("RightArm")
+	var left_hand_index := skeleton.find_bone("LeftHand")
+	var right_hand_index := skeleton.find_bone("RightHand")
+	var left_rest_local := avatar_inverse * (
+		skeleton.global_transform * skeleton.get_bone_global_rest(left_arm_index).origin
+	)
+	var right_rest_local := avatar_inverse * (
+		skeleton.global_transform * skeleton.get_bone_global_rest(right_arm_index).origin
+	)
+	_check(
+		left_rest_local.x < right_rest_local.x,
+		"Unity +Z to Godot -Z conversion must keep named left/right arm bones on their anatomical sides"
+	)
+
+	var left_hand_world := skeleton.global_transform * skeleton.get_bone_global_pose(left_hand_index).origin
+	var right_hand_world := skeleton.global_transform * skeleton.get_bone_global_pose(right_hand_index).origin
+	_check(
+		left_hand_world.distance_to(left_target.global_position) < 0.10 \
+			and left_hand_world.distance_to(left_target.global_position) \
+				< left_hand_world.distance_to(right_target.global_position),
+		"LeftHand skin bone must follow the left controller without crossing the torso"
+	)
+	_check(
+		right_hand_world.distance_to(right_target.global_position) < 0.10 \
+			and right_hand_world.distance_to(right_target.global_position) \
+				< right_hand_world.distance_to(left_target.global_position),
+		"RightHand skin bone must follow the right controller without crossing the torso"
+	)
+
+	var posed_minimum := Vector3(INF, INF, INF)
+	var posed_maximum := Vector3(-INF, -INF, -INF)
+	for bone_index in skeleton.get_bone_count():
+		var pose := skeleton.get_bone_global_pose(bone_index)
+		_check(
+			_is_orthonormal_basis(pose.basis),
+			"all astronaut global bone poses must remain orthonormal: %s" % skeleton.get_bone_name(bone_index)
+		)
+		var world_position := skeleton.global_transform * pose.origin
+		posed_minimum = posed_minimum.min(world_position)
+		posed_maximum = posed_maximum.max(world_position)
+	var posed_bounds := AABB(posed_minimum, posed_maximum - posed_minimum)
+	_check(
+		posed_bounds.size.length() < 3.0,
+		"driven astronaut bone bounds must stay human-sized instead of exploding across the scene"
+	)
+
+	var room_scale_shift := Vector3(3.5, 0.0, -2.75)
+	head_target.global_position += room_scale_shift
+	left_target.global_position += room_scale_shift
+	right_target.global_position += room_scale_shift
+	avatar.call("_process", 1.0 / 60.0)
+	var avatar_3d := avatar as Node3D
+	var first_shift_smoothed_head := avatar.get("_smoothed_head") as Transform3D
+	_check(
+		Vector2(avatar_3d.global_position.x, avatar_3d.global_position.z).distance_to(
+			Vector2(first_shift_smoothed_head.origin.x, first_shift_smoothed_head.origin.z)
+		) < 0.05,
+		"astronaut body root must snap with the smoothed tracker rig on large recenter jumps"
+	)
+	var first_shift_minimum := Vector3(INF, INF, INF)
+	var first_shift_maximum := Vector3(-INF, -INF, -INF)
+	for bone_index in skeleton.get_bone_count():
+		var first_shift_world_position := skeleton.global_transform * skeleton.get_bone_global_pose(bone_index).origin
+		first_shift_minimum = first_shift_minimum.min(first_shift_world_position)
+		first_shift_maximum = first_shift_maximum.max(first_shift_world_position)
+	_check(
+		AABB(first_shift_minimum, first_shift_maximum - first_shift_minimum).size.length() < 3.0,
+		"large recenter jumps must keep the complete skeleton human-sized on the first frame"
+	)
+	for frame in 59:
+		avatar.call("_process", 1.0 / 60.0)
+	_check(
+		Vector2(avatar_3d.global_position.x, avatar_3d.global_position.z).distance_to(
+			Vector2(head_target.global_position.x, head_target.global_position.z)
+		) < 0.05,
+		"astronaut body root must converge to HMD room-scale translation on the shared floor"
+	)
+	var hips_index := skeleton.find_bone("Hips")
+	var hips_world := skeleton.global_transform * skeleton.get_bone_global_pose(hips_index).origin
+	_check(
+		Vector2(hips_world.x, hips_world.z).distance_to(
+			Vector2(head_target.global_position.x, head_target.global_position.z)
+		) < 0.25,
+		"astronaut hips and legs must not stay behind at the spawn origin when the HMD moves"
+	)
+	var shifted_minimum := Vector3(INF, INF, INF)
+	var shifted_maximum := Vector3(-INF, -INF, -INF)
+	for bone_index in skeleton.get_bone_count():
+		var shifted_world_position := skeleton.global_transform * skeleton.get_bone_global_pose(bone_index).origin
+		shifted_minimum = shifted_minimum.min(shifted_world_position)
+		shifted_maximum = shifted_maximum.max(shifted_world_position)
+	_check(
+		AABB(shifted_minimum, shifted_maximum - shifted_minimum).size.length() < 3.0,
+		"room-scale translation must move the complete skeleton without stretching its bounds"
+	)
 
 func _finite_vector(value: Variant) -> bool:
 	if not (value is Vector3):
