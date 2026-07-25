@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3 uid="uid://xxvflxhi3tku"]
+[gd_scene load_steps=11 format=3 uid="uid://xxvflxhi3tku"]
 
 [ext_resource type="ArrayMesh" uid="uid://d0brnbp1j6ao0" path="res://Assets/VRIK/Editor/CoreRes/Char/PlayerM/extracted/PlayerM.PlayerM_Head.mesh" id="1_lar5o"]
 [ext_resource type="PackedScene" uid="uid://bpdj5njb8nhot" path="res://addons/godot-xr-tools/hands/scenes/highpoly/left_fullglove_hand.tscn" id="2_afngy"]
@@ -9,6 +9,7 @@
 [ext_resource type="PackedScene" uid="uid://d1tl07geqm5xq" path="res://addons/godot-xr-tools/hands/scenes/highpoly/right_fullglove_hand.tscn" id="5_roir7"]
 [ext_resource type="PackedScene" uid="uid://diyu06cw06syv" path="res://addons/godot-xr-tools/player/player_body.tscn" id="6_2xy6d"]
 [ext_resource type="Script" path="res://Assets/ARSpace/Scripts/ghost_player_movement_provider.gd" id="7_ghost_movement"]
+[ext_resource type="Script" path="res://Assets/ARSpace/Scripts/XR/right_hand_ui_pointer.gd" id="8_right_pointer"]
 
 [node name="XROrigin3D" type="XROrigin3D"]
 
@@ -37,6 +38,9 @@ step_turn_angle = 45.0
 [node name="FunctionPickup" parent="LeftHand/LeftHand" instance=ExtResource("2_ua15y")]
 
 [node name="FunctionPointer" parent="LeftHand" instance=ExtResource("4_roir7")]
+visible = false
+enabled = false
+show_laser = 0
 
 [node name="RightHand" type="XRController3D" parent="."]
 tracker = &"right_hand"
@@ -50,6 +54,18 @@ strafe = true
 [node name="FunctionPickup" parent="RightHand/RightHand" instance=ExtResource("2_ua15y")]
 
 [node name="FunctionPointer" parent="RightHand" instance=ExtResource("4_roir7")]
+script = ExtResource("8_right_pointer")
+laser_length = 1
+show_target = true
+target_radius = 0.012
+near_radius = 0.006
+visual_taper_distance = 1.0
+aim_smoothing_enabled = true
+aim_follow_speed = 30.0
+aim_deadzone_degrees = 0.15
+aim_snap_angle_degrees = 15.0
+wait_for_tracked_controller = true
+tracking_ready_physics_frames = 2
 
 [node name="GhostGravityOverride" type="Node" parent="." groups=["movement_providers"]]
 script = ExtResource("7_ghost_movement")

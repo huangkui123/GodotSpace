@@ -266,6 +266,7 @@ func _configure_local_xr_nodes(is_local_authority: bool) -> void:
 			collision_body.collision_layer = 0
 			collision_body.collision_mask = 0
 
+	_configure_hand_pointers(local_xr_enabled)
 	_set_network_avatar_visible(false)
 	if not is_local_authority:
 		# This is a fallback for players instantiated outside MultiplayerSpawner.
@@ -284,6 +285,32 @@ func _set_local_hand_meshes_visible(is_visible: bool) -> void:
 		if hand_mesh != null:
 			hand_mesh.visible = is_visible
 
+
+func _configure_hand_pointers(right_pointer_enabled: bool) -> void:
+	var left_pointer := get_node_or_null("XROrigin3D/LeftHand/FunctionPointer") as Node3D
+	if left_pointer != null:
+		left_pointer.set("enabled", false)
+		left_pointer.set("show_laser", 0)
+		left_pointer.visible = false
+		left_pointer.process_mode = Node.PROCESS_MODE_DISABLED
+
+	var right_pointer := get_node_or_null("XROrigin3D/RightHand/FunctionPointer") as Node3D
+	if right_pointer != null:
+		right_pointer.process_mode = (
+			Node.PROCESS_MODE_INHERIT
+			if right_pointer_enabled
+			else Node.PROCESS_MODE_DISABLED
+		)
+		right_pointer.set("show_laser", 1 if right_pointer_enabled else 0)
+		right_pointer.set("laser_length", 1)
+		right_pointer.set("show_target", true)
+		if right_pointer.has_method("set_interaction_requested"):
+			right_pointer.call("set_interaction_requested", right_pointer_enabled)
+		else:
+			right_pointer.set("enabled", right_pointer_enabled)
+			right_pointer.visible = right_pointer_enabled
+
+
 func _configure_test_mode_local_visuals() -> void:
 	for node_path in TEST_MODE_HIDDEN_LOCAL_PATHS:
 		var node := get_node_or_null(node_path) as Node3D
@@ -298,16 +325,7 @@ func _configure_test_mode_local_visuals() -> void:
 	if right_hand_visual != null:
 		right_hand_visual.visible = true
 
-	var right_pointer := get_node_or_null("XROrigin3D/RightHand/FunctionPointer") as Node3D
-	if right_pointer != null:
-		right_pointer.visible = true
-		right_pointer.set("enabled", true)
-		right_pointer.set("show_laser", 1)
-
-	var left_pointer := get_node_or_null("XROrigin3D/LeftHand/FunctionPointer") as Node3D
-	if left_pointer != null:
-		left_pointer.set("enabled", false)
-		left_pointer.visible = false
+	_configure_hand_pointers(true)
 
 func _remove_remote_xr_branch() -> void:
 	var xr_origin := get_node_or_null("XROrigin3D")
