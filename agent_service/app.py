@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 from contextlib import suppress
 from typing import Any
 
@@ -43,6 +44,12 @@ def create_app(
     app.state.connections = connections
     app.state.sessions = sessions
     app.state.agent_factory = factory
+
+    @app.on_event("startup")
+    async def warm_qwen_agent() -> None:
+        if os.getenv("AGENT_WARMUP", "0").strip() != "1":
+            return
+        asyncio.create_task(_warm_agent(factory))
 
     @app.get("/healthz")
     async def healthz() -> dict[str, Any]:
@@ -226,6 +233,22 @@ def create_app(
     return app
 
 
+async def _warm_agent(factory: AgentFactory) -> None:
+    """Run one tiny request outside the user's first interaction latency path."""
+    await asyncio.sleep(1.0)
+    try:
+        await asyncio.to_thread(
+            factory.run,
+            "warmup-session",
+            "warmup-request",
+            [{"role": "user", "content": "只回答：就绪。"}],
+            [],
+        )
+    except Exception:
+        # A failed warmup must never affect Gateway availability or user requests.
+        return
+
+
 async def _run_agent_request(
     *,
     session_id: str,
@@ -290,8 +313,8 @@ def _parse_agent_request_options(
     allowed_value = payload.get("allowed_tools", ["open_album"])
     if not isinstance(allowed_value, list) or not allowed_value:
         raise ProtocolError("payload.allowed_tools must be a non-empty array")
-    if len(allowed_value) > 3:
-        raise ProtocolError("payload.allowed_tools may contain at most 3 tools")
+    if len(allowed_value) > 14:
+        raise ProtocolError("payload.allowed_tools may contain at most 14 tools")
     allowed_tools: list[str] = []
     for item in allowed_value:
         if not isinstance(item, str) or not item.strip():
@@ -308,16 +331,68 @@ def _parse_agent_request_options(
 def _build_stateless_user_message(
     user_text: str, context: dict[str, Any]
 ) -> dict[str, str]:
-    if not context:
+    compact_context = _compact_agent_context(context)
+    if not compact_context:
         content = user_text
     else:
-        serialized = json.dumps(context, ensure_ascii=False, separators=(",", ":"))
+        serialized = json.dumps(compact_context, ensure_ascii=False, separators=(",", ":"))
         content = (
             f"用户语音：{user_text}\n"
             "当前脱敏运行上下文（只描述本次请求，不是历史对话）：\n"
             f"{serialized}"
         )
     return {"role": "user", "content": content}
+
+
+def _compact_agent_context(context: dict[str, Any]) -> dict[str, Any]:
+    """Keep only the current UI facts needed for one Qwen routing decision."""
+    if not context:
+        return {}
+
+    def text(value: Any, limit: int = 240) -> str:
+        return str(value or "").strip()[:limit]
+
+    result: dict[str, Any] = {}
+    hint = context.get("ui_routing_hint")
+    if isinstance(hint, dict):
+        result["ui_routing_hint"] = {
+            "visible_panel": text(hint.get("visible_panel"), 48),
+            "page_turn_target_when_user_omits_target": text(
+                hint.get("page_turn_target_when_user_omits_target"), 48
+            ),
+        }
+    album = context.get("album")
+    if isinstance(album, dict):
+        result["album"] = {
+            key: album.get(key)
+            for key in ("visible", "page", "page_count", "can_next", "can_previous")
+            if key in album
+        }
+    guide = context.get("task_guide")
+    if isinstance(guide, dict):
+        compact_guide: dict[str, Any] = {
+            key: guide.get(key)
+            for key in (
+                "visible",
+                "task_id",
+                "task_title",
+                "page_index",
+                "page_count",
+                "can_next",
+                "can_previous",
+            )
+            if key in guide
+        }
+        for name in ("current_step", "next_step_preview"):
+            step = guide.get(name)
+            if isinstance(step, dict):
+                compact_guide[name] = {
+                    "step": step.get("step"),
+                    "title": text(step.get("title"), 120),
+                    "info": text(step.get("info"), 240),
+                }
+        result["task_guide"] = compact_guide
+    return result
 
 
 app = create_app()

@@ -9,8 +9,9 @@ class OpenAlbumTool(GodotRpcTool):
     name = "open_album"
     description = (
         "Open the photo album UI in GodotSpace. Use this only when the user explicitly "
-        "asks to open, show, or view the album or photos. Never use it when the user "
-        "negates or cancels that action. Repeated calls are safe."
+        "asks to open, show, or view the album or photos. Never use it merely to turn "
+        "a page; use next_album_page or previous_album_page for an already visible album. "
+        "Never use it when the user negates or cancels that action. Repeated calls are safe."
     )
     parameters = {
         "type": "object",

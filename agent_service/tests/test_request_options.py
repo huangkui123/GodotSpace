@@ -44,11 +44,23 @@ class RequestOptionsTests(unittest.TestCase):
 
     def test_context_is_embedded_in_one_current_request_message(self) -> None:
         message = _build_stateless_user_message(
-            "下一步应该做什么", {"task_id": 1, "page_index": 2}
+            "下一步应该做什么",
+            {
+                "ui_routing_hint": {"visible_panel": "task_guide"},
+                "task_guide": {
+                    "visible": True,
+                    "task_id": 1,
+                    "page_index": 2,
+                    "page_count": 5,
+                    "current_step": {"title": "当前步骤", "info": "x" * 1000},
+                },
+            },
         )
         self.assertEqual(message["role"], "user")
         self.assertIn("下一步应该做什么", message["content"])
         self.assertIn('"page_index":2', message["content"])
+        self.assertIn('"visible_panel":"task_guide"', message["content"])
+        self.assertNotIn("x" * 300, message["content"])
         self.assertNotIn("speaker_peer_id", message["content"])
 
 

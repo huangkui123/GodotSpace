@@ -74,7 +74,7 @@ class AgentFactoryTests(unittest.TestCase):
         importlib.util.find_spec("qwen_agent") is not None,
         "qwen_agent is not installed in this Python environment",
     )
-    def test_run_rejects_final_answer_without_required_tool_call(self) -> None:
+    def test_run_allows_qwen_direct_answer_without_tool_call(self) -> None:
         class FakeFnCallAgent:
             def __init__(self, **_kwargs: Any) -> None:
                 pass
@@ -84,13 +84,13 @@ class AgentFactoryTests(unittest.TestCase):
 
         factory = AgentFactory(Settings(), ConnectionManager())
         with patch("qwen_agent.agents.FnCallAgent", FakeFnCallAgent):
-            with self.assertRaisesRegex(RuntimeError, "required authorized tool"):
-                factory.run(
-                    "session-1",
-                    "request-1",
-                    [{"role": "user", "content": "进入下一步"}],
-                    ["next_task_step"],
-                )
+            result = factory.run(
+                "session-1",
+                "request-1",
+                [{"role": "user", "content": "你好"}],
+                ["delegate_deepseek"],
+            )
+        self.assertEqual(result.answer, "进入下一步")
 
     @unittest.skipUnless(
         importlib.util.find_spec("qwen_agent") is not None,
@@ -110,6 +110,26 @@ class AgentFactoryTests(unittest.TestCase):
         )
         self.assertFalse(tools[0]._state_changing)
         self.assertTrue(tools[1]._state_changing)
+
+    @unittest.skipUnless(
+        importlib.util.find_spec("qwen_agent") is not None,
+        "qwen_agent is not installed in this Python environment",
+    )
+    def test_builds_navigation_and_deepseek_tools(self) -> None:
+        factory = AgentFactory(Settings(), ConnectionManager())
+        tools = factory._build_tools(
+            "session-1",
+            "request-1",
+            ["close_album", "go_to_album_page", "go_to_task_guide_page", "delegate_deepseek"],
+        )
+        self.assertEqual(
+            [tool.name for tool in tools],
+            ["close_album", "go_to_album_page", "go_to_task_guide_page", "delegate_deepseek"],
+        )
+        self.assertTrue(tools[0]._state_changing)
+        self.assertTrue(tools[1]._state_changing)
+        self.assertTrue(tools[2]._state_changing)
+        self.assertFalse(tools[3]._state_changing)
 
     @unittest.skipUnless(
         importlib.util.find_spec("qwen_agent") is not None,
