@@ -22,6 +22,7 @@ func _run_cases() -> void:
 	_expect(pc.is_server() and pc.is_ground(), "default PC profile should be Ground Server")
 	_expect(pc.uses_desktop_ui() and not pc.uses_xr(), "default PC profile should use desktop presentation")
 	_expect(not pc.shows_astronaut_view(), "PC Ground must not show the local astronaut-view window")
+	_expect(not pc.can_draw(), "PC Ground must receive drawing without creating strokes")
 
 	var ground_vr = RuntimeProfile.from_args(
 		["--xr-mode", "on", "--", "--ground-vr", "--voice-role=server"],
@@ -32,6 +33,7 @@ func _run_cases() -> void:
 	_expect(ground_vr.is_server() and ground_vr.is_ground(), "Ground VR should be Ground Server")
 	_expect(ground_vr.uses_xr() and not ground_vr.uses_passthrough(), "Ground VR should use opaque XR")
 	_expect(ground_vr.can_annotate(), "Ground VR should be allowed to annotate")
+	_expect(ground_vr.can_draw(), "Ground VR should be allowed to draw")
 	_expect(ground_vr.shows_astronaut_view(), "Ground VR Server should show the astronaut-view window")
 
 	var ground_vr_client = RuntimeProfile.from_args(
@@ -43,6 +45,7 @@ func _run_cases() -> void:
 	_expect(ground_vr_client.is_client() and ground_vr_client.is_ground(), "Ground VR Client should keep independent network and semantic roles")
 	_expect(ground_vr_client.uses_xr() and not ground_vr_client.uses_passthrough(), "Ground VR Client should use opaque XR")
 	_expect(ground_vr_client.can_annotate(), "Ground VR Client should be allowed to annotate")
+	_expect(ground_vr_client.can_draw(), "Ground VR Client should be allowed to draw")
 	_expect(ground_vr_client.get_preset() == RuntimeProfile.Preset.VR_GROUND_CLIENT, "Ground VR Client should preserve its menu preset")
 	_expect(ground_vr_client.shows_astronaut_view(), "Ground VR Client should show the astronaut-view window")
 
@@ -55,6 +58,7 @@ func _run_cases() -> void:
 	_expect(sky.is_client() and sky.is_sky(), "Sky XR should be Sky Client")
 	_expect(sky.uses_xr() and sky.uses_passthrough(), "Sky XR should request passthrough")
 	_expect(not sky.can_annotate(), "Sky XR should be display-only")
+	_expect(sky.can_draw(), "Sky XR should be allowed to draw")
 	_expect(not sky.shows_astronaut_view(), "Sky XR must not show its own astronaut-view window")
 
 	var test_client = RuntimeProfile.from_args(
@@ -65,6 +69,7 @@ func _run_cases() -> void:
 	_expect(test_client.is_valid() and test_client.is_client(), "test client should keep its network role")
 	_expect(test_client.is_test_mode() and not test_client.uses_xr(), "test client should avoid XR")
 	_expect(test_client.uses_desktop_ui(), "test client should keep desktop-capable UI")
+	_expect(test_client.can_draw(), "Sky test client should exercise drawing without a headset")
 	_expect(not test_client.shows_astronaut_view(), "desktop test clients must not show the XR astronaut-view window")
 
 	var test_server = RuntimeProfile.from_args(
@@ -74,6 +79,7 @@ func _run_cases() -> void:
 	)
 	_expect(test_server.is_valid() and test_server.is_server(), "test server should keep its network role")
 	_expect(test_server.is_test_mode() and test_server.can_annotate(), "test Ground Server should keep annotation authority")
+	_expect(not test_server.can_draw(), "test PC Ground Server must remain receive-only for drawing")
 	_expect(not test_server.shows_astronaut_view(), "desktop test servers must not show the XR astronaut-view window")
 
 	var conflicting = RuntimeProfile.from_args(

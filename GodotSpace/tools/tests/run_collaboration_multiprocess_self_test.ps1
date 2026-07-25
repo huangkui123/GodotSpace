@@ -74,6 +74,7 @@ try {
     }
 
     $FailedRoles = @()
+    $DrawingSummaries = @{}
     foreach ($Result in $Results) {
 		Write-Host "[$($Result.Role)]"
 		Write-Host $Result.Output
@@ -87,7 +88,27 @@ try {
 		if ($Result.Output.Contains('previously freed')) {
 			$FailedRoles += "$($Result.Role)(stale XR Tools reference)"
 		}
+        if ($Result.Role -in @('server', 'ground_client', 'sky_client')) {
+            $SummaryLine = @(
+                $Result.Output -split [Environment]::NewLine |
+                    Where-Object { $_.StartsWith('COLLABORATION_MULTIPROCESS_DRAWING_SUMMARY ') }
+            )
+            if ($SummaryLine.Count -ne 1) {
+                $FailedRoles += "$($Result.Role)(drawing summary count=$($SummaryLine.Count))"
+            }
+            else {
+                $DrawingSummaries[$Result.Role] = $SummaryLine[0].Substring(
+                    'COLLABORATION_MULTIPROCESS_DRAWING_SUMMARY '.Length
+                )
+            }
+        }
 	}
+    if ($DrawingSummaries.Count -eq 3) {
+        $DistinctDrawingSummaries = @($DrawingSummaries.Values | Sort-Object -Unique)
+        if ($DistinctDrawingSummaries.Count -ne 1) {
+            $FailedRoles += "drawing-summary-mismatch($($DrawingSummaries | ConvertTo-Json -Compress))"
+        }
+    }
 	if ($FailedRoles.Count -gt 0) {
 		throw "Collaboration multiprocess peers failed: $($FailedRoles -join ', ')"
 	}

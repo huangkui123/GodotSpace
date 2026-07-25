@@ -118,6 +118,13 @@ rg -n 'NetworkHandler|VoiceChat|LLMAssistantService|ARSpace.tscn|StartMenu.tscn'
 
 ## 5. 常用运行命令
 
+主 Godot 工程采用串流方式运行，不通过 Godot 导出产物部署或交付。PC Server 和 XR Client 都使用本仓库指定的 Godot 可执行程序直接启动，并在项目实际使用的 OpenXR/串流链路中联调。除非任务明确要求导出，否则：
+
+- 不执行 `--export-debug`、`--export-release`，也不生成 Windows EXE、Android APK 或其他 Godot 导出产物。
+- 不把 export templates、`rcedit`、Android Godot 导出环境或导出成功作为默认开发、验证和交付门禁。
+- XR/MR、输入、画面和多端协作的最终验证应在实际串流运行拓扑中完成。
+- `companion_app/pico_spatial_anchor_helper` 是独立 Android 工程；修改它时仍按第 14、16 节运行 Gradle 验证，但这不等同于导出主 Godot 工程。
+
 打开编辑器：
 
 ```powershell

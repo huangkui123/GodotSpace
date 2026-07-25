@@ -7,6 +7,10 @@ const REQUIRED_RESOURCES := [
 	"res://Assets/ARSpace/Scenes/StartMenu.tscn",
 	"res://Assets/ARSpace/Scenes/VirtualAnnotationMarker.tscn",
 	"res://Assets/ARSpace/Scenes/VirtualAnnotationSystem.tscn",
+	"res://Assets/ARSpace/Scenes/SpatialDrawing/SpatialDrawingSystem.tscn",
+	"res://Assets/ARSpace/Scenes/SpatialDrawing/SpatialDrawingPanel.tscn",
+	"res://Assets/ARSpace/Scenes/SpatialDrawing/SpatialDrawingPanelSurface.tscn",
+	"res://Assets/ARSpace/Scenes/SpatialDrawing/SpatialDrawingTip.tscn",
 	"res://Assets/ARSpace/Scenes/Tests/CollaborationMultiprocessPeer.tscn",
 	"res://Assets/ARSpace/Scripts/shared_space_alignment.gd",
 	"res://Assets/ARSpace/Scripts/Network/collaboration_multiprocess_peer.gd",
@@ -22,6 +26,13 @@ const REQUIRED_RESOURCES := [
 	"res://Assets/ARSpace/Scripts/VirtualAnnotation/virtual_annotation_manager.gd",
 	"res://Assets/ARSpace/Scripts/VirtualAnnotation/virtual_annotation_surface_builder.gd",
 	"res://Assets/ARSpace/Scripts/VirtualAnnotation/virtual_annotation_interaction_controller.gd",
+	"res://Assets/ARSpace/Scripts/SpatialDrawing/spatial_drawing_manager.gd",
+	"res://Assets/ARSpace/Scripts/SpatialDrawing/spatial_stroke_renderer.gd",
+	"res://Assets/ARSpace/Scripts/SpatialDrawing/spatial_stroke_simplifier.gd",
+	"res://Assets/ARSpace/Scripts/SpatialDrawing/spatial_drawing_interaction.gd",
+	"res://Assets/ARSpace/Scripts/SpatialDrawing/spatial_drawing_tool.gd",
+	"res://Assets/ARSpace/Scripts/SpatialDrawing/spatial_drawing_panel_3d.gd",
+	"res://Assets/ARSpace/Scripts/SpatialDrawing/spatial_drawing_editor_preview.gd",
 ]
 
 var _failures: PackedStringArray = []
@@ -66,11 +77,15 @@ func _test_runtime_contract() -> void:
 		false
 	)
 	_expect(pc_ground.is_server() and pc_ground.is_ground() and pc_ground.can_annotate(), "PC Ground profile contract failed")
+	_expect(not pc_ground.can_draw(), "PC Ground must remain receive-only for spatial drawing")
 	_expect(vr_ground.is_server() and vr_ground.uses_xr() and not vr_ground.uses_passthrough(), "VR Ground profile contract failed")
+	_expect(vr_ground.can_draw(), "VR Ground must create spatial drawing")
 	_expect(vr_ground_client.is_client() and vr_ground_client.is_ground(), "VR Ground Client role contract failed")
 	_expect(vr_ground_client.uses_xr() and not vr_ground_client.uses_passthrough() and vr_ground_client.can_annotate(), "VR Ground Client capability contract failed")
+	_expect(vr_ground_client.can_draw(), "VR Ground Client must create spatial drawing")
 	_expect(sky_xr.is_client() and sky_xr.is_sky() and sky_xr.uses_passthrough(), "Sky XR profile contract failed")
 	_expect(not sky_xr.can_annotate(), "Sky XR must remain view-only")
+	_expect(sky_xr.can_draw(), "Sky XR must create spatial drawing")
 
 
 func _test_scene_contract() -> void:
@@ -81,6 +96,7 @@ func _test_scene_contract() -> void:
 		"[node name=\"GroundVRAnchor\"",
 		"[node name=\"SkyXRAnchor\"",
 		"[node name=\"VirtualAnnotations\"",
+		"[node name=\"SpatialDrawingSystem\"",
 		"[node name=\"SpatialWindows\"",
 		"[node name=\"MainMenuState\"",
 		"[node name=\"WindowDockSlots\"",
@@ -112,6 +128,7 @@ func _test_scene_contract() -> void:
 		"SharedSpaceOrigin/GroundVRAnchor",
 		"SharedSpaceOrigin/SkyXRAnchor",
 		"SharedSpaceOrigin/VirtualAnnotations",
+		"SharedSpaceOrigin/SpatialDrawingSystem",
 		"SharedSpaceOrigin/SpatialWindows",
 		"SharedSpaceOrigin/SpatialWindows/Manager",
 		"SharedSpaceOrigin/SpatialWindows/MainMenuState",
@@ -382,6 +399,106 @@ func _test_scene_contract() -> void:
 	var annotation_state := annotation_system.get_state()
 	for child_path in ["Manager", "SurfaceBuilder", "Interaction"]:
 		_expect(_find_scene_node(annotation_state, child_path) >= 0, "annotation scene-state path is missing: %s" % child_path)
+
+	var drawing_system := ResourceLoader.load(
+		"res://Assets/ARSpace/Scenes/SpatialDrawing/SpatialDrawingSystem.tscn"
+	) as PackedScene
+	var drawing_state := drawing_system.get_state()
+	for child_path in [
+		"SpatialDrawingManager",
+		"SpatialDrawingRenderer",
+		"SpatialDrawingInteraction",
+		"SpatialDrawingPanel3D",
+		"EditorPreview",
+	]:
+		_expect(
+			_find_scene_node(drawing_state, child_path) >= 0,
+			"spatial drawing scene-state path is missing: %s" % child_path
+		)
+	var drawing_panel_surface_source := _read_text(
+		"res://Assets/ARSpace/Scenes/SpatialDrawing/SpatialDrawingPanelSurface.tscn"
+	)
+	_expect(
+		drawing_panel_surface_source.contains("allow_window_drag = false"),
+		"local drawing panel must leave shared spatial-window drag disabled"
+	)
+	_expect(
+		drawing_panel_surface_source.contains(
+			"scale = Vector3(0.0003, 0.0003, 0.0003)"
+		) and drawing_panel_surface_source.contains(
+			"viewport_size = Vector2(760, 340)"
+		),
+		"local drawing panel must retain the compact wrist-sized physical surface"
+	)
+	var drawing_panel_source := _read_text(
+		"res://Assets/ARSpace/Scenes/SpatialDrawing/SpatialDrawingPanel.tscn"
+	)
+	for fragment in [
+		"text = \"开始空间绘制\"",
+		"text = \"是否同步标记？\"",
+		"parent=\"Margin/Layout/ToolRow/Red\"",
+		"parent=\"Margin/Layout/ToolRow/Green\"",
+		"parent=\"Margin/Layout/ToolRow/Blue\"",
+		"parent=\"Margin/Layout/ToolRow/Magenta\"",
+		"parent=\"Margin/Layout/ToolRow/Orange\"",
+		"name=\"ClearButton\"",
+		"name=\"SyncButton\"",
+		"name=\"ConfirmOverlay\"",
+	]:
+		_expect(
+			drawing_panel_source.contains(fragment),
+			"Unity-style drawing panel is missing contract fragment: %s" % fragment
+		)
+	for removed_control in [
+		"StatusLabel",
+		"CountLabel",
+		"ColorOption",
+		"WidthSlider",
+		"TipSlider",
+		"HelpLabel",
+	]:
+		_expect(
+			not drawing_panel_source.contains(removed_control),
+			"compact drawing panel must not restore legacy control: %s" % removed_control
+		)
+	var drawing_panel_controller_source := _read_text(
+		"res://Assets/ARSpace/Scripts/SpatialDrawing/spatial_drawing_panel_3d.gd"
+	)
+	var drawing_interaction_source := _read_text(
+		"res://Assets/ARSpace/Scripts/SpatialDrawing/spatial_drawing_interaction.gd"
+	)
+	var drawing_preview_source := _read_text(
+		"res://Assets/ARSpace/Scripts/SpatialDrawing/spatial_drawing_editor_preview.gd"
+	)
+	_expect(
+		drawing_panel_controller_source.contains("SpatialDrawingPanelSurface.tscn") \
+			and drawing_preview_source.contains("SpatialDrawingPanelSurface.tscn"),
+		"runtime and editor preview must instantiate the same production drawing panel surface"
+	)
+	_expect(
+		drawing_interaction_source.contains("SpatialDrawingTip.tscn") \
+			and drawing_preview_source.contains("SpatialDrawingTip.tscn"),
+		"runtime and editor preview must instantiate the same production drawing tip"
+	)
+	var drawing_tip_source := _read_text(
+		"res://Assets/ARSpace/Scenes/SpatialDrawing/SpatialDrawingTip.tscn"
+	)
+	_expect(
+		drawing_tip_source.contains("res://Assets/ARSpace/Models/Marker.dae") \
+			and drawing_tip_source.contains("scale = Vector3(0.2, 0.2, 0.2)") \
+			and drawing_tip_source.contains("name=\"TipIndicator\""),
+		"production drawing tip must contain the scaled original Marker model and nozzle"
+	)
+	_expect(
+		not drawing_interaction_source.contains("SpatialDrawingWristPanel") \
+			and not drawing_interaction_source.contains("Label3D.new()"),
+		"real wrist panel must not be duplicated by a synthetic status label"
+	)
+	_expect(
+		drawing_preview_source.contains("build_tube_mesh") \
+			and drawing_preview_source.contains("make_stroke_material"),
+		"editor preview stroke must use the production mesh and material builders"
+	)
 
 	var interaction_source := _read_text(
 		"res://Assets/ARSpace/Scripts/VirtualAnnotation/virtual_annotation_interaction_controller.gd"

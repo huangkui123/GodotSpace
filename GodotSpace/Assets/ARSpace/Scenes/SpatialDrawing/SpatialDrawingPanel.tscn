@@ -1,0 +1,553 @@
+[gd_scene load_steps=30 format=3 uid="uid://clob0g1p5858i"]
+
+[ext_resource type="Texture2D" uid="uid://26hvurvtioub" path="res://Assets/ARSpace/Textures/Trash.png" id="1_trash"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_panel"]
+bg_color = Color(0.16, 0.2, 0.28, 0.97)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.27, 0.33, 0.44, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxEmpty" id="StyleBox_empty"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_toggle_track"]
+bg_color = Color(0.1, 0.13, 0.19, 1)
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_width_bottom = 5
+border_color = Color(0.95, 0.97, 1, 1)
+corner_radius_top_left = 28
+corner_radius_top_right = 28
+corner_radius_bottom_right = 28
+corner_radius_bottom_left = 28
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_toggle_knob"]
+bg_color = Color(0.96, 0.98, 1, 1)
+corner_radius_top_left = 20
+corner_radius_top_right = 20
+corner_radius_bottom_right = 20
+corner_radius_bottom_left = 20
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_red_pressed"]
+bg_color = Color(1, 0.03, 0.03, 1)
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_width_bottom = 5
+border_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 40
+corner_radius_top_right = 40
+corner_radius_bottom_right = 40
+corner_radius_bottom_left = 40
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_red_hover"]
+bg_color = Color(1, 0.15, 0.15, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 1, 1, 0.75)
+corner_radius_top_left = 40
+corner_radius_top_right = 40
+corner_radius_bottom_right = 40
+corner_radius_bottom_left = 40
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_red"]
+bg_color = Color(1, 0.03, 0.03, 1)
+corner_radius_top_left = 40
+corner_radius_top_right = 40
+corner_radius_bottom_right = 40
+corner_radius_bottom_left = 40
+
+[sub_resource type="ButtonGroup" id="ButtonGroup_colors"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_green_pressed"]
+bg_color = Color(0.02, 1, 0.08, 1)
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_width_bottom = 5
+border_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 40
+corner_radius_top_right = 40
+corner_radius_bottom_right = 40
+corner_radius_bottom_left = 40
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_green_hover"]
+bg_color = Color(0.18, 1, 0.23, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 1, 1, 0.75)
+corner_radius_top_left = 40
+corner_radius_top_right = 40
+corner_radius_bottom_right = 40
+corner_radius_bottom_left = 40
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_green"]
+bg_color = Color(0.02, 1, 0.08, 1)
+corner_radius_top_left = 40
+corner_radius_top_right = 40
+corner_radius_bottom_right = 40
+corner_radius_bottom_left = 40
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_blue_pressed"]
+bg_color = Color(0.04, 0.08, 1, 1)
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_width_bottom = 5
+border_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 40
+corner_radius_top_right = 40
+corner_radius_bottom_right = 40
+corner_radius_bottom_left = 40
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_blue_hover"]
+bg_color = Color(0.17, 0.21, 1, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 1, 1, 0.75)
+corner_radius_top_left = 40
+corner_radius_top_right = 40
+corner_radius_bottom_right = 40
+corner_radius_bottom_left = 40
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_blue"]
+bg_color = Color(0.04, 0.08, 1, 1)
+corner_radius_top_left = 40
+corner_radius_top_right = 40
+corner_radius_bottom_right = 40
+corner_radius_bottom_left = 40
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_magenta_pressed"]
+bg_color = Color(1, 0.02, 0.92, 1)
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_width_bottom = 5
+border_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 40
+corner_radius_top_right = 40
+corner_radius_bottom_right = 40
+corner_radius_bottom_left = 40
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_magenta_hover"]
+bg_color = Color(1, 0.18, 0.94, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 1, 1, 0.75)
+corner_radius_top_left = 40
+corner_radius_top_right = 40
+corner_radius_bottom_right = 40
+corner_radius_bottom_left = 40
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_magenta"]
+bg_color = Color(1, 0.02, 0.92, 1)
+corner_radius_top_left = 40
+corner_radius_top_right = 40
+corner_radius_bottom_right = 40
+corner_radius_bottom_left = 40
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_orange_pressed"]
+bg_color = Color(1, 0.36, 0.03, 1)
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_width_bottom = 5
+border_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 40
+corner_radius_top_right = 40
+corner_radius_bottom_right = 40
+corner_radius_bottom_left = 40
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_orange_hover"]
+bg_color = Color(1, 0.48, 0.15, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 1, 1, 0.75)
+corner_radius_top_left = 40
+corner_radius_top_right = 40
+corner_radius_bottom_right = 40
+corner_radius_bottom_left = 40
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_orange"]
+bg_color = Color(1, 0.36, 0.03, 1)
+corner_radius_top_left = 40
+corner_radius_top_right = 40
+corner_radius_bottom_right = 40
+corner_radius_bottom_left = 40
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_action_hover"]
+bg_color = Color(1, 1, 1, 0.12)
+corner_radius_top_left = 40
+corner_radius_top_right = 40
+corner_radius_bottom_right = 40
+corner_radius_bottom_left = 40
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_action_pressed"]
+bg_color = Color(1, 1, 1, 0.25)
+corner_radius_top_left = 40
+corner_radius_top_right = 40
+corner_radius_bottom_right = 40
+corner_radius_bottom_left = 40
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_sync_hover"]
+bg_color = Color(0.84, 0.9, 1, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 40
+corner_radius_top_right = 40
+corner_radius_bottom_right = 40
+corner_radius_bottom_left = 40
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_sync_pressed"]
+bg_color = Color(0.7, 0.8, 0.95, 1)
+corner_radius_top_left = 40
+corner_radius_top_right = 40
+corner_radius_bottom_right = 40
+corner_radius_bottom_left = 40
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_sync"]
+bg_color = Color(0.96, 0.97, 1, 1)
+corner_radius_top_left = 40
+corner_radius_top_right = 40
+corner_radius_bottom_right = 40
+corner_radius_bottom_left = 40
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_overlay"]
+bg_color = Color(0.1, 0.13, 0.19, 0.98)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_confirm"]
+bg_color = Color(0.24, 0.55, 0.95, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_discard"]
+bg_color = Color(0.35, 0.39, 0.48, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="SpatialDrawingPanel" type="PanelContainer" groups=["spatial_drawing_panel"]]
+offset_right = 760.0
+offset_bottom = 340.0
+theme_override_styles/panel = SubResource("StyleBox_panel")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 14
+
+[node name="Layout" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Header" type="CenterContainer" parent="Margin/Layout"]
+custom_minimum_size = Vector2(0, 104)
+layout_mode = 2
+
+[node name="ModeRow" type="HBoxContainer" parent="Margin/Layout/Header"]
+layout_mode = 2
+theme_override_constants/separation = 22
+alignment = 1
+
+[node name="ModeButton" type="Button" parent="Margin/Layout/Header/ModeRow"]
+custom_minimum_size = Vector2(120, 68)
+layout_mode = 2
+mouse_default_cursor_shape = 2
+theme_override_styles/focus = SubResource("StyleBox_empty")
+theme_override_styles/hover = SubResource("StyleBox_empty")
+theme_override_styles/pressed = SubResource("StyleBox_empty")
+theme_override_styles/normal = SubResource("StyleBox_empty")
+toggle_mode = true
+
+[node name="Track" type="Panel" parent="Margin/Layout/Header/ModeRow/ModeButton"]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 112.0
+offset_bottom = 60.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBox_toggle_track")
+
+[node name="Knob" type="Panel" parent="Margin/Layout/Header/ModeRow/ModeButton/Track"]
+layout_mode = 0
+offset_left = 9.0
+offset_top = 9.0
+offset_right = 43.0
+offset_bottom = 43.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBox_toggle_knob")
+
+[node name="ModeLabel" type="Label" parent="Margin/Layout/Header/ModeRow"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.68, 0.74, 1, 1)
+theme_override_font_sizes/font_size = 38
+text = "开始空间绘制"
+vertical_alignment = 1
+
+[node name="ToolRow" type="HBoxContainer" parent="Margin/Layout"]
+custom_minimum_size = Vector2(0, 180)
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="Red" type="VBoxContainer" parent="Margin/Layout/ToolRow"]
+custom_minimum_size = Vector2(94, 0)
+layout_mode = 2
+alignment = 1
+
+[node name="ColorButton" type="Button" parent="Margin/Layout/ToolRow/Red"]
+custom_minimum_size = Vector2(76, 76)
+layout_mode = 2
+size_flags_horizontal = 4
+mouse_default_cursor_shape = 2
+theme_override_styles/focus = SubResource("StyleBox_red_pressed")
+theme_override_styles/hover = SubResource("StyleBox_red_hover")
+theme_override_styles/pressed = SubResource("StyleBox_red_pressed")
+theme_override_styles/normal = SubResource("StyleBox_red")
+toggle_mode = true
+button_pressed = true
+button_group = SubResource("ButtonGroup_colors")
+
+[node name="Label" type="Label" parent="Margin/Layout/ToolRow/Red"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.68, 0.74, 1, 1)
+theme_override_font_sizes/font_size = 25
+text = "红"
+horizontal_alignment = 1
+
+[node name="Green" type="VBoxContainer" parent="Margin/Layout/ToolRow"]
+custom_minimum_size = Vector2(94, 0)
+layout_mode = 2
+alignment = 1
+
+[node name="ColorButton" type="Button" parent="Margin/Layout/ToolRow/Green"]
+custom_minimum_size = Vector2(76, 76)
+layout_mode = 2
+size_flags_horizontal = 4
+mouse_default_cursor_shape = 2
+theme_override_styles/focus = SubResource("StyleBox_green_pressed")
+theme_override_styles/hover = SubResource("StyleBox_green_hover")
+theme_override_styles/pressed = SubResource("StyleBox_green_pressed")
+theme_override_styles/normal = SubResource("StyleBox_green")
+toggle_mode = true
+button_group = SubResource("ButtonGroup_colors")
+
+[node name="Label" type="Label" parent="Margin/Layout/ToolRow/Green"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.68, 0.74, 1, 1)
+theme_override_font_sizes/font_size = 25
+text = "绿"
+horizontal_alignment = 1
+
+[node name="Blue" type="VBoxContainer" parent="Margin/Layout/ToolRow"]
+custom_minimum_size = Vector2(94, 0)
+layout_mode = 2
+alignment = 1
+
+[node name="ColorButton" type="Button" parent="Margin/Layout/ToolRow/Blue"]
+custom_minimum_size = Vector2(76, 76)
+layout_mode = 2
+size_flags_horizontal = 4
+mouse_default_cursor_shape = 2
+theme_override_styles/focus = SubResource("StyleBox_blue_pressed")
+theme_override_styles/hover = SubResource("StyleBox_blue_hover")
+theme_override_styles/pressed = SubResource("StyleBox_blue_pressed")
+theme_override_styles/normal = SubResource("StyleBox_blue")
+toggle_mode = true
+button_group = SubResource("ButtonGroup_colors")
+
+[node name="Label" type="Label" parent="Margin/Layout/ToolRow/Blue"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.68, 0.74, 1, 1)
+theme_override_font_sizes/font_size = 25
+text = "蓝"
+horizontal_alignment = 1
+
+[node name="Magenta" type="VBoxContainer" parent="Margin/Layout/ToolRow"]
+custom_minimum_size = Vector2(94, 0)
+layout_mode = 2
+alignment = 1
+
+[node name="ColorButton" type="Button" parent="Margin/Layout/ToolRow/Magenta"]
+custom_minimum_size = Vector2(76, 76)
+layout_mode = 2
+size_flags_horizontal = 4
+mouse_default_cursor_shape = 2
+theme_override_styles/focus = SubResource("StyleBox_magenta_pressed")
+theme_override_styles/hover = SubResource("StyleBox_magenta_hover")
+theme_override_styles/pressed = SubResource("StyleBox_magenta_pressed")
+theme_override_styles/normal = SubResource("StyleBox_magenta")
+toggle_mode = true
+button_group = SubResource("ButtonGroup_colors")
+
+[node name="Label" type="Label" parent="Margin/Layout/ToolRow/Magenta"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.68, 0.74, 1, 1)
+theme_override_font_sizes/font_size = 25
+text = "紫"
+horizontal_alignment = 1
+
+[node name="Orange" type="VBoxContainer" parent="Margin/Layout/ToolRow"]
+custom_minimum_size = Vector2(94, 0)
+layout_mode = 2
+alignment = 1
+
+[node name="ColorButton" type="Button" parent="Margin/Layout/ToolRow/Orange"]
+custom_minimum_size = Vector2(76, 76)
+layout_mode = 2
+size_flags_horizontal = 4
+mouse_default_cursor_shape = 2
+theme_override_styles/focus = SubResource("StyleBox_orange_pressed")
+theme_override_styles/hover = SubResource("StyleBox_orange_hover")
+theme_override_styles/pressed = SubResource("StyleBox_orange_pressed")
+theme_override_styles/normal = SubResource("StyleBox_orange")
+toggle_mode = true
+button_group = SubResource("ButtonGroup_colors")
+
+[node name="Label" type="Label" parent="Margin/Layout/ToolRow/Orange"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.68, 0.74, 1, 1)
+theme_override_font_sizes/font_size = 25
+text = "橙"
+horizontal_alignment = 1
+
+[node name="Clear" type="VBoxContainer" parent="Margin/Layout/ToolRow"]
+custom_minimum_size = Vector2(112, 0)
+layout_mode = 2
+alignment = 1
+
+[node name="ClearButton" type="Button" parent="Margin/Layout/ToolRow/Clear"]
+custom_minimum_size = Vector2(76, 76)
+layout_mode = 2
+size_flags_horizontal = 4
+mouse_default_cursor_shape = 2
+theme_override_styles/focus = SubResource("StyleBox_action_hover")
+theme_override_styles/hover = SubResource("StyleBox_action_hover")
+theme_override_styles/pressed = SubResource("StyleBox_action_pressed")
+theme_override_styles/normal = SubResource("StyleBox_empty")
+
+[node name="Icon" type="TextureRect" parent="Margin/Layout/ToolRow/Clear/ClearButton"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 8.0
+offset_right = -12.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("1_trash")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Label" type="Label" parent="Margin/Layout/ToolRow/Clear"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.68, 0.74, 1, 1)
+theme_override_font_sizes/font_size = 23
+text = "全部清除"
+horizontal_alignment = 1
+
+[node name="Sync" type="VBoxContainer" parent="Margin/Layout/ToolRow"]
+custom_minimum_size = Vector2(92, 0)
+layout_mode = 2
+alignment = 1
+
+[node name="SyncButton" type="Button" parent="Margin/Layout/ToolRow/Sync"]
+custom_minimum_size = Vector2(76, 76)
+layout_mode = 2
+size_flags_horizontal = 4
+mouse_default_cursor_shape = 2
+theme_override_colors/font_hover_color = Color(0.18, 0.23, 0.34, 1)
+theme_override_colors/font_color = Color(0.18, 0.23, 0.34, 1)
+theme_override_colors/font_pressed_color = Color(0.18, 0.23, 0.34, 1)
+theme_override_font_sizes/font_size = 48
+theme_override_styles/focus = SubResource("StyleBox_sync_hover")
+theme_override_styles/hover = SubResource("StyleBox_sync_hover")
+theme_override_styles/pressed = SubResource("StyleBox_sync_pressed")
+theme_override_styles/normal = SubResource("StyleBox_sync")
+text = "⇄"
+
+[node name="Label" type="Label" parent="Margin/Layout/ToolRow/Sync"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.68, 0.74, 1, 1)
+theme_override_font_sizes/font_size = 25
+text = "同步"
+horizontal_alignment = 1
+
+[node name="ConfirmOverlay" type="PanelContainer" parent="."]
+visible = false
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBox_overlay")
+
+[node name="Center" type="CenterContainer" parent="ConfirmOverlay"]
+layout_mode = 2
+
+[node name="Content" type="VBoxContainer" parent="ConfirmOverlay/Center"]
+custom_minimum_size = Vector2(420, 0)
+layout_mode = 2
+theme_override_constants/separation = 22
+
+[node name="Prompt" type="Label" parent="ConfirmOverlay/Center/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.86, 0.9, 1, 1)
+theme_override_font_sizes/font_size = 34
+text = "是否同步标记？"
+horizontal_alignment = 1
+
+[node name="Actions" type="HBoxContainer" parent="ConfirmOverlay/Center/Content"]
+layout_mode = 2
+theme_override_constants/separation = 18
+alignment = 1
+
+[node name="SyncExitButton" type="Button" parent="ConfirmOverlay/Center/Content/Actions"]
+custom_minimum_size = Vector2(150, 62)
+layout_mode = 2
+mouse_default_cursor_shape = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 28
+theme_override_styles/hover = SubResource("StyleBox_confirm")
+theme_override_styles/pressed = SubResource("StyleBox_confirm")
+theme_override_styles/normal = SubResource("StyleBox_confirm")
+text = "同步"
+
+[node name="DiscardExitButton" type="Button" parent="ConfirmOverlay/Center/Content/Actions"]
+custom_minimum_size = Vector2(150, 62)
+layout_mode = 2
+mouse_default_cursor_shape = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 28
+theme_override_styles/hover = SubResource("StyleBox_discard")
+theme_override_styles/pressed = SubResource("StyleBox_discard")
+theme_override_styles/normal = SubResource("StyleBox_discard")
+text = "舍弃"

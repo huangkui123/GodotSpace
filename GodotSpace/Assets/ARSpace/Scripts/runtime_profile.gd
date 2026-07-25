@@ -79,6 +79,11 @@ class Profile extends RefCounted:
 	func can_annotate() -> bool:
 		return is_ground()
 
+	func can_draw() -> bool:
+		# Test mode emulates the Sky client on desktop. The PC Ground test
+		# Server remains a receive-only drawing authority.
+		return uses_xr() or (is_test_mode() and is_client())
+
 	func get_preset() -> int:
 		if is_client():
 			return Preset.VR_GROUND_CLIENT if is_ground() else Preset.SKY_XR_CLIENT

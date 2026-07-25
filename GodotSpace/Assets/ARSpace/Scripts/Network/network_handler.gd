@@ -231,6 +231,19 @@ func can_peer_control_shared_windows(peer_id: int) -> bool:
 	]
 
 
+func can_peer_draw(peer_id: int) -> bool:
+	# Space drawing is deliberately narrower than annotations and shared
+	# windows: only the two immersive roles may publish strokes. Peer 1 is
+	# normally the desktop PC Ground authority, but a VR Ground Server uses the
+	# same ENet id and is allowed through its runtime presentation profile.
+	if peer_id == SERVER_PEER_ID:
+		var profile = RuntimeProfileScript.current()
+		return profile != null \
+			and profile.has_method("can_draw") \
+			and bool(profile.call("can_draw"))
+	return get_peer_role(peer_id) in [ROLE_GROUND_VR, ROLE_SKY]
+
+
 func is_ground_vr_pairing_protected() -> bool:
 	return not OS.get_environment(GROUND_VR_TOKEN_ENV).is_empty()
 

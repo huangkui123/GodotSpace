@@ -7,6 +7,8 @@ const WINDOW_STATE_MANAGER_SCRIPT: Script = preload("res://Assets/ARSpace/Script
 const WINDOW_DOCK_MANAGER_SCRIPT: Script = preload("res://Assets/ARSpace/Scripts/SpatialWindows/window_dock_manager.gd")
 const WINDOW_DOCK_SLOT_SCENE: PackedScene = preload("res://Assets/ARSpace/Scenes/SpatialWindows/WindowDockSlot3D.tscn")
 const MAIN_MENU_STATE_MANAGER_SCRIPT: Script = preload("res://Assets/ARSpace/Scripts/UI/shared_main_menu_state.gd")
+const DRAWING_MANAGER_SCRIPT: Script = preload("res://Assets/ARSpace/Scripts/SpatialDrawing/spatial_drawing_manager.gd")
+const STROKE_RENDERER_SCRIPT: Script = preload("res://Assets/ARSpace/Scripts/SpatialDrawing/spatial_stroke_renderer.gd")
 const ROLE_ARG: String = "--collab-process-role="
 const PORT_ARG: String = "--collab-process-port="
 const DEFAULT_PORT: int = 43280
@@ -17,6 +19,9 @@ const ROLE_SKY: String = "sky"
 const FIRST_ANNOTATION_TEXT: String = "Ground VR initial annotation"
 const SECOND_ANNOTATION_TEXT: String = "Ground VR reconnected annotation"
 const FORGED_SKY_ANNOTATION_TEXT: String = "Sky forged annotation"
+const GROUND_STROKE_POINT_COUNT: int = 140
+const SKY_STROKE_POINT_COUNT: int = 180
+const RECONNECTED_STROKE_POINT_COUNT: int = 96
 const SHARED_WINDOW_ID: StringName = &"collaboration_panel"
 const MAIN_MENU_MODE_LIFE: int = 0
 const MAIN_MENU_MODE_WORK: int = 1
@@ -44,10 +49,13 @@ var _peer: ENetMultiplayerPeer
 var _annotation_manager: Node
 var _window_manager: Node
 var _main_menu_state_manager: Node
+var _drawing_manager: Node
 var _failures: Array[String] = []
 var _last_rejected_peer_id: int = 0
 var _last_rejection_reason: String = ""
 var _candidate_own_player_seen: bool = false
+var _server_pose_ready_ack: bool = false
+var _final_drawing_summary: String = ""
 
 
 class CollaborationWindowController extends Node:
@@ -178,6 +186,21 @@ func _run_server() -> void:
 		await _wait_for_main_menu_mode(MAIN_MENU_MODE_WORK),
 		"server should accept the Ground VR MainMenu WORK mode"
 	)
+	_check(await _wait_for_drawing_count(1), "server should accept the Ground VR spatial stroke")
+	_check(
+		_drawing_creator(GROUND_STROKE_POINT_COUNT) == first_ground_peer_id,
+		"server should record the authenticated Ground VR stroke creator"
+	)
+	var pc_drawing_revision := int(_drawing_manager.call("get_state_revision"))
+	var pc_submit_result: PackedInt32Array = _drawing_manager.call(
+		"submit_drafts",
+		[_make_stroke_draft(900, 12, 9.0, Color.WHITE)]
+	)
+	_check(pc_submit_result.is_empty(), "PC Ground must not publish a local spatial stroke")
+	_check(
+		int(_drawing_manager.call("get_state_revision")) == pc_drawing_revision,
+		"rejected PC Ground drawing must not advance revision"
+	)
 
 	_check(await _wait_for_player_count(3), "server should observe the Sky client")
 	_check(await _wait_for_role_count(3), "server should register all three session roles")
@@ -186,6 +209,7 @@ func _run_server() -> void:
 	_check(_count_role(ROLE_SKY) == 1, "server should keep exactly one Sky role")
 	_check(await _wait_for_player_roles(), "server player replicas should match the role registry")
 	_check(await _wait_for_remote_avatars(2), "server should receive both remote player poses")
+	_check(await _wait_for_drawing_count(2), "server should receive the Sky spatial stroke")
 	_check(
 		await _wait_for_main_menu_mode(MAIN_MENU_MODE_LIFE),
 		"server should accept the Sky MainMenu LIFE mode"
@@ -206,6 +230,7 @@ func _run_server() -> void:
 	_check(await _wait_for_player_count(2), "server should remove the disconnected Ground VR client")
 	_check(await _wait_for_ground_vr_release(), "server should release the Ground VR slot after disconnect")
 	_check(int(_annotation_manager.call("get_annotation_count")) == 1, "Ground VR disconnect should retain session annotations")
+	_check(await _wait_for_drawing_count(0), "server should apply Sky synchronized drawing clear")
 
 	_check(await _wait_for_player_count(3), "server should observe the reconnected Ground VR client")
 	var reconnected_ground_peer_id := await _wait_for_ground_vr_peer(first_ground_peer_id)
@@ -213,6 +238,7 @@ func _run_server() -> void:
 	_check(await _wait_for_player_roles(), "server reconnect replicas should match the role registry")
 	_check(await _wait_for_remote_avatars(2), "server should receive reconnected remote poses")
 	_check(await _wait_for_annotation_count(2), "server should accept a post-reconnect Ground VR annotation")
+	_check(await _wait_for_drawing_count(1), "server should accept a post-reconnect Ground VR stroke")
 	_check(
 		await _wait_for_window_slot(&"slot_a"),
 		"server should accept reconnected Ground VR moving the shared window to slot_a"
@@ -222,7 +248,12 @@ func _run_server() -> void:
 		"server should bind the second annotation to the reconnected Ground VR peer"
 	)
 	_check(_has_unique_annotations(), "server should end with two unique authoritative annotations")
+	_check(
+		_drawing_creator(RECONNECTED_STROKE_POINT_COUNT) == reconnected_ground_peer_id,
+		"server should bind the reconnected stroke to the replacement Ground VR peer"
+	)
 	_check(_has_unique_player_names(), "server should end with unique player instances")
+	_final_drawing_summary = _drawing_summary()
 	await get_tree().create_timer(0.75).timeout
 
 
@@ -235,6 +266,7 @@ func _run_ground_client() -> void:
 	_check(await _wait_for_player_count(2), "Ground VR client should initially see itself and PC Ground")
 	_check(await _wait_for_player_roles(), "Ground VR replicas should match the first role snapshot")
 	_check(await _wait_for_remote_avatars(1), "Ground VR should receive the PC Ground pose")
+	_check(await _wait_for_server_pose_ready(), "Server should confirm the first Ground VR pose before control")
 	_check(
 		int(_annotation_manager.call("create_annotation", _make_draft(FIRST_ANNOTATION_TEXT, Vector3(1.0, 0.5, -2.0)))) == 0,
 		"Ground VR create should be queued to Server authority"
@@ -265,11 +297,18 @@ func _run_ground_client() -> void:
 		await _wait_for_main_menu_mode(MAIN_MENU_MODE_WORK),
 		"Ground VR should receive the Server-confirmed MainMenu WORK mode"
 	)
+	var ground_submit: PackedInt32Array = _drawing_manager.call(
+		"submit_drafts",
+		[_make_stroke_draft(101, GROUND_STROKE_POINT_COUNT, 0.2, Color.RED)]
+	)
+	_check(ground_submit.size() == 1, "Ground VR should submit one chunked spatial stroke")
+	_check(await _wait_for_drawing_count(1), "Ground VR should receive its confirmed spatial stroke")
 
 	_check(await _wait_for_player_count(3), "Ground VR client should observe the Sky client")
 	_check(await _wait_for_role_count(3), "Ground VR should receive the three-role snapshot")
 	_check(await _wait_for_player_roles(), "Ground VR should identify PC Ground and Sky replicas")
 	_check(await _wait_for_remote_avatars(2), "Ground VR should receive PC Ground and Sky poses")
+	_check(await _wait_for_drawing_count(2), "Ground VR should receive the Sky spatial stroke")
 	_check(
 		await _wait_for_main_menu_mode(MAIN_MENU_MODE_LIFE),
 		"Ground VR should receive Sky's MainMenu LIFE mode"
@@ -290,6 +329,7 @@ func _run_ground_client() -> void:
 	_check(await _wait_for_local_role(ROLE_GROUND_VR), "reconnected client should reclaim the Ground VR role")
 	_check(await _wait_for_player_count(3), "reconnected Ground VR should receive the current player snapshot")
 	_check(await _wait_for_annotation_count(1), "reconnected Ground VR should receive the annotation snapshot")
+	_check(await _wait_for_drawing_count(0), "reconnected Ground VR should restore the cleared drawing snapshot")
 	_check(
 		await _wait_for_window_slot(&"slot_b"),
 		"reconnected Ground VR should restore the shared-window slot snapshot"
@@ -301,10 +341,7 @@ func _run_ground_client() -> void:
 	_check(_annotation_text_count(FIRST_ANNOTATION_TEXT) == 1, "reconnect snapshot should contain no duplicate annotation")
 	_check(await _wait_for_player_roles(), "reconnected Ground VR replicas should match roles before control")
 	_check(await _wait_for_remote_avatars(2), "reconnected Ground VR should receive poses before control")
-	# The local client seeing remote avatars does not prove that the Server has
-	# received this newly spawned client's first network pose yet. Allow one
-	# short pose-publication window before exercising distance-validated input.
-	await get_tree().create_timer(0.35).timeout
+	_check(await _wait_for_server_pose_ready(), "Server should confirm the reconnected Ground VR pose before control")
 	var new_peer_id := _peer.get_unique_id()
 	if new_peer_id != old_peer_id:
 		_check(_world.get_node_or_null(str(old_peer_id)) == null, "reconnected Ground VR should not retain its stale player id")
@@ -312,6 +349,11 @@ func _run_ground_client() -> void:
 		int(_annotation_manager.call("create_annotation", _make_draft(SECOND_ANNOTATION_TEXT, Vector3(-1.0, 1.0, -3.0)))) == 0,
 		"reconnected Ground VR create should be queued to Server authority"
 	)
+	var reconnect_submit: PackedInt32Array = _drawing_manager.call(
+		"submit_drafts",
+		[_make_stroke_draft(102, RECONNECTED_STROKE_POINT_COUNT, 0.6, Color.MAGENTA)]
+	)
+	_check(reconnect_submit.size() == 1, "reconnected Ground VR should submit a new spatial stroke")
 	_check(
 		bool(_window_manager.call(
 			"request_settled_state",
@@ -322,6 +364,7 @@ func _run_ground_client() -> void:
 		"reconnected Ground VR should request slot_a"
 	)
 	_check(await _wait_for_annotation_count(2), "reconnected Ground VR should receive the second annotation")
+	_check(await _wait_for_drawing_count(1), "reconnected Ground VR should receive its confirmed stroke")
 	_check(
 		await _wait_for_window_slot(&"slot_a"),
 		"reconnected Ground VR should converge on slot_a"
@@ -329,6 +372,7 @@ func _run_ground_client() -> void:
 	_check(_has_unique_annotations(), "reconnected Ground VR should end with two unique annotations")
 	_check(_has_unique_player_names(), "reconnected Ground VR should end with unique player instances")
 	_check(first_peer_id == old_peer_id, "Ground VR peer identity should remain stable before disconnect")
+	_final_drawing_summary = _drawing_summary()
 	await get_tree().create_timer(1.0).timeout
 
 
@@ -340,6 +384,7 @@ func _run_sky_client() -> void:
 	_check(await _wait_for_player_count(3), "Sky client should receive all existing players")
 	_check(await _wait_for_role_count(3), "Sky client should receive all session roles")
 	_check(await _wait_for_annotation_count(1), "late Sky client should receive the annotation snapshot")
+	_check(await _wait_for_drawing_count(1), "late Sky client should receive the Ground VR drawing snapshot")
 	_check(_annotation_text_count(FIRST_ANNOTATION_TEXT) == 1, "late Sky snapshot should contain the annotation once")
 	_check(
 		await _wait_for_window_transform(SHARED_WINDOW_FIRST_TRANSFORM),
@@ -375,7 +420,13 @@ func _run_sky_client() -> void:
 	_check(_annotation_text_count(FORGED_SKY_ANNOTATION_TEXT) == 0, "forged Sky annotation must not be synchronized")
 	_check(await _wait_for_player_roles(), "Sky client should identify both Ground replicas")
 	_check(await _wait_for_remote_avatars(2), "Sky client should receive both Ground poses")
-	await get_tree().create_timer(0.25).timeout
+	_check(await _wait_for_server_pose_ready(), "Server should confirm the Sky pose before window control")
+	var sky_submit: PackedInt32Array = _drawing_manager.call(
+		"submit_drafts",
+		[_make_stroke_draft(201, SKY_STROKE_POINT_COUNT, 0.4, Color.BLUE)]
+	)
+	_check(sky_submit.size() == 1, "Sky should submit one chunked spatial stroke")
+	_check(await _wait_for_drawing_count(2), "Sky should receive its Server-confirmed spatial stroke")
 	_check(
 		bool(_window_manager.call(
 			"request_settled_state",
@@ -393,11 +444,17 @@ func _run_sky_client() -> void:
 	_check(await _wait_for_player_count(2), "Sky client should observe Ground VR cleanup")
 	_check(await _wait_for_ground_vr_release(), "Sky client should observe the released Ground VR slot")
 	_check(int(_annotation_manager.call("get_annotation_count")) == 1, "Sky should retain annotations while Ground VR reconnects")
+	_check(
+		bool(_drawing_manager.call("request_clear_published")),
+		"Sky should submit the synchronized drawing clear command"
+	)
+	_check(await _wait_for_drawing_count(0), "Sky should receive the authoritative drawing clear")
 
 	_check(await _wait_for_player_count(3), "Sky client should observe Ground VR reconnection")
 	var replacement_ground_peer_id := await _wait_for_ground_vr_peer()
 	_check(replacement_ground_peer_id > 1, "Sky client should observe the replacement Ground VR role")
 	_check(await _wait_for_annotation_count(2), "Sky client should receive the post-reconnect annotation")
+	_check(await _wait_for_drawing_count(1), "Sky should receive the reconnected Ground VR stroke")
 	_check(
 		await _wait_for_window_slot(&"slot_a"),
 		"Sky should receive reconnected Ground VR's slot_a result"
@@ -406,6 +463,7 @@ func _run_sky_client() -> void:
 	_check(await _wait_for_player_roles(), "Sky reconnect replicas should match the role registry")
 	_check(await _wait_for_remote_avatars(2), "Sky client should receive reconnected Ground VR poses")
 	_check(_has_unique_player_names(), "Sky client should end with unique player instances")
+	_final_drawing_summary = _drawing_summary()
 	await get_tree().create_timer(0.75).timeout
 
 
@@ -478,6 +536,20 @@ func _create_world(_world_name: String) -> Node3D:
 	_annotation_manager.set("warn_on_rejection", false)
 	annotation_system.add_child(_annotation_manager)
 
+	var drawing_system := Node3D.new()
+	drawing_system.name = "SpatialDrawingSystem"
+	shared_origin.add_child(drawing_system)
+	var drawing_renderer: Node3D = STROKE_RENDERER_SCRIPT.new()
+	drawing_renderer.name = "SpatialDrawingRenderer"
+	drawing_system.add_child(drawing_renderer)
+	_drawing_manager = DRAWING_MANAGER_SCRIPT.new()
+	_drawing_manager.name = "SpatialDrawingManager"
+	_drawing_manager.set("shared_space_origin_path", NodePath("../.."))
+	_drawing_manager.set("renderer_path", NodePath("../SpatialDrawingRenderer"))
+	_drawing_manager.set("peer_authority_path", NodePath("/root/NetworkHandler"))
+	_drawing_manager.set("warn_on_rejection", false)
+	drawing_system.add_child(_drawing_manager)
+
 	var dock_manager: Node3D = WINDOW_DOCK_MANAGER_SCRIPT.new()
 	dock_manager.name = "WindowDockSlots"
 	shared_origin.add_child(dock_manager)
@@ -533,6 +605,7 @@ func _disconnect_and_free_world() -> void:
 	_annotation_manager = null
 	_window_manager = null
 	_main_menu_state_manager = null
+	_drawing_manager = null
 	var old_peer := _peer
 	_peer = null
 	multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
@@ -679,11 +752,64 @@ func _count_visible_remote_avatars() -> int:
 	return count
 
 
+func _wait_for_server_pose_ready() -> bool:
+	if multiplayer.is_server():
+		return true
+	_server_pose_ready_ack = false
+	rpc_id(1, "_server_request_pose_ready")
+	var deadline := Time.get_ticks_msec() + STAGE_TIMEOUT_MSEC
+	while Time.get_ticks_msec() < deadline:
+		if _server_pose_ready_ack:
+			return true
+		await get_tree().process_frame
+	return false
+
+
+@rpc("any_peer", "call_remote", "reliable", 0)
+func _server_request_pose_ready() -> void:
+	if not multiplayer.is_server():
+		return
+	var sender_peer_id := multiplayer.get_remote_sender_id()
+	if sender_peer_id <= 1:
+		return
+	call_deferred("_ack_pose_when_server_has_received_it", sender_peer_id)
+
+
+func _ack_pose_when_server_has_received_it(peer_id: int) -> void:
+	var deadline := Time.get_ticks_msec() + STAGE_TIMEOUT_MSEC
+	while Time.get_ticks_msec() < deadline:
+		if multiplayer.multiplayer_peer == null:
+			return
+		var player := _world.get_node_or_null(str(peer_id)) if is_instance_valid(_world) else null
+		if player != null \
+				and player.has_method("has_received_network_pose") \
+				and bool(player.call("has_received_network_pose")):
+			rpc_id(peer_id, "_client_confirm_server_pose_ready")
+			return
+		await get_tree().process_frame
+
+
+@rpc("authority", "call_remote", "reliable", 0)
+func _client_confirm_server_pose_ready() -> void:
+	if multiplayer.get_remote_sender_id() == 1:
+		_server_pose_ready_ack = true
+
+
 func _wait_for_annotation_count(expected_count: int) -> bool:
 	var deadline := Time.get_ticks_msec() + STAGE_TIMEOUT_MSEC
 	while Time.get_ticks_msec() < deadline:
 		if _annotation_manager != null \
 				and int(_annotation_manager.call("get_annotation_count")) == expected_count:
+			return true
+		await get_tree().process_frame
+	return false
+
+
+func _wait_for_drawing_count(expected_count: int) -> bool:
+	var deadline := Time.get_ticks_msec() + STAGE_TIMEOUT_MSEC
+	while Time.get_ticks_msec() < deadline:
+		if _drawing_manager != null \
+				and int(_drawing_manager.call("get_stroke_count")) == expected_count:
 			return true
 		await get_tree().process_frame
 	return false
@@ -740,6 +866,39 @@ func _make_draft(text: String, position: Vector3) -> Dictionary:
 	}
 
 
+func _make_stroke_draft(
+	local_id: int,
+	point_count: int,
+	height: float,
+	color: Color
+) -> Dictionary:
+	var points := PackedVector3Array()
+	for index in range(point_count):
+		points.append(Vector3(
+			float(index) * 0.003,
+			height + sin(float(index) * 0.08) * 0.02,
+			-1.2
+		))
+	return {
+		"local_id": local_id,
+		"points": points,
+		"color": color,
+		"width_m": 0.01,
+		"completed": true,
+	}
+
+
+func _drawing_creator(point_count: int) -> int:
+	if _drawing_manager == null:
+		return -1
+	for value in _drawing_manager.call("get_strokes"):
+		var stroke := value as Dictionary
+		var points := stroke.get("points", PackedVector3Array()) as PackedVector3Array
+		if points.size() == point_count:
+			return int(stroke.get("creator_peer_id", -1))
+	return -1
+
+
 func _annotation_creator(text: String) -> int:
 	if _annotation_manager == null:
 		return -1
@@ -788,6 +947,37 @@ func _count_role(expected_role: String) -> int:
 	return count
 
 
+func _drawing_summary() -> String:
+	if _drawing_manager == null or not is_instance_valid(_drawing_manager):
+		return "revision=-1|count=-1|records=missing"
+	var records: PackedStringArray = []
+	for value in _drawing_manager.call("get_strokes"):
+		var stroke := value as Dictionary
+		var points := stroke.get("points", PackedVector3Array()) as PackedVector3Array
+		var first := points[0] if not points.is_empty() else Vector3.ZERO
+		var last := points[points.size() - 1] if not points.is_empty() else Vector3.ZERO
+		var color := stroke.get("color", Color.BLACK) as Color
+		records.append("%d,%d,%d,%d,%s,%.4f,%s,%s" % [
+			int(stroke.get("stroke_id", 0)),
+			int(stroke.get("creator_peer_id", 0)),
+			int(stroke.get("revision", 0)),
+			points.size(),
+			color.to_html(true),
+			float(stroke.get("width_m", 0.0)),
+			_format_summary_point(first),
+			_format_summary_point(last),
+		])
+	return "revision=%d|count=%d|records=%s" % [
+		int(_drawing_manager.call("get_state_revision")),
+		int(_drawing_manager.call("get_stroke_count")),
+		";".join(records),
+	]
+
+
+func _format_summary_point(point: Vector3) -> String:
+	return "%.4f:%.4f:%.4f" % [point.x, point.y, point.z]
+
+
 func _get_network_handler() -> Node:
 	return get_node_or_null("/root/NetworkHandler")
 
@@ -816,6 +1006,9 @@ func _check(condition: bool, message: String) -> void:
 
 
 func _finish() -> void:
+	if _role in ["server", "ground_client", "first_client", "sky_client", "late_client"]:
+		var summary := _final_drawing_summary if not _final_drawing_summary.is_empty() else _drawing_summary()
+		print("COLLABORATION_MULTIPROCESS_DRAWING_SUMMARY %s" % summary)
 	_disconnect_and_free_world()
 	await get_tree().process_frame
 	if _failures.is_empty():
