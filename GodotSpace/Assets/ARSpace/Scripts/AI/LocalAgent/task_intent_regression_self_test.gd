@@ -26,32 +26,20 @@ func _run() -> void:
 		return
 
 	var failures: Array[String] = []
-	var write_count := 0
-	var unauthorized_write_count := 0
 	for case_value in cases:
 		if typeof(case_value) != TYPE_DICTIONARY:
 			failures.append("non-dictionary case")
 			continue
 		var case := case_value as Dictionary
 		var text := str(case.get("text", ""))
-		var expected := str(case.get("expected", ""))
 		var actual := str(router.classify_text(text))
-		if actual == "ADVANCE_STEP":
-			write_count += 1
-		if expected == "NO_WRITE":
-			if actual == "ADVANCE_STEP":
-				unauthorized_write_count += 1
-				failures.append("unauthorized write: %s" % text)
-		elif actual != expected:
-			failures.append("%s expected %s, got %s" % [text, expected, actual])
+		if actual != "QWEN_FIRST":
+			failures.append("keyword routing was still active for: %s" % text)
 
 	if not failures.is_empty():
 		_fail("Intent regression failures (%d): %s" % [failures.size(), "; ".join(failures.slice(0, 8))])
 		return
-	if unauthorized_write_count != 0:
-		_fail("Unauthorized write rate was %d/%d." % [unauthorized_write_count, cases.size()])
-		return
-	print("Task intent regression passed: %d cases, %d authorized writes, 0 unauthorized writes." % [cases.size(), write_count])
+	print("Qwen-first routing regression passed: %d legacy keyword cases did not grant write permission." % cases.size())
 	quit(0)
 
 

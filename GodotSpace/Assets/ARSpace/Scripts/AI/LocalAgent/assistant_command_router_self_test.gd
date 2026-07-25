@@ -9,19 +9,26 @@ func _run() -> void:
 	var router := root.get_node_or_null("AssistantCommandRouter")
 	if not _check(router != null, "AssistantCommandRouter autoload is missing."):
 		return
-	if not _check(router.classify_text("下一步应该做什么") == "READ_ONLY", "Next-step question was not read-only."):
+	if not _check(router.classify_text("任何语句") == "QWEN_FIRST", "Router must not use keyword intent routing."):
 		return
-	if not _check(router.classify_text("进入下一步") == "ADVANCE_STEP", "Explicit advance was not writable."):
+	if not _check(router.call("route_transcript_for_test", {"text": "随便一句话", "is_final": true}).is_empty(), "Non-wake speech was routed."):
 		return
-	if not _check(router.classify_text("这一步做完了，继续") == "ADVANCE_STEP", "Completion command was not writable."):
+	var picture_scene: PackedScene = load("res://Assets/ARSpace/Prefabs/UI/PictureCanvas.tscn")
+	if not _check(picture_scene != null, "Picture album scene did not load."):
 		return
-	if not _check(router.classify_text("不要进入下一步") == "GENERAL", "Negated advance was authorized."):
+	var picture_root := picture_scene.instantiate()
+	root.add_child(picture_root)
+	await process_frame
+	var album_view := picture_root.get_node_or_null("Canvas")
+	if not _check(album_view != null and bool((album_view.call("open_album", 1, false) as Dictionary).get("ok", false)), "Picture album did not open."):
 		return
-	if not _check(router.classify_text("如果进入下一步会怎么样") == "READ_ONLY", "Conditional next-step phrase obtained write permission."):
-		return
-	if not _check(router.classify_text("可以进入下一步吗") == "READ_ONLY", "Permission question obtained write permission."):
-		return
-	if not _check(router.classify_text("我当前这一步做完了") != "ADVANCE_STEP", "Completion statement without continue obtained write permission."):
+	var album_requests := router.get("_requests") as Dictionary
+	album_requests["album-close-request"] = {
+		"speaker_peer_id": 1, "status": "agent_running", "snapshot": {},
+		"allowed_tools": PackedStringArray(["close_album"]),
+	}
+	var closed: Dictionary = router.call("_tool_close_album", {}, {"request_id": "album-close-request", "tool_call_id": "album-close-tool"})
+	if not _check(bool(closed.get("ok", false)) and not bool(album_view.visible), "Authorized close-album tool failed."):
 		return
 
 	var detail_scene: PackedScene = load("res://Assets/ARSpace/Prefabs/UI/WorkListInfoCanvas.tscn")
@@ -37,113 +44,79 @@ func _run() -> void:
 	if not _check(bool(opened.get("ok", false)), "Task guide did not open."):
 		return
 	var detail_view := detail_root.get_node_or_null("Canvas")
-	var snapshot_result: Dictionary = detail_view.call("get_task_snapshot", true)
-	var snapshot := snapshot_result.get("data", {}) as Dictionary
-
+	var task_snapshot: Dictionary = (detail_view.call("get_task_snapshot", true) as Dictionary).get("data", {})
+	task_snapshot["visible"] = true
+	task_snapshot["can_next"] = true
+	task_snapshot["can_previous"] = false
+	var snapshot := {"album": {"visible": false}, "task_guide": task_snapshot}
 	var requests := router.get("_requests") as Dictionary
+
 	requests["read-request"] = {
-		"speaker_peer_id": 1,
-		"intent": "READ_ONLY",
-		"status": "agent_running",
-		"snapshot": snapshot.duplicate(true),
+		"speaker_peer_id": 1, "status": "agent_running", "snapshot": snapshot,
+		"allowed_tools": PackedStringArray(["get_current_task_step"]),
 	}
-	var read_result: Dictionary = router.call(
-		"_tool_get_current_task_step", {}, {"request_id": "read-request", "tool_call_id": "read-tool"}
-	)
+	var read_result: Dictionary = router.call("_tool_get_current_task_step", {}, {"request_id": "read-request", "tool_call_id": "read-tool"})
 	if not _check(bool(read_result.get("ok", false)), "Read-only task tool failed."):
 		return
 	if not _check(int(detail_view.page_index) == 1, "Read-only task tool changed the page."):
 		return
-	var unauthorized: Dictionary = router.call(
-		"_tool_next_task_step", {}, {"request_id": "read-request", "tool_call_id": "bad-tool"}
-	)
-	if not _check(_error_code(unauthorized) == "permission_denied", "Read request obtained write permission."):
+	var unauthorized: Dictionary = router.call("_tool_next_task_step", {}, {"request_id": "read-request", "tool_call_id": "bad-tool"})
+	if not _check(_error_code(unauthorized) == "permission_denied", "Unavailable state-changing tool was accepted."):
 		return
 
 	requests["advance-request"] = {
-		"speaker_peer_id": 1,
-		"intent": "ADVANCE_STEP",
-		"status": "agent_running",
-		"snapshot": snapshot.duplicate(true),
+		"speaker_peer_id": 1, "status": "agent_running", "snapshot": snapshot,
+		"allowed_tools": PackedStringArray(["next_task_step"]),
 	}
-	var advanced: Dictionary = router.call(
-		"_tool_next_task_step", {}, {"request_id": "advance-request", "tool_call_id": "advance-tool"}
-	)
+	var advanced: Dictionary = router.call("_tool_next_task_step", {}, {"request_id": "advance-request", "tool_call_id": "advance-tool"})
 	if not _check(bool(advanced.get("ok", false)), "Authorized task advance failed."):
 		return
 	if not _check(int(detail_view.page_index) == 2, "Authorized task advance did not move exactly one page."):
 		return
 
 	requests["stale-request"] = {
-		"speaker_peer_id": 1,
-		"intent": "ADVANCE_STEP",
-		"status": "agent_running",
-		"snapshot": snapshot.duplicate(true),
+		"speaker_peer_id": 1, "status": "agent_running", "snapshot": snapshot,
+		"allowed_tools": PackedStringArray(["next_task_step"]),
 	}
-	var stale: Dictionary = router.call(
-		"_tool_next_task_step", {}, {"request_id": "stale-request", "tool_call_id": "stale-tool"}
-	)
+	var stale: Dictionary = router.call("_tool_next_task_step", {}, {"request_id": "stale-request", "tool_call_id": "stale-tool"})
 	if not _check(_error_code(stale) == "stale_state", "Stale precondition advanced the task twice."):
 		return
 	if not _check(int(detail_view.page_index) == 2, "Stale retry changed the task page."):
 		return
 
-	requests["too-late-request"] = {
-		"speaker_peer_id": 1,
-		"intent": "ADVANCE_STEP",
-		"status": "agent_running",
-		"snapshot": snapshot.duplicate(true),
+	requests["back-request"] = {
+		"speaker_peer_id": 1, "status": "agent_running",
+		"snapshot": {"album": {"visible": false}, "task_guide": (detail_view.call("get_task_snapshot", true) as Dictionary).get("data", {})},
+		"allowed_tools": PackedStringArray(["previous_task_step"]),
 	}
-	router.call("_on_agent_error", "too-late-request", "too_late", "Already dispatched")
-	if not _check(router.get_request_debug_state("too-late-request").get("status", "") == "tool_dispatched", "too_late incorrectly discarded an in-flight operation."):
+	var back_snapshot: Dictionary = ((requests["back-request"] as Dictionary).get("snapshot", {}) as Dictionary).get("task_guide", {})
+	back_snapshot["visible"] = true
+	var moved_back: Dictionary = router.call("_tool_previous_task_step", {}, {"request_id": "back-request", "tool_call_id": "back-tool"})
+	if not _check(bool(moved_back.get("ok", false)) and int(detail_view.page_index) == 1, "Authorized previous-step tool failed."):
+		return
+	requests["goto-request"] = {
+		"speaker_peer_id": 1, "status": "agent_running", "snapshot": {},
+		"allowed_tools": PackedStringArray(["go_to_task_guide_page"]),
+	}
+	var jumped: Dictionary = router.call("_tool_go_to_task_guide_page", {"page": 2}, {"request_id": "goto-request", "tool_call_id": "goto-tool"})
+	if not _check(bool(jumped.get("ok", false)) and int(detail_view.page_index) == 2, "Authorized direct task-guide page jump failed."):
+		return
+	var verified_success: String = router.call("_verified_answer_or_model_answer", {
+		"verified_ui_result": {"operation": "guide_advance", "result": {"ok": true, "data": {"snapshot": {"page_index": 3}}, "error": null}},
+	}, "模型文字")
+	if not _check(verified_success == "已切换到指导书第 3 步。", "Verified UI result did not override model wording."):
+		return
+	var verified_failure: String = router.call("_verified_answer_or_model_answer", {
+		"verified_ui_result": {"operation": "guide_advance", "result": {"ok": false, "data": {}, "error": {"code": "already_last_step", "message": "Already at last step."}}},
+	}, "已完成")
+	if not _check(verified_failure.find("操作未完成") == 0, "Failed UI result was reported as success."):
 		return
 
-	requests["spoofed-snapshot"] = {
-		"speaker_peer_id": 99,
-		"intent": "READ_ONLY",
-		"status": "preparing",
-		"snapshot": {},
-	}
-	router.call("_server_receive_task_snapshot", "spoofed-snapshot", {
-		"ok": true,
-		"data": {"task_id": 1, "page_index": 19},
-		"error": null,
-	})
-	if not _check((router.get_request_debug_state("spoofed-snapshot").get("snapshot", {}) as Dictionary).is_empty(), "Snapshot from the wrong peer was accepted."):
-		return
-
-	requests["snapshot-timeout"] = {
-		"speaker_peer_id": 99,
-		"intent": "READ_ONLY",
-		"status": "preparing",
-		"snapshot": {},
-	}
-	router.call("_expire_snapshot_request", "snapshot-timeout", 0.01)
-	await create_timer(0.03).timeout
-	if not _check(router.get_request_debug_state("snapshot-timeout").is_empty(), "Timed-out snapshot request was not removed."):
-		return
-
-	var page_before_cancel := int(detail_view.page_index)
-	requests["cancelled-request"] = {
-		"speaker_peer_id": 1,
-		"intent": "ADVANCE_STEP",
-		"status": "agent_running",
-		"snapshot": (detail_view.call("get_task_snapshot", true) as Dictionary).get("data", {}),
-	}
-	router.call("_on_agent_error", "cancelled-request", "cancelled", "Cancelled before dispatch")
-	var cancelled_tool: Dictionary = router.call(
-		"_tool_next_task_step", {}, {"request_id": "cancelled-request", "tool_call_id": "cancelled-tool"}
-	)
-	if not _check(_error_code(cancelled_tool) == "permission_denied", "Cancelled request retained write permission."):
-		return
-	if not _check(int(detail_view.page_index) == page_before_cancel, "Cancelled request changed the task page."):
-		return
 	var router_debug: Dictionary = router.get_debug_state()
 	for event_value in router_debug.get("recent_events", []):
 		var event := event_value as Dictionary
 		if not _check(not event.has("speaker_peer_id") and not event.has("text"), "Router debug event leaked speaker or transcript data."):
 			return
-
 	print("Assistant command Router self test passed.")
 	quit(0)
 

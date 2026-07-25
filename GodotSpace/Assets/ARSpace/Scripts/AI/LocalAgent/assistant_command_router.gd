@@ -2,19 +2,16 @@ extends Node
 
 signal command_routed(request_id: String, intent: String, speaker_peer_id: int)
 
-const INTENT_OPEN_ALBUM := "OPEN_ALBUM"
-const INTENT_OPEN_GUIDE := "OPEN_GUIDE"
-const INTENT_READ_STEP := "READ_ONLY"
-const INTENT_ADVANCE_STEP := "ADVANCE_STEP"
-const INTENT_EXPLAIN_STEP := "EXPLAIN_STEP"
-const INTENT_GENERAL := "GENERAL"
+const ROUTE_QWEN_FIRST := "QWEN_FIRST"
 const SERVER_PEER_ID := 1
 const SNAPSHOT_TIMEOUT_SECONDS := 3.0
 const MAX_DEBUG_EVENTS := 64
+const REQUIRED_WAKE_WORD := "助手"
 const OpenAlbumAdapterScript := preload("res://Assets/ARSpace/Scripts/AI/LocalAgent/open_album_tool_adapter.gd")
 
 var _requests: Dictionary = {}
 var _operation_to_request: Dictionary = {}
+var _deepseek_tool_calls: Dictionary = {}
 var _recent_events: Array[Dictionary] = []
 
 
@@ -23,46 +20,36 @@ func _ready() -> void:
 	if voice_chat != null and voice_chat.has_signal("voice_transcript_received"):
 		voice_chat.voice_transcript_received.connect(_on_voice_transcript_received)
 	var assistant := get_node_or_null("/root/LLMAssistantService")
-	if assistant != null and assistant.has_method("set_external_transcript_router_enabled"):
-		assistant.call("set_external_transcript_router_enabled", true)
+	if assistant != null:
+		if assistant.has_method("set_external_transcript_router_enabled"):
+			assistant.call("set_external_transcript_router_enabled", true)
+		if assistant.has_signal("delegated_answer_completed"):
+			assistant.delegated_answer_completed.connect(_on_deepseek_answer)
+		if assistant.has_signal("delegated_answer_failed"):
+			assistant.delegated_answer_failed.connect(_on_deepseek_error)
 	var agent := get_node_or_null("/root/LocalAgentClient")
 	if agent != null:
 		agent.replace_tool("open_album", Callable(self, "_tool_open_album"))
+		agent.register_tool("close_album", Callable(self, "_tool_close_album"))
+		agent.register_tool("next_album_page", Callable(self, "_tool_next_album_page"))
+		agent.register_tool("go_to_album_page", Callable(self, "_tool_go_to_album_page"))
+		agent.register_tool("previous_album_page", Callable(self, "_tool_previous_album_page"))
+		agent.register_tool("get_album_state", Callable(self, "_tool_get_album_state"))
 		agent.register_tool("open_task_guide", Callable(self, "_tool_open_task_guide"))
+		agent.register_tool("close_task_guide", Callable(self, "_tool_close_task_guide"))
 		agent.register_tool("get_current_task_step", Callable(self, "_tool_get_current_task_step"))
 		agent.register_tool("next_task_step", Callable(self, "_tool_next_task_step"))
+		agent.register_tool("go_to_task_guide_page", Callable(self, "_tool_go_to_task_guide_page"))
+		agent.register_tool("previous_task_step", Callable(self, "_tool_previous_task_step"))
+		agent.register_tool("replay_current_task_step", Callable(self, "_tool_replay_current_task_step"))
+		agent.register_tool("delegate_deepseek", Callable(self, "_tool_delegate_deepseek"))
 		agent.assistant_final_received.connect(_on_agent_answer)
 		agent.run_error_received.connect(_on_agent_error)
 
 
-func classify_text(text: String) -> String:
-	var clean := text.strip_edges()
-	if clean.is_empty():
-		return INTENT_GENERAL
-	if _contains_any(clean, ["不要", "不用", "别", "无需", "还没", "没有", "没说"]):
-		return INTENT_GENERAL
-	if clean.find("相册") >= 0 and _contains_any(clean, ["打开", "调出", "显示", "看看"]):
-		return INTENT_OPEN_ALBUM
-	if _contains_any(clean, ["这一步怎么", "当前步骤怎么", "当前步骤需要做什么", "这步怎么", "如何完成这一步"]):
-		return INTENT_EXPLAIN_STEP
-	if clean.find("下一步") >= 0:
-		if clean.ends_with("吗") or clean.ends_with("？") or clean.ends_with("?"):
-			return INTENT_READ_STEP
-		if _contains_any(clean, ["如果", "假如", "是否", "是不是", "能不能", "不能", "可以吗", "会不会", "他说", "引用", "这句话"]):
-			return INTENT_READ_STEP
-		if _contains_any(clean, ["是什么", "做什么", "应该", "该做", "该怎么", "怎么做", "告诉我"]):
-			return INTENT_READ_STEP
-		if _contains_any(clean, ["进入", "切换", "前往", "继续", "开始"]):
-			return INTENT_ADVANCE_STEP
-	if _contains_any(clean, ["这一步做完了", "本步完成", "当前步骤完成"]):
-		if _contains_any(clean, ["继续", "下一步", "往下"]):
-			return INTENT_ADVANCE_STEP
-	if _contains_any(clean, ["指导书", "任务流程", "操作指南"]):
-		if _contains_any(clean, ["打开", "调出", "显示", "查看"]):
-			return INTENT_OPEN_GUIDE
-	if _contains_any(clean, ["当前步骤", "现在这一步", "我在哪一步"]):
-		return INTENT_READ_STEP
-	return INTENT_GENERAL
+func classify_text(_text: String) -> String:
+	# Kept only for compatibility with older self-tests. Routing is now Qwen-first.
+	return ROUTE_QWEN_FIRST
 
 
 func route_transcript_for_test(data: Dictionary) -> String:
@@ -77,6 +64,7 @@ func get_debug_state() -> Dictionary:
 	return {
 		"active_request_count": _requests.size(),
 		"pending_remote_operation_count": _operation_to_request.size(),
+		"pending_deepseek_count": _deepseek_tool_calls.size(),
 		"recent_events": _recent_events.duplicate(true),
 	}
 
@@ -88,40 +76,41 @@ func _on_voice_transcript_received(data: Dictionary) -> void:
 
 
 func _route_final_transcript(data: Dictionary) -> String:
-	var text := str(data.get("text", "")).strip_edges()
-	if text.is_empty():
-		return ""
 	if multiplayer.has_multiplayer_peer() and not multiplayer.is_server():
+		return ""
+	var text := _strip_required_wake_word(str(data.get("text", "")))
+	if text.is_empty():
 		return ""
 	var speaker_peer_id := int(data.get("speaker_peer_id", SERVER_PEER_ID))
 	if speaker_peer_id <= 0:
 		speaker_peer_id = SERVER_PEER_ID
-	var intent := classify_text(text)
-	if intent == INTENT_GENERAL:
-		var assistant := get_node_or_null("/root/LLMAssistantService")
-		if assistant != null and assistant.has_method("submit_transcript_data"):
-			assistant.call("submit_transcript_data", data)
-		return ""
-
 	var request_id := _new_id("request")
 	_requests[request_id] = {
 		"speaker_peer_id": speaker_peer_id,
-		"intent": intent,
+		"intent": ROUTE_QWEN_FIRST,
 		"text": text,
 		"status": "preparing",
 		"snapshot": {},
+		"allowed_tools": [],
 		"created_msec": Time.get_ticks_msec(),
 	}
-	_record_event("routed", request_id, {
-		"intent": intent,
-		"target": "local" if _is_local_target(speaker_peer_id) else "remote",
-	})
-	command_routed.emit(request_id, intent, speaker_peer_id)
-	if intent in [INTENT_READ_STEP, INTENT_ADVANCE_STEP, INTENT_EXPLAIN_STEP]:
-		_request_target_snapshot(request_id, speaker_peer_id)
-	else:
-		_submit_agent_request(request_id)
+	_record_event("routed", request_id, {"target": "local" if _is_local_target(speaker_peer_id) else "remote"})
+	command_routed.emit(request_id, ROUTE_QWEN_FIRST, speaker_peer_id)
+	# Defer until all listeners have appended the user's final transcript.
+	# Otherwise this assistant status line can appear above the user's own speech.
+	call_deferred("_publish_answer", "收到，正在处理。")
+	_request_target_snapshot(request_id, speaker_peer_id)
 	return request_id
+
+
+func _strip_required_wake_word(raw_text: String) -> String:
+	var text := raw_text.strip_edges()
+	if not text.begins_with(REQUIRED_WAKE_WORD):
+		return ""
+	text = text.substr(REQUIRED_WAKE_WORD.length()).strip_edges()
+	while text.begins_with(",") or text.begins_with("，") or text.begins_with(":") or text.begins_with("："):
+		text = text.substr(1).strip_edges()
+	return text
 
 
 func _request_target_snapshot(request_id: String, speaker_peer_id: int) -> void:
@@ -153,54 +142,103 @@ func _receive_snapshot(request_id: String, result: Dictionary) -> void:
 	if not _requests.has(request_id):
 		return
 	if not bool(result.get("ok", false)):
-		var error := result.get("error", {}) as Dictionary
-		_fail_request(request_id, str(error.get("code", "no_active_task")), str(error.get("message", "No active task guide.")))
+		_fail_request(request_id, "snapshot_failed", "Unable to read the current UI state.")
 		return
 	var record := _requests[request_id] as Dictionary
-	record["snapshot"] = (result.get("data", {}) as Dictionary).duplicate(true)
+	var snapshot := (result.get("data", {}) as Dictionary).duplicate(true)
+	snapshot["ui_routing_hint"] = _build_ui_routing_hint(snapshot)
+	record["snapshot"] = snapshot
+	record["allowed_tools"] = _allowed_tools_for_snapshot(snapshot)
 	_requests[request_id] = record
-	_record_event("snapshot_received", request_id, {"intent": str(record.get("intent", ""))})
-	if str(record.get("intent", "")) == INTENT_EXPLAIN_STEP:
-		_ask_deepseek_with_snapshot(request_id)
+	_record_event("snapshot_received", request_id, {"tool_count": (record["allowed_tools"] as Array).size()})
+	_submit_agent_request(request_id)
+
+
+func _allowed_tools_for_snapshot(snapshot: Dictionary) -> PackedStringArray:
+	var tools := PackedStringArray()
+	var album := snapshot.get("album", {}) as Dictionary
+	var guide := snapshot.get("task_guide", {}) as Dictionary
+	var album_visible := bool(album.get("visible", false))
+	var guide_visible := bool(guide.get("visible", false))
+	# Put operations for the uniquely visible panel first. This is still only an
+	# authorization list; Qwen makes the semantic routing decision.
+	if guide_visible and not album_visible:
+		_append_task_guide_tools(tools, guide)
+	elif album_visible and not guide_visible:
+		_append_album_tools(tools, album)
 	else:
-		_submit_agent_request(request_id)
+		if album_visible:
+			_append_album_tools(tools, album)
+		if guide_visible:
+			_append_task_guide_tools(tools, guide)
+	tools.append("open_album")
+	tools.append("open_task_guide")
+	tools.append("delegate_deepseek")
+	return tools
 
 
-func _expire_snapshot_request(
-	request_id: String,
-	timeout_seconds: float = SNAPSHOT_TIMEOUT_SECONDS
-) -> void:
+func _append_album_tools(tools: PackedStringArray, album: Dictionary) -> void:
+	if bool(album.get("visible", false)):
+		tools.append("close_album")
+		tools.append("get_album_state")
+		if bool(album.get("can_next", false)):
+			tools.append("next_album_page")
+		tools.append("go_to_album_page")
+		if bool(album.get("can_previous", false)):
+			tools.append("previous_album_page")
+
+
+func _append_task_guide_tools(tools: PackedStringArray, guide: Dictionary) -> void:
+	if bool(guide.get("visible", false)):
+		tools.append("close_task_guide")
+		tools.append("replay_current_task_step")
+		if bool(guide.get("can_next", false)):
+			tools.append("next_task_step")
+		tools.append("go_to_task_guide_page")
+		if bool(guide.get("can_previous", false)):
+			tools.append("previous_task_step")
+
+
+func _build_ui_routing_hint(snapshot: Dictionary) -> Dictionary:
+	var album := snapshot.get("album", {}) as Dictionary
+	var guide := snapshot.get("task_guide", {}) as Dictionary
+	var album_visible := bool(album.get("visible", false))
+	var guide_visible := bool(guide.get("visible", false))
+	var visible_panel := "none"
+	var page_turn_target := "none"
+	if guide_visible and not album_visible:
+		visible_panel = "task_guide"
+		page_turn_target = "next_task_step"
+	elif album_visible and not guide_visible:
+		visible_panel = "album"
+		page_turn_target = "next_album_page"
+	elif guide_visible and album_visible:
+		visible_panel = "album_and_task_guide"
+		page_turn_target = "ask_for_clarification"
+	return {
+		"visible_panel": visible_panel,
+		"page_turn_target_when_user_omits_target": page_turn_target,
+		"open_album_requires_explicit_album_request": true,
+		"completion_phrases_require_next_task_step": true,
+	}
+
+
+func _expire_snapshot_request(request_id: String, timeout_seconds: float = SNAPSHOT_TIMEOUT_SECONDS) -> void:
 	await get_tree().create_timer(timeout_seconds).timeout
-	if not _requests.has(request_id):
-		return
-	var record := _requests[request_id] as Dictionary
-	if str(record.get("status", "")) == "preparing":
-		_fail_request(request_id, "tool_timeout", "Timed out waiting for the target client task state.")
+	if _requests.has(request_id) and str((_requests[request_id] as Dictionary).get("status", "")) == "preparing":
+		_fail_request(request_id, "tool_timeout", "Timed out waiting for the target client UI state.")
 
 
 func _submit_agent_request(request_id: String) -> void:
 	if not _requests.has(request_id):
 		return
 	var record := _requests[request_id] as Dictionary
-	var intent := str(record.get("intent", ""))
-	var allowed_tools := PackedStringArray()
-	if intent == INTENT_OPEN_ALBUM:
-		allowed_tools.append("open_album")
-	elif intent == INTENT_OPEN_GUIDE:
-		allowed_tools.append("open_task_guide")
-	elif intent == INTENT_READ_STEP:
-		allowed_tools.append("get_current_task_step")
-	elif intent == INTENT_ADVANCE_STEP:
-		allowed_tools.append("next_task_step")
-	else:
-		_fail_request(request_id, "permission_denied", "No tool is authorized for this request.")
-		return
 	var agent := get_node_or_null("/root/LocalAgentClient")
 	if agent == null or not agent.submit_user_message(
 		request_id,
 		str(record.get("text", "")),
 		(record.get("snapshot", {}) as Dictionary).duplicate(true),
-		allowed_tools
+		record.get("allowed_tools", PackedStringArray())
 	):
 		_fail_request(request_id, "target_offline", "The Local Agent Gateway is not connected.")
 		return
@@ -208,75 +246,136 @@ func _submit_agent_request(request_id: String) -> void:
 	_requests[request_id] = record
 
 
-func _tool_open_task_guide(arguments: Dictionary, context: Dictionary) -> Dictionary:
-	var request_id := str(context.get("request_id", ""))
-	var validation := _validate_tool_authorization(request_id, INTENT_OPEN_GUIDE)
-	if not bool(validation.get("ok", false)):
-		return validation
-	if int(arguments.get("task_id", 0)) != 1:
-		return _error("invalid_arguments", "Only task_id 1 is enabled.")
-	return _execute_or_defer_target_tool(request_id, context, "open", {"task_id": 1})
-
-
 func _tool_open_album(arguments: Dictionary, context: Dictionary) -> Dictionary:
-	var request_id := str(context.get("request_id", ""))
-	var validation := _validate_tool_authorization(request_id, INTENT_OPEN_ALBUM)
+	var validation := _authorize(context, "open_album")
 	if not bool(validation.get("ok", false)):
 		return validation
-	return _execute_or_defer_target_tool(request_id, context, "album", arguments)
+	return _execute_or_defer_target_tool(_request_id(context), context, "album_open", arguments)
 
 
-func _tool_get_current_task_step(_arguments: Dictionary, context: Dictionary) -> Dictionary:
-	var request_id := str(context.get("request_id", ""))
-	var validation := _validate_tool_authorization(request_id, INTENT_READ_STEP)
+func _tool_close_album(arguments: Dictionary, context: Dictionary) -> Dictionary:
+	return _execute_authorized_empty_tool(arguments, context, "close_album", "album_close")
+
+func _tool_next_album_page(arguments: Dictionary, context: Dictionary) -> Dictionary:
+	return _execute_authorized_empty_tool(arguments, context, "next_album_page", "album_next")
+
+func _tool_go_to_album_page(arguments: Dictionary, context: Dictionary) -> Dictionary:
+	return _execute_authorized_page_tool(arguments, context, "go_to_album_page", "album_goto")
+
+func _tool_previous_album_page(arguments: Dictionary, context: Dictionary) -> Dictionary:
+	return _execute_authorized_empty_tool(arguments, context, "previous_album_page", "album_previous")
+
+func _tool_get_album_state(arguments: Dictionary, context: Dictionary) -> Dictionary:
+	return _execute_authorized_empty_tool(arguments, context, "get_album_state", "album_state")
+
+func _tool_open_task_guide(arguments: Dictionary, context: Dictionary) -> Dictionary:
+	var validation := _authorize(context, "open_task_guide")
 	if not bool(validation.get("ok", false)):
 		return validation
-	var record := _requests[request_id] as Dictionary
-	return _success((record.get("snapshot", {}) as Dictionary).duplicate(true))
+	if int(arguments.get("task_id", 0)) != 1 or arguments.size() != 1:
+		return _error("invalid_arguments", "Only task_id 1 is enabled.")
+	return _execute_or_defer_target_tool(_request_id(context), context, "guide_open", {"task_id": 1})
 
+func _tool_close_task_guide(arguments: Dictionary, context: Dictionary) -> Dictionary:
+	return _execute_authorized_empty_tool(arguments, context, "close_task_guide", "guide_close")
 
-func _tool_next_task_step(_arguments: Dictionary, context: Dictionary) -> Dictionary:
-	var request_id := str(context.get("request_id", ""))
-	var validation := _validate_tool_authorization(request_id, INTENT_ADVANCE_STEP)
+func _tool_get_current_task_step(arguments: Dictionary, context: Dictionary) -> Dictionary:
+	var validation := _authorize(context, "get_current_task_step")
 	if not bool(validation.get("ok", false)):
 		return validation
-	var record := _requests[request_id] as Dictionary
-	var snapshot := record.get("snapshot", {}) as Dictionary
-	var operation_id := _new_id("operation")
-	return _execute_or_defer_target_tool(request_id, context, "advance", {
-		"operation_id": operation_id,
+	if not arguments.is_empty():
+		return _error("invalid_arguments", "get_current_task_step does not accept arguments.")
+	return _success(((_requests[_request_id(context)] as Dictionary).get("snapshot", {}) as Dictionary).get("task_guide", {}))
+
+func _tool_next_task_step(arguments: Dictionary, context: Dictionary) -> Dictionary:
+	return _move_task_step(arguments, context, "next_task_step", "guide_advance")
+
+func _tool_go_to_task_guide_page(arguments: Dictionary, context: Dictionary) -> Dictionary:
+	return _execute_authorized_page_tool(arguments, context, "go_to_task_guide_page", "guide_goto")
+
+func _tool_previous_task_step(arguments: Dictionary, context: Dictionary) -> Dictionary:
+	return _move_task_step(arguments, context, "previous_task_step", "guide_previous")
+
+func _tool_replay_current_task_step(arguments: Dictionary, context: Dictionary) -> Dictionary:
+	return _execute_authorized_empty_tool(arguments, context, "replay_current_task_step", "guide_replay")
+
+func _tool_delegate_deepseek(arguments: Dictionary, context: Dictionary) -> Dictionary:
+	var validation := _authorize(context, "delegate_deepseek")
+	if not bool(validation.get("ok", false)):
+		return validation
+	if not arguments.is_empty():
+		return _error("invalid_arguments", "delegate_deepseek does not accept arguments.")
+	var tool_call_id := str(context.get("tool_call_id", ""))
+	if tool_call_id.is_empty():
+		return _error("invalid_tool_call", "tool_call_id is required.")
+	var request_id := _request_id(context)
+	var assistant := get_node_or_null("/root/LLMAssistantService")
+	if assistant == null or not assistant.has_method("request_delegated_answer"):
+		return _error("not_ready", "DeepSeek assistant is not ready.")
+	_deepseek_tool_calls[request_id] = tool_call_id
+	_mark_dispatched(request_id, "delegate_deepseek")
+	assistant.call("request_delegated_answer", request_id, str((_requests[request_id] as Dictionary).get("text", "")), _deepseek_context_entries(request_id))
+	return {"__deferred__": true}
+
+
+func _execute_authorized_empty_tool(arguments: Dictionary, context: Dictionary, tool_name: String, operation: String) -> Dictionary:
+	var validation := _authorize(context, tool_name)
+	if not bool(validation.get("ok", false)):
+		return validation
+	if not arguments.is_empty():
+		return _error("invalid_arguments", "%s does not accept arguments." % tool_name)
+	return _execute_or_defer_target_tool(_request_id(context), context, operation, {})
+
+
+func _execute_authorized_page_tool(arguments: Dictionary, context: Dictionary, tool_name: String, operation: String) -> Dictionary:
+	var validation := _authorize(context, tool_name)
+	if not bool(validation.get("ok", false)):
+		return validation
+	if arguments.size() != 1 or not arguments.has("page") or typeof(arguments.get("page")) != TYPE_INT or int(arguments.get("page")) < 1:
+		return _error("invalid_arguments", "%s requires a positive integer page." % tool_name)
+	return _execute_or_defer_target_tool(_request_id(context), context, operation, {"page": int(arguments.get("page"))})
+
+
+func _move_task_step(arguments: Dictionary, context: Dictionary, tool_name: String, operation: String) -> Dictionary:
+	var validation := _authorize(context, tool_name)
+	if not bool(validation.get("ok", false)):
+		return validation
+	if not arguments.is_empty():
+		return _error("invalid_arguments", "%s does not accept arguments." % tool_name)
+	var snapshot := ((_requests[_request_id(context)] as Dictionary).get("snapshot", {}) as Dictionary).get("task_guide", {}) as Dictionary
+	return _execute_or_defer_target_tool(_request_id(context), context, operation, {
+		"operation_id": _new_id("operation"),
 		"expected_task_id": int(snapshot.get("task_id", 0)),
 		"expected_page_index": int(snapshot.get("page_index", 0)),
 	})
 
 
-func _validate_tool_authorization(request_id: String, expected_intent: String) -> Dictionary:
-	if not _requests.has(request_id):
+func _authorize(context: Dictionary, tool_name: String) -> Dictionary:
+	var request_id := _request_id(context)
+	if request_id.is_empty() or not _requests.has(request_id):
 		return _error("permission_denied", "The request is no longer active.")
 	var record := _requests[request_id] as Dictionary
-	if str(record.get("intent", "")) != expected_intent:
-		return _error("permission_denied", "The Router did not authorize this state transition.")
+	if not (record.get("allowed_tools", PackedStringArray()) as PackedStringArray).has(tool_name):
+		return _error("permission_denied", "This tool is not authorized for the current UI state.")
 	if str(record.get("status", "")) in ["tool_dispatched", "cancelled", "completed"]:
 		return _error("permission_denied", "The request is no longer mutable.")
 	return _success({})
 
 
-func _execute_or_defer_target_tool(
-	request_id: String,
-	context: Dictionary,
-	operation: String,
-	arguments: Dictionary
-) -> Dictionary:
+func _request_id(context: Dictionary) -> String:
+	return str(context.get("request_id", ""))
+
+
+func _execute_or_defer_target_tool(request_id: String, context: Dictionary, operation: String, arguments: Dictionary) -> Dictionary:
+	if not _requests.has(request_id):
+		return _error("permission_denied", "The request is no longer active.")
 	var record := _requests[request_id] as Dictionary
 	var speaker_peer_id := int(record.get("speaker_peer_id", 0))
-	record["status"] = "tool_dispatched"
-	_requests[request_id] = record
-	_record_event("tool_dispatched", request_id, {
-		"operation": operation,
-		"target": "local" if _is_local_target(speaker_peer_id) else "remote",
-	})
+	_mark_dispatched(request_id, operation)
 	if _is_local_target(speaker_peer_id):
-		return _execute_target_tool(operation, arguments)
+		var local_result := _execute_target_tool(operation, arguments)
+		_record_verified_ui_result(request_id, operation, local_result)
+		return local_result
 	if not _is_peer_connected(speaker_peer_id):
 		return _error("target_offline", "The speaking client is offline.")
 	var tool_call_id := str(context.get("tool_call_id", ""))
@@ -287,65 +386,119 @@ func _execute_or_defer_target_tool(
 	return {"__deferred__": true}
 
 
+func _mark_dispatched(request_id: String, operation: String) -> void:
+	if not _requests.has(request_id):
+		return
+	var record := _requests[request_id] as Dictionary
+	record["status"] = "tool_dispatched"
+	record["last_operation"] = operation
+	_requests[request_id] = record
+	_record_event("tool_dispatched", request_id, {"operation": operation})
+
+
 @rpc("authority", "call_remote", "reliable")
-func _client_execute_task_tool(
-	request_id: String,
-	tool_call_id: String,
-	operation: String,
-	arguments: Dictionary
-) -> void:
-	var result := _execute_target_tool(operation, arguments)
-	rpc_id(SERVER_PEER_ID, "_server_receive_task_tool_result", request_id, tool_call_id, result)
+func _client_execute_task_tool(request_id: String, tool_call_id: String, operation: String, arguments: Dictionary) -> void:
+	rpc_id(SERVER_PEER_ID, "_server_receive_task_tool_result", request_id, tool_call_id, _execute_target_tool(operation, arguments))
 
 
 @rpc("any_peer", "call_remote", "reliable")
-func _server_receive_task_tool_result(
-	request_id: String,
-	tool_call_id: String,
-	result: Dictionary
-) -> void:
+func _server_receive_task_tool_result(request_id: String, tool_call_id: String, result: Dictionary) -> void:
 	if not multiplayer.is_server() or not _requests.has(request_id):
 		return
 	var record := _requests[request_id] as Dictionary
-	if multiplayer.get_remote_sender_id() != int(record.get("speaker_peer_id", 0)):
-		return
-	if str(_operation_to_request.get(tool_call_id, "")) != request_id:
+	if multiplayer.get_remote_sender_id() != int(record.get("speaker_peer_id", 0)) or str(_operation_to_request.get(tool_call_id, "")) != request_id:
 		return
 	_operation_to_request.erase(tool_call_id)
-	_record_event("tool_result_received", request_id, {
-		"ok": bool(result.get("ok", false)),
-		"target": "remote",
-	})
-	var agent := get_node_or_null("/root/LocalAgentClient")
-	if agent != null:
-		agent.complete_deferred_tool_call(tool_call_id, result)
+	_record_verified_ui_result(request_id, str(record.get("last_operation", "")), result)
+	_complete_deferred_tool_call(tool_call_id, result)
 
 
 func _execute_target_tool(operation: String, arguments: Dictionary) -> Dictionary:
-	if operation == "album":
+	if operation == "album_open":
 		return OpenAlbumAdapterScript.new().execute(arguments)
-	if operation == "open":
+	if operation == "album_close":
+		return OpenAlbumAdapterScript.new().execute_action("close")
+	if operation == "album_next":
+		return OpenAlbumAdapterScript.new().execute_action("next")
+	if operation == "album_goto":
+		return OpenAlbumAdapterScript.new().execute_action("goto", arguments)
+	if operation == "album_previous":
+		return OpenAlbumAdapterScript.new().execute_action("previous")
+	if operation == "album_state":
+		return OpenAlbumAdapterScript.new().execute_action("state")
+	if operation == "guide_open":
 		var search_root := get_tree().current_scene if get_tree().current_scene != null else get_tree().root
 		var list_view := _find_node_with_method(search_root, "open_task_by_id")
-		return list_view.call("open_task_by_id", int(arguments.get("task_id", 0))) if list_view != null else _error(
-			"not_ready", "The task list view is not ready."
-		)
-	if operation == "advance":
-		var detail := _resolve_task_detail()
-		return detail.call(
-			"advance_if_index",
-			str(arguments.get("operation_id", "")),
-			int(arguments.get("expected_task_id", 0)),
-			int(arguments.get("expected_page_index", 0))
-		) if detail != null else _error("not_ready", "The task detail view is not ready.")
-	return _error("permission_denied", "Unsupported task operation.")
+		return list_view.call("open_task_by_id", int(arguments.get("task_id", 0))) if list_view != null else _error("not_ready", "The task list view is not ready.")
+	var detail := _resolve_task_detail()
+	if detail == null:
+		return _error("not_ready", "The task detail view is not ready.")
+	if operation == "guide_close":
+		return detail.call("close_task_guide")
+	if operation == "guide_replay":
+		return detail.call("replay_current_task_step_with_result")
+	if operation == "guide_advance":
+		return detail.call("advance_if_index", str(arguments.get("operation_id", "")), int(arguments.get("expected_task_id", 0)), int(arguments.get("expected_page_index", 0)))
+	if operation == "guide_goto":
+		return detail.call("go_to_page", int(arguments.get("page", 0)))
+	if operation == "guide_previous":
+		return detail.call("retreat_if_index", str(arguments.get("operation_id", "")), int(arguments.get("expected_task_id", 0)), int(arguments.get("expected_page_index", 0)))
+	return _error("permission_denied", "Unsupported UI operation.")
 
 
 func _execute_get_snapshot() -> Dictionary:
+	var album_result := OpenAlbumAdapterScript.new().execute_action("state")
+	var album: Dictionary = {"visible": false}
+	if bool(album_result.get("ok", false)):
+		album = album_result.get("data", {}) as Dictionary
+	var guide: Dictionary = {"visible": false}
 	var detail := _resolve_task_detail()
-	return detail.call("get_task_snapshot", true) if detail != null else _error(
-		"not_ready", "The task detail view is not ready."
-	)
+	if detail != null:
+		var guide_result: Dictionary = detail.call("get_task_snapshot", true)
+		if bool(guide_result.get("ok", false)):
+			guide = guide_result.get("data", {}) as Dictionary
+			guide["visible"] = true
+	guide["can_next"] = bool(guide.get("visible", false)) and int(guide.get("page_index", 0)) < int(guide.get("page_count", 0))
+	guide["can_previous"] = bool(guide.get("visible", false)) and int(guide.get("page_index", 0)) > 1
+	return _success({"album": album, "task_guide": guide})
+
+
+func _deepseek_context_entries(request_id: String) -> Array[Dictionary]:
+	if not _requests.has(request_id):
+		return []
+	var snapshot := ((_requests[request_id] as Dictionary).get("snapshot", {}) as Dictionary).get("task_guide", {}) as Dictionary
+	if not bool(snapshot.get("visible", false)):
+		return []
+	var current := snapshot.get("current_step", {}) as Dictionary
+	return [{
+		"id": "voice-current-task-step",
+		"title": str(snapshot.get("task_title", "当前任务")),
+		"source": "当前专家任务步骤 / 目标客户端",
+		"tags": ["当前任务", "当前步骤", str(current.get("title", ""))],
+		"content": "任务：%s\n当前页：%d/%d\n当前步骤：%s\n要求：%s" % [str(snapshot.get("task_title", "当前任务")), int(snapshot.get("page_index", 0)), int(snapshot.get("page_count", 0)), str(current.get("title", "")), str(current.get("info", ""))],
+	}]
+
+
+func _on_deepseek_answer(request_id: String, answer: String) -> void:
+	var tool_call_id := str(_deepseek_tool_calls.get(request_id, ""))
+	if tool_call_id.is_empty():
+		return
+	_deepseek_tool_calls.erase(request_id)
+	_complete_deferred_tool_call(tool_call_id, _success({"answer": answer}))
+
+
+func _on_deepseek_error(request_id: String, message: String) -> void:
+	var tool_call_id := str(_deepseek_tool_calls.get(request_id, ""))
+	if tool_call_id.is_empty():
+		return
+	_deepseek_tool_calls.erase(request_id)
+	_complete_deferred_tool_call(tool_call_id, _error("deepseek_error", message))
+
+
+func _complete_deferred_tool_call(tool_call_id: String, result: Dictionary) -> void:
+	var agent := get_node_or_null("/root/LocalAgentClient")
+	if agent != null:
+		agent.complete_deferred_tool_call(tool_call_id, result)
 
 
 func _resolve_task_detail() -> Node:
@@ -366,71 +519,33 @@ func _find_node_with_method(node: Node, method_name: StringName) -> Node:
 	return null
 
 
-func _ask_deepseek_with_snapshot(request_id: String) -> void:
-	var record := _requests[request_id] as Dictionary
-	var snapshot := record.get("snapshot", {}) as Dictionary
-	var current := snapshot.get("current_step", {}) as Dictionary
-	var entry := {
-		"id": "voice-current-task-step",
-		"title": str(snapshot.get("task_title", "当前任务")),
-		"source": "当前专家任务步骤 / 目标客户端",
-		"tags": ["当前任务", "当前步骤", str(current.get("title", ""))],
-		"content": "任务：%s\n当前页：%d/%d\n当前步骤：%s\n要求：%s" % [
-			str(snapshot.get("task_title", "当前任务")),
-			int(snapshot.get("page_index", 0)),
-			int(snapshot.get("page_count", 0)),
-			str(current.get("title", "")),
-			str(current.get("info", "")),
-		],
-	}
-	var assistant := get_node_or_null("/root/LLMAssistantService")
-	if assistant == null:
-		_fail_request(request_id, "not_ready", "DeepSeek assistant is not ready.")
-		return
-	assistant.call("set_runtime_context_entries", [entry])
-	assistant.call("ask", str(record.get("text", "")))
-	_requests.erase(request_id)
-
-
 func _on_agent_answer(request_id: String, answer: String) -> void:
 	if not _requests.has(request_id):
 		return
 	var record := _requests[request_id] as Dictionary
 	record["status"] = "completed"
 	_requests[request_id] = record
-	_record_event("completed", request_id, {
-		"elapsed_msec": Time.get_ticks_msec() - int(record.get("created_msec", Time.get_ticks_msec())),
-	})
-	_publish_answer(answer)
+	_record_event("completed", request_id, {"elapsed_msec": Time.get_ticks_msec() - int(record.get("created_msec", Time.get_ticks_msec()))})
+	_publish_answer(_verified_answer_or_model_answer(record, answer))
 	_clear_operations_for_request(request_id)
 	_requests.erase(request_id)
 
 
 func _on_agent_error(request_id: String, code: String, message: String) -> void:
 	if code == "too_late" and _requests.has(request_id):
-		var active_record := _requests[request_id] as Dictionary
-		active_record["status"] = "tool_dispatched"
-		_requests[request_id] = active_record
-		_record_event("cancel_too_late", request_id, {"code": code})
 		return
-	if _requests.has(request_id):
-		var record := _requests[request_id] as Dictionary
-		record["status"] = "cancelled" if code == "cancelled" else "failed"
-		_requests[request_id] = record
 	_fail_request(request_id, code, message)
 
 
 func _fail_request(request_id: String, code: String, message: String) -> void:
 	var record := _requests.get(request_id, {}) as Dictionary
-	_record_event("failed", request_id, {
-		"code": code,
-		"elapsed_msec": Time.get_ticks_msec() - int(record.get("created_msec", Time.get_ticks_msec())),
-	})
+	_record_event("failed", request_id, {"code": code, "elapsed_msec": Time.get_ticks_msec() - int(record.get("created_msec", Time.get_ticks_msec()))})
 	_publish_answer("操作未完成：%s（%s）" % [message, code])
 	var agent := get_node_or_null("/root/LocalAgentClient")
 	if agent != null and agent.has_method("abandon_deferred_tool_calls_for_request"):
 		agent.call("abandon_deferred_tool_calls_for_request", request_id)
 	_clear_operations_for_request(request_id)
+	_deepseek_tool_calls.erase(request_id)
 	_requests.erase(request_id)
 
 
@@ -446,6 +561,59 @@ func _publish_answer(answer: String) -> void:
 		voice_chat.call("publish_assistant_transcript", answer)
 
 
+func _record_verified_ui_result(request_id: String, operation: String, result: Dictionary) -> void:
+	if not _requests.has(request_id) or operation in ["album_state", "guide_replay", "delegate_deepseek"]:
+		return
+	var record := _requests[request_id] as Dictionary
+	record["verified_ui_result"] = {
+		"operation": operation,
+		"result": result.duplicate(true),
+	}
+	_requests[request_id] = record
+
+
+func _verified_answer_or_model_answer(record: Dictionary, model_answer: String) -> String:
+	var verified := record.get("verified_ui_result", {}) as Dictionary
+	if verified.is_empty():
+		return model_answer
+	var operation := str(verified.get("operation", ""))
+	var result := verified.get("result", {}) as Dictionary
+	if not bool(result.get("ok", false)):
+		var error := result.get("error", {}) as Dictionary
+		return "操作未完成：%s（%s）" % [str(error.get("message", "工具执行失败。")), str(error.get("code", "tool_failed"))]
+	var data := result.get("data", {}) as Dictionary
+	var snapshot := data.get("snapshot", {}) as Dictionary
+	if operation == "guide_advance":
+		var current_step := snapshot.get("current_step", {}) as Dictionary
+		var title := str(current_step.get("title", "")).strip_edges()
+		var info := str(current_step.get("info", "")).strip_edges()
+		var message := "已切换到指导书第 %d 步。" % int(snapshot.get("page_index", 0))
+		if not title.is_empty():
+			message += "接下来：%s。" % title
+		if not info.is_empty():
+			message += info
+		return message
+	if operation == "guide_previous":
+		return "已返回指导书第 %d 步。" % int(snapshot.get("page_index", 0))
+	if operation == "guide_open":
+		return "已打开指导书第 %d 步。" % int(snapshot.get("page_index", 1))
+	if operation == "guide_close":
+		return "已关闭指导书。"
+	if operation == "album_open":
+		return "已打开相册第 %d 页。" % int(data.get("page", 1))
+	if operation == "album_next":
+		return "已切换到相册第 %d 页。" % int(data.get("page", 0))
+	if operation == "album_goto":
+		return "已切换到相册第 %d 页。" % int(data.get("page", 0))
+	if operation == "album_previous":
+		return "已返回相册第 %d 页。" % int(data.get("page", 0))
+	if operation == "album_close":
+		return "已关闭相册。"
+	if operation == "guide_goto":
+		return "已切换到指导书第 %d 步。" % int(snapshot.get("page_index", 0))
+	return model_answer
+
+
 func _is_local_target(peer_id: int) -> bool:
 	return not multiplayer.has_multiplayer_peer() or peer_id == multiplayer.get_unique_id()
 
@@ -454,23 +622,12 @@ func _is_peer_connected(peer_id: int) -> bool:
 	return multiplayer.has_multiplayer_peer() and multiplayer.get_peers().has(peer_id)
 
 
-func _contains_any(text: String, patterns: Array[String]) -> bool:
-	for pattern in patterns:
-		if text.find(pattern) >= 0:
-			return true
-	return false
-
-
 func _new_id(prefix: String) -> String:
 	return "%s-%d-%d" % [prefix, Time.get_ticks_usec(), randi()]
 
 
 func _record_event(event_name: String, request_id: String, details: Dictionary) -> void:
-	var event := {
-		"event": event_name,
-		"request_id": request_id,
-		"timestamp_msec": Time.get_ticks_msec(),
-	}
+	var event := {"event": event_name, "request_id": request_id, "timestamp_msec": Time.get_ticks_msec()}
 	for key in details.keys():
 		event[key] = details[key]
 	_recent_events.append(event)

@@ -74,6 +74,52 @@ func open_album(requested_page: int = 1, refresh: bool = true) -> Dictionary:
 	}
 
 
+func get_album_snapshot() -> Dictionary:
+	return {
+		"visible": visible,
+		"page": page_index,
+		"page_count": page_count,
+		"picture_count": item_count,
+		"can_previous": visible and page_count > 0 and page_index > 1,
+		"can_next": visible and page_count > 0 and page_index < page_count,
+	}
+
+
+func close_album() -> Dictionary:
+	if not visible:
+		return _tool_error("album_not_open", "The photo album is not currently open.")
+	visible = false
+	return {"ok": true, "data": get_album_snapshot(), "error": null}
+
+
+func next_album_page() -> Dictionary:
+	if not visible:
+		return _tool_error("album_not_open", "The photo album is not currently open.")
+	if page_index >= page_count:
+		return _tool_error("already_last_page", "The photo album is already at its last page.")
+	next_click()
+	return {"ok": true, "data": get_album_snapshot(), "error": null}
+
+
+func previous_album_page() -> Dictionary:
+	if not visible:
+		return _tool_error("album_not_open", "The photo album is not currently open.")
+	if page_index <= 1:
+		return _tool_error("already_first_page", "The photo album is already at its first page.")
+	pre_click()
+	return {"ok": true, "data": get_album_snapshot(), "error": null}
+
+
+func go_to_album_page(requested_page: int) -> Dictionary:
+	if not visible:
+		return _tool_error("album_not_open", "The photo album is not currently open.")
+	if requested_page < 1 or requested_page > page_count:
+		return _tool_error("invalid_page", "The requested photo album page is unavailable.")
+	page_index = requested_page
+	bind_page(page_index)
+	return {"ok": true, "data": get_album_snapshot(), "error": null}
+
+
 func _refresh_picture_data() -> void:
 	var picture_list_data_result = PictureListDataResult.new()
 	picture_list_data_result.refresh_image_list()

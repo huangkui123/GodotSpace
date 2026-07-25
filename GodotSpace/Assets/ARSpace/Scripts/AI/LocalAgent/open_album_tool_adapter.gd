@@ -32,6 +32,30 @@ func execute(arguments: Dictionary) -> Dictionary:
 	return result as Dictionary
 
 
+func execute_action(action: String, arguments: Dictionary = {}) -> Dictionary:
+	if action != "goto" and not arguments.is_empty():
+		return _error("invalid_arguments", "%s does not accept arguments." % action)
+	if action == "goto":
+		if arguments.size() != 1 or not arguments.has("page") or typeof(arguments.get("page")) != TYPE_INT or int(arguments.get("page")) < 1:
+			return _error("invalid_arguments", "goto requires a positive integer page.")
+	var album := _resolve_album()
+	if album == null or not is_instance_valid(album):
+		return _error("album_not_ready", "The photo album UI is not ready.")
+	var method_name: String = {
+		"close": "close_album",
+		"next": "next_album_page",
+		"previous": "previous_album_page",
+		"goto": "go_to_album_page",
+		"state": "get_album_snapshot",
+	}.get(action, "")
+	if method_name.is_empty() or not album.has_method(method_name):
+		return _error("permission_denied", "Unsupported photo album operation.")
+	var value: Variant = album.call(method_name, int(arguments.get("page"))) if action == "goto" else album.call(method_name)
+	if action == "state":
+		return {"ok": true, "data": value if typeof(value) == TYPE_DICTIONARY else {}, "error": null}
+	return value as Dictionary if typeof(value) == TYPE_DICTIONARY else _error("invalid_album_result", "The photo album returned an invalid result.")
+
+
 func _resolve_album() -> Node:
 	if _target_provider.is_valid():
 		var provided: Variant = _target_provider.call()

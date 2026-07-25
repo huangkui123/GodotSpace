@@ -4,6 +4,8 @@ extends Node
 signal answer_started(question: String)
 signal answer_completed(question: String, answer: String, sources: Array)
 signal answer_failed(question: String, message: String)
+signal delegated_answer_completed(request_id: String, answer: String)
+signal delegated_answer_failed(request_id: String, message: String)
 signal partial_transcript_received(speaker: String, text: String)
 signal final_transcript_received(speaker: String, text: String)
 signal qa_history_changed()
@@ -58,6 +60,7 @@ var _listening_enabled := false
 var _active_request_log_id := ""
 var _active_request_started_msec := 0
 var _external_transcript_router_enabled := false
+var _active_delegate_request_id := ""
 
 
 func _ready() -> void:
@@ -147,10 +150,40 @@ func ask(question: String) -> void:
 	_begin_question(clean_question, sources, conversation_context)
 
 
-func _begin_question(clean_question: String, sources: Array, conversation_context: String) -> void:
+func request_delegated_answer(
+	request_id: String,
+	question: String,
+	runtime_entries: Array[Dictionary] = []
+) -> void:
+	var clean_request_id := request_id.strip_edges()
+	var clean_question := question.strip_edges()
+	if clean_request_id.is_empty() or clean_question.is_empty():
+		return
+	var sources := _search_sources(clean_question)
+	for entry in runtime_entries:
+		if typeof(entry) == TYPE_DICTIONARY:
+			sources.append(entry)
+	if _active_question != "":
+		_pending_questions.append({
+			"question": clean_question,
+			"sources": sources,
+			"conversation_context": "",
+			"delegate_request_id": clean_request_id,
+		})
+		return
+	_begin_question(clean_question, sources, "", clean_request_id)
+
+
+func _begin_question(
+	clean_question: String,
+	sources: Array,
+	conversation_context: String,
+	delegate_request_id: String = ""
+) -> void:
 	_active_question = clean_question
 	_active_sources = sources.duplicate(true)
 	_active_conversation_context = conversation_context
+	_active_delegate_request_id = delegate_request_id
 	answer_started.emit(clean_question)
 
 	var api_key_value := _get_api_key()
@@ -616,6 +649,12 @@ func _complete_active_question(answer: String) -> void:
 	_active_conversation_context = ""
 	_active_request_log_id = ""
 	_active_request_started_msec = 0
+	var delegate_request_id := _active_delegate_request_id
+	_active_delegate_request_id = ""
+	if not delegate_request_id.is_empty():
+		delegated_answer_completed.emit(delegate_request_id, answer)
+		_start_next_pending_question()
+		return
 	answer_completed.emit(question, answer, sources)
 	_publish_assistant_transcript(answer)
 	_start_next_pending_question()
@@ -629,6 +668,12 @@ func _fail_active_question(message: String) -> void:
 	_active_conversation_context = ""
 	_active_request_log_id = ""
 	_active_request_started_msec = 0
+	var delegate_request_id := _active_delegate_request_id
+	_active_delegate_request_id = ""
+	if not delegate_request_id.is_empty():
+		delegated_answer_failed.emit(delegate_request_id, message)
+		_start_next_pending_question()
+		return
 	answer_failed.emit(question, message)
 	_publish_assistant_transcript(message)
 	_start_next_pending_question()
@@ -646,7 +691,8 @@ func _start_next_pending_question() -> void:
 	_begin_question(
 		next_question,
 		next_sources if typeof(next_sources) == TYPE_ARRAY else [],
-		str(next_item.get("conversation_context", ""))
+		str(next_item.get("conversation_context", "")),
+		str(next_item.get("delegate_request_id", ""))
 	)
 
 
