@@ -8,9 +8,7 @@ extends Camera3D
 
 # 用于存储摄像机的俯仰角度
 var pitch_degrees: float = 0.0
-# 鼠标点击射线长度
-@export var ray_length = 1000.0
-@export var marker_scene = preload("res://Assets/ARSpace/Prefabs/Marker.prefab.tscn")
+var _annotation_interaction: Node
 
 func _ready():
 	# 游戏开始时，让鼠标可见并可以在屏幕上自由移动
@@ -52,44 +50,15 @@ func _input(event: InputEvent):
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.is_pressed():
 		if get_viewport().gui_get_hovered_control() != null:
 			return
-		#Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
-		
-		# 计算点击的3D位置
-		var mouse_pos = get_viewport().get_mouse_position()
-		var ray_origin = project_ray_origin(mouse_pos)
-		var ray_direction = project_ray_normal(mouse_pos)
-		var ray_end = ray_origin + ray_direction * ray_length
-
-		var space_state = get_world_3d().direct_space_state
-		var query = PhysicsRayQueryParameters3D.create(ray_origin, ray_end)
-		var collision = space_state.intersect_ray(query)
-
-		if collision:
-			var hit_position = collision.position
-			
-			# 1. 在服务器端本地创建标记（红色球体）
-			var marker = marker_scene.instantiate()
-			get_parent().add_child(marker)  # 添加到场景树
-			marker.setup(hit_position)
-			
-			# 2. 发送点击位置到所有客户端
-			var network_handler = get_node("/root/NetworkHandler")
-			if network_handler:
-				print("服务器调用NetworkHandler的RPC create_marker_at_position")
-				
-				# 检查网络状态
-				print("服务器网络状态:", multiplayer.multiplayer_peer.get_connection_status())
-				
-				# 获取所有连接的客户端
-				var peer_ids = multiplayer.get_peers()
-				print("连接的客户端ID:", peer_ids)
-				
-				# 尝试直接发送给所有客户端
-				for peer_id in peer_ids:
-					print("发送给客户端:", peer_id)
-					network_handler.rpc_id(peer_id, "create_marker_at_position", hit_position)
-			else:
-				print("错误：未找到NetworkHandler节点")
+		var interaction := _get_annotation_interaction()
+		if interaction != null and interaction.has_method("handle_pc_pointer"):
+			var handled := bool(interaction.call(
+				"handle_pc_pointer",
+				self,
+				get_viewport().get_mouse_position()
+			))
+			if handled:
+				get_viewport().set_input_as_handled()
 
 
 func _is_mouse_over_interactive_ui() -> bool:
@@ -103,6 +72,13 @@ func _is_mouse_over_interactive_ui() -> bool:
 			return true
 		control = control.get_parent() as Control
 	return false
+
+
+func _get_annotation_interaction() -> Node:
+	if _annotation_interaction != null and is_instance_valid(_annotation_interaction):
+		return _annotation_interaction
+	_annotation_interaction = get_tree().get_first_node_in_group("virtual_annotation_interaction")
+	return _annotation_interaction
 
 
 func _process(delta: float):

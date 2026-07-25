@@ -1,17 +1,21 @@
 extends Control
 
+const RuntimeProfile = preload("res://Assets/ARSpace/Scripts/runtime_profile.gd")
 const PANEL_MODEL := "model"
 const PANEL_VOICE := "voice"
 const PANEL_CALIBRATION := "calibration"
+const PANEL_ANNOTATION := "annotation"
 
 @onready var content_panel: PanelContainer = $PanelRoot/ContentPanel
 @onready var model_button: Button = $PanelRoot/Sidebar/SidebarMargin/SidebarButtons/ModelButton
 @onready var voice_button: Button = $PanelRoot/Sidebar/SidebarMargin/SidebarButtons/VoiceButton
 @onready var calibration_button: Button = $PanelRoot/Sidebar/SidebarMargin/SidebarButtons/CalibrationButton
+@onready var annotation_button: Button = $PanelRoot/Sidebar/SidebarMargin/SidebarButtons/AnnotationButton
 @onready var collapse_button: Button = $PanelRoot/Sidebar/SidebarMargin/SidebarButtons/CollapseButton
 @onready var model_section: Control = $PanelRoot/ContentPanel/ContentMargin/Sections/ModelSection
 @onready var voice_section: Control = $PanelRoot/ContentPanel/ContentMargin/Sections/VoiceSection
 @onready var calibration_section: Control = $PanelRoot/ContentPanel/ContentMargin/Sections/CalibrationSection
+@onready var annotation_section: Control = $PanelRoot/ContentPanel/ContentMargin/Sections/AnnotationSection
 
 var active_panel := PANEL_VOICE
 var content_expanded := true
@@ -23,10 +27,12 @@ func _ready() -> void:
 	model_button.toggle_mode = true
 	voice_button.toggle_mode = true
 	calibration_button.toggle_mode = true
+	annotation_button.toggle_mode = true
 
 	model_button.pressed.connect(func(): _open_panel(PANEL_MODEL))
 	voice_button.pressed.connect(func(): _open_panel(PANEL_VOICE))
 	calibration_button.pressed.connect(func(): _open_panel(PANEL_CALIBRATION))
+	annotation_button.pressed.connect(func(): _open_panel(PANEL_ANNOTATION))
 	collapse_button.pressed.connect(_toggle_content)
 
 	if NetworkHandler.has_signal("network_role_selected"):
@@ -77,6 +83,14 @@ func _toggle_content() -> void:
 	_refresh_visibility()
 
 
+func open_annotation_panel() -> void:
+	if not _server_panels_available():
+		return
+	active_panel = PANEL_ANNOTATION
+	content_expanded = true
+	_refresh_visibility()
+
+
 func _refresh_visibility() -> void:
 	var server_panels_available := _server_panels_available()
 	visible = server_panels_available
@@ -85,6 +99,7 @@ func _refresh_visibility() -> void:
 
 	model_button.visible = server_panels_available
 	calibration_button.visible = server_panels_available
+	annotation_button.visible = server_panels_available
 
 	if not server_panels_available and active_panel != PANEL_VOICE:
 		active_panel = PANEL_VOICE
@@ -95,16 +110,20 @@ func _refresh_visibility() -> void:
 	model_section.visible = content_expanded and active_panel == PANEL_MODEL and server_panels_available
 	voice_section.visible = content_expanded and active_panel == PANEL_VOICE
 	calibration_section.visible = content_expanded and active_panel == PANEL_CALIBRATION and server_panels_available
+	annotation_section.visible = content_expanded and active_panel == PANEL_ANNOTATION and server_panels_available
 
 	model_button.button_pressed = content_expanded and active_panel == PANEL_MODEL
 	voice_button.button_pressed = content_expanded and active_panel == PANEL_VOICE
 	calibration_button.button_pressed = content_expanded and active_panel == PANEL_CALIBRATION
+	annotation_button.button_pressed = content_expanded and active_panel == PANEL_ANNOTATION
 
 
 func _server_panels_available() -> bool:
-	if VoiceChat.voice_endpoint_selected:
-		return not VoiceChat.is_vr_mode
-	return multiplayer.has_multiplayer_peer() and multiplayer.is_server()
+	var profile = RuntimeProfile.current()
+	return profile.is_valid() \
+		and profile.is_server() \
+		and profile.is_ground() \
+		and profile.uses_desktop_ui()
 
 
 func _configure_mouse_passthrough(node: Node) -> void:
@@ -117,7 +136,8 @@ func _configure_mouse_passthrough(node: Node) -> void:
 
 
 func _is_interactive_control(control: Control) -> bool:
-	return control is Button \
+	return control is PanelContainer \
+		or control is Button \
 		or control is Tree \
 		or control is LineEdit \
 		or control is SpinBox \

@@ -1,0 +1,17 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://Assets/ARSpace/Scripts/SpatialWindows/window_dock_slot_3d.gd" id="1_slot"]
+
+[sub_resource type="BoxShape3D" id="Shape_detection"]
+resource_local_to_scene = true
+size = Vector3(1.1196, 1.06497, 0.148527)
+
+[node name="WindowDockSlot3D" type="Area3D" groups=["window_dock_slot"]]
+collision_layer = 33554432
+collision_mask = 0
+monitoring = false
+script = ExtResource("1_slot")
+slot_id = &"slot"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("Shape_detection")

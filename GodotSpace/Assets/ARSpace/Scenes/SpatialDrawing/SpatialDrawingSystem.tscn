@@ -1,0 +1,24 @@
+[gd_scene load_steps=6 format=3 uid="uid://d2fbdsgnue5ju"]
+
+[ext_resource type="Script" uid="uid://dc1l6k061bjk1" path="res://Assets/ARSpace/Scripts/SpatialDrawing/spatial_drawing_manager.gd" id="1_manager"]
+[ext_resource type="Script" uid="uid://bb5kply3jsic1" path="res://Assets/ARSpace/Scripts/SpatialDrawing/spatial_stroke_renderer.gd" id="2_renderer"]
+[ext_resource type="Script" uid="uid://nvuvoqgsgqru" path="res://Assets/ARSpace/Scripts/SpatialDrawing/spatial_drawing_interaction.gd" id="3_interaction"]
+[ext_resource type="Script" uid="uid://dymtgbnaxcvky" path="res://Assets/ARSpace/Scripts/SpatialDrawing/spatial_drawing_editor_preview.gd" id="4_editor_preview"]
+[ext_resource type="Script" uid="uid://ccsbdm7w6q75e" path="res://Assets/ARSpace/Scripts/SpatialDrawing/spatial_drawing_panel_3d.gd" id="6_panel_controller"]
+
+[node name="SpatialDrawingSystem" type="Node3D" groups=["spatial_drawing_system"]]
+
+[node name="SpatialDrawingManager" type="Node" parent="."]
+script = ExtResource("1_manager")
+
+[node name="SpatialDrawingPanel3D" type="Node3D" parent="."]
+script = ExtResource("6_panel_controller")
+
+[node name="SpatialDrawingRenderer" type="Node3D" parent="."]
+script = ExtResource("2_renderer")
+
+[node name="SpatialDrawingInteraction" type="Node" parent="."]
+script = ExtResource("3_interaction")
+
+[node name="EditorPreview" type="Node3D" parent="."]
+script = ExtResource("4_editor_preview")

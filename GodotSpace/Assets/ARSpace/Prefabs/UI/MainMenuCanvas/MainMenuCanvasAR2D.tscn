@@ -26,10 +26,14 @@
 
 [node name="Canvas" type="Control" parent="."]
 layout_mode = 3
-anchor_right = 0.568
-anchor_bottom = 0.747
-offset_right = -654.336
-offset_bottom = -484.056
+anchor_left = 0.043
+anchor_top = 0.047
+anchor_right = 0.488
+anchor_bottom = 0.688
+offset_left = -49.536
+offset_top = -30.456
+offset_right = -562.176
+offset_bottom = -445.824
 script = ExtResource("1_nqjmq")
 
 [node name="LifeTabView" parent="Canvas" instance=ExtResource("2_alcmm")]
@@ -289,6 +293,7 @@ texture = ExtResource("18_k678q")
 [node name="CanvasRenderer" type="Node" parent="Canvas/PowerLayout/PowerProgress"]
 
 [node name="LeftUp" type="Sprite2D" parent="Canvas"]
+visible = false
 position = Vector2(27, 27)
 rotation = -3.14159
 scale = Vector2(0.3, 0.3)
@@ -297,6 +302,7 @@ texture = ExtResource("19_gv5p4")
 [node name="CanvasRenderer" type="Node" parent="Canvas/LeftUp"]
 
 [node name="LeftDown" type="Sprite2D" parent="Canvas"]
+visible = false
 position = Vector2(581, 25)
 rotation = -1.5708
 scale = Vector2(0.3, 0.3)
@@ -305,6 +311,7 @@ texture = ExtResource("19_gv5p4")
 [node name="CanvasRenderer" type="Node" parent="Canvas/LeftDown"]
 
 [node name="RightUp" type="Sprite2D" parent="Canvas"]
+visible = false
 position = Vector2(27, 456)
 rotation = 1.5708
 scale = Vector2(0.3, 0.3)
@@ -313,6 +320,7 @@ texture = ExtResource("19_gv5p4")
 [node name="CanvasRenderer" type="Node" parent="Canvas/RightUp"]
 
 [node name="RightDown" type="Sprite2D" parent="Canvas"]
+visible = false
 position = Vector2(580, 456)
 scale = Vector2(0.3, 0.3)
 texture = ExtResource("19_gv5p4")

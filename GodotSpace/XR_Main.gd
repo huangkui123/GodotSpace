@@ -1,16 +1,15 @@
 extends Node3D
 
-const TEST_MODE_ARG: String = "--testmode"
-const XR_CLIENT_ARG: String = "--xr-client"
-const VOICE_ROLE_ARG: String = "--voice-role="
-const XR_MODE_ARG: String = "--xr-mode"
+const RuntimeProfile = preload("res://Assets/ARSpace/Scripts/runtime_profile.gd")
 const TEST_PLAYER_SCENE: PackedScene = preload("res://Assets/ARSpace/Scenes/Player.tscn")
 const TEST_PLAYER_DEFAULT_ID: int = 1
 const TEST_LEFT_HAND_OFFSET: Vector3 = Vector3(-0.28, -0.22, -0.45)
 const TEST_RIGHT_HAND_OFFSET: Vector3 = Vector3(0.28, -0.22, -0.45)
 const PASSTHROUGH_REFRESH_INTERVAL_MS: int = 1000
+const XR_RETRY_INTERVAL_MS: int = 2000
 
 var xr_interface: XRInterface
+var runtime_profile
 
 @onready var spectator_camera: Camera3D = $SpectatorCamera
 @onready var preview_container: SubViewportContainer = $UI/SubViewportContainer
@@ -20,6 +19,9 @@ var xr_interface: XRInterface
 @export var enable_passthrough: bool = true
 
 var is_test_mode: bool = false
+var xr_runtime_active: bool = false
+var xr_retry_after_ms: int = 0
+var last_xr_failure_reason: String = ""
 var passthrough_api_started: bool = false
 var passthrough_refresh_ms: int = 0
 var passthrough_supported_modes_logged: bool = false
@@ -27,59 +29,107 @@ var passthrough_unavailable_warned: bool = false
 
 func _ready() -> void:
 	xr_interface = XRServer.find_interface("OpenXR")
+	runtime_profile = RuntimeProfile.current()
+	if not runtime_profile.is_valid():
+		push_error("Invalid runtime profile: %s" % runtime_profile.validation_error)
+		set_process(false)
+		return
 
-	if _has_launch_arg(TEST_MODE_ARG):
+	is_test_mode = runtime_profile.is_test_mode()
+	if is_test_mode:
 		print("Starting in test mode (no XR)")
-		is_test_mode = true
 
 	if NetworkHandler.has_signal("network_role_selected") and not NetworkHandler.network_role_selected.is_connected(_on_network_role_selected):
 		NetworkHandler.network_role_selected.connect(_on_network_role_selected)
 
 	_update_preview_container_visibility()
+	_apply_runtime_profile()
 
-	if _is_server_runtime_instance() or is_test_mode:
-		_enter_server_runtime()
-	else:
-		_enter_vr_client_runtime()
+
+func _exit_tree() -> void:
+	_shutdown_openxr()
 
 func _on_network_role_selected(is_server_role: bool) -> void:
-	if is_server_role:
-		_enter_server_runtime()
+	if not runtime_profile.has_explicit_mode:
+		var preset := RuntimeProfile.Preset.PC_GROUND_SERVER \
+			if is_server_role \
+			else RuntimeProfile.Preset.SKY_XR_CLIENT
+		runtime_profile = RuntimeProfile.select_session_mode(preset)
+	elif runtime_profile.is_server() != is_server_role:
+		push_error("Network role does not match runtime profile %s" % runtime_profile.get_mode_label())
+		return
+	_apply_runtime_profile()
+
+
+func _apply_runtime_profile() -> void:
+	if runtime_profile.uses_xr():
+		_enter_xr_runtime()
 	else:
-		_enter_vr_client_runtime()
+		_enter_desktop_runtime()
 
 
-func _enter_server_runtime() -> void:
-	if not _is_vr_client_runtime_instance():
-		NetworkHandler.shutdown_xr_for_server()
-		passthrough_api_started = false
-		passthrough_supported_modes_logged = false
-		passthrough_unavailable_warned = false
+func _enter_desktop_runtime() -> void:
+	xr_runtime_active = false
+	_shutdown_openxr()
 	_ensure_spectator_camera_current()
 	if is_test_mode:
 		call_deferred("_ensure_test_player")
 
 
-func _enter_vr_client_runtime() -> void:
+func _enter_xr_runtime() -> void:
 	if spectator_camera != null:
 		spectator_camera.current = false
 
 	if xr_interface == null:
 		xr_interface = XRServer.find_interface("OpenXR")
 	if xr_interface == null:
-		push_warning("OpenXR interface not found for VR client.")
+		_fallback_to_spectator("OpenXR interface not found for %s." % runtime_profile.get_mode_label())
 		return
 	if not _ensure_openxr_initialized():
-		push_warning("OpenXR not initialized, please check if your headset is connected.")
+		_fallback_to_spectator("OpenXR not initialized, please check if your headset is connected.")
 		return
 
 	print("OpenXR initialized successfully")
+	xr_runtime_active = true
+	xr_retry_after_ms = 0
+	last_xr_failure_reason = ""
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	get_tree().root.use_xr = true
 	get_viewport().use_xr = true
 
-	if enable_passthrough:
+	if runtime_profile.uses_passthrough() and enable_passthrough:
 		_ensure_passthrough_active()
+	else:
+		_ensure_opaque_environment()
+
+
+func _shutdown_openxr() -> void:
+	xr_runtime_active = false
+	xr_retry_after_ms = 0
+	last_xr_failure_reason = ""
+	get_tree().root.use_xr = false
+	get_viewport().use_xr = false
+	get_tree().root.transparent_bg = false
+	get_viewport().transparent_bg = false
+	if xr_interface != null and xr_interface.is_initialized():
+		_stop_passthrough()
+		xr_interface.uninitialize()
+	passthrough_api_started = false
+	passthrough_supported_modes_logged = false
+	passthrough_unavailable_warned = false
+
+
+func _ensure_opaque_environment() -> void:
+	if xr_interface == null or not xr_interface.is_initialized():
+		return
+	var supported_blend_modes: Array = xr_interface.get_supported_environment_blend_modes()
+	if XRInterface.XR_ENV_BLEND_MODE_OPAQUE in supported_blend_modes:
+		xr_interface.environment_blend_mode = XRInterface.XR_ENV_BLEND_MODE_OPAQUE
+	if passthrough_api_started:
+		xr_interface.stop_passthrough()
+	passthrough_api_started = false
+	get_tree().root.transparent_bg = false
+	get_viewport().transparent_bg = false
 
 
 func _ensure_openxr_initialized() -> bool:
@@ -94,33 +144,6 @@ func _ensure_openxr_initialized() -> bool:
 ## 启动MR透视模式
 func _start_passthrough() -> bool:
 	return _ensure_passthrough_active()
-	if not xr_interface:
-		push_warning("MR透视: XR接口未初始化")
-		return false
-
-	# 方式1: 尝试使用 environment_blend_mode (Godot 4.3+ 推荐方式)
-	# XR_ENV_BLEND_MODE_ALPHA_BLEND = 2，适用于MR透视
-	var supported_blend_modes = xr_interface.get_supported_environment_blend_modes()
-	print("MR透视: 支持的混合模式 = ", supported_blend_modes)
-
-	if XRInterface.XR_ENV_BLEND_MODE_ALPHA_BLEND in supported_blend_modes:
-		xr_interface.environment_blend_mode = XRInterface.XR_ENV_BLEND_MODE_ALPHA_BLEND
-		get_viewport().transparent_bg = true
-		print("MR透视: 已通过 environment_blend_mode (ALPHA_BLEND) 启用")
-		return true
-
-	# 方式2: 回退到 passthrough API
-	if xr_interface.is_passthrough_supported():
-		if xr_interface.start_passthrough():
-			get_viewport().transparent_bg = true
-			print("MR透视: 已通过 passthrough API 启用")
-			return true
-		else:
-			push_warning("MR透视: start_passthrough() 失败")
-	else:
-		push_warning("MR透视: 设备不支持透视功能")
-
-	return false
 
 
 ## 停止MR透视模式
@@ -179,68 +202,32 @@ func _stop_passthrough() -> void:
 func _process(_delta: float) -> void:
 	_update_preview_container_visibility()
 
-	if _is_vr_client_runtime_instance():
-		_refresh_vr_client_passthrough()
+	if runtime_profile.uses_xr():
+		if xr_runtime_active:
+			_refresh_xr_environment()
+		else:
+			_ensure_spectator_camera_current()
+			if Time.get_ticks_msec() >= xr_retry_after_ms:
+				_enter_xr_runtime()
 		return
 
-	if _is_server_runtime_instance() or is_test_mode:
-		_ensure_spectator_camera_current()
-		if is_test_mode:
-			_ensure_test_player()
-			_sync_test_player_from_spectator()
+	_ensure_spectator_camera_current()
+	if is_test_mode:
+		_ensure_test_player()
+		_sync_test_player_from_spectator()
+	if runtime_profile.is_server():
 		_update_preview_camera()
-
-func _has_launch_arg(target: String) -> bool:
-	var args := []
-	args.append_array(OS.get_cmdline_args())
-	args.append_array(OS.get_cmdline_user_args())
-	return args.has(target)
-
-func _get_launch_arg_value(prefix: String) -> String:
-	for arg in _get_all_launch_args():
-		var value := str(arg)
-		if value.begins_with(prefix):
-			return value.substr(prefix.length()).strip_edges()
-	return ""
-
-func _get_all_launch_args() -> Array:
-	var args := []
-	args.append_array(OS.get_cmdline_args())
-	args.append_array(OS.get_cmdline_user_args())
-	return args
 
 func _update_preview_container_visibility() -> void:
 	if preview_container == null:
 		return
-	preview_container.visible = not _is_testmode_client_instance()
-
-func _is_testmode_client_instance() -> bool:
-	if not is_test_mode:
-		return false
-	if _is_client_launch_mode():
-		return true
-	return multiplayer.has_multiplayer_peer() and not multiplayer.is_server()
+	preview_container.visible = runtime_profile.uses_desktop_ui() and runtime_profile.is_server()
 
 
-func _is_vr_client_runtime_instance() -> bool:
-	if is_test_mode:
-		return _is_testmode_client_instance()
-	if _is_client_launch_mode():
-		return true
-	return multiplayer.has_multiplayer_peer() and not multiplayer.is_server()
-
-
-func _is_server_runtime_instance() -> bool:
-	if is_test_mode:
-		return not _is_testmode_client_instance()
-	if _is_client_launch_mode():
-		return false
-	if multiplayer.has_multiplayer_peer():
-		return multiplayer.is_server()
-	return true
-
-
-func _refresh_vr_client_passthrough() -> void:
+func _refresh_xr_environment() -> void:
+	if xr_interface == null or not xr_interface.is_initialized():
+		_fallback_to_spectator("OpenXR runtime became unavailable. Waiting to retry.")
+		return
 	var now_ms: int = Time.get_ticks_msec()
 	if now_ms - passthrough_refresh_ms < PASSTHROUGH_REFRESH_INTERVAL_MS:
 		return
@@ -248,32 +235,27 @@ func _refresh_vr_client_passthrough() -> void:
 	passthrough_refresh_ms = now_ms
 	get_tree().root.use_xr = true
 	get_viewport().use_xr = true
-	if enable_passthrough:
+	if runtime_profile.uses_passthrough() and enable_passthrough:
 		_ensure_passthrough_active()
-
-func _is_client_launch_mode() -> bool:
-	var role := _get_launch_arg_value(VOICE_ROLE_ARG).to_lower()
-	if role == "client" or role == "vr":
-		return true
-	if role == "server" or role == "pc":
-		return false
-	if _has_launch_arg(XR_CLIENT_ARG):
-		return true
-	return _has_xr_mode_on_arg()
-
-func _has_xr_mode_on_arg() -> bool:
-	var args := _get_all_launch_args()
-	for i in range(args.size()):
-		var arg := str(args[i]).to_lower()
-		if arg == XR_MODE_ARG and i + 1 < args.size():
-			return str(args[i + 1]).to_lower() == "on"
-		if arg.begins_with(XR_MODE_ARG + "="):
-			return arg.get_slice("=", 1).to_lower() == "on"
-	return false
+	else:
+		_ensure_opaque_environment()
 
 func _ensure_spectator_camera_current() -> void:
 	if spectator_camera != null and not spectator_camera.is_current():
 		spectator_camera.make_current()
+
+
+func _fallback_to_spectator(reason: String) -> void:
+	xr_runtime_active = false
+	xr_retry_after_ms = Time.get_ticks_msec() + XR_RETRY_INTERVAL_MS
+	get_tree().root.use_xr = false
+	get_viewport().use_xr = false
+	get_tree().root.transparent_bg = false
+	get_viewport().transparent_bg = false
+	_ensure_spectator_camera_current()
+	if reason != last_xr_failure_reason:
+		last_xr_failure_reason = reason
+		push_warning(reason)
 
 func _ensure_test_player() -> void:
 	if not is_test_mode or not _should_create_local_test_player():
@@ -281,6 +263,10 @@ func _ensure_test_player() -> void:
 
 	var player_name := str(_get_local_player_id())
 	if get_node_or_null(player_name) != null:
+		return
+	var spawner := get_node_or_null("MultiplayerSpawner")
+	if spawner != null and spawner.has_method("spawn_player"):
+		spawner.call("spawn_player", _get_local_player_id())
 		return
 
 	var player := TEST_PLAYER_SCENE.instantiate()
@@ -347,26 +333,24 @@ func _get_remote_client_view_node() -> Node3D:
 	if not multiplayer.has_multiplayer_peer() or not multiplayer.is_server():
 		return null
 
-	for peer_id in _get_remote_client_peer_ids():
-		var player := get_node_or_null(str(peer_id))
-		if player == null:
-			continue
+	var sky_peer_id := _get_sky_peer_id()
+	if sky_peer_id <= 0:
+		return null
+	var player := get_node_or_null(str(sky_peer_id))
+	if player == null:
+		return null
 
-		var network_head := player.get_node_or_null("NetworkHead") as Node3D
-		if network_head != null and network_head.visible:
-			return network_head
+	var network_head := player.get_node_or_null("NetworkHead") as Node3D
+	if network_head != null and network_head.visible:
+		return network_head
 
-		var camera := player.get_node_or_null("XROrigin3D/XRCamera3D") as Camera3D
-		if camera != null and camera.visible:
-			return camera
+	var camera := player.get_node_or_null("XROrigin3D/XRCamera3D") as Camera3D
+	if camera != null and camera.visible:
+		return camera
 
 	return null
 
-func _get_remote_client_peer_ids() -> Array:
-	var ids := []
-	for peer_id in multiplayer.get_peers():
-		var id := int(peer_id)
-		if id != _get_local_player_id():
-			ids.append(id)
-	ids.sort()
-	return ids
+func _get_sky_peer_id() -> int:
+	if NetworkHandler != null and NetworkHandler.has_method("get_sky_peer_id"):
+		return int(NetworkHandler.call("get_sky_peer_id"))
+	return 0

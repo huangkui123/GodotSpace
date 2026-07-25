@@ -63,7 +63,7 @@ func _set_global_canvas_visible(property_name: StringName, is_visible: bool) -> 
 	var global_node := _get_global_node()
 	var canvas = global_node.get(property_name) if global_node != null else null
 	if canvas != null:
-		canvas.visible = is_visible
+		PanelWindowZoom.set_window_visible(canvas, is_visible)
 
 func _get_global_node() -> Node:
 	return get_node_or_null("/root/Global")
