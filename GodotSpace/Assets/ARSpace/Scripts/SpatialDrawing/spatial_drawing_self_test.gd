@@ -7,6 +7,8 @@ const InteractionScript := preload("res://Assets/ARSpace/Scripts/SpatialDrawing/
 const SimplifierScript := preload("res://Assets/ARSpace/Scripts/SpatialDrawing/spatial_stroke_simplifier.gd")
 const PanelScene := preload("res://Assets/ARSpace/Scenes/SpatialDrawing/SpatialDrawingPanel.tscn")
 const TipScene := preload("res://Assets/ARSpace/Scenes/SpatialDrawing/SpatialDrawingTip.tscn")
+const RightHandScene := preload("res://addons/godot-xr-tools/hands/scenes/highpoly/right_fullglove_hand.tscn")
+const PointerScript := preload("res://addons/godot-xr-tools/functions/function_pointer.gd")
 
 var _failures: Array[String] = []
 
@@ -21,6 +23,16 @@ class MockLocalWindowDrag extends Node:
 class MockPointer extends Node:
 	var target: Node
 	var last_target: Node
+	var target_filter: Callable
+
+	func set_target_filter(filter: Callable) -> void:
+		target_filter = filter
+
+	func clear_target_filter() -> void:
+		target_filter = Callable()
+
+	func allows_target(candidate: Node) -> bool:
+		return not target_filter.is_valid() or bool(target_filter.call(candidate))
 
 
 class MockPickup extends Node:
@@ -36,6 +48,7 @@ func _run() -> void:
 	_test_sampling_and_simplification()
 	_test_mesh_geometry()
 	_test_production_visual_components()
+	_test_pointer_filter_contract()
 	_test_unity_panel_contract()
 	await _test_local_workflow()
 	RuntimeProfile.clear_session_override()
@@ -134,6 +147,12 @@ func _test_mesh_geometry() -> void:
 			SimplifierScript.is_finite_vector(aabb.position) and SimplifierScript.is_finite_vector(aabb.size),
 			"mesh AABB must be finite"
 		)
+	var guide_material := RendererScript.make_idle_guide_material()
+	_check(
+		guide_material.emission_enabled \
+			and guide_material.emission_energy_multiplier > 1.0,
+		"yellow nozzle guide should retain a subtle emissive highlight"
+	)
 
 
 func _test_production_visual_components() -> void:
@@ -191,6 +210,97 @@ func _test_production_visual_components() -> void:
 			"production nozzle should follow the selected drawing color"
 		)
 		tip.free()
+	_test_static_nozzle_alignment()
+
+
+func _test_static_nozzle_alignment() -> void:
+	var controller := XRController3D.new()
+	controller.name = "RightHand"
+	controller.position = Vector3(0.4, 1.2, -0.7)
+	controller.rotation = Vector3(0.15, -0.4, 0.08)
+	var hand := RightHandScene.instantiate() as Node3D
+	_check(hand != null, "production right hand should instantiate for nozzle alignment")
+	if hand == null:
+		controller.free()
+		return
+	controller.add_child(hand)
+	root.add_child(controller)
+	var skeleton: Skeleton3D
+	for candidate in controller.find_children("*", "Skeleton3D", true, false):
+		skeleton = candidate as Skeleton3D
+		break
+	_check(skeleton != null, "production right hand should expose a Skeleton3D")
+	if skeleton == null:
+		controller.free()
+		return
+	var tip_bone := skeleton.find_bone(&"Index_Tip_R")
+	_check(tip_bone >= 0, "production right hand should expose Index_Tip_R")
+	if tip_bone < 0:
+		controller.free()
+		return
+	var interaction = InteractionScript.new()
+	interaction.set("_right_controller", controller)
+	var nozzle_transform: Transform3D = interaction.get_nozzle_global_transform()
+	var expected_tip := (
+		skeleton.global_transform * skeleton.get_bone_global_pose(tip_bone)
+	).origin
+	_check(
+		nozzle_transform.origin.distance_to(expected_tip) < 0.0001,
+		"spray nozzle should capture the correct resting alignment"
+	)
+	_check(
+		nozzle_transform.basis.is_equal_approx(
+			controller.global_transform.basis.orthonormalized()
+		),
+		"spray can should retain the controller aiming orientation"
+	)
+	_check(
+		interaction.has_static_nozzle_alignment(),
+		"spray nozzle should store a controller-relative resting alignment"
+	)
+	skeleton.position += Vector3(0.2, -0.1, 0.15)
+	var nozzle_after_hand_motion: Transform3D = interaction.get_nozzle_global_transform()
+	_check(
+		nozzle_after_hand_motion.origin.distance_to(nozzle_transform.origin) < 0.0001,
+		"spray nozzle must not follow later hand or finger animation"
+	)
+	var captured_local_offset := controller.to_local(nozzle_transform.origin)
+	controller.position += Vector3(-0.3, 0.25, 0.5)
+	var nozzle_after_controller_motion: Transform3D = interaction.get_nozzle_global_transform()
+	_check(
+		nozzle_after_controller_motion.origin.distance_to(
+			controller.to_global(captured_local_offset)
+		) < 0.0001,
+		"spray nozzle should keep the captured resting pose relative to the controller"
+	)
+	interaction.free()
+	controller.free()
+
+
+func _test_pointer_filter_contract() -> void:
+	var pointer = PointerScript.new()
+	var allowed_target := Node3D.new()
+	var blocked_target := Node3D.new()
+	pointer.call(
+		"set_target_filter",
+		func(candidate: Node3D) -> bool: return candidate == allowed_target
+	)
+	_check(
+		bool(pointer.call("_is_target_allowed", allowed_target)),
+		"pointer target filter should allow its whitelisted target"
+	)
+	_check(
+		not bool(pointer.call("_is_target_allowed", blocked_target)),
+		"pointer target filter should reject non-whitelisted targets"
+	)
+	pointer.call("clear_target_filter")
+	_check(
+		bool(pointer.call("_is_target_allowed", blocked_target)),
+		"clearing the pointer target filter should restore default interaction"
+	)
+	pointer.free()
+	allowed_target.free()
+	blocked_target.free()
 
 
 func _test_unity_panel_contract() -> void:
@@ -292,6 +402,37 @@ func _test_local_workflow() -> void:
 		mode_button.button_pressed and is_equal_approx(toggle_knob.position.x, 61.0),
 		"real panel toggle should reflect the active drawing mode"
 	)
+	_check(
+		interaction.sample_idle_guide_at_shared_position(
+			Vector3.ZERO,
+			1000
+		),
+		"yellow nozzle trail should accept its first sample"
+	)
+	_check(
+		interaction.sample_idle_guide_at_shared_position(
+			Vector3(0.02, 0, 0),
+			1030
+		),
+		"yellow nozzle trail should accept a moved sample"
+	)
+	_check(
+		interaction.get_idle_guide_points().size() == 2 \
+			and renderer.has_idle_guide_mesh(),
+		"two nozzle samples should render a local yellow guide mesh"
+	)
+	var guide_mesh: ArrayMesh = renderer.get_idle_guide_mesh()
+	_check(
+		guide_mesh != null \
+			and guide_mesh.get_aabb().size.y < interaction.get_width_m() * 0.5,
+		"yellow guide should be substantially thinner than the real stroke"
+	)
+	interaction.sample_idle_guide_at_shared_position(Vector3(0.04, 0, 0), 1531)
+	_check(
+		interaction.get_idle_guide_points().size() == 1 \
+			and not renderer.has_idle_guide_mesh(),
+		"yellow guide should discard samples older than about half a second"
+	)
 	var magenta_button := panel.get_node(
 		"Margin/Layout/ToolRow/Magenta/ColorButton"
 	) as Button
@@ -304,6 +445,11 @@ func _test_local_workflow() -> void:
 	)
 	_check(interaction.begin_stroke_at_shared_position(Vector3.ZERO), "trigger press should begin a stroke")
 	_check(
+		interaction.get_idle_guide_points().is_empty() \
+			and not renderer.has_idle_guide_mesh(),
+		"trigger press should clear the previous yellow nozzle trail"
+	)
+	_check(
 		not interaction.append_stroke_point(Vector3(0.001, 0, 0), Time.get_ticks_msec()),
 		"short movement before interval should not append"
 	)
@@ -311,7 +457,29 @@ func _test_local_workflow() -> void:
 		interaction.append_stroke_point(Vector3(0.02, 0, 0), Time.get_ticks_msec() + 1),
 		"valid movement should append"
 	)
+	_check(
+		not renderer.has_idle_guide_mesh() \
+			and renderer.get_local_draft_mesh_count() == 1,
+		"real-color stroke should render without a yellow history during trigger hold"
+	)
 	_check(interaction.finish_stroke(), "trigger release should finish a valid stroke")
+	_check(
+		not renderer.has_idle_guide_mesh(),
+		"trigger release should not restore the pre-trigger yellow history"
+	)
+	interaction.sample_idle_guide_at_shared_position(Vector3(0.06, 0, 0), 1560)
+	_check(
+		interaction.get_idle_guide_points().size() == 1 \
+			and not renderer.has_idle_guide_mesh(),
+		"yellow guide should restart from the release position"
+	)
+	interaction.sample_idle_guide_at_shared_position(Vector3(0.08, 0, 0), 1590)
+	_check(
+		interaction.get_idle_guide_points().size() == 2 \
+			and renderer.has_idle_guide_mesh() \
+			and renderer.is_idle_guide_visible(),
+		"post-release movement should build a new yellow guide without old samples"
+	)
 	_check(interaction.get_draft_count() == 1, "finished strokes should remain local drafts")
 	_check(renderer.get_local_draft_mesh_count() == 1, "local draft should render independently")
 	_check(interaction.sync_pending_drafts() == 1, "explicit sync should publish the draft")
@@ -367,13 +535,41 @@ func _test_local_workflow() -> void:
 	_check(interaction.is_input_blocked(), "local window drag should block drawing")
 	drag.active = false
 	var pointer := MockPointer.new()
-	var pointer_target := Node3D.new()
-	root_node.add_child(pointer_target)
-	pointer.target = pointer_target
+	var other_ui_target := Node3D.new()
+	root_node.add_child(other_ui_target)
+	pointer.target = other_ui_target
 	root_node.add_child(pointer)
 	interaction.set("_function_pointer", pointer)
-	_check(interaction.is_input_blocked(), "3D UI pointer target should block drawing")
+	interaction.call("_configure_pointer_target_filter")
+	_check(
+		not interaction.is_input_blocked(),
+		"non-drawing UI targets should not block spatial drawing"
+	)
+	_check(
+		not pointer.allows_target(other_ui_target),
+		"non-drawing UI targets should not receive pointer interaction in drawing mode"
+	)
+	var drawing_panel_root := Node3D.new()
+	root_node.add_child(drawing_panel_root)
+	drawing_panel_root.add_to_group("spatial_drawing_panel_3d")
+	var drawing_panel_target := Node3D.new()
+	drawing_panel_root.add_child(drawing_panel_target)
+	pointer.target = drawing_panel_target
+	_check(
+		interaction.is_input_blocked(),
+		"the spatial drawing panel should remain interactive and block drawing"
+	)
+	_check(
+		pointer.allows_target(drawing_panel_target),
+		"the spatial drawing panel should pass the pointer target filter"
+	)
 	pointer.target = null
+	_check(interaction.set_drawing_mode(false), "drawing mode should exit without drafts")
+	_check(
+		pointer.allows_target(other_ui_target),
+		"leaving drawing mode should restore interaction with other UI"
+	)
+	_check(interaction.set_drawing_mode(true), "drawing mode should re-enter for remaining checks")
 	var pickup := MockPickup.new()
 	var picked := Node3D.new()
 	root_node.add_child(picked)

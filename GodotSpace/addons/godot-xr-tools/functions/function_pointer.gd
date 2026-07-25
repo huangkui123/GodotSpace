@@ -107,6 +107,9 @@ var last_target : Node3D = null
 ## Last collision point
 var last_collided_at : Vector3 = Vector3.ZERO
 
+# Optional filter invoked before pointer events are dispatched to a collider
+var _target_filter : Callable
+
 # World scale
 var _world_scale : float = 1.0
 
@@ -202,12 +205,14 @@ func _process(_delta):
 		not $SuppressArea.has_overlapping_areas() and
 		$RayCast.is_colliding()):
 		new_at = $RayCast.get_collision_point()
-		if target:
+		if target and _is_target_allowed(target):
 			# Locked to 'target' even if we're colliding with something else
 			new_target = target
 		else:
 			# Target is whatever the raycast is colliding with
-			new_target = $RayCast.get_collider()
+			var collider := $RayCast.get_collider() as Node3D
+			if _is_target_allowed(collider):
+				new_target = collider
 
 	# If no current or previous collisions then skip
 	if not new_target and not last_target:
@@ -258,6 +263,32 @@ func set_enabled(p_enabled : bool) -> void:
 	enabled = p_enabled
 	if is_inside_tree():
 		_update_pointer()
+
+
+## Restrict pointer events to targets accepted by the supplied filter.
+## Pass an empty Callable to restore the default unfiltered behavior.
+func set_target_filter(p_filter : Callable) -> void:
+	if _target_filter == p_filter:
+		return
+	_target_filter = p_filter
+	if target and not _is_target_allowed(target):
+		XRToolsPointerEvent.released(self, target, last_collided_at)
+		target = null
+	if last_target and not _is_target_allowed(last_target):
+		XRToolsPointerEvent.exited(self, last_target, last_collided_at)
+		last_target = null
+		last_collided_at = Vector3.ZERO
+		if is_inside_tree():
+			_visible_miss()
+
+
+func clear_target_filter() -> void:
+	set_target_filter(Callable())
+
+
+func _is_target_allowed(candidate : Node3D) -> bool:
+	return candidate != null \
+		and (not _target_filter.is_valid() or bool(_target_filter.call(candidate)))
 
 
 # Set pointer y_offset property
@@ -416,8 +447,11 @@ func _update_pointer() -> void:
 # Pointer-activation button pressed handler
 func _button_pressed() -> void:
 	if $RayCast.is_colliding():
+		var collider := $RayCast.get_collider() as Node3D
+		if not _is_target_allowed(collider):
+			return
 		# Report pressed
-		target = $RayCast.get_collider()
+		target = collider
 		last_collided_at = $RayCast.get_collision_point()
 		XRToolsPointerEvent.pressed(self, target, last_collided_at)
 

@@ -70,6 +70,15 @@ func _run() -> void:
 	_check(not bool(sky_player.call("_accept_remote_pose", 4, head, left_hand, right_hand)), "duplicate pose sequence should be rejected")
 	var network_head := sky_player.get_node_or_null("NetworkHead") as Node3D
 	_check(network_head != null and network_head.visible, "accepted pose should reveal remote avatar")
+	var network_left_hand := sky_player.get_node_or_null("NetworkLeftHand") as Node3D
+	var network_right_hand := sky_player.get_node_or_null("NetworkRightHand") as Node3D
+	_check(
+		network_left_hand != null \
+			and network_left_hand.visible \
+			and network_right_hand != null \
+			and network_right_hand.visible,
+		"accepted remote pose should keep both network hand models visible"
+	)
 	var expected_global_head := shared_origin.global_transform * head.origin
 	_check(network_head != null and network_head.global_position.is_equal_approx(expected_global_head), "shared-space pose should respect a transformed SharedSpaceOrigin")
 
@@ -138,6 +147,15 @@ func _check_player_scene_contract(player: Node) -> void:
 		"NetworkTorso/TorsoMesh",
 	]:
 		_check(player.get_node_or_null(path) != null, "missing player presence node: %s" % path)
+	for path in [
+		"XROrigin3D/LeftHand/LeftHand/Hand_L/Armature/Skeleton3D/mesh_Hand_L",
+		"XROrigin3D/RightHand/RightHand/Hand_R/Armature/Skeleton3D/mesh_Hand_R",
+	]:
+		var local_hand_mesh := player.get_node_or_null(path) as MeshInstance3D
+		_check(
+			local_hand_mesh != null and not local_hand_mesh.visible,
+			"local first-person hand mesh should be hidden: %s" % path
+		)
 	var player_body := player.get_node_or_null("XROrigin3D/PlayerBody") as CollisionObject3D
 	_check(player_body != null, "local player should retain XRTools PlayerBody locomotion")
 	if player_body != null:

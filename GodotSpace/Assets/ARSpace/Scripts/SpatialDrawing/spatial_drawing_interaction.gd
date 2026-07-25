@@ -22,6 +22,13 @@ const MAX_WIDTH_M: float = 0.05
 const MIN_TIP_DISTANCE_M: float = 0.03
 const MAX_TIP_DISTANCE_M: float = 0.35
 const AXIS_ADJUST_INTERVAL_MSEC: int = 160
+const STATIC_NOZZLE_REFERENCE_BONE: StringName = &"Index_Tip_R"
+const IDLE_GUIDE_DURATION_MSEC: int = 500
+const IDLE_GUIDE_SAMPLE_INTERVAL_MSEC: int = 45
+const IDLE_GUIDE_MIN_SAMPLE_DISTANCE_M: float = 0.002
+const IDLE_GUIDE_MIN_WIDTH_M: float = 0.001
+const IDLE_GUIDE_MAX_POINTS: int = 160
+const IDLE_GUIDE_WIDTH_SCALE: float = 0.4
 const PALETTE: Array[Color] = [
 	Color(1.0, 0.03, 0.03, 1.0),
 	Color(0.02, 1.0, 0.08, 1.0),
@@ -40,6 +47,8 @@ var _manager: Node
 var _renderer: Node
 var _shared_space_origin: Node3D
 var _right_controller: XRController3D
+var _has_static_nozzle_alignment: bool = false
+var _static_nozzle_controller_offset := Vector3.ZERO
 var _function_pointer: Node
 var _pickup_node: Node
 var _movement_direct: Node
@@ -62,6 +71,8 @@ var _last_left_primary_pressed: bool = false
 var _last_left_secondary_pressed: bool = false
 var _status_message: String = ""
 var _tip_visual: Node3D
+var _idle_guide_points := PackedVector3Array()
+var _idle_guide_sample_times: Array[int] = []
 
 var _panel: Control
 var _mode_button: Button
@@ -95,7 +106,9 @@ func _ready() -> void:
 
 func _exit_tree() -> void:
 	_finish_active_stroke()
+	clear_idle_guide()
 	_clear_all_local_drafts()
+	_clear_pointer_target_filter()
 	_restore_movement_direct()
 
 
@@ -122,6 +135,7 @@ func _process(_delta: float) -> void:
 	_update_controller()
 	_poll_input()
 	_update_tip_visual()
+	_update_idle_guide()
 
 
 func is_drawing_mode_enabled() -> bool:
@@ -166,6 +180,8 @@ func set_drawing_mode(enabled: bool) -> bool:
 		_set_movement_direct_suppressed(true)
 	_drawing_mode = enabled
 	_awaiting_exit_confirmation = false
+	clear_idle_guide()
+	_configure_pointer_target_filter()
 	if not enabled:
 		_finish_active_stroke()
 		_set_movement_direct_suppressed(false)
@@ -206,6 +222,8 @@ func begin_stroke_at_shared_position(shared_position: Vector3) -> bool:
 		return false
 	if not Simplifier.is_finite_vector(shared_position):
 		return false
+	clear_idle_guide()
+	_set_idle_guide_visible(false)
 	_active_points = PackedVector3Array([shared_position])
 	_active_local_id = _next_local_id
 	_next_local_id += 1
@@ -307,6 +325,7 @@ func set_color_index(index: int) -> void:
 
 func set_width_m(value: float) -> void:
 	_width_m = clampf(value, MIN_WIDTH_M, MAX_WIDTH_M)
+	_render_idle_guide()
 	_update_panel()
 
 
@@ -319,9 +338,63 @@ func is_input_blocked() -> bool:
 	return _input_is_blocked()
 
 
+func get_nozzle_global_transform() -> Transform3D:
+	return _get_nozzle_global_transform()
+
+
+func has_static_nozzle_alignment() -> bool:
+	_capture_static_nozzle_alignment()
+	return _has_static_nozzle_alignment
+
+
+func get_idle_guide_points() -> PackedVector3Array:
+	return _idle_guide_points.duplicate()
+
+
+func sample_idle_guide_at_shared_position(
+	shared_position: Vector3,
+	now_msec: int = -1
+) -> bool:
+	if not Simplifier.is_finite_vector(shared_position):
+		return false
+	var sample_msec := Time.get_ticks_msec() if now_msec < 0 else now_msec
+	if not _idle_guide_sample_times.is_empty() \
+			and sample_msec < _idle_guide_sample_times[-1]:
+		clear_idle_guide()
+	var changed := _prune_idle_guide(sample_msec)
+	var should_append := _idle_guide_points.is_empty()
+	if not should_append:
+		should_append = (
+			_idle_guide_points[-1].distance_squared_to(shared_position)
+				>= IDLE_GUIDE_MIN_SAMPLE_DISTANCE_M * IDLE_GUIDE_MIN_SAMPLE_DISTANCE_M
+			or sample_msec - _idle_guide_sample_times[-1]
+				>= IDLE_GUIDE_SAMPLE_INTERVAL_MSEC
+		)
+	if should_append:
+		_idle_guide_points.append(shared_position)
+		_idle_guide_sample_times.append(sample_msec)
+		changed = true
+	while _idle_guide_points.size() > IDLE_GUIDE_MAX_POINTS:
+		_idle_guide_points.remove_at(0)
+		_idle_guide_sample_times.remove_at(0)
+		changed = true
+	if changed:
+		_render_idle_guide()
+	return should_append
+
+
+func clear_idle_guide() -> void:
+	var had_points := not _idle_guide_points.is_empty()
+	_idle_guide_points = PackedVector3Array()
+	_idle_guide_sample_times.clear()
+	if had_points and _renderer != null and _renderer.has_method("clear_idle_guide"):
+		_renderer.call("clear_idle_guide")
+
+
 func _finish_active_stroke() -> bool:
 	if _active_points.is_empty():
 		return false
+	_set_idle_guide_visible(true)
 	var local_id := _active_local_id
 	var simplified: PackedVector3Array = Simplifier.simplify(
 		_active_points,
@@ -445,6 +518,9 @@ func _update_controller() -> void:
 	if _right_controller != null and is_instance_valid(_right_controller):
 		_find_controller_helpers()
 		return
+	_right_controller = null
+	_has_static_nozzle_alignment = false
+	_static_nozzle_controller_offset = Vector3.ZERO
 	if not right_controller_path.is_empty():
 		_right_controller = get_node_or_null(right_controller_path) as XRController3D
 	if _right_controller == null:
@@ -464,8 +540,10 @@ func _update_controller() -> void:
 func _find_controller_helpers() -> void:
 	if _right_controller == null:
 		return
+	_capture_static_nozzle_alignment()
 	if _function_pointer == null or not is_instance_valid(_function_pointer):
 		_function_pointer = _right_controller.get_node_or_null("FunctionPointer")
+	_configure_pointer_target_filter()
 	if _movement_direct == null or not is_instance_valid(_movement_direct):
 		_movement_direct = _right_controller.get_node_or_null("MovementDirect")
 	if _pickup_node == null or not is_instance_valid(_pickup_node):
@@ -474,6 +552,27 @@ func _find_controller_helpers() -> void:
 					and bool(candidate.call("is_xr_class", "XRToolsFunctionPickup")):
 				_pickup_node = candidate
 				break
+
+
+func _capture_static_nozzle_alignment() -> void:
+	if _has_static_nozzle_alignment \
+			or _right_controller == null \
+			or not is_instance_valid(_right_controller):
+		return
+	for candidate in _right_controller.find_children("*", "Skeleton3D", true, false):
+		var skeleton := candidate as Skeleton3D
+		if skeleton == null:
+			continue
+		var tip_bone := skeleton.find_bone(STATIC_NOZZLE_REFERENCE_BONE)
+		if tip_bone < 0:
+			continue
+		var reference_pose := skeleton.global_transform \
+			* skeleton.get_bone_global_pose(tip_bone)
+		_static_nozzle_controller_offset = _right_controller.to_local(
+			reference_pose.origin
+		)
+		_has_static_nozzle_alignment = true
+		return
 
 
 func _input_is_blocked() -> bool:
@@ -486,9 +585,39 @@ func _input_is_blocked() -> bool:
 	if _function_pointer != null and is_instance_valid(_function_pointer):
 		var target = _function_pointer.get("target")
 		var last_target = _function_pointer.get("last_target")
-		if (target is Node and is_instance_valid(target)) \
-				or (last_target is Node and is_instance_valid(last_target)):
+		if _is_spatial_drawing_panel_target(target) \
+				or _is_spatial_drawing_panel_target(last_target):
 			return true
+	return false
+
+
+func _configure_pointer_target_filter() -> void:
+	if _function_pointer == null or not is_instance_valid(_function_pointer):
+		return
+	if _drawing_mode and _function_pointer.has_method("set_target_filter"):
+		_function_pointer.call(
+			"set_target_filter",
+			Callable(self, "_is_spatial_drawing_panel_target")
+		)
+	elif not _drawing_mode and _function_pointer.has_method("clear_target_filter"):
+		_function_pointer.call("clear_target_filter")
+
+
+func _clear_pointer_target_filter() -> void:
+	if _function_pointer != null \
+			and is_instance_valid(_function_pointer) \
+			and _function_pointer.has_method("clear_target_filter"):
+		_function_pointer.call("clear_target_filter")
+
+
+func _is_spatial_drawing_panel_target(candidate) -> bool:
+	if not (candidate is Node) or not is_instance_valid(candidate):
+		return false
+	var current := candidate as Node
+	while current != null:
+		if current.is_in_group("spatial_drawing_panel_3d"):
+			return true
+		current = current.get_parent()
 	return false
 
 
@@ -503,9 +632,23 @@ func _window_drag_is_active() -> bool:
 func _get_tip_shared_position() -> Vector3:
 	if _right_controller == null or _shared_space_origin == null:
 		return Vector3.INF
-	var global_tip := _right_controller.global_position \
-		- _right_controller.global_transform.basis.z.normalized() * _tip_distance_m
-	return _shared_space_origin.to_local(global_tip)
+	return _shared_space_origin.to_local(_get_nozzle_global_transform().origin)
+
+
+func _get_nozzle_global_transform() -> Transform3D:
+	if _right_controller == null or not is_instance_valid(_right_controller):
+		return Transform3D()
+	var nozzle_transform := _right_controller.global_transform
+	nozzle_transform.basis = nozzle_transform.basis.orthonormalized()
+	_capture_static_nozzle_alignment()
+	if _has_static_nozzle_alignment:
+		nozzle_transform.origin = _right_controller.to_global(
+			_static_nozzle_controller_offset
+		)
+	else:
+		nozzle_transform.origin = _right_controller.global_position \
+			- nozzle_transform.basis.z * _tip_distance_m
+	return nozzle_transform
 
 
 func _tracker_input_pressed(tracker: XRPositionalTracker, input_name: StringName) -> bool:
@@ -544,12 +687,63 @@ func _update_tip_visual() -> void:
 	_tip_visual.visible = _drawing_mode and _right_controller != null
 	if not _tip_visual.visible:
 		return
-	var tip_transform := _right_controller.global_transform
-	tip_transform.origin = _right_controller.global_position \
-		- _right_controller.global_transform.basis.z.normalized() * _tip_distance_m
-	_tip_visual.global_transform = tip_transform
+	_tip_visual.global_transform = _get_nozzle_global_transform()
 	if _tip_visual.has_method("set_tool_color"):
 		_tip_visual.call("set_tool_color", get_current_color())
+
+
+func _update_idle_guide() -> void:
+	if not _drawing_mode \
+			or _awaiting_exit_confirmation \
+			or not _controller_pose_is_available() \
+			or _shared_space_origin == null \
+			or _input_is_blocked():
+		clear_idle_guide()
+		return
+	if _last_trigger_pressed:
+		clear_idle_guide()
+		_set_idle_guide_visible(false)
+		return
+	var shared_position := _get_tip_shared_position()
+	if not Simplifier.is_finite_vector(shared_position):
+		clear_idle_guide()
+		return
+	sample_idle_guide_at_shared_position(shared_position)
+	_set_idle_guide_visible(not _last_trigger_pressed)
+
+
+func _controller_pose_is_available() -> bool:
+	if _right_controller == null or not is_instance_valid(_right_controller):
+		return false
+	var profile = RuntimeProfile.current()
+	return (profile != null and profile.is_test_mode()) \
+		or _right_controller.get_is_active()
+
+
+func _prune_idle_guide(now_msec: int) -> bool:
+	var changed := false
+	var cutoff_msec := now_msec - IDLE_GUIDE_DURATION_MSEC
+	while not _idle_guide_sample_times.is_empty() \
+			and _idle_guide_sample_times[0] < cutoff_msec:
+		_idle_guide_sample_times.remove_at(0)
+		_idle_guide_points.remove_at(0)
+		changed = true
+	return changed
+
+
+func _render_idle_guide() -> void:
+	if _renderer == null or not _renderer.has_method("update_idle_guide"):
+		return
+	_renderer.call(
+		"update_idle_guide",
+		_idle_guide_points,
+		maxf(IDLE_GUIDE_MIN_WIDTH_M, _width_m * IDLE_GUIDE_WIDTH_SCALE)
+	)
+
+
+func _set_idle_guide_visible(is_visible: bool) -> void:
+	if _renderer != null and _renderer.has_method("set_idle_guide_visible"):
+		_renderer.call("set_idle_guide_visible", is_visible)
 
 
 func _update_visual_visibility() -> void:

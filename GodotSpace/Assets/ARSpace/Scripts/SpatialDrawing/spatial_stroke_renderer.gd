@@ -3,11 +3,15 @@ extends Node3D
 
 const DEFAULT_RADIAL_SEGMENTS: int = 8
 const MIN_SEGMENT_LENGTH_SQUARED: float = 0.00000001
+const IDLE_GUIDE_COLOR := Color(1.0, 0.82, 0.04, 0.96)
 
 @export_range(4, 12, 1) var radial_segments: int = DEFAULT_RADIAL_SEGMENTS
 
 var _published_meshes: Dictionary = {}
 var _draft_meshes: Dictionary = {}
+var _idle_guide_mesh: ArrayMesh
+var _idle_guide_instance: MeshInstance3D
+var _idle_guide_visible: bool = true
 
 
 func _ready() -> void:
@@ -86,6 +90,55 @@ func remove_local_draft(local_id: int) -> void:
 
 func clear_local_drafts() -> void:
 	_clear_mesh_instances(_draft_meshes)
+
+
+func update_idle_guide(points: PackedVector3Array, width_m: float) -> bool:
+	var mesh := build_tube_mesh(
+		points,
+		width_m,
+		IDLE_GUIDE_COLOR,
+		maxi(4, radial_segments - 2)
+	)
+	if mesh.get_surface_count() == 0:
+		clear_idle_guide()
+		return false
+	_idle_guide_mesh = mesh
+	if DisplayServer.get_name() == "headless":
+		return true
+	if _idle_guide_instance == null or not is_instance_valid(_idle_guide_instance):
+		_idle_guide_instance = MeshInstance3D.new()
+		_idle_guide_instance.name = "IdleNozzleGuide"
+		_idle_guide_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		_idle_guide_instance.material_override = make_idle_guide_material()
+		add_child(_idle_guide_instance)
+	_idle_guide_instance.mesh = mesh
+	_idle_guide_instance.visible = _idle_guide_visible
+	return true
+
+
+func set_idle_guide_visible(is_visible: bool) -> void:
+	_idle_guide_visible = is_visible
+	if _idle_guide_instance != null and is_instance_valid(_idle_guide_instance):
+		_idle_guide_instance.visible = is_visible and has_idle_guide_mesh()
+
+
+func clear_idle_guide() -> void:
+	_idle_guide_mesh = null
+	if _idle_guide_instance != null and is_instance_valid(_idle_guide_instance):
+		_idle_guide_instance.mesh = null
+		_idle_guide_instance.visible = false
+
+
+func has_idle_guide_mesh() -> bool:
+	return _idle_guide_mesh != null and _idle_guide_mesh.get_surface_count() > 0
+
+
+func is_idle_guide_visible() -> bool:
+	return _idle_guide_visible and has_idle_guide_mesh()
+
+
+func get_idle_guide_mesh() -> ArrayMesh:
+	return _idle_guide_mesh
 
 
 func get_published_mesh_count() -> int:
@@ -255,5 +308,18 @@ static func make_stroke_material(color: Color, is_draft: bool) -> StandardMateri
 	material.albedo_color = display_color
 	material.vertex_color_use_as_albedo = true
 	material.roughness = 0.72
+	material.metallic = 0.0
+	return material
+
+
+static func make_idle_guide_material() -> StandardMaterial3D:
+	var material := StandardMaterial3D.new()
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.albedo_color = IDLE_GUIDE_COLOR
+	material.vertex_color_use_as_albedo = true
+	material.emission_enabled = true
+	material.emission = IDLE_GUIDE_COLOR
+	material.emission_energy_multiplier = 1.25
+	material.roughness = 0.68
 	material.metallic = 0.0
 	return material

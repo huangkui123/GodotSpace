@@ -35,6 +35,11 @@ const TEST_MODE_HIDDEN_LOCAL_PATHS: Array[NodePath] = [
 	NodePath("XROrigin3D/PlayerBody"),
 ]
 
+const LOCAL_HAND_MESH_PATHS: Array[NodePath] = [
+	NodePath("XROrigin3D/LeftHand/LeftHand/Hand_L/Armature/Skeleton3D/mesh_Hand_L"),
+	NodePath("XROrigin3D/RightHand/RightHand/Hand_R/Armature/Skeleton3D/mesh_Hand_R"),
+]
+
 const NETWORK_POSE_PAIRS: Array = [
 	[NodePath("XROrigin3D/XRCamera3D"), NodePath("NetworkHead")],
 	[NodePath("XROrigin3D/LeftHand"), NodePath("NetworkLeftHand")],
@@ -269,6 +274,15 @@ func _configure_local_xr_nodes(is_local_authority: bool) -> void:
 		_remove_remote_xr_branch()
 	elif _is_test_mode():
 		_configure_test_mode_local_visuals()
+	if is_local_authority:
+		_set_local_hand_meshes_visible(false)
+
+
+func _set_local_hand_meshes_visible(is_visible: bool) -> void:
+	for node_path in LOCAL_HAND_MESH_PATHS:
+		var hand_mesh := get_node_or_null(node_path) as MeshInstance3D
+		if hand_mesh != null:
+			hand_mesh.visible = is_visible
 
 func _configure_test_mode_local_visuals() -> void:
 	for node_path in TEST_MODE_HIDDEN_LOCAL_PATHS:
