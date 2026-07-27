@@ -43,25 +43,25 @@ func _run() -> void:
 	voice_chat.voice_transcript_received.emit({
 		"speaker_peer_id": 1,
 		"speaker_name": "航天员",
-		"text": "下一步应该做什么",
+		"text": "助手，这一步我做完了，接下来需要做什么",
 		"is_final": true,
 		"source": "asr",
 	})
 	if not await _wait_for_answers(1):
 		return
-	if not _check(int(detail_view.page_index) == 1, "Read-only next-step question changed the task page."):
+	if not _check(int(detail_view.page_index) == 2, "Completion request did not advance exactly one task step."):
 		return
 
 	voice_chat.voice_transcript_received.emit({
 		"speaker_peer_id": 1,
 		"speaker_name": "航天员",
-		"text": "进入下一步",
+		"text": "助手，下一步该做什么",
 		"is_final": true,
 		"source": "asr",
 	})
 	if not await _wait_for_answers(2):
 		return
-	if not _check(int(detail_view.page_index) == 2, "Explicit advance did not move exactly one page."):
+	if not _check(int(detail_view.page_index) == 3, "Next-step request did not move exactly one additional page."):
 		var router := root.get_node_or_null("AssistantCommandRouter")
 		push_error("Live Agent diagnostics: answers=%s router=%s" % [
 			_answers,
