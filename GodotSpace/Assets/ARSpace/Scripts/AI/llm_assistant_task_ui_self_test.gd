@@ -78,6 +78,14 @@ func _run() -> void:
 	if not voice_chat.has_method("publish_assistant_transcript"):
 		_fail("VoiceChat does not expose assistant transcript publishing.")
 		return
+	# This UI test exercises the legacy assistant panel in isolation. Production
+	# transcripts are owned by AssistantCommandRouter and covered by its own tests.
+	assistant.call("set_external_transcript_router_enabled", false)
+	var router := root.get_node_or_null("AssistantCommandRouter")
+	if router != null:
+		var router_callback := Callable(router, "_on_voice_transcript_received")
+		if voice_chat.is_connected("voice_transcript_received", router_callback):
+			voice_chat.disconnect("voice_transcript_received", router_callback)
 
 	voice_chat.voice_transcript_received.emit({
 		"speaker_peer_id": 1,
@@ -100,6 +108,19 @@ func _run() -> void:
 	var history: Array = assistant.call("get_qa_history")
 	if history.is_empty():
 		_fail("Assistant history panel has no question/answer history to display.")
+		return
+	var history_count := history.size()
+	if not bool(assistant.call("record_external_qa", "external-history-ui-test", "Qwen 工具调用是否完成", "已完成并记录到历史窗口。", true, {"provider": "local_qwen_agent"})):
+		_fail("Qwen external history entry was not accepted.")
+		return
+	await process_frame
+	history = assistant.call("get_qa_history")
+	if history.size() != history_count + 1:
+		_fail("Qwen external history entry was not appended exactly once.")
+		return
+	var history_transcript := assistant_view.get_node_or_null("Transcript") as RichTextLabel
+	if history_transcript == null or history_transcript.get_parsed_text().find("已完成并记录到历史窗口") == -1:
+		_fail("Assistant history window did not refresh for the Qwen external entry.")
 		return
 
 	_answer_completed = false
