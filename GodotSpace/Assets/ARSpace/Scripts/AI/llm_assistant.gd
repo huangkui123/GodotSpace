@@ -61,6 +61,8 @@ var _active_request_log_id := ""
 var _active_request_started_msec := 0
 var _external_transcript_router_enabled := false
 var _active_delegate_request_id := ""
+var _active_record_history := true
+var _external_qa_request_ids: Dictionary = {}
 
 
 func _ready() -> void:
@@ -153,7 +155,8 @@ func ask(question: String) -> void:
 func request_delegated_answer(
 	request_id: String,
 	question: String,
-	runtime_entries: Array[Dictionary] = []
+	runtime_entries: Array[Dictionary] = [],
+	record_history: bool = true
 ) -> void:
 	var clean_request_id := request_id.strip_edges()
 	var clean_question := question.strip_edges()
@@ -169,21 +172,24 @@ func request_delegated_answer(
 			"sources": sources,
 			"conversation_context": "",
 			"delegate_request_id": clean_request_id,
+			"record_history": record_history,
 		})
 		return
-	_begin_question(clean_question, sources, "", clean_request_id)
+	_begin_question(clean_question, sources, "", clean_request_id, record_history)
 
 
 func _begin_question(
 	clean_question: String,
 	sources: Array,
 	conversation_context: String,
-	delegate_request_id: String = ""
+	delegate_request_id: String = "",
+	record_history: bool = true
 ) -> void:
 	_active_question = clean_question
 	_active_sources = sources.duplicate(true)
 	_active_conversation_context = conversation_context
 	_active_delegate_request_id = delegate_request_id
+	_active_record_history = record_history
 	answer_started.emit(clean_question)
 
 	var api_key_value := _get_api_key()
@@ -309,6 +315,23 @@ func set_external_transcript_router_enabled(enabled: bool) -> void:
 
 func get_qa_history() -> Array:
 	return _qa_history.duplicate(true)
+
+
+func record_external_qa(
+	request_id: String,
+	question: String,
+	answer: String,
+	success: bool,
+	metadata: Dictionary = {}
+) -> bool:
+	var clean_request_id := request_id.strip_edges()
+	if clean_request_id.is_empty() or _external_qa_request_ids.has(clean_request_id):
+		return false
+	_external_qa_request_ids[clean_request_id] = true
+	while _external_qa_request_ids.size() > max_qa_history_items * 4:
+		_external_qa_request_ids.erase(_external_qa_request_ids.keys().front())
+	_record_qa_item(question, answer, [], success, metadata)
+	return true
 
 
 func _setup_knowledge_base() -> void:
@@ -488,19 +511,28 @@ func _append_conversation_turn(role: String, speaker: String, text: String) -> v
 		_conversation_history.pop_front()
 
 
-func _record_qa_item(question: String, answer: String, sources: Array, success: bool) -> void:
+func _record_qa_item(
+	question: String,
+	answer: String,
+	sources: Array,
+	success: bool,
+	metadata: Dictionary = {}
+) -> void:
 	var clean_question := question.strip_edges()
 	var clean_answer := answer.strip_edges()
 	if clean_question.is_empty() and clean_answer.is_empty():
 		return
-	_qa_history.append({
+	var item := {
 		"question": clean_question,
 		"answer": clean_answer,
 		"sources": sources.duplicate(true),
 		"success": success,
 		"timestamp_msec": Time.get_ticks_msec(),
 		"timestamp": Time.get_datetime_string_from_system(false, true),
-	})
+	}
+	if not metadata.is_empty():
+		item["metadata"] = metadata.duplicate(true)
+	_qa_history.append(item)
 	while _qa_history.size() > max_qa_history_items:
 		_qa_history.pop_front()
 	qa_history_changed.emit()
@@ -643,7 +675,8 @@ func _complete_active_question(answer: String) -> void:
 	var question := _active_question
 	var sources := _active_sources.duplicate(true)
 	_append_conversation_turn("assistant", "智能助手", answer)
-	_record_qa_item(question, answer, sources, true)
+	if _active_record_history:
+		_record_qa_item(question, answer, sources, true)
 	_active_question = ""
 	_active_sources = []
 	_active_conversation_context = ""
@@ -651,6 +684,7 @@ func _complete_active_question(answer: String) -> void:
 	_active_request_started_msec = 0
 	var delegate_request_id := _active_delegate_request_id
 	_active_delegate_request_id = ""
+	_active_record_history = true
 	if not delegate_request_id.is_empty():
 		delegated_answer_completed.emit(delegate_request_id, answer)
 		_start_next_pending_question()
@@ -662,7 +696,8 @@ func _complete_active_question(answer: String) -> void:
 
 func _fail_active_question(message: String) -> void:
 	var question := _active_question
-	_record_qa_item(question, message, [], false)
+	if _active_record_history:
+		_record_qa_item(question, message, [], false)
 	_active_question = ""
 	_active_sources = []
 	_active_conversation_context = ""
@@ -670,6 +705,7 @@ func _fail_active_question(message: String) -> void:
 	_active_request_started_msec = 0
 	var delegate_request_id := _active_delegate_request_id
 	_active_delegate_request_id = ""
+	_active_record_history = true
 	if not delegate_request_id.is_empty():
 		delegated_answer_failed.emit(delegate_request_id, message)
 		_start_next_pending_question()
@@ -692,7 +728,8 @@ func _start_next_pending_question() -> void:
 		next_question,
 		next_sources if typeof(next_sources) == TYPE_ARRAY else [],
 		str(next_item.get("conversation_context", "")),
-		str(next_item.get("delegate_request_id", ""))
+		str(next_item.get("delegate_request_id", "")),
+		bool(next_item.get("record_history", true))
 	)
 
 

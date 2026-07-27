@@ -1,18 +1,21 @@
 extends Node
 
 signal command_routed(request_id: String, intent: String, speaker_peer_id: int)
+signal assistant_interaction_state_changed(speaker_peer_id: int, state: String, text: String)
 
 const ROUTE_QWEN_FIRST := "QWEN_FIRST"
 const SERVER_PEER_ID := 1
 const SNAPSHOT_TIMEOUT_SECONDS := 3.0
 const MAX_DEBUG_EVENTS := 64
 const REQUIRED_WAKE_WORD := "助手"
+const WAKE_COMMAND_TIMEOUT_SECONDS := 8.0
 const OpenAlbumAdapterScript := preload("res://Assets/ARSpace/Scripts/AI/LocalAgent/open_album_tool_adapter.gd")
 
 var _requests: Dictionary = {}
 var _operation_to_request: Dictionary = {}
 var _deepseek_tool_calls: Dictionary = {}
 var _recent_events: Array[Dictionary] = []
+var _wake_sessions: Dictionary = {}
 
 
 func _ready() -> void:
@@ -63,6 +66,7 @@ func get_request_debug_state(request_id: String) -> Dictionary:
 func get_debug_state() -> Dictionary:
 	return {
 		"active_request_count": _requests.size(),
+		"wake_session_count": _wake_sessions.size(),
 		"pending_remote_operation_count": _operation_to_request.size(),
 		"pending_deepseek_count": _deepseek_tool_calls.size(),
 		"recent_events": _recent_events.duplicate(true),
@@ -70,9 +74,11 @@ func get_debug_state() -> Dictionary:
 
 
 func _on_voice_transcript_received(data: Dictionary) -> void:
-	if not bool(data.get("is_final", false)) or str(data.get("source", "")) == "llm_assistant":
+	if str(data.get("source", "")) == "llm_assistant":
 		return
-	_route_final_transcript(data)
+	if multiplayer.has_multiplayer_peer() and not multiplayer.is_server():
+		return
+	_handle_wake_transcript(data)
 
 
 func _route_final_transcript(data: Dictionary) -> String:
@@ -84,11 +90,18 @@ func _route_final_transcript(data: Dictionary) -> String:
 	var speaker_peer_id := int(data.get("speaker_peer_id", SERVER_PEER_ID))
 	if speaker_peer_id <= 0:
 		speaker_peer_id = SERVER_PEER_ID
+	return _route_command(text, speaker_peer_id)
+
+
+func _route_command(text: String, speaker_peer_id: int) -> String:
+	var clean_text := text.strip_edges()
+	if clean_text.is_empty():
+		return ""
 	var request_id := _new_id("request")
 	_requests[request_id] = {
 		"speaker_peer_id": speaker_peer_id,
 		"intent": ROUTE_QWEN_FIRST,
-		"text": text,
+		"text": clean_text,
 		"status": "preparing",
 		"snapshot": {},
 		"allowed_tools": [],
@@ -96,21 +109,79 @@ func _route_final_transcript(data: Dictionary) -> String:
 	}
 	_record_event("routed", request_id, {"target": "local" if _is_local_target(speaker_peer_id) else "remote"})
 	command_routed.emit(request_id, ROUTE_QWEN_FIRST, speaker_peer_id)
-	# Defer until all listeners have appended the user's final transcript.
-	# Otherwise this assistant status line can appear above the user's own speech.
-	call_deferred("_publish_answer", "收到，正在处理。")
+	_publish_interaction_state(speaker_peer_id, "processing", "正在理解你的请求…")
 	_request_target_snapshot(request_id, speaker_peer_id)
 	return request_id
 
 
 func _strip_required_wake_word(raw_text: String) -> String:
-	var text := raw_text.strip_edges()
-	if not text.begins_with(REQUIRED_WAKE_WORD):
+	var wake_index := raw_text.find(REQUIRED_WAKE_WORD)
+	if wake_index < 0:
 		return ""
-	text = text.substr(REQUIRED_WAKE_WORD.length()).strip_edges()
+	var text := raw_text.substr(wake_index + REQUIRED_WAKE_WORD.length()).strip_edges()
 	while text.begins_with(",") or text.begins_with("，") or text.begins_with(":") or text.begins_with("："):
 		text = text.substr(1).strip_edges()
 	return text
+
+
+func _handle_wake_transcript(data: Dictionary) -> void:
+	var text := str(data.get("text", "")).strip_edges()
+	if text.is_empty():
+		return
+	var speaker_peer_id := int(data.get("speaker_peer_id", SERVER_PEER_ID))
+	if speaker_peer_id <= 0:
+		speaker_peer_id = SERVER_PEER_ID
+	var utterance_id := int(data.get("utterance_id", 0))
+	var is_final := bool(data.get("is_final", false))
+	var session := _wake_sessions.get(speaker_peer_id, {}) as Dictionary
+	if session.is_empty():
+		if text.find(REQUIRED_WAKE_WORD) < 0:
+			return
+		session = {
+			"id": _new_id("wake"),
+			"utterance_id": utterance_id,
+			"command": _strip_required_wake_word(text),
+		}
+		_wake_sessions[speaker_peer_id] = session
+		_publish_interaction_state(speaker_peer_id, "listening", "我在，请说。")
+		_expire_wake_session(speaker_peer_id, str(session.get("id", "")))
+	else:
+		var command := ""
+		if utterance_id == int(session.get("utterance_id", -1)):
+			command = _strip_required_wake_word(text)
+		else:
+			command = text
+		if not command.is_empty():
+			session["command"] = command
+			_wake_sessions[speaker_peer_id] = session
+
+	var command_text := str(session.get("command", "")).strip_edges()
+	if not command_text.is_empty():
+		_publish_interaction_state(speaker_peer_id, "listening", "正在听：%s" % command_text)
+	if not is_final:
+		return
+	if command_text.is_empty():
+		return
+	if _is_local_wake_cancel(command_text):
+		_wake_sessions.erase(speaker_peer_id)
+		_publish_interaction_state(speaker_peer_id, "idle")
+		return
+	_wake_sessions.erase(speaker_peer_id)
+	_route_command(command_text, speaker_peer_id)
+
+
+func _expire_wake_session(speaker_peer_id: int, session_id: String) -> void:
+	await get_tree().create_timer(WAKE_COMMAND_TIMEOUT_SECONDS).timeout
+	var session := _wake_sessions.get(speaker_peer_id, {}) as Dictionary
+	if session.is_empty() or str(session.get("id", "")) != session_id:
+		return
+	_wake_sessions.erase(speaker_peer_id)
+	_publish_interaction_state(speaker_peer_id, "timeout", "等待命令超时，请再次呼叫助手。")
+
+
+func _is_local_wake_cancel(text: String) -> bool:
+	var normalized := text.strip_edges().replace("，", "").replace(",", "").replace("。", "")
+	return normalized in ["取消", "算了", "不用了", "不需要了"]
 
 
 func _request_target_snapshot(request_id: String, speaker_peer_id: int) -> void:
@@ -314,7 +385,9 @@ func _tool_delegate_deepseek(arguments: Dictionary, context: Dictionary) -> Dict
 		return _error("not_ready", "DeepSeek assistant is not ready.")
 	_deepseek_tool_calls[request_id] = tool_call_id
 	_mark_dispatched(request_id, "delegate_deepseek")
-	assistant.call("request_delegated_answer", request_id, str((_requests[request_id] as Dictionary).get("text", "")), _deepseek_context_entries(request_id))
+	# The Router owns the final history entry for every Qwen request. Suppress the
+	# legacy assistant's delegated entry so a DeepSeek hand-off is not recorded twice.
+	assistant.call("request_delegated_answer", request_id, str((_requests[request_id] as Dictionary).get("text", "")), _deepseek_context_entries(request_id), false)
 	return {"__deferred__": true}
 
 
@@ -394,6 +467,25 @@ func _mark_dispatched(request_id: String, operation: String) -> void:
 	record["last_operation"] = operation
 	_requests[request_id] = record
 	_record_event("tool_dispatched", request_id, {"operation": operation})
+	_publish_interaction_state(int(record.get("speaker_peer_id", SERVER_PEER_ID)), "executing", "正在执行：%s" % _operation_label(operation))
+
+
+func _operation_label(operation: String) -> String:
+	var labels := {
+		"album_open": "打开相册",
+		"album_close": "关闭相册",
+		"album_next": "翻到相册下一页",
+		"album_previous": "返回相册上一页",
+		"album_goto": "跳转相册页面",
+		"guide_open": "打开指导书",
+		"guide_close": "关闭指导书",
+		"guide_advance": "切换到下一步",
+		"guide_previous": "返回上一步",
+		"guide_goto": "跳转指导书步骤",
+		"guide_replay": "读取当前步骤",
+		"delegate_deepseek": "查询实验知识",
+	}
+	return str(labels.get(operation, "执行操作"))
 
 
 @rpc("authority", "call_remote", "reliable")
@@ -523,10 +615,13 @@ func _on_agent_answer(request_id: String, answer: String) -> void:
 	if not _requests.has(request_id):
 		return
 	var record := _requests[request_id] as Dictionary
+	var final_answer := _verified_answer_or_model_answer(record, answer)
 	record["status"] = "completed"
 	_requests[request_id] = record
 	_record_event("completed", request_id, {"elapsed_msec": Time.get_ticks_msec() - int(record.get("created_msec", Time.get_ticks_msec()))})
-	_publish_answer(_verified_answer_or_model_answer(record, answer))
+	_record_request_history(request_id, record, final_answer, _is_successful_final_result(record))
+	_publish_interaction_state(int(record.get("speaker_peer_id", SERVER_PEER_ID)), "idle")
+	_publish_answer(final_answer)
 	_clear_operations_for_request(request_id)
 	_requests.erase(request_id)
 
@@ -540,7 +635,11 @@ func _on_agent_error(request_id: String, code: String, message: String) -> void:
 func _fail_request(request_id: String, code: String, message: String) -> void:
 	var record := _requests.get(request_id, {}) as Dictionary
 	_record_event("failed", request_id, {"code": code, "elapsed_msec": Time.get_ticks_msec() - int(record.get("created_msec", Time.get_ticks_msec()))})
-	_publish_answer("操作未完成：%s（%s）" % [message, code])
+	var final_answer := "操作未完成：%s（%s）" % [message, code]
+	if not record.is_empty():
+		_record_request_history(request_id, record, final_answer, false, code)
+		_publish_interaction_state(int(record.get("speaker_peer_id", SERVER_PEER_ID)), "failed", final_answer)
+	_publish_answer(final_answer)
 	var agent := get_node_or_null("/root/LocalAgentClient")
 	if agent != null and agent.has_method("abandon_deferred_tool_calls_for_request"):
 		agent.call("abandon_deferred_tool_calls_for_request", request_id)
@@ -559,6 +658,46 @@ func _publish_answer(answer: String) -> void:
 	var voice_chat := get_node_or_null("/root/VoiceChat")
 	if voice_chat != null and voice_chat.has_method("publish_assistant_transcript"):
 		voice_chat.call("publish_assistant_transcript", answer)
+
+
+func _publish_interaction_state(speaker_peer_id: int, state: String, text: String = "") -> void:
+	assistant_interaction_state_changed.emit(speaker_peer_id, state, text)
+	var voice_chat := get_node_or_null("/root/VoiceChat")
+	if voice_chat != null and voice_chat.has_method("publish_assistant_interaction_state"):
+		voice_chat.call("publish_assistant_interaction_state", speaker_peer_id, state, text)
+
+
+func _record_request_history(
+	request_id: String,
+	record: Dictionary,
+	answer: String,
+	success: bool,
+	error_code: String = ""
+) -> void:
+	var assistant := get_node_or_null("/root/LLMAssistantService")
+	if assistant == null or not assistant.has_method("record_external_qa"):
+		return
+	var operation := str(record.get("last_operation", ""))
+	var route := "direct_answer"
+	if operation == "delegate_deepseek":
+		route = "delegate_deepseek"
+	elif not operation.is_empty():
+		route = "tool"
+	assistant.call("record_external_qa", request_id, str(record.get("text", "")), answer, success, {
+		"provider": "local_qwen_agent",
+		"route": route,
+		"tool_name": operation,
+		"speaker_peer_id": int(record.get("speaker_peer_id", SERVER_PEER_ID)),
+		"error_code": error_code,
+	})
+
+
+func _is_successful_final_result(record: Dictionary) -> bool:
+	var verified := record.get("verified_ui_result", {}) as Dictionary
+	if verified.is_empty():
+		return true
+	var result := verified.get("result", {}) as Dictionary
+	return bool(result.get("ok", false))
 
 
 func _record_verified_ui_result(request_id: String, operation: String, result: Dictionary) -> void:

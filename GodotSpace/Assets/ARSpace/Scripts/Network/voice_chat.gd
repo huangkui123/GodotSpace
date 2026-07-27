@@ -4,6 +4,7 @@ signal voice_enabled_changed(enabled: bool)
 signal remote_speaking_changed(peer_id: int, is_speaking: bool)
 signal voice_level_changed(peer_id: int, state: Dictionary)
 signal voice_transcript_received(data: Dictionary)
+signal assistant_interaction_state_changed(data: Dictionary)
 signal transcription_enabled_changed(enabled: bool)
 
 const SERVER_PEER_ID := 1
@@ -111,6 +112,7 @@ var _remote_playback_warning_key: String = ""
 var voice_level_states: Dictionary = {}
 var _voice_level_send_accum: float = 0.0
 var voice_transcript_history: Array = []
+var _transcript_utterance_ids: Dictionary = {}
 var transcription_enabled: bool = true
 var _peer_transcribers: Dictionary = {}
 var _client_transcription_source_sample_rate: int = 48000
@@ -431,6 +433,7 @@ func _setup_components() -> void:
 	transport.voice_level_received.connect(_on_voice_level_received)
 	transport.transcription_pcm_received.connect(_on_transcription_pcm_received)
 	transport.transcript_received.connect(_on_transport_transcript_received)
+	transport.assistant_interaction_state_received.connect(_on_assistant_interaction_state_received)
 	transport.transcription_enabled_received.connect(_on_transport_transcription_enabled_received)
 
 	playback = get_node_or_null("VoicePlayback")
@@ -526,6 +529,11 @@ func _on_transcription_pcm_received(sender_peer_id: int, pcm: PackedByteArray) -
 func _on_transport_transcript_received(data: Dictionary) -> void:
 	_store_transcript_data(data)
 	voice_transcript_received.emit(data.duplicate(true))
+
+
+func _on_assistant_interaction_state_received(data: Dictionary) -> void:
+	assistant_interaction_state_changed.emit(data.duplicate(true))
+
 
 func _on_transport_transcription_enabled_received(enabled: bool) -> void:
 	if multiplayer.is_server():
@@ -657,6 +665,23 @@ func publish_assistant_transcript(text: String, speaker_name: String = "智能�
 	else:
 		_on_transport_transcript_received(data)
 
+
+func publish_assistant_interaction_state(target_peer_id: int, state: String, text: String = "") -> void:
+	var data := {
+		"target_peer_id": target_peer_id,
+		"state": state.strip_edges(),
+		"text": text.strip_edges(),
+		"timestamp_msec": Time.get_ticks_msec(),
+	}
+	if multiplayer.has_multiplayer_peer() and multiplayer.is_server():
+		if transport != null and transport.has_method("send_assistant_interaction_state"):
+			transport.send_assistant_interaction_state(target_peer_id, data)
+		else:
+			_on_assistant_interaction_state_received(data)
+	else:
+		_on_assistant_interaction_state_received(data)
+
+
 func _set_peer_transcription_active(peer_id: int, active: bool) -> void:
 	if not multiplayer.is_server() or peer_id <= 0:
 		return
@@ -733,14 +758,18 @@ func _on_peer_transcribed_msg(is_final: bool, new_text: String, peer_id: int) ->
 	if text.is_empty() or not multiplayer.is_server():
 		return
 
+	var utterance_id := int(_transcript_utterance_ids.get(peer_id, 1))
 	var data := {
 		"speaker_peer_id": peer_id,
 		"speaker_name": _get_transcript_speaker_name(peer_id),
 		"text": text,
 		"is_final": is_final,
+		"utterance_id": utterance_id,
 		"timestamp_msec": Time.get_ticks_msec(),
 	}
 	_broadcast_transcript(data)
+	if is_final:
+		_transcript_utterance_ids[peer_id] = utterance_id + 1
 
 func _on_peer_transcription_state_changed(state: String, detail: String, peer_id: int) -> void:
 	if state == "error" or state == "closed":

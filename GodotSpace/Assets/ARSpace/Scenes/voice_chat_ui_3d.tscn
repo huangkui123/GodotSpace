@@ -166,6 +166,21 @@ bbcode_enabled = true
 text = "等待语音输入..."
 scroll_following = true
 
+[node name="AssistantInteraction" type="PanelContainer" parent="Canvas/PanelContainer/MarginContainer/Layout/TranscribeSection"]
+visible = false
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_transcript")
+
+[node name="Label" type="Label" parent="Canvas/PanelContainer/MarginContainer/Layout/TranscribeSection/AssistantInteraction"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.576471, 0.666667, 0.952941, 1)
+theme_override_fonts/font = ExtResource("4_font")
+theme_override_font_sizes/font_size = 16
+text = "我在，请说。"
+horizontal_alignment = 1
+vertical_alignment = 1
+
 [node name="ServerVoiceLevels" type="VBoxContainer" parent="Canvas/PanelContainer/MarginContainer/Layout"]
 layout_mode = 2
 theme_override_constants/separation = 5

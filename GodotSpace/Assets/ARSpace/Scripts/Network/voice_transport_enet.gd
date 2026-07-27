@@ -7,6 +7,7 @@ signal speaking_state_received(peer_id: int, is_speaking: bool)
 signal voice_level_received(peer_id: int, peak: float, peak_db: float, mic_open: bool)
 signal transcription_pcm_received(sender_peer_id: int, pcm: PackedByteArray)
 signal transcript_received(data: Dictionary)
+signal assistant_interaction_state_received(data: Dictionary)
 signal transcription_enabled_received(enabled: bool)
 
 const SERVER_PEER_ID := 1
@@ -23,6 +24,8 @@ var transcription_pcm_packets_sent: int = 0
 var transcription_pcm_packets_received: int = 0
 var transcript_packets_sent: int = 0
 var transcript_packets_received: int = 0
+var assistant_interaction_packets_sent: int = 0
+var assistant_interaction_packets_received: int = 0
 var transcription_state_packets_sent: int = 0
 var transcription_state_packets_received: int = 0
 
@@ -88,6 +91,16 @@ func broadcast_transcript(data: Dictionary) -> void:
 	for peer_id in multiplayer.get_peers():
 		transcript_packets_sent += 1
 		rpc_id(peer_id, "_client_voice_transcript", data)
+
+
+func send_assistant_interaction_state(target_peer_id: int, data: Dictionary) -> void:
+	if not multiplayer.is_server() or target_peer_id <= 0:
+		return
+	if target_peer_id == SERVER_PEER_ID:
+		assistant_interaction_state_received.emit(data.duplicate(true))
+		return
+	assistant_interaction_packets_sent += 1
+	rpc_id(target_peer_id, "_client_assistant_interaction_state", data)
 
 func broadcast_transcription_enabled(enabled: bool) -> void:
 	if not multiplayer.is_server():
@@ -160,6 +173,14 @@ func _client_voice_transcript(data: Dictionary) -> void:
 	transcript_packets_received += 1
 	transcript_received.emit(data.duplicate(true))
 
+
+@rpc("authority", "call_remote", "reliable", 3)
+func _client_assistant_interaction_state(data: Dictionary) -> void:
+	if multiplayer.is_server():
+		return
+	assistant_interaction_packets_received += 1
+	assistant_interaction_state_received.emit(data.duplicate(true))
+
 @rpc("authority", "call_remote", "reliable", 3)
 func _client_transcription_enabled(enabled: bool) -> void:
 	if multiplayer.is_server():
@@ -185,6 +206,8 @@ func get_debug_state() -> Dictionary:
 		"transcription_pcm_packets_received": transcription_pcm_packets_received,
 		"transcript_packets_sent": transcript_packets_sent,
 		"transcript_packets_received": transcript_packets_received,
+		"assistant_interaction_packets_sent": assistant_interaction_packets_sent,
+		"assistant_interaction_packets_received": assistant_interaction_packets_received,
 		"transcription_state_packets_sent": transcription_state_packets_sent,
 		"transcription_state_packets_received": transcription_state_packets_received,
 		"has_peer": multiplayer.has_multiplayer_peer(),

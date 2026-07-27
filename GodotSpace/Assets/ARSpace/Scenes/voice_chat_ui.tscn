@@ -88,6 +88,17 @@ bbcode_enabled = true
 text = "等待语音输入..."
 scroll_following = true
 
+[node name="AssistantInteraction" type="PanelContainer" parent="PanelContainer/MarginContainer/Layout/TranscribeSection"]
+visible = false
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+
+[node name="Label" type="Label" parent="PanelContainer/MarginContainer/Layout/TranscribeSection/AssistantInteraction"]
+layout_mode = 2
+text = "我在，请说。"
+horizontal_alignment = 1
+vertical_alignment = 1
+
 [node name="ServerVoiceLevels" type="VBoxContainer" parent="PanelContainer/MarginContainer/Layout"]
 layout_mode = 2
 theme_override_constants/separation = 6

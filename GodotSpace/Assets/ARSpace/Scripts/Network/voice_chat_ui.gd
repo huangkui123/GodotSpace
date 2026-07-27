@@ -15,6 +15,8 @@ const PARTIAL_CURSOR_COLOR := "#D7DEE8"
 @onready var status_label: Label = _get_voice_ui_node("Header/StatusLabel") as Label
 @onready var transcribe_button: Button = _get_voice_ui_node("TranscribeSection/TranscribeHeader/TranscribeButton") as Button
 @onready var transcript_label: RichTextLabel = _get_voice_ui_node("TranscribeSection/TranscriptBox/TranscriptLabel") as RichTextLabel
+@onready var assistant_interaction_panel: Control = _get_voice_ui_node("TranscribeSection/AssistantInteraction") as Control
+@onready var assistant_interaction_label: Label = _get_voice_ui_node("TranscribeSection/AssistantInteraction/Label") as Label
 @onready var server_voice_levels: VBoxContainer = _get_voice_ui_node("ServerVoiceLevels") as VBoxContainer
 @onready var rows_container: VBoxContainer = _get_voice_ui_node("ServerVoiceLevels/Rows") as VBoxContainer
 
@@ -25,6 +27,8 @@ var volume_rows: Dictionary = {}
 var completed_transcript := ""
 var partial_transcripts: Dictionary = {}
 var assistant_pending_line := ""
+var assistant_interaction_state := "idle"
+var assistant_interaction_text := ""
 
 
 func _ready() -> void:
@@ -45,6 +49,8 @@ func _ready() -> void:
 		voice_chat.connect("voice_level_changed", _on_voice_level_changed)
 	if voice_chat != null and voice_chat.has_signal("voice_transcript_received"):
 		voice_chat.connect("voice_transcript_received", _on_voice_transcript_received)
+	if voice_chat != null and voice_chat.has_signal("assistant_interaction_state_changed"):
+		voice_chat.connect("assistant_interaction_state_changed", _on_assistant_interaction_state_changed)
 	if voice_chat != null and voice_chat.has_signal("transcription_enabled_changed"):
 		voice_chat.connect("transcription_enabled_changed", _on_transcription_enabled_changed)
 	if llm_assistant != null and llm_assistant.has_signal("answer_started"):
@@ -62,6 +68,7 @@ func _ready() -> void:
 	multiplayer.peer_disconnected.connect(_on_peer_changed)
 	_load_transcript_history()
 	_update_ui()
+	_update_assistant_interaction()
 	if is_3d_panel:
 		PanelWindowZoom.set_window_visible(self, false)
 
@@ -112,6 +119,7 @@ func _process(_delta: float) -> void:
 	_update_status()
 	_update_server_volume_panel()
 	_update_transcript_text()
+	_update_assistant_interaction()
 
 
 func _on_voice_button_pressed() -> void:
@@ -194,10 +202,21 @@ func _on_assistant_answer_failed(_question: String, _message: String) -> void:
 	_update_transcript_text()
 
 
+func _on_assistant_interaction_state_changed(data: Dictionary) -> void:
+	var target_peer_id := int(data.get("target_peer_id", 0))
+	if target_peer_id > 0 and target_peer_id != _get_local_peer_id():
+		return
+	assistant_interaction_state = str(data.get("state", "idle"))
+	assistant_interaction_text = str(data.get("text", "")).strip_edges()
+	_update_assistant_interaction()
+
+
 func _load_transcript_history() -> void:
 	completed_transcript = ""
 	partial_transcripts.clear()
 	assistant_pending_line = ""
+	assistant_interaction_state = "idle"
+	assistant_interaction_text = ""
 	if voice_chat == null or not voice_chat.has_method("get_transcript_history"):
 		return
 
@@ -230,6 +249,27 @@ func _update_transcript_text() -> void:
 	if body == "":
 		body = "等待开麦语音..."
 	transcript_label.text = body
+
+
+func _update_assistant_interaction() -> void:
+	if assistant_interaction_panel == null or assistant_interaction_label == null:
+		return
+	var visible_state := assistant_interaction_state not in ["", "idle"]
+	assistant_interaction_panel.visible = visible_state
+	if not visible_state:
+		return
+	var fallback: String = str({
+		"listening": "我在，请说。",
+		"processing": "正在理解你的请求…",
+		"executing": "正在执行操作…",
+		"timeout": "等待命令超时。",
+		"failed": "请求未完成。",
+	}.get(assistant_interaction_state, "助手正在处理。"))
+	assistant_interaction_label.text = assistant_interaction_text if not assistant_interaction_text.is_empty() else fallback
+
+
+func _get_local_peer_id() -> int:
+	return multiplayer.get_unique_id() if multiplayer.has_multiplayer_peer() else SERVER_PEER_ID
 
 
 func _format_transcript_line(speaker: String, message: String, is_partial: bool) -> String:

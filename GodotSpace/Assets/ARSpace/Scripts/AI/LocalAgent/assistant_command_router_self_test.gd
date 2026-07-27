@@ -13,6 +13,30 @@ func _run() -> void:
 		return
 	if not _check(router.call("route_transcript_for_test", {"text": "随便一句话", "is_final": true}).is_empty(), "Non-wake speech was routed."):
 		return
+	if not _check(router.call("_strip_required_wake_word", "我想问一下，助手，打开相册") == "打开相册", "Mid-utterance wake word did not preserve the command suffix."):
+		return
+	var interaction_states: Array[String] = []
+	router.assistant_interaction_state_changed.connect(func(_peer_id: int, state: String, _text: String) -> void:
+		interaction_states.append(state)
+	)
+	router.call("_handle_wake_transcript", {"speaker_peer_id": 1, "utterance_id": 91, "text": "我先说一句，助手", "is_final": false})
+	if not _check((router.get_debug_state() as Dictionary).get("wake_session_count", 0) == 1, "Wake-only partial transcript did not start a listening session."):
+		return
+	router.call("_handle_wake_transcript", {"speaker_peer_id": 1, "utterance_id": 91, "text": "我先说一句，助手，取消", "is_final": true})
+	if not _check((router.get_debug_state() as Dictionary).get("wake_session_count", 0) == 0, "Local wake-session cancellation did not clear the listening state."):
+		return
+	if not _check(interaction_states.has("listening") and interaction_states.has("idle"), "Wake interaction states were not published."):
+		return
+	var assistant := root.get_node_or_null("LLMAssistantService")
+	if not _check(assistant != null and assistant.has_method("record_external_qa"), "LLMAssistant external history API is missing."):
+		return
+	var history_before := (assistant.call("get_qa_history") as Array).size()
+	if not _check(bool(assistant.call("record_external_qa", "history-self-test", "测试问题", "测试答案", true, {"provider": "test"})), "External Qwen history was not recorded."):
+		return
+	if not _check(not bool(assistant.call("record_external_qa", "history-self-test", "测试问题", "重复答案", true, {})), "Duplicate external Qwen history was not suppressed."):
+		return
+	if not _check((assistant.call("get_qa_history") as Array).size() == history_before + 1, "External Qwen history count is incorrect."):
+		return
 	var picture_scene: PackedScene = load("res://Assets/ARSpace/Prefabs/UI/PictureCanvas.tscn")
 	if not _check(picture_scene != null, "Picture album scene did not load."):
 		return

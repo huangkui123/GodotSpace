@@ -28,6 +28,21 @@ func _run() -> void:
 	if transcript_label == null:
 		_fail("VoiceChatUI missing transcript label.")
 		return
+	var interaction_panel := ui.get_node_or_null("PanelContainer/MarginContainer/Layout/TranscribeSection/AssistantInteraction") as Control
+	var interaction_label := ui.get_node_or_null("PanelContainer/MarginContainer/Layout/TranscribeSection/AssistantInteraction/Label") as Label
+	if interaction_panel == null or interaction_label == null:
+		_fail("VoiceChatUI missing assistant interaction panel.")
+		return
+	voice_chat.call("publish_assistant_interaction_state", 1, "listening", "我在，请说。")
+	await process_frame
+	if not interaction_panel.visible or interaction_label.text != "我在，请说。":
+		_fail("VoiceChatUI did not show the targeted assistant wake state.")
+		return
+	voice_chat.call("publish_assistant_interaction_state", 1, "idle")
+	await process_frame
+	if interaction_panel.visible:
+		_fail("VoiceChatUI did not clear the assistant wake state.")
+		return
 
 	assistant.answer_started.emit("当前步骤需要做什么")
 	await process_frame
