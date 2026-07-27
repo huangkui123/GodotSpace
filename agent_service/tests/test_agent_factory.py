@@ -150,6 +150,20 @@ class AgentFactoryTests(unittest.TestCase):
         )
         self.assertEqual(decision.tool, "next_task_step")
 
+    def test_normalizes_qwen_direct_tool_route(self) -> None:
+        decision = _parse_routing_decision(
+            '{"route":"next_task_step","tool":"","arguments":{},"answer":"下一步"}',
+            ["next_task_step", "delegate_deepseek"],
+        )
+        self.assertEqual(decision.route, "tool")
+        self.assertEqual(decision.tool, "next_task_step")
+
+        duplicated = _parse_routing_decision(
+            '{"route":"next_task_step","tool":"next_task_step","arguments":{},"answer":""}',
+            ["next_task_step"],
+        )
+        self.assertEqual(duplicated.tool, "next_task_step")
+
     @unittest.skipUnless(
         importlib.util.find_spec("qwen_agent") is not None,
         "qwen_agent is not installed in this Python environment",

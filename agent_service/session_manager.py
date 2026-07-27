@@ -4,8 +4,15 @@ import asyncio
 import time
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass, field
-from enum import StrEnum
+from enum import Enum
 from typing import Any
+
+try:
+    from enum import StrEnum
+except ImportError:  # Python 3.10 deployment compatibility.
+    class StrEnum(str, Enum):
+        def __str__(self) -> str:
+            return str(self.value)
 
 
 class RequestPhase(StrEnum):

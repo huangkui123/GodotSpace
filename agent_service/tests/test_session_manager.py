@@ -11,6 +11,11 @@ from agent_service.session_manager import (
 
 
 class SessionManagerTests(unittest.IsolatedAsyncioTestCase):
+    async def test_lifecycle_enums_remain_string_values(self) -> None:
+        self.assertIsInstance(CancelOutcome.CANCELLED, str)
+        self.assertEqual(str(CancelOutcome.CANCELLED), "cancelled")
+        self.assertEqual(str(RequestPhase.MODEL_RUNNING), "model_running")
+
     async def test_completed_request_id_remains_deduplicated(self) -> None:
         manager = SessionManager()
 

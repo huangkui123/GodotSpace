@@ -309,6 +309,14 @@ def _parse_routing_decision(raw: str, allowed_tools: list[str]) -> RoutingDecisi
     tool = value.get("tool", "")
     arguments = value.get("arguments", {})
     answer = value.get("answer", "")
+    if isinstance(route, str) and route in allowed_tools:
+        # Qwen3 sometimes emits the selected tool directly as `route` despite the
+        # requested wrapper schema. This is still a fully authorized structured
+        # decision, so normalize it rather than falling back to free-form text.
+        if tool and tool != route:
+            raise RuntimeError("Qwen routing response selected two routes")
+        tool = route
+        route = "delegate_deepseek" if tool == "delegate_deepseek" else "tool"
     if route not in {"tool", "direct_answer", "delegate_deepseek", "clarify"}:
         raise RuntimeError("Qwen routing response has an unsupported route")
     if not isinstance(tool, str) or not isinstance(arguments, dict) or not isinstance(answer, str):
