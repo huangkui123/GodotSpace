@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 from importlib import metadata
 from dataclasses import dataclass
 from typing import Any
@@ -44,6 +45,23 @@ asks to read the current step without changing the guide. Do not mention functio
 names such as next_task_step in the user-facing answer.
 Return concise plain Chinese text without Markdown."""
 
+ROUTING_DECISION_SYSTEM_MESSAGE = """You are the routing decision stage for GodotSpace.
+
+Return exactly one JSON object, without Markdown or surrounding text. Its schema is:
+{"route":"tool|direct_answer|delegate_deepseek|clarify","tool":"","arguments":{},"answer":""}
+
+Choose exactly one route. The user message provides the only allowed tools. For route="tool",
+tool must be an allowed Godot UI tool and arguments must satisfy its JSON schema. For
+route="delegate_deepseek", tool must be "delegate_deepseek" and arguments must be {}. For
+route="direct_answer" or route="clarify", tool must be "" and answer must be concise Chinese.
+
+Never describe a tool call in answer text instead of selecting route="tool". When only the task
+guide is visible, “翻到下一页”, “下一步该做什么”, “下一步应该做什么”, or
+“这一步我做完了，接下来需要做什么” require tool="next_task_step" when it is allowed.
+When only the album is visible, “翻到下一页” requires tool="next_album_page". If both are
+visible and the target is omitted, use route="clarify". Respect negation, cancellation, and
+hypothetical questions; they must not change UI state."""
+
 EXPECTED_QWEN_AGENT_VERSION = "0.0.34"
 SUPPORTED_TOOL_NAMES = frozenset(
     {
@@ -69,6 +87,8 @@ SUPPORTED_TOOL_NAMES = frozenset(
 class AgentRunResult:
     answer: str
     messages: list[dict[str, Any]]
+    route: str = "direct_answer"
+    tool_name: str = ""
 
 
 class AgentFactory:
@@ -98,27 +118,55 @@ class AgentFactory:
     ) -> AgentRunResult:
         from qwen_agent.agents import FnCallAgent
 
-        tools = self._build_tools(
-            session_id,
-            request_id,
-            ["open_album"] if allowed_tools is None else allowed_tools,
-        )
+        authorized_tools = ["open_album"] if allowed_tools is None else allowed_tools
         bot = FnCallAgent(
             llm=self._llm_config(),
-            function_list=tools,
-            name="GodotSpace Local Qwen Agent",
-            system_message=SYSTEM_MESSAGE,
+            function_list=[],
+            name="GodotSpace Local Qwen Router",
+            system_message=ROUTING_DECISION_SYSTEM_MESSAGE,
         )
 
+        decision_messages = _with_allowed_tools(messages, authorized_tools)
         final_messages: list[Any] = []
-        for response in bot.run(messages=messages, lang="zh"):
+        for response in bot.run(messages=decision_messages, lang="zh"):
             final_messages = response
 
         serialized = [_message_to_dict(message) for message in final_messages]
-        answer = _extract_final_answer(serialized)
-        if not answer:
-            raise RuntimeError("Qwen-Agent completed without a final assistant answer")
-        return AgentRunResult(answer=answer, messages=serialized)
+        try:
+            decision = _parse_routing_decision(_extract_final_answer(serialized), authorized_tools)
+        except RuntimeError:
+            retry_messages = [
+                *decision_messages,
+                {
+                    "role": "user",
+                    "content": "只输出符合系统要求的单个 JSON 路由对象，不要解释。",
+                },
+            ]
+            final_messages = []
+            for response in bot.run(messages=retry_messages, lang="zh"):
+                final_messages = response
+            serialized = [_message_to_dict(message) for message in final_messages]
+            decision = _parse_routing_decision(
+                _extract_final_answer(serialized), authorized_tools
+            )
+        if decision.route in {"direct_answer", "clarify"}:
+            return AgentRunResult(
+                answer=decision.answer,
+                messages=serialized,
+                route=decision.route,
+            )
+
+        tool = self._build_tools(session_id, request_id, [decision.tool])[0]
+        tool_result = tool.call(json.dumps(decision.arguments, ensure_ascii=False))
+        return AgentRunResult(
+            answer=_answer_from_tool_result(decision.tool, tool_result),
+            messages=[
+                *serialized,
+                {"role": "function", "name": decision.tool, "content": tool_result},
+            ],
+            route=decision.route,
+            tool_name=decision.tool,
+        )
 
     def _build_tools(
         self,
@@ -223,3 +271,77 @@ def _extract_final_answer(messages: list[dict[str, Any]]) -> str:
             if answer:
                 return answer
     return ""
+
+
+@dataclass(frozen=True, slots=True)
+class RoutingDecision:
+    route: str
+    tool: str
+    arguments: dict[str, Any]
+    answer: str
+
+
+def _with_allowed_tools(
+    messages: list[dict[str, Any]], allowed_tools: list[str]
+) -> list[dict[str, Any]]:
+    if not messages:
+        raise ValueError("A routing request requires one user message")
+    prepared = [dict(message) for message in messages]
+    last = dict(prepared[-1])
+    if last.get("role") != "user" or not isinstance(last.get("content"), str):
+        raise ValueError("The final routing message must be a text user message")
+    last["content"] = (
+        f"{last['content']}\n"
+        f"本次唯一允许的工具：{json.dumps(allowed_tools, ensure_ascii=False)}"
+    )
+    prepared[-1] = last
+    return prepared
+
+
+def _parse_routing_decision(raw: str, allowed_tools: list[str]) -> RoutingDecision:
+    try:
+        value = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("Qwen routing response was not valid JSON") from exc
+    if not isinstance(value, dict):
+        raise RuntimeError("Qwen routing response must be a JSON object")
+    route = value.get("route")
+    tool = value.get("tool", "")
+    arguments = value.get("arguments", {})
+    answer = value.get("answer", "")
+    if route not in {"tool", "direct_answer", "delegate_deepseek", "clarify"}:
+        raise RuntimeError("Qwen routing response has an unsupported route")
+    if not isinstance(tool, str) or not isinstance(arguments, dict) or not isinstance(answer, str):
+        raise RuntimeError("Qwen routing response has invalid field types")
+    tool = tool.strip()
+    answer = answer.strip()
+    if route == "tool":
+        if tool not in allowed_tools or tool == "delegate_deepseek":
+            raise RuntimeError("Qwen selected a tool outside the authorized UI boundary")
+    elif route == "delegate_deepseek":
+        if tool != "delegate_deepseek" or tool not in allowed_tools or arguments:
+            raise RuntimeError("Qwen delegated with an invalid tool decision")
+    else:
+        if tool or not answer:
+            raise RuntimeError("Qwen direct response must contain only a non-empty answer")
+    return RoutingDecision(route=route, tool=tool, arguments=arguments, answer=answer)
+
+
+def _answer_from_tool_result(tool_name: str, raw_result: str) -> str:
+    try:
+        result = json.loads(raw_result)
+    except json.JSONDecodeError:
+        return "工具执行完成。"
+    if not isinstance(result, dict):
+        return "工具执行完成。"
+    if not result.get("ok", False):
+        error = result.get("error", {})
+        if isinstance(error, dict):
+            return f"操作未完成：{str(error.get('message', '工具执行失败。'))}"
+        return "操作未完成：工具执行失败。"
+    data = result.get("data", {})
+    if tool_name == "delegate_deepseek" and isinstance(data, dict):
+        answer = data.get("answer")
+        if isinstance(answer, str) and answer.strip():
+            return answer.strip()
+    return "工具执行完成。"

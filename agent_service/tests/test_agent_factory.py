@@ -5,7 +5,11 @@ import unittest
 from typing import Any
 from unittest.mock import patch
 
-from agent_service.agent_factory import AgentFactory, _extract_final_answer
+from agent_service.agent_factory import (
+    AgentFactory,
+    _extract_final_answer,
+    _parse_routing_decision,
+)
 from agent_service.config import Settings
 from agent_service.connection_manager import ConnectionManager
 
@@ -44,7 +48,7 @@ class AgentFactoryTests(unittest.TestCase):
         importlib.util.find_spec("qwen_agent") is not None,
         "qwen_agent is not installed in this Python environment",
     )
-    def test_run_registers_open_album_with_fncall_agent(self) -> None:
+    def test_run_requests_a_structured_direct_decision(self) -> None:
         captured: dict[str, Any] = {}
 
         class FakeFnCallAgent:
@@ -53,21 +57,20 @@ class AgentFactoryTests(unittest.TestCase):
 
             def run(self, **kwargs: Any) -> Any:
                 captured["run"] = kwargs
-                captured["function_list"][0].call("{}")
-                yield [{"role": "assistant", "content": "已完成。"}]
+                yield [{"role": "assistant", "content": '{"route":"direct_answer","tool":"","arguments":{},"answer":"你好。"}'}]
 
         factory = AgentFactory(Settings(), ConnectionManager())
         with patch("qwen_agent.agents.FnCallAgent", FakeFnCallAgent):
             result = factory.run(
                 "session-1",
                 "request-1",
-                [{"role": "user", "content": "打开相册"}],
+                [{"role": "user", "content": "你好"}],
             )
 
-        self.assertEqual(result.answer, "已完成。")
+        self.assertEqual(result.answer, "你好。")
         self.assertEqual(captured["llm"]["model_type"], "qwenvl_oai")
-        self.assertEqual(len(captured["function_list"]), 1)
-        self.assertEqual(captured["function_list"][0].name, "open_album")
+        self.assertEqual(captured["function_list"], [])
+        self.assertIn("唯一允许的工具", captured["run"]["messages"][0]["content"])
         self.assertEqual(captured["run"]["lang"], "zh")
 
     @unittest.skipUnless(
@@ -80,7 +83,7 @@ class AgentFactoryTests(unittest.TestCase):
                 pass
 
             def run(self, **_kwargs: Any) -> Any:
-                yield [{"role": "assistant", "content": "进入下一步"}]
+                yield [{"role": "assistant", "content": '{"route":"direct_answer","tool":"","arguments":{},"answer":"你好。"}'}]
 
         factory = AgentFactory(Settings(), ConnectionManager())
         with patch("qwen_agent.agents.FnCallAgent", FakeFnCallAgent):
@@ -90,7 +93,21 @@ class AgentFactoryTests(unittest.TestCase):
                 [{"role": "user", "content": "你好"}],
                 ["delegate_deepseek"],
             )
-        self.assertEqual(result.answer, "进入下一步")
+        self.assertEqual(result.answer, "你好。")
+
+    def test_rejects_tool_outside_request_authorization(self) -> None:
+        with self.assertRaises(RuntimeError):
+            _parse_routing_decision(
+                '{"route":"tool","tool":"next_task_step","arguments":{},"answer":""}',
+                ["open_album"],
+            )
+
+    def test_accepts_authorized_task_advance_decision(self) -> None:
+        decision = _parse_routing_decision(
+            '{"route":"tool","tool":"next_task_step","arguments":{},"answer":""}',
+            ["next_task_step"],
+        )
+        self.assertEqual(decision.tool, "next_task_step")
 
     @unittest.skipUnless(
         importlib.util.find_spec("qwen_agent") is not None,

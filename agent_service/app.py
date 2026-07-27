@@ -284,7 +284,12 @@ async def _run_agent_request(
             await connections.send_event(
                 session_id,
                 "assistant_final",
-                {"answer": result.answer, "messages": result.messages},
+                {
+                    "answer": result.answer,
+                    "messages": result.messages,
+                    "route": result.route,
+                    "tool_name": result.tool_name,
+                },
                 request_id=request_id,
             )
     except asyncio.CancelledError:
