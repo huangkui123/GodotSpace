@@ -95,6 +95,47 @@ class AgentFactoryTests(unittest.TestCase):
             )
         self.assertEqual(result.answer, "你好。")
 
+    @unittest.skipUnless(
+        importlib.util.find_spec("qwen_agent") is not None,
+        "qwen_agent is not installed in this Python environment",
+    )
+    def test_tool_decision_is_dispatched_without_model_function_call(self) -> None:
+        captured: dict[str, Any] = {}
+
+        class FakeFnCallAgent:
+            def __init__(self, **_kwargs: Any) -> None:
+                pass
+
+            def run(self, **_kwargs: Any) -> Any:
+                yield [
+                    {
+                        "role": "assistant",
+                        "content": '{"route":"tool","tool":"next_task_step","arguments":{},"answer":""}',
+                    }
+                ]
+
+        class FakeTool:
+            def call(self, arguments: str) -> str:
+                captured["arguments"] = arguments
+                return '{"ok":true,"data":{"snapshot":{"page_index":2}},"error":null}'
+
+        factory = AgentFactory(Settings(), ConnectionManager())
+        with (
+            patch("qwen_agent.agents.FnCallAgent", FakeFnCallAgent),
+            patch.object(factory, "_build_tools", return_value=[FakeTool()]) as build_tools,
+        ):
+            result = factory.run(
+                "session-1",
+                "request-1",
+                [{"role": "user", "content": "这一步我做完了，接下来需要做什么"}],
+                ["next_task_step"],
+            )
+
+        self.assertEqual(result.route, "tool")
+        self.assertEqual(result.tool_name, "next_task_step")
+        self.assertEqual(captured["arguments"], "{}")
+        build_tools.assert_called_once_with("session-1", "request-1", ["next_task_step"])
+
     def test_rejects_tool_outside_request_authorization(self) -> None:
         with self.assertRaises(RuntimeError):
             _parse_routing_decision(
