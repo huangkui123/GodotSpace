@@ -47,6 +47,9 @@ class FakeViewSource extends Node:
 		status_changed.emit(status, status_message)
 		metadata_changed.emit(metadata)
 
+	func requires_network_peer() -> bool:
+		return false
+
 	func stop() -> void:
 		started_peer_id = 0
 		status = STATUS_IDLE
@@ -279,7 +282,7 @@ func _test_window_source_boundary_and_profiles() -> void:
 	surface.name = "WindowSurface"
 	window.add_child(surface)
 	var initial_source := FakeViewSource.new()
-	initial_source.name = "VirtualCameraViewSource"
+	initial_source.name = "PicoCastViewSource"
 	window.add_child(initial_source)
 	_test_root.add_child(window)
 	await process_frame
@@ -292,7 +295,7 @@ func _test_window_source_boundary_and_profiles() -> void:
 	fake_source.name = "FakeExternalVideoSource"
 	window.add_child(fake_source)
 	_expect(bool(window.call("set_view_source", fake_source)), "Window should accept a source that implements the view contract.")
-	_expect(fake_source.started_peer_id == SKY_PEER_ID, "Replacement source should bind to the same authoritative Sky peer.")
+	_expect(fake_source.started_peer_id == 0, "PICO Cast sources should start without a Sky peer dependency.")
 
 	var panel := window.call("get_panel") as Node
 	_expect(panel != null, "Production window should expose its production panel instance.")
@@ -309,7 +312,7 @@ func _test_window_source_boundary_and_profiles() -> void:
 	_expect(fake_source.started_peer_id == 0, "Closing the window should stop the active source.")
 	window.call("open_window")
 	_expect(bool(window.call("is_window_open")), "The local window should support reopening.")
-	_expect(fake_source.started_peer_id == SKY_PEER_ID, "Reopening should restore the current Sky source.")
+	_expect(fake_source.started_peer_id == 0, "Reopening should restore the PICO Cast source.")
 
 	RuntimeProfileScript.select_session_mode(RuntimeProfileScript.Preset.PC_GROUND_SERVER, false)
 	window.call("refresh_profile")
@@ -320,21 +323,6 @@ func _test_window_source_boundary_and_profiles() -> void:
 	RuntimeProfileScript.select_session_mode(RuntimeProfileScript.Preset.VR_GROUND_SERVER, false)
 	window.call("refresh_profile")
 	_expect(window.visible, "Ground VR Server should display the same local-only window.")
-
-	network_handler.call("_remove_peer_role", SKY_PEER_ID)
-	window.call("_refresh_source_binding", true)
-	if panel != null:
-		_expect(int(panel.call("get_view_status")) == STATUS_IDLE, "No Sky should leave the panel in an explicit waiting state.")
-		_expect(panel.call("get_view_texture") == null, "Waiting state must not retain the old source texture.")
-	var replacement_sky_peer_id := SKY_PEER_ID + 1
-	network_handler.call("_assign_requested_role", replacement_sky_peer_id, "sky", "")
-	window.call("_refresh_source_binding", true)
-	_expect(
-		fake_source.started_peer_id == replacement_sky_peer_id,
-		"A replacement Sky should automatically rebind the existing local window."
-	)
-	if panel != null:
-		_expect(int(panel.call("get_view_status")) == STATUS_LIVE, "Replacement Sky should restore the panel to LIVE.")
 
 	window.queue_free()
 	await process_frame
@@ -376,18 +364,11 @@ func _test_production_scene_contract() -> void:
 		return
 	var window_state := window_scene.get_state()
 	for node_path in [
-		"VirtualCameraViewSource",
-		"VirtualCameraViewSource/CaptureViewport",
-		"VirtualCameraViewSource/CaptureViewport/Camera3D",
+		"PicoCastViewSource",
+		"PicoCastControlReceiver",
 		"WindowSurface",
 	]:
 		_expect(_find_scene_node(window_state, node_path) >= 0, "Astronaut-view scene is missing: %s" % node_path)
-	var camera_index := _find_scene_node(window_state, "VirtualCameraViewSource/CaptureViewport/Camera3D")
-	if camera_index >= 0:
-		_expect(
-			int(_get_scene_node_property(window_state, camera_index, &"cull_mask")) & (1 << 19) == 0,
-			"Production capture camera must exclude visual layer 20."
-		)
 	for node_index in range(window_state.get_node_count()):
 		_expect(
 			str(window_state.get_node_type(node_index)) != "MultiplayerSynchronizer",

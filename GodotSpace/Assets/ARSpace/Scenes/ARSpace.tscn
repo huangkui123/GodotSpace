@@ -2095,7 +2095,13 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.976, 0, 0)
 visible = true
 
 [node name="T_product_dot" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a/xiaoshiyangui_d/OldTips/Ani_effect" index="4"]
-transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, -0.68, 0)
+transform = Transform3D(0.214754, 0, 0, 0, 0.214754, 0, 0, 0, 0.214754, 0, -0.68, 0)
+
+[node name="T_product_Left_bg" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a/xiaoshiyangui_d/OldTips/Ani_effect" index="5"]
+transform = Transform3D(0.2, 0, 0, 0, 0, 0, 0, 0, 0.2, 0, 0, 0.12)
+
+[node name="T_product_word1" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a/xiaoshiyangui_d/OldTips/Ani_effect" index="6"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.1)
 
 [node name="xiaoshiyangui_d_new" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a" index="2"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, -10, -10)
@@ -2105,13 +2111,25 @@ visible = false
 visible = true
 
 [node name="T_product_dot" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a/xiaoshiyangui_d_new/NewTips/Ani_effect" index="4"]
-transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, -0.68, 0)
+transform = Transform3D(0.214754, 0, 0, 0, 0.214754, 0, 0, 0, 0.214754, 0, -0.68, 0)
+
+[node name="T_product_Left_bg" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a/xiaoshiyangui_d_new/NewTips/Ani_effect" index="5"]
+transform = Transform3D(0.2, 0, 0, 0, 0, 0, 0, 0, 0.2, 0, 0, 0.12)
+
+[node name="T_product_word1" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a/xiaoshiyangui_d_new/NewTips/Ani_effect" index="6"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.1)
 
 [node name="zhongxinjigouTips" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a" index="3"]
 visible = true
 
 [node name="T_product_dot" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a/zhongxinjigouTips/Ani_effect" index="4"]
-transform = Transform3D(0.2, 0, 0, 0, 0.2, 0, 0, 0, 0.2, 0, -0.68, 0)
+transform = Transform3D(0.214754, 0, 0, 0, 0.214754, 0, 0, 0, 0.214754, 0, -0.68, 0)
+
+[node name="T_product_Left_bg" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a/zhongxinjigouTips/Ani_effect" index="5"]
+transform = Transform3D(0.2, 0, 0, 0, 0, 0, 0, 0, 0.2, 0, 0, 0.12)
+
+[node name="T_product_word1" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou/zhouxinjigou_a/zhongxinjigouTips/Ani_effect" index="6"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.1)
 
 [node name="zhouxinjigou_a (1)" parent="SpaceBox/SpaceBox/dashiyangui/zhouxinjigou" index="2"]
 visible = false
@@ -2404,7 +2422,7 @@ bones/21/rotation = Quaternion(-0.0329693, 0.849871, 0.0272099, 0.525254)
 
 [node name="Root" parent="SpaceBox/SpaceBox/Environment_Life/Malamute/GeneralSkeleton" index="0"]
 transform = Transform3D(-11.9508, -19.1468, 97.4196, 22.0729, -96.1795, -16.1953, 96.7986, 19.5679, 15.7205, -0.497475, 16.6446, -5.7103)
-joint_offset = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00161469, -0.00416527, 0.00408978)
+joint_offset = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00161468, -0.00416527, 0.00408978)
 body_offset = Transform3D(99.9994, -0.348785, -0.0122204, 0.348841, 99.999, 0.271122, 0.0112667, -0.271174, 99.9997, 0.160065, 0.415977, -0.410088)
 
 [node name="AnimationPlayer" parent="SpaceBox/SpaceBox/Environment_Life/Malamute/GeneralSkeleton/Root" index="0"]

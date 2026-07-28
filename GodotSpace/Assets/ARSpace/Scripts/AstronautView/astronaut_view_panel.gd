@@ -59,7 +59,7 @@ func _refresh_status() -> void:
 		return
 	var is_live := _status == AstronautViewSourceScript.Status.LIVE
 	status_overlay.visible = not is_live
-	status_label.text = _status_message if not _status_message.is_empty() else "等待天上端连接"
+	status_label.text = _status_message if not _status_message.is_empty() else "等待 PICO 头显投屏"
 	if _status == AstronautViewSourceScript.Status.ERROR:
 		status_overlay.color = Color(0.28, 0.02, 0.02, 0.92)
 	elif _status == AstronautViewSourceScript.Status.STALLED:
@@ -71,10 +71,9 @@ func _refresh_status() -> void:
 func _refresh_metadata() -> void:
 	if source_label == null or debug_label == null:
 		return
-	source_label.text = str(_metadata.get("source_name", "天上端第一视角"))
+	source_label.text = str(_metadata.get("source_name", "PICO 头显投屏"))
 	if _metadata.is_empty():
-		debug_label.text = "虚拟相机 · 等待来源"
+		debug_label.text = "PICO RTMP · 等待投屏会话"
 		return
 	var resolution: Vector2i = _metadata.get("resolution", Vector2i.ZERO) as Vector2i
-	var fov := float(_metadata.get("fov_degrees", 0.0))
-	debug_label.text = "虚拟相机 · %d×%d · FOV %.1f°" % [resolution.x, resolution.y, fov]
+	debug_label.text = "PICO RTMP · %d×%d · 音频关闭" % [resolution.x, resolution.y]
