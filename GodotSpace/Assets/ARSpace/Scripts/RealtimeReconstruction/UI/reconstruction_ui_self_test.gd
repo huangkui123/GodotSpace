@@ -172,6 +172,18 @@ func _run() -> void:
 		workspace.get_node_or_null("LocalPanelHost/PanelSurface") != null,
 		"workspace must own one local 3D panel surface"
 	)
+	var test_to_camera := Vector3(0.6, 0.0, 0.8).normalized()
+	var panel_facing_basis := WorkspaceController.make_panel_facing_basis(
+		test_to_camera
+	)
+	_expect(
+		panel_facing_basis.z.dot(test_to_camera) > 0.9999,
+		"reconstruction panel local +Z front must face the XR camera initially"
+	)
+	_expect(
+		panel_facing_basis.determinant() > 0.9999,
+		"reconstruction panel facing basis must not mirror its viewport texture"
+	)
 	var panel_input_body := workspace.get_node_or_null(
 		"LocalPanelHost/PanelSurface/StaticBody3D"
 	)

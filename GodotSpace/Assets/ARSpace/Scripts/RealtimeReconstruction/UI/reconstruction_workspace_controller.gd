@@ -158,9 +158,20 @@ func recenter_panel() -> void:
 	if to_camera.length_squared() < 0.0001:
 		to_camera = Vector3.BACK
 	panel_host.global_transform = Transform3D(
-		Basis.looking_at(to_camera.normalized(), Vector3.UP),
+		make_panel_facing_basis(to_camera),
 		panel_position
 	)
+
+
+static func make_panel_facing_basis(to_camera: Vector3) -> Basis:
+	var forward := to_camera.normalized()
+	if forward.length_squared() < 0.0001:
+		forward = Vector3.BACK
+	var right := Vector3.UP.cross(forward).normalized()
+	var up := forward.cross(right).normalized()
+	# XRToolsViewport2DIn3D treats local +Z as the visible front of its quad.
+	# Its grip-drag path uses the same basis construction.
+	return Basis(right, up, forward)
 
 
 func get_ground_spawn_anchor() -> Marker3D:

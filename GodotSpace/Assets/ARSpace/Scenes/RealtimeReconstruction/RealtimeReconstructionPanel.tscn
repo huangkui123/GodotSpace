@@ -34,7 +34,7 @@ corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
 
 [node name="RealtimeReconstructionPanel" type="PanelContainer" groups=["reconstruction_panel_ui"]]
-offset_right = 662.0
+offset_right = 726.0
 offset_bottom = 722.0
 theme_override_styles/panel = SubResource("StylePanel")
 script = ExtResource("1_script")
@@ -113,6 +113,7 @@ text = "PICO Helper"
 layout_mode = 2
 size_flags_horizontal = 3
 text = "等待中"
+autowrap_mode = 1
 
 [node name="LabTitle" type="Label" parent="Margin/Layout/ServiceGrid"]
 layout_mode = 2
@@ -123,6 +124,7 @@ text = "Lab"
 layout_mode = 2
 size_flags_horizontal = 3
 text = "等待中"
+autowrap_mode = 1
 
 [node name="PointChannelTitle" type="Label" parent="Margin/Layout/ServiceGrid"]
 layout_mode = 2
@@ -133,6 +135,7 @@ text = "点云通道"
 layout_mode = 2
 size_flags_horizontal = 3
 text = "等待中"
+autowrap_mode = 1
 
 [node name="StorageTitle" type="Label" parent="Margin/Layout/ServiceGrid"]
 layout_mode = 2
@@ -143,6 +146,7 @@ text = "地图存储"
 layout_mode = 2
 size_flags_horizontal = 3
 text = "已就绪"
+autowrap_mode = 1
 
 [node name="Separator2" type="HSeparator" parent="Margin/Layout"]
 layout_mode = 2
