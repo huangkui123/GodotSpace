@@ -92,6 +92,7 @@ var _setup_complete: bool = false
 var _active_tween: Tween
 var _remote_preview_active: bool = false
 var _remote_preview_target: Transform3D = Transform3D.IDENTITY
+var _local_visibility_suppressed: bool = false
 
 
 func _ready() -> void:
@@ -224,7 +225,8 @@ func get_window_config() -> Dictionary:
 func open_window(parent_controller: Node = null, reposition: bool = true) -> bool:
 	if _window_root == null:
 		return false
-	if _state == WindowState.HIDDEN and reposition:
+	_local_visibility_suppressed = false
+	if reposition:
 		var spawn_transform := SpawnPolicy.calculate_spawn_transform(
 			self,
 			parent_controller,
@@ -241,6 +243,17 @@ func open_window(parent_controller: Node = null, reposition: bool = true) -> boo
 	if scope == WindowScope.SHARED and _state_manager != null and not _applying_authority:
 		_state_manager.call("request_open_window", window_id, get_shared_transform())
 	window_opened.emit(window_id)
+	return true
+
+
+func toggle_local_visibility() -> bool:
+	if _window_root == null:
+		return false
+	if _state == WindowState.HIDDEN:
+		_local_visibility_suppressed = false
+		return open_window(null, false)
+	_local_visibility_suppressed = not _local_visibility_suppressed
+	_set_visibility_target(true)
 	return true
 
 
@@ -698,10 +711,11 @@ func _on_visibility_target_changed() -> void:
 func _set_visibility_target(value: bool) -> void:
 	if _visibility_target == null or not _has_property(_visibility_target, "visible"):
 		return
-	if bool(_visibility_target.get("visible")) == value:
+	var effective_value := value and not _local_visibility_suppressed
+	if bool(_visibility_target.get("visible")) == effective_value:
 		return
 	_changing_visibility = true
-	_visibility_target.set("visible", value)
+	_visibility_target.set("visible", effective_value)
 	_changing_visibility = false
 
 

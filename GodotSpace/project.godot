@@ -27,6 +27,7 @@ llm_assistant/max_conversation_turns=6
 llm_assistant/use_local_fallback_when_unconfigured=true
 llm_assistant/knowledge_base_path="res://Assets/ARSpace/Data/llm_knowledge_base.json"
 llm_assistant/knowledge_directories=PackedStringArray("res://Assets/ARSpace/Data/Knowledge", "res://Assets/StreamingAssets/Knowledge", "user://llm_knowledge")
+virtual_annotation_enabled=false
 
 [audio]
 

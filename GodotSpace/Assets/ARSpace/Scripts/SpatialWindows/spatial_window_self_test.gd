@@ -177,6 +177,20 @@ func _test_state_machine_and_slot_lifecycle() -> void:
 	await process_frame
 	_check(int(window.call("get_state")) == STATE_FLOATING, "visible local window should start FLOATING")
 	_check(
+		bool(window.call("toggle_local_visibility")),
+		"local UI shortcut should hide a visible window"
+	)
+	_check(
+		int(window.call("get_state")) == STATE_FLOATING \
+			and not bool(window.call("is_window_open")),
+		"local UI hiding must preserve the window state without broadcasting a close"
+	)
+	_check(
+		bool(window.call("toggle_local_visibility")) \
+			and bool(window.call("is_window_open")),
+		"local UI shortcut should show the same window again"
+	)
+	_check(
 		not bool(window.call("_set_state", STATE_SNAPPED)),
 		"FLOATING must not jump directly to SNAPPED"
 	)
@@ -396,6 +410,30 @@ func _test_spawn_policy() -> void:
 		_check(
 			child.call("get_window_global_transform").origin.is_equal_approx(anchor.global_position),
 			"explicit parent anchor should be the first spawn choice"
+		)
+		var stale_transform := child.call("get_window_global_transform") as Transform3D
+		stale_transform.origin = Vector3(20.0, 6.0, 20.0)
+		child.call("_set_window_transform", stale_transform)
+		_check(
+			int(child.call("get_state")) == STATE_FLOATING,
+			"moving an open child should keep it in the floating state"
+		)
+		child.call("open_window", parent, true)
+		_check(
+			child.call("get_window_global_transform").origin.is_equal_approx(anchor.global_position),
+			"an explicit reposition must replace a stale transform even when the child is already floating"
+		)
+		anchor.position = Vector3(100.0, 0.0, 0.0)
+		child.call("close_window")
+		child.call("open_window", parent, true)
+		var bounded_offset := (
+			child.call("get_window_global_transform") as Transform3D
+		).origin - (
+			parent.call("get_window_global_transform") as Transform3D
+		).origin
+		_check(
+			bounded_offset.length() < 2.5,
+			"a malformed parent anchor must not spawn a child far from its clicked window"
 		)
 	var focused_parent := _make_window(
 		&"focused_parent",

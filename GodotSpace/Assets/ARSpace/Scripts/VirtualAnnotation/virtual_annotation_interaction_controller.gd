@@ -39,7 +39,6 @@ var _pickup_previous_enabled: bool = true
 var _last_trigger_pressed: bool = false
 var _last_grip_pressed: bool = false
 var _last_secondary_pressed: bool = false
-var _last_primary_pressed: bool = false
 var _last_left_primary_pressed: bool = false
 var _last_left_secondary_pressed: bool = false
 var _current_vr_hit: Dictionary = {}
@@ -413,7 +412,6 @@ func _poll_xr_input() -> void:
 	var trigger_pressed := _tracker_input_pressed(right_tracker, &"trigger")
 	var grip_pressed := _tracker_input_pressed(right_tracker, &"grip")
 	var secondary_pressed := _tracker_input_pressed(right_tracker, &"by_button")
-	var primary_pressed := _tracker_input_pressed(right_tracker, &"ax_button")
 	var left_primary_pressed := _tracker_input_pressed(left_tracker, &"ax_button")
 	var left_secondary_pressed := _tracker_input_pressed(left_tracker, &"by_button")
 
@@ -428,8 +426,6 @@ func _poll_xr_input() -> void:
 			begin_dictation()
 		elif not grip_pressed and _last_grip_pressed:
 			finish_dictation()
-		if primary_pressed and not _last_primary_pressed:
-			confirm_draft_or_update()
 		if left_primary_pressed and not _last_left_primary_pressed:
 			delete_selected_annotation()
 		if left_secondary_pressed and not _last_left_secondary_pressed:
@@ -438,7 +434,6 @@ func _poll_xr_input() -> void:
 	_last_trigger_pressed = trigger_pressed
 	_last_grip_pressed = grip_pressed
 	_last_secondary_pressed = secondary_pressed
-	_last_primary_pressed = primary_pressed
 	_last_left_primary_pressed = left_primary_pressed
 	_last_left_secondary_pressed = left_secondary_pressed
 

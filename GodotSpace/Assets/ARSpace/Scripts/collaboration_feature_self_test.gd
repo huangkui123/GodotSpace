@@ -95,7 +95,6 @@ func _test_scene_contract() -> void:
 		"groups=[\"shared_space_origin\"]",
 		"[node name=\"GroundVRAnchor\"",
 		"[node name=\"SkyXRAnchor\"",
-		"[node name=\"VirtualAnnotations\"",
 		"[node name=\"SpatialDrawingSystem\"",
 		"[node name=\"SpatialWindows\"",
 		"[node name=\"MainMenuState\"",
@@ -127,7 +126,6 @@ func _test_scene_contract() -> void:
 		"SharedSpaceOrigin",
 		"SharedSpaceOrigin/GroundVRAnchor",
 		"SharedSpaceOrigin/SkyXRAnchor",
-		"SharedSpaceOrigin/VirtualAnnotations",
 		"SharedSpaceOrigin/SpatialDrawingSystem",
 		"SharedSpaceOrigin/SpatialWindows",
 		"SharedSpaceOrigin/SpatialWindows/Manager",
@@ -158,6 +156,20 @@ func _test_scene_contract() -> void:
 		"UI/ControlPanelUI/PanelRoot/ContentPanel/ContentMargin/Sections/AnnotationSection",
 	]:
 		_expect(_find_scene_node(arspace_state, node_path) >= 0, "ARSpace scene-state path is missing: %s" % node_path)
+	_expect(
+		_find_scene_node(
+			arspace_state,
+			"SharedSpaceOrigin/VirtualAnnotations"
+		) < 0,
+		"VirtualAnnotations must not load as part of ARSpace by default"
+	)
+	_expect(
+		not bool(ProjectSettings.get_setting(
+			"arspace/virtual_annotation_enabled",
+			true
+		)),
+		"virtual annotation project setting must default to disabled"
+	)
 	for shared_controller_path in [
 		"MainMenuCanvas/SpatialWindowController",
 		"GroupUI/PictureCanvas/SpatialWindowController",
@@ -476,6 +488,14 @@ func _test_scene_contract() -> void:
 		"runtime and editor preview must instantiate the same production drawing panel surface"
 	)
 	_expect(
+		drawing_panel_controller_source.contains(
+			"XRServer.get_tracker(&\"left_hand\")"
+		) and drawing_panel_controller_source.contains(
+			"toggle_panel_visibility()"
+		),
+		"left trigger must toggle the local spatial drawing panel"
+	)
+	_expect(
 		drawing_interaction_source.contains("SpatialDrawingTip.tscn") \
 			and drawing_preview_source.contains("SpatialDrawingTip.tscn"),
 		"runtime and editor preview must instantiate the same production drawing tip"
@@ -513,12 +533,58 @@ func _test_scene_contract() -> void:
 	)
 	var unified_panel_source := _read_text("res://Assets/ARSpace/Scripts/UI/unified_panel_ui.gd")
 	_expect(
-		unified_panel_source.contains("PANEL_ANNOTATION"),
-		"ControlPanelUI must expose the annotation panel"
+		unified_panel_source.contains("VIRTUAL_ANNOTATION_SETTING") \
+			and unified_panel_source.contains("_annotation_feature_enabled()"),
+		"ControlPanelUI must hide annotation controls behind the disabled feature setting"
 	)
 	_expect(
 		unified_panel_source.contains("control is PanelContainer"),
 		"ControlPanelUI panels must block pointer clicks from reaching 3D annotation rays"
+	)
+	var xr_main_source := _read_text("res://XR_Main.gd")
+	_expect(
+		xr_main_source.contains("VIRTUAL_ANNOTATION_SCENE_PATH") \
+			and xr_main_source.contains("profile.uses_desktop_ui()") \
+			and xr_main_source.contains("shared_origin.add_child(annotation_system)"),
+		"XR_Main must load virtual annotation only for an explicit desktop opt-in"
+	)
+	_expect(
+		xr_main_source.contains("XR_ENV_BLEND_MODE_ALPHA_BLEND") \
+			and xr_main_source.contains("XR_ENV_BLEND_MODE_ADDITIVE") \
+			and xr_main_source.contains("_configure_passthrough_background"),
+		"Sky XR passthrough must support alpha and additive compositor modes"
+	)
+	_expect(
+		xr_main_source.contains("request_toggle_main_panel_ui") \
+			and xr_main_source.contains("&\"ax_button\"") \
+			and xr_main_source.contains("toggle_local_visibility") \
+			and xr_main_source.contains(
+				"MainMenuCanvas/SpatialWindowController"
+			),
+		"right A must locally toggle the production main panel window"
+	)
+	_expect(
+		not drawing_interaction_source.contains(
+			"_tracker_input_pressed(right_tracker, &\"ax_button\")"
+		) and not interaction_source.contains(
+			"_tracker_input_pressed(right_tracker, &\"ax_button\")"
+		),
+		"right A must not remain assigned to drawing or annotation actions"
+	)
+	var zoom_source := _read_text(
+		"res://Assets/ARSpace/Scripts/UI/panel_window_zoom.gd"
+	)
+	var main_canvas_source := _read_text(
+		"res://Assets/ARSpace/Prefabs/UI/MainMenuCanvas/canvas.gd"
+	)
+	_expect(
+		zoom_source.contains("parent_panel_root") \
+			and zoom_source.contains(
+				"spatial_controller.call(\"open_window\", parent_controller, true)"
+			) and main_canvas_source.contains(
+				"PanelWindowZoom.set_window_visible(canvas, is_visible, self)"
+			),
+		"child windows must open relative to the explicitly clicked parent"
 	)
 	var spatial_viewport_source := _read_text(
 		"res://Assets/ARSpace/Scripts/SpatialWindows/spatial_viewport_2d_in_3d.gd"

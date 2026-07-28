@@ -4,6 +4,7 @@ const DEFAULT_HEAD_DISTANCE_M: float = 1.5
 const DEFAULT_VERTICAL_OFFSET_M: float = -0.15
 const DEFAULT_WINDOW_GAP_M: float = 0.12
 const OVERLAP_MARGIN_M: float = 0.08
+const MAX_PARENT_ANCHOR_DISTANCE_M: float = 2.5
 const FALLBACK_FORWARD: Vector3 = Vector3(0.0, 0.0, -1.0)
 
 
@@ -22,7 +23,10 @@ static func calculate_spawn_transform(
 
 	var base_transform := current_transform
 	var spawn_anchor := _get_spawn_anchor(parent)
-	if spawn_anchor != null:
+	if spawn_anchor != null and _is_valid_parent_anchor(
+		spawn_anchor,
+		parent
+	):
 		base_transform = _transform_with_scale(spawn_anchor.global_transform, window_scale)
 	elif parent != null and is_instance_valid(parent):
 		var parent_transform := _get_window_transform(parent)
@@ -122,6 +126,20 @@ static func _get_spawn_anchor(controller: Node) -> Node3D:
 			and controller.has_method("get_child_spawn_anchor"):
 		return controller.call("get_child_spawn_anchor") as Node3D
 	return null
+
+
+static func _is_valid_parent_anchor(
+	spawn_anchor: Node3D,
+	parent_controller: Node
+) -> bool:
+	if spawn_anchor == null or parent_controller == null:
+		return false
+	var parent_transform := _get_window_transform(parent_controller)
+	var anchor_distance := parent_transform.origin.distance_to(
+		spawn_anchor.global_position
+	)
+	return is_finite(anchor_distance) \
+		and anchor_distance <= MAX_PARENT_ANCHOR_DISTANCE_M
 
 
 static func _get_window_transform(controller: Node) -> Transform3D:

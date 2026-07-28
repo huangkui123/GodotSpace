@@ -28,6 +28,15 @@ func _initialize() -> void:
 		failures.append("XR_Main must handle an OpenXR runtime loss")
 	if not xr_main_source.contains("XR_RETRY_INTERVAL_MS"):
 		failures.append("XR_Main must retry a delayed OpenXR runtime without a busy loop")
+	if not xr_main_source.contains("XR_ENV_BLEND_MODE_ADDITIVE"):
+		failures.append("Sky XR must support additive passthrough when alpha blend is unavailable")
+	if not xr_main_source.contains("_configure_passthrough_background"):
+		failures.append("Sky XR must configure a compositor-compatible transparent background")
+	if not xr_main_source.contains("request_toggle_main_panel_ui") \
+			or not xr_main_source.contains("toggle_local_visibility"):
+		failures.append("XR_Main must expose the local right-A main panel toggle")
+	if not xr_main_source.contains("VIRTUAL_ANNOTATION_SETTING"):
+		failures.append("XR_Main must gate the disabled virtual annotation system")
 
 	var network_source := FileAccess.get_file_as_string("res://Assets/ARSpace/Scripts/Network/network_handler.gd")
 	if not network_source.contains("return _handle_start_failure("):

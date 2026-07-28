@@ -4,6 +4,7 @@ const RuntimeProfile := preload("res://Assets/ARSpace/Scripts/runtime_profile.gd
 const ManagerScript := preload("res://Assets/ARSpace/Scripts/SpatialDrawing/spatial_drawing_manager.gd")
 const RendererScript := preload("res://Assets/ARSpace/Scripts/SpatialDrawing/spatial_stroke_renderer.gd")
 const InteractionScript := preload("res://Assets/ARSpace/Scripts/SpatialDrawing/spatial_drawing_interaction.gd")
+const PanelControllerScript := preload("res://Assets/ARSpace/Scripts/SpatialDrawing/spatial_drawing_panel_3d.gd")
 const SimplifierScript := preload("res://Assets/ARSpace/Scripts/SpatialDrawing/spatial_stroke_simplifier.gd")
 const PanelScene := preload("res://Assets/ARSpace/Scenes/SpatialDrawing/SpatialDrawingPanel.tscn")
 const TipScene := preload("res://Assets/ARSpace/Scenes/SpatialDrawing/SpatialDrawingTip.tscn")
@@ -50,6 +51,7 @@ func _run() -> void:
 	_test_production_visual_components()
 	_test_pointer_filter_contract()
 	_test_unity_panel_contract()
+	await _test_panel_visibility_toggle()
 	await _test_local_workflow()
 	RuntimeProfile.clear_session_override()
 	if _failures.is_empty():
@@ -86,6 +88,36 @@ func _test_runtime_permissions() -> void:
 		["--testmode", "--voice-role=client"]
 	)
 	_check(sky_test.can_draw(), "Sky test Client should draw")
+
+
+func _test_panel_visibility_toggle() -> void:
+	RuntimeProfile.select_session_mode(RuntimeProfile.Preset.SKY_XR_CLIENT, false)
+	var host := Node3D.new()
+	host.name = "DrawingPanelVisibilityHost"
+	root.add_child(host)
+	var panel_controller := PanelControllerScript.new() as Node3D
+	var panel_surface_stub := Node3D.new()
+	panel_surface_stub.name = "PanelSurfaceStub"
+	panel_controller.add_child(panel_surface_stub)
+	panel_controller.set("_panel_surface", panel_surface_stub)
+	host.add_child(panel_controller)
+	await process_frame
+	_check(
+		bool(panel_controller.call("is_panel_visible")),
+		"drawing panel should preserve its initially visible behavior"
+	)
+	panel_controller.call("set_panel_visible", false)
+	_check(
+		not bool(panel_controller.call("is_panel_visible")),
+		"drawing panel should support hiding from the left-trigger toggle"
+	)
+	panel_controller.call("toggle_panel_visibility")
+	_check(
+		bool(panel_controller.call("is_panel_visible")),
+		"drawing panel should support showing again from the left-trigger toggle"
+	)
+	host.queue_free()
+	await process_frame
 
 
 func _test_sampling_and_simplification() -> void:

@@ -5,6 +5,7 @@ const PANEL_MODEL := "model"
 const PANEL_VOICE := "voice"
 const PANEL_CALIBRATION := "calibration"
 const PANEL_ANNOTATION := "annotation"
+const VIRTUAL_ANNOTATION_SETTING: StringName = &"arspace/virtual_annotation_enabled"
 
 @onready var content_panel: PanelContainer = $PanelRoot/ContentPanel
 @onready var model_button: Button = $PanelRoot/Sidebar/SidebarMargin/SidebarButtons/ModelButton
@@ -67,6 +68,8 @@ func _on_peer_changed(_peer_id: int) -> void:
 func _open_panel(panel_name: String) -> void:
 	if panel_name != PANEL_VOICE and not _server_panels_available():
 		panel_name = PANEL_VOICE
+	if panel_name == PANEL_ANNOTATION and not _annotation_feature_enabled():
+		panel_name = PANEL_MODEL
 
 	if panel_name == active_panel:
 		content_expanded = not content_expanded
@@ -84,7 +87,7 @@ func _toggle_content() -> void:
 
 
 func open_annotation_panel() -> void:
-	if not _server_panels_available():
+	if not _server_panels_available() or not _annotation_feature_enabled():
 		return
 	active_panel = PANEL_ANNOTATION
 	content_expanded = true
@@ -99,9 +102,12 @@ func _refresh_visibility() -> void:
 
 	model_button.visible = server_panels_available
 	calibration_button.visible = server_panels_available
-	annotation_button.visible = server_panels_available
+	annotation_button.visible = server_panels_available \
+		and _annotation_feature_enabled()
 
-	if not server_panels_available and active_panel != PANEL_VOICE:
+	if active_panel == PANEL_ANNOTATION and not _annotation_feature_enabled():
+		active_panel = PANEL_MODEL
+	elif not server_panels_available and active_panel != PANEL_VOICE:
 		active_panel = PANEL_VOICE
 
 	content_panel.visible = content_expanded
@@ -110,12 +116,22 @@ func _refresh_visibility() -> void:
 	model_section.visible = content_expanded and active_panel == PANEL_MODEL and server_panels_available
 	voice_section.visible = content_expanded and active_panel == PANEL_VOICE
 	calibration_section.visible = content_expanded and active_panel == PANEL_CALIBRATION and server_panels_available
-	annotation_section.visible = content_expanded and active_panel == PANEL_ANNOTATION and server_panels_available
+	annotation_section.visible = content_expanded \
+		and active_panel == PANEL_ANNOTATION \
+		and server_panels_available \
+		and _annotation_feature_enabled()
 
 	model_button.button_pressed = content_expanded and active_panel == PANEL_MODEL
 	voice_button.button_pressed = content_expanded and active_panel == PANEL_VOICE
 	calibration_button.button_pressed = content_expanded and active_panel == PANEL_CALIBRATION
 	annotation_button.button_pressed = content_expanded and active_panel == PANEL_ANNOTATION
+
+
+func _annotation_feature_enabled() -> bool:
+	return bool(ProjectSettings.get_setting(
+		VIRTUAL_ANNOTATION_SETTING,
+		false
+	))
 
 
 func _server_panels_available() -> bool:
