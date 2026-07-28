@@ -24,7 +24,7 @@ const DATA_CHANNEL_RETRY_MSEC: int = 1000
 
 @export var auto_bind_data_channel: bool = true
 @export var enable_voxel_filter: bool = true
-@export_range(0.005, 0.1, 0.001) var voxel_size_model_units: float = 0.025
+@export_range(0.005, 0.1, 0.001) var voxel_size_model_units: float = 0.01
 
 var _store: ReconstructionPointCloudMapStore = PointMapStore.new()
 var _data_channel: Node

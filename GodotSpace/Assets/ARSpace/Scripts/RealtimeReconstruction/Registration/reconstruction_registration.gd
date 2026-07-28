@@ -8,15 +8,32 @@ const MANIFEST_SCHEMA_VERSION: int = 1
 const MIN_PAIR_COUNT: int = 6
 const MIN_COLLECTION_SECONDS: float = 5.0
 const MIN_TRANSLATION_SPAN_METERS: float = 0.3
-const MIN_HORIZONTAL_VARIANCE: float = 0.0001
-const MIN_DISTANCE_METERS: float = 0.01
+const MIN_SOURCE_ENERGY: float = 0.000001
 const MIN_AUTOMATIC_SCALE: float = 0.01
 const MAX_AUTOMATIC_SCALE: float = 100.0
+const MAX_POSITION_RMS_CM: float = 8.0
+const MAX_ROTATION_RMS_DEGREES: float = 15.0
+const HEAD_FALLBACK_SCORE_PENALTY: float = 0.35
 const MIN_MANUAL_SCALE: float = 0.1
 const MAX_MANUAL_SCALE: float = 10.0
 const MAX_MANUAL_TRANSLATION_METERS: float = 100.0
 const MAX_FRAME_ID_LENGTH: int = 128
 const MAX_SAMPLE_COUNT: int = 1200
+const EXTRINSIC_MATRIX_SIZE: int = 16
+const EXTRINSIC_ORTHONORMAL_EPSILON: float = 0.001
+const EXTRINSIC_LAST_ROW_EPSILON: float = 0.0001
+const TARGET_MODE_CAMERA_TO_HEAD: StringName = &"pico_camera_to_head"
+const TARGET_MODE_HEAD_TO_CAMERA: StringName = &"pico_head_to_camera"
+const TARGET_MODE_HEAD_FALLBACK: StringName = &"head_fallback"
+
+# LingBot camera bases use an OpenCV-style local camera convention. The
+# per-session camera-basis correction is estimated from paired orientations,
+# while this explicit conversion is retained as the deterministic fallback.
+const OPENCV_TO_GODOT_CAMERA_BASIS := Basis(
+	Vector3.RIGHT,
+	Vector3.DOWN,
+	Vector3.FORWARD
+)
 
 signal collection_started
 signal sample_count_changed(pico_count: int, lingbot_count: int, paired_count: int)
@@ -113,60 +130,92 @@ func add_lingbot_sample(
 
 
 func solve_automatic() -> Dictionary:
-	var pairs := _collect_pairs()
-	if pairs.size() < MIN_PAIR_COUNT:
+	var head_pairs := _collect_pairs(TARGET_MODE_HEAD_FALLBACK)
+	if head_pairs.size() < MIN_PAIR_COUNT:
 		return _failure_result(
 			"Automatic registration needs at least %d paired camera samples" \
 			% MIN_PAIR_COUNT
 		)
-	var duration_seconds := _paired_duration_seconds(pairs)
+	var duration_seconds := _paired_duration_seconds(head_pairs)
 	if duration_seconds < MIN_COLLECTION_SECONDS:
 		return _failure_result(
 			"Automatic registration needs at least %.1f seconds of motion" \
 			% MIN_COLLECTION_SECONDS
 		)
-	var target_span_meters := _maximum_pair_distance(pairs, &"target_position")
+	var target_span_meters := _maximum_pair_distance(head_pairs, &"target_position")
 	if target_span_meters < MIN_TRANSLATION_SPAN_METERS:
 		return _failure_result(
 			"Automatic registration needs at least %.2f m of camera translation" \
 			% MIN_TRANSLATION_SPAN_METERS
 		)
 
-	var scale_result := _estimate_uniform_scale(pairs)
-	if not bool(scale_result.get("ok", false)):
-		return _failure_result(str(scale_result.get("error", "Scale estimation failed")))
-	var estimated_scale := float(scale_result["scale"])
-	if not is_finite(estimated_scale) \
-			or estimated_scale < MIN_AUTOMATIC_SCALE \
-			or estimated_scale > MAX_AUTOMATIC_SCALE:
-		return _failure_result("Estimated automatic scale is outside the safe range")
-
-	var source_centroid := _centroid(pairs, &"source_position")
-	var target_centroid := _centroid(pairs, &"target_position")
-	var yaw_result := _estimate_yaw(pairs, source_centroid, target_centroid)
-	if not bool(yaw_result.get("ok", false)):
-		return _failure_result(str(yaw_result.get("error", "Yaw estimation failed")))
-	var estimated_yaw := float(yaw_result["yaw_radians"])
-	if not is_finite(estimated_yaw):
-		return _failure_result("Estimated yaw is not finite")
-	var estimated_rotation := Basis(Vector3.UP, estimated_yaw)
-	var estimated_translation := target_centroid \
-		- estimated_rotation * source_centroid * estimated_scale
-	if not _is_finite_vector3(estimated_translation):
-		return _failure_result("Estimated translation is not finite")
-
-	var residuals := _calculate_residuals(
-		pairs,
-		estimated_scale,
-		estimated_rotation,
-		estimated_translation
+	var modes: Array[StringName] = [
+		TARGET_MODE_CAMERA_TO_HEAD,
+		TARGET_MODE_HEAD_TO_CAMERA,
+		TARGET_MODE_HEAD_FALLBACK,
+	]
+	var candidates: Array[Dictionary] = []
+	for target_mode in modes:
+		var candidate_pairs := _collect_pairs(target_mode)
+		if candidate_pairs.size() < MIN_PAIR_COUNT:
+			continue
+		var candidate_duration := _paired_duration_seconds(candidate_pairs)
+		if candidate_duration < MIN_COLLECTION_SECONDS:
+			continue
+		var candidate_span := _maximum_pair_distance(
+			candidate_pairs,
+			&"target_position"
+		)
+		if candidate_span < MIN_TRANSLATION_SPAN_METERS:
+			continue
+		var candidate := _solve_similarity_candidate(
+			candidate_pairs,
+			target_mode,
+			candidate_duration,
+			candidate_span
+		)
+		if bool(candidate.get("ok", false)):
+			candidates.append(candidate)
+	if candidates.is_empty():
+		return _failure_result(
+			"Automatic 3D registration could not solve a valid camera trajectory"
+		)
+	candidates.sort_custom(func(first: Dictionary, second: Dictionary) -> bool:
+		return float(first.get("score", INF)) < float(second.get("score", INF))
 	)
-	if not bool(residuals.get("ok", false)):
-		return _failure_result(str(residuals.get("error", "Residual calculation failed")))
+	var passing_candidates: Array[Dictionary] = []
+	for candidate in candidates:
+		var candidate_residuals := candidate.get("residuals", {}) as Dictionary
+		if float(
+			candidate_residuals.get("position_rms_cm", INF)
+		) <= MAX_POSITION_RMS_CM and float(
+			candidate_residuals.get("rotation_rms_deg", INF)
+		) <= MAX_ROTATION_RMS_DEGREES:
+			passing_candidates.append(candidate)
+	var selected := candidates[0]
+	if not passing_candidates.is_empty():
+		selected = passing_candidates[0]
+	var selected_residuals := selected.get("residuals", {}) as Dictionary
+	var position_rms_cm := float(selected_residuals.get("position_rms_cm", INF))
+	var rotation_rms_degrees := float(
+		selected_residuals.get("rotation_rms_deg", INF)
+	)
+	if position_rms_cm > MAX_POSITION_RMS_CM:
+		return _failure_result(
+			"Automatic registration rejected: position RMS %.2f cm exceeds %.2f cm" \
+			% [position_rms_cm, MAX_POSITION_RMS_CM]
+		)
+	if rotation_rms_degrees > MAX_ROTATION_RMS_DEGREES:
+		return _failure_result(
+			"Automatic registration rejected: rotation RMS %.2f degrees exceeds %.2f" \
+			% [rotation_rms_degrees, MAX_ROTATION_RMS_DEGREES]
+		)
 
-	_auto_scale = estimated_scale
-	_auto_rotation = estimated_rotation
-	_auto_translation = estimated_translation
+	var selected_pairs := selected.get("pairs", []) as Array[Dictionary]
+	var target_centroid := _centroid(selected_pairs, &"target_position")
+	_auto_scale = float(selected["scale"])
+	_auto_rotation = selected["rotation"] as Basis
+	_auto_translation = selected["translation"] as Vector3
 	_manual_translation = Vector3.ZERO
 	_manual_yaw_degrees = 0.0
 	_manual_pitch_degrees = 0.0
@@ -174,11 +223,20 @@ func solve_automatic() -> Dictionary:
 	_manual_scale = 1.0
 	_manual_pivot = target_centroid
 	_quality = {
-		"pair_count": pairs.size(),
-		"duration_seconds": duration_seconds,
-		"translation_span_m": target_span_meters,
-		"position_rms_cm": float(residuals["position_rms_cm"]),
-		"rotation_rms_deg": float(residuals["rotation_rms_deg"]),
+		"pair_count": selected_pairs.size(),
+		"duration_seconds": float(selected["duration_seconds"]),
+		"translation_span_m": float(selected["translation_span_m"]),
+		"position_rms_cm": position_rms_cm,
+		"rotation_rms_deg": rotation_rms_degrees,
+		"target_pose_mode": str(selected["target_mode"]),
+		"pico_extrinsics_used": bool(selected["pico_extrinsics_used"]),
+		"camera_basis_correction_quaternion": _quaternion_to_array(
+			Quaternion(
+				selected["camera_basis_correction"] as Basis
+			).normalized()
+		),
+		"position_rms_limit_cm": MAX_POSITION_RMS_CM,
+		"rotation_rms_limit_deg": MAX_ROTATION_RMS_DEGREES,
 	}
 	_solved = true
 	_last_error = ""
@@ -381,7 +439,9 @@ func _apply_combined_transform() -> void:
 	registration_applied.emit(combined_transform)
 
 
-func _collect_pairs() -> Array[Dictionary]:
+func _collect_pairs(
+	target_mode: StringName = TARGET_MODE_HEAD_FALLBACK
+) -> Array[Dictionary]:
 	var frame_ids: Array[String] = []
 	for frame_id_value in _pico_samples_by_frame:
 		var frame_id := str(frame_id_value)
@@ -395,7 +455,15 @@ func _collect_pairs() -> Array[Dictionary]:
 	var pairs: Array[Dictionary] = []
 	for frame_id in frame_ids:
 		var pico_sample := _pico_samples_by_frame[frame_id] as Dictionary
-		var target_transform := pico_sample["godot_world_camera"] as Transform3D
+		var head_transform := pico_sample["godot_world_camera"] as Transform3D
+		var target_transform_variant: Variant = _target_camera_transform(
+			head_transform,
+			pico_sample.get("metadata", {}) as Dictionary,
+			target_mode
+		)
+		if target_transform_variant == null:
+			continue
+		var target_transform := target_transform_variant as Transform3D
 		var source_transform := _lingbot_samples_by_frame[frame_id] as Transform3D
 		pairs.append({
 			"frame_id": frame_id,
@@ -406,6 +474,65 @@ func _collect_pairs() -> Array[Dictionary]:
 			"target_position": target_transform.origin,
 		})
 	return pairs
+
+
+func _target_camera_transform(
+	head_transform: Transform3D,
+	metadata: Dictionary,
+	target_mode: StringName
+) -> Variant:
+	if target_mode == TARGET_MODE_HEAD_FALLBACK:
+		return head_transform
+	var extrinsic_variant: Variant = _extract_selected_pico_extrinsic(metadata)
+	if extrinsic_variant == null:
+		return null
+	var camera_to_head := extrinsic_variant as Transform3D
+	if target_mode == TARGET_MODE_CAMERA_TO_HEAD:
+		return head_transform * camera_to_head
+	if target_mode == TARGET_MODE_HEAD_TO_CAMERA:
+		return head_transform * camera_to_head.affine_inverse()
+	return null
+
+
+func _extract_selected_pico_extrinsic(metadata: Dictionary) -> Variant:
+	var selected_camera_index := int(metadata.get("selected_camera_index", 0))
+	var key := (
+		"camera_extrinsics_secondary"
+		if selected_camera_index == 1
+		else "camera_extrinsics_primary"
+	)
+	var values_variant: Variant = metadata.get(key)
+	if typeof(values_variant) != TYPE_ARRAY:
+		return null
+	var values := values_variant as Array
+	if values.size() != EXTRINSIC_MATRIX_SIZE:
+		return null
+	var numbers: Array[float] = []
+	for value in values:
+		if not _is_number(value) or not is_finite(float(value)):
+			return null
+		numbers.append(float(value))
+	if absf(numbers[12]) > EXTRINSIC_LAST_ROW_EPSILON \
+			or absf(numbers[13]) > EXTRINSIC_LAST_ROW_EPSILON \
+			or absf(numbers[14]) > EXTRINSIC_LAST_ROW_EPSILON \
+			or absf(numbers[15] - 1.0) > EXTRINSIC_LAST_ROW_EPSILON:
+		return null
+	var basis := Basis(
+		Vector3(numbers[0], numbers[4], numbers[8]),
+		Vector3(numbers[1], numbers[5], numbers[9]),
+		Vector3(numbers[2], numbers[6], numbers[10])
+	)
+	if absf(basis.determinant() - 1.0) > EXTRINSIC_ORTHONORMAL_EPSILON:
+		return null
+	var orthonormal_basis := basis.orthonormalized()
+	if basis.x.distance_to(orthonormal_basis.x) > EXTRINSIC_ORTHONORMAL_EPSILON \
+			or basis.y.distance_to(orthonormal_basis.y) > EXTRINSIC_ORTHONORMAL_EPSILON \
+			or basis.z.distance_to(orthonormal_basis.z) > EXTRINSIC_ORTHONORMAL_EPSILON:
+		return null
+	return Transform3D(
+		orthonormal_basis,
+		Vector3(numbers[3], numbers[7], numbers[11])
+	)
 
 
 func _paired_duration_seconds(pairs: Array[Dictionary]) -> float:
@@ -431,61 +558,244 @@ func _maximum_pair_distance(pairs: Array[Dictionary], position_key: StringName) 
 	return maximum_distance
 
 
-func _estimate_uniform_scale(pairs: Array[Dictionary]) -> Dictionary:
-	var ratios: Array[float] = []
-	for first_index in range(pairs.size()):
-		var first_source := pairs[first_index]["source_position"] as Vector3
-		var first_target := pairs[first_index]["target_position"] as Vector3
-		for second_index in range(first_index + 1, pairs.size()):
-			var source_distance := first_source.distance_to(
-				pairs[second_index]["source_position"] as Vector3
-			)
-			var target_distance := first_target.distance_to(
-				pairs[second_index]["target_position"] as Vector3
-			)
-			if source_distance < MIN_DISTANCE_METERS \
-					or target_distance < MIN_DISTANCE_METERS:
-				continue
-			var ratio := target_distance / source_distance
-			if is_finite(ratio):
-				ratios.append(ratio)
-	if ratios.is_empty():
-		return {"ok": false, "error": "Camera trajectory has no usable distance pairs"}
-	ratios.sort()
-	var middle_index := ratios.size() / 2
-	var scale := ratios[middle_index]
-	if ratios.size() % 2 == 0:
-		scale = (ratios[middle_index - 1] + ratios[middle_index]) * 0.5
-	return {"ok": true, "scale": scale}
+func _solve_similarity_candidate(
+	pairs: Array[Dictionary],
+	target_mode: StringName,
+	duration_seconds: float,
+	translation_span_meters: float
+) -> Dictionary:
+	var source_centroid := _centroid(pairs, &"source_position")
+	var target_centroid := _centroid(pairs, &"target_position")
+	var rotation_result := _estimate_full_rotation(
+		pairs,
+		source_centroid,
+		target_centroid
+	)
+	if not bool(rotation_result.get("ok", false)):
+		return rotation_result
+	var rotation := rotation_result["rotation"] as Basis
+	var numerator := 0.0
+	var denominator := 0.0
+	for pair in pairs:
+		var source_delta := (pair["source_position"] as Vector3) - source_centroid
+		var target_delta := (pair["target_position"] as Vector3) - target_centroid
+		numerator += target_delta.dot(rotation * source_delta)
+		denominator += source_delta.length_squared()
+	if denominator < MIN_SOURCE_ENERGY:
+		return {"ok": false, "error": "Camera trajectory has insufficient 3D motion"}
+	var scale := numerator / denominator
+	if not is_finite(scale) \
+			or scale < MIN_AUTOMATIC_SCALE \
+			or scale > MAX_AUTOMATIC_SCALE:
+		return {"ok": false, "error": "Estimated automatic scale is outside the safe range"}
+	var translation := target_centroid - rotation * source_centroid * scale
+	if not _is_finite_vector3(translation):
+		return {"ok": false, "error": "Estimated automatic translation is not finite"}
+	var camera_basis_correction := _estimate_camera_basis_correction(pairs, rotation)
+	var residuals := _calculate_residuals(
+		pairs,
+		scale,
+		rotation,
+		translation,
+		camera_basis_correction
+	)
+	if not bool(residuals.get("ok", false)):
+		return residuals
+	var score := float(residuals["position_rms_cm"]) / MAX_POSITION_RMS_CM \
+		+ float(residuals["rotation_rms_deg"]) / MAX_ROTATION_RMS_DEGREES
+	if target_mode == TARGET_MODE_HEAD_FALLBACK \
+			and _pairs_have_pico_extrinsics(pairs):
+		score += HEAD_FALLBACK_SCORE_PENALTY
+	return {
+		"ok": true,
+		"pairs": pairs,
+		"scale": scale,
+		"rotation": rotation,
+		"translation": translation,
+		"camera_basis_correction": camera_basis_correction,
+		"residuals": residuals,
+		"score": score,
+		"target_mode": target_mode,
+		"pico_extrinsics_used": target_mode != TARGET_MODE_HEAD_FALLBACK,
+		"duration_seconds": duration_seconds,
+		"translation_span_m": translation_span_meters,
+	}
 
 
-func _estimate_yaw(
+func _estimate_full_rotation(
 	pairs: Array[Dictionary],
 	source_centroid: Vector3,
 	target_centroid: Vector3
 ) -> Dictionary:
-	var dot_sum := 0.0
-	var cross_sum := 0.0
-	var source_horizontal_energy := 0.0
-	var target_horizontal_energy := 0.0
+	var sxx := 0.0
+	var sxy := 0.0
+	var sxz := 0.0
+	var syx := 0.0
+	var syy := 0.0
+	var syz := 0.0
+	var szx := 0.0
+	var szy := 0.0
+	var szz := 0.0
+	var source_energy := 0.0
 	for pair in pairs:
-		var source_delta := (pair["source_position"] as Vector3) - source_centroid
-		var target_delta := (pair["target_position"] as Vector3) - target_centroid
-		dot_sum += target_delta.x * source_delta.x \
-			+ target_delta.z * source_delta.z
-		cross_sum += target_delta.x * source_delta.z \
-			- target_delta.z * source_delta.x
-		source_horizontal_energy += source_delta.x * source_delta.x \
-			+ source_delta.z * source_delta.z
-		target_horizontal_energy += target_delta.x * target_delta.x \
-			+ target_delta.z * target_delta.z
-	if source_horizontal_energy < MIN_HORIZONTAL_VARIANCE \
-			or target_horizontal_energy < MIN_HORIZONTAL_VARIANCE:
-		return {
-			"ok": false,
-			"error": "Camera trajectory needs horizontal translation to estimate yaw",
-		}
-	return {"ok": true, "yaw_radians": atan2(cross_sum, dot_sum)}
+		var source := (pair["source_position"] as Vector3) - source_centroid
+		var target := (pair["target_position"] as Vector3) - target_centroid
+		source_energy += source.length_squared()
+		sxx += source.x * target.x
+		sxy += source.x * target.y
+		sxz += source.x * target.z
+		syx += source.y * target.x
+		syy += source.y * target.y
+		syz += source.y * target.z
+		szx += source.z * target.x
+		szy += source.z * target.y
+		szz += source.z * target.z
+	if source_energy < MIN_SOURCE_ENERGY:
+		return {"ok": false, "error": "Camera trajectory has insufficient 3D variance"}
+	var matrix: Array[Array] = [
+		[sxx + syy + szz, syz - szy, szx - sxz, sxy - syx],
+		[syz - szy, sxx - syy - szz, sxy + syx, szx + sxz],
+		[szx - sxz, sxy + syx, -sxx + syy - szz, syz + szy],
+		[sxy - syx, szx + sxz, syz + szy, -sxx - syy + szz],
+	]
+	var eigenvector := _largest_eigenvector_symmetric_4x4(matrix)
+	if eigenvector.size() != 4:
+		return {"ok": false, "error": "Could not solve the 3D rotation eigenproblem"}
+	var quaternion := Quaternion(
+		eigenvector[1],
+		eigenvector[2],
+		eigenvector[3],
+		eigenvector[0]
+	).normalized()
+	if not is_finite(quaternion.length_squared()) \
+			or quaternion.length_squared() < 0.999:
+		return {"ok": false, "error": "Estimated automatic rotation is invalid"}
+	return {"ok": true, "rotation": Basis(quaternion).orthonormalized()}
+
+
+func _largest_eigenvector_symmetric_4x4(
+	source_matrix: Array[Array]
+) -> Array[float]:
+	var matrix: Array[Array] = []
+	var vectors: Array[Array] = []
+	for row in range(4):
+		matrix.append((source_matrix[row] as Array).duplicate())
+		var vector_row: Array[float] = []
+		for column in range(4):
+			vector_row.append(1.0 if row == column else 0.0)
+		vectors.append(vector_row)
+	for _iteration in range(64):
+		var first := 0
+		var second := 1
+		var largest := 0.0
+		for row in range(4):
+			for column in range(row + 1, 4):
+				var magnitude := absf(float(matrix[row][column]))
+				if magnitude > largest:
+					largest = magnitude
+					first = row
+					second = column
+		if largest < 0.000000000001:
+			break
+		var app := float(matrix[first][first])
+		var aqq := float(matrix[second][second])
+		var apq := float(matrix[first][second])
+		var angle := 0.5 * atan2(2.0 * apq, aqq - app)
+		var cosine := cos(angle)
+		var sine := sin(angle)
+		for index in range(4):
+			if index == first or index == second:
+				continue
+			var aip := float(matrix[index][first])
+			var aiq := float(matrix[index][second])
+			var next_aip := cosine * aip - sine * aiq
+			var next_aiq := sine * aip + cosine * aiq
+			matrix[index][first] = next_aip
+			matrix[first][index] = next_aip
+			matrix[index][second] = next_aiq
+			matrix[second][index] = next_aiq
+		matrix[first][first] = cosine * cosine * app \
+			- 2.0 * sine * cosine * apq \
+			+ sine * sine * aqq
+		matrix[second][second] = sine * sine * app \
+			+ 2.0 * sine * cosine * apq \
+			+ cosine * cosine * aqq
+		matrix[first][second] = 0.0
+		matrix[second][first] = 0.0
+		for row in range(4):
+			var vip := float(vectors[row][first])
+			var viq := float(vectors[row][second])
+			vectors[row][first] = cosine * vip - sine * viq
+			vectors[row][second] = sine * vip + cosine * viq
+	var largest_index := 0
+	for index in range(1, 4):
+		if float(matrix[index][index]) > float(matrix[largest_index][largest_index]):
+			largest_index = index
+	var result: Array[float] = []
+	var length_squared := 0.0
+	for row in range(4):
+		var value := float(vectors[row][largest_index])
+		result.append(value)
+		length_squared += value * value
+	if length_squared < 0.000000000001:
+		return []
+	var inverse_length := 1.0 / sqrt(length_squared)
+	for index in range(result.size()):
+		result[index] *= inverse_length
+	return result
+
+
+func _estimate_camera_basis_correction(
+	pairs: Array[Dictionary],
+	world_rotation: Basis
+) -> Basis:
+	var sum := Vector4.ZERO
+	var reference := Quaternion()
+	var has_reference := false
+	for pair in pairs:
+		var source_transform := pair["source_transform"] as Transform3D
+		var target_transform := pair["target_transform"] as Transform3D
+		var source_world_basis := (
+			world_rotation * source_transform.basis.orthonormalized()
+		).orthonormalized()
+		var correction := (
+			source_world_basis.inverse()
+			* target_transform.basis.orthonormalized()
+		).orthonormalized()
+		var quaternion := Quaternion(correction).normalized()
+		if not has_reference:
+			reference = quaternion
+			has_reference = true
+		elif reference.dot(quaternion) < 0.0:
+			quaternion = Quaternion(
+				-quaternion.x,
+				-quaternion.y,
+				-quaternion.z,
+				-quaternion.w
+			)
+		sum += Vector4(quaternion.x, quaternion.y, quaternion.z, quaternion.w)
+	if sum.length_squared() < 0.000000000001:
+		return OPENCV_TO_GODOT_CAMERA_BASIS
+	var normalized := sum.normalized()
+	return Basis(Quaternion(
+		normalized.x,
+		normalized.y,
+		normalized.z,
+		normalized.w
+	)).orthonormalized()
+
+
+func _pairs_have_pico_extrinsics(pairs: Array[Dictionary]) -> bool:
+	for pair in pairs:
+		var frame_id := str(pair.get("frame_id", ""))
+		if not _pico_samples_by_frame.has(frame_id):
+			continue
+		var pico_sample := _pico_samples_by_frame[frame_id] as Dictionary
+		if _extract_selected_pico_extrinsic(
+			pico_sample.get("metadata", {}) as Dictionary
+		) != null:
+			return true
+	return false
 
 
 func _centroid(pairs: Array[Dictionary], position_key: StringName) -> Vector3:
@@ -499,7 +809,8 @@ func _calculate_residuals(
 	pairs: Array[Dictionary],
 	scale: float,
 	rotation: Basis,
-	translation: Vector3
+	translation: Vector3,
+	camera_basis_correction: Basis
 ) -> Dictionary:
 	var position_squared_sum := 0.0
 	var rotation_squared_sum := 0.0
@@ -510,6 +821,7 @@ func _calculate_residuals(
 		var position_error := predicted_position.distance_to(target_transform.origin)
 		var predicted_basis := (
 			rotation * source_transform.basis.orthonormalized()
+			* camera_basis_correction
 		).orthonormalized()
 		var target_basis := target_transform.basis.orthonormalized()
 		var rotation_error := Quaternion(predicted_basis).angle_to(Quaternion(target_basis))

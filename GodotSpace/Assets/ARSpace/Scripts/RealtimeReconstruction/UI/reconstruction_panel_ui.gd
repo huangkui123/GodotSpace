@@ -48,8 +48,12 @@ const ERROR_COLOR := Color(1.0, 0.38, 0.38, 1.0)
 @onready var prepare_page: Control = $Margin/Layout/Pages/SkyPages/PreparePage
 @onready var prepare_description: Label = \
 	$Margin/Layout/Pages/SkyPages/PreparePage/Content/Description
-@onready var map_selector: OptionButton = \
-	$Margin/Layout/Pages/SkyPages/PreparePage/Content/MapRow/MapSelector
+@onready var map_selector: Button = \
+	$Margin/Layout/Pages/SkyPages/PreparePage/Content/MapRow/MapChooser/MapSelector
+@onready var map_list_panel: PanelContainer = \
+	$Margin/Layout/Pages/SkyPages/PreparePage/Content/MapRow/MapChooser/MapListPanel
+@onready var map_items: VBoxContainer = \
+	$Margin/Layout/Pages/SkyPages/PreparePage/Content/MapRow/MapChooser/MapListPanel/MapListMargin/MapScroll/MapItems
 @onready var collecting_page: Control = $Margin/Layout/Pages/SkyPages/CollectingPage
 @onready var solving_page: Control = $Margin/Layout/Pages/SkyPages/SolvingPage
 @onready var preview_page: Control = $Margin/Layout/Pages/SkyPages/PreviewPage
@@ -84,6 +88,8 @@ const ERROR_COLOR := Color(1.0, 0.38, 0.38, 1.0)
 
 var _view_state: int = ViewState.PREPARE
 var _local_role: String = ROLE_SKY
+var _map_library_signature: String = ""
+var _selected_map_id: String = ""
 
 
 func _ready() -> void:
@@ -95,7 +101,7 @@ func _ready() -> void:
 	$Margin/Layout/Pages/SkyPages/PreparePage/Content/Actions/ImportButton.pressed.connect(
 		import_requested.emit
 	)
-	map_selector.item_selected.connect(_on_map_item_selected)
+	map_selector.pressed.connect(_toggle_map_list)
 	$Margin/Layout/Pages/SkyPages/CollectingPage/Content/CancelButton.pressed.connect(
 		cancel_requested.emit
 	)
@@ -136,8 +142,12 @@ func _ready() -> void:
 
 
 func configure_role(role: String) -> void:
+	var role_changed := role != _local_role
 	_local_role = role
 	role_label.text = "天上端" if role == ROLE_SKY else "地面端"
+	if not role_changed:
+		return
+	map_list_panel.visible = false
 	sky_pages.visible = role == ROLE_SKY
 	ground_page.visible = role == ROLE_GROUND_VR
 	_refresh_pages()
@@ -146,6 +156,7 @@ func configure_role(role: String) -> void:
 func set_view_state(view_state: int, message: String = "") -> void:
 	if view_state < ViewState.PREPARE or view_state > ViewState.ERROR:
 		return
+	var state_changed := view_state != _view_state
 	_view_state = view_state
 	if view_state == ViewState.PREPARE:
 		prepare_description.text = message if not message.is_empty() else (
@@ -162,7 +173,9 @@ func set_view_state(view_state: int, message: String = "") -> void:
 		error_message.text = message
 	elif view_state == ViewState.SOLVING and not message.is_empty():
 		solving_message.text = message
-	_refresh_pages()
+	if state_changed:
+		map_list_panel.visible = false
+		_refresh_pages()
 
 
 func set_service_status(service_name: StringName, is_ready: bool, detail: String = "") -> void:
@@ -257,36 +270,68 @@ func set_point_cloud_visible(is_visible: bool) -> void:
 
 
 func set_map_library(entries: Array[Dictionary]) -> void:
-	var previous_selection := ""
-	if map_selector.item_count > 0 \
-			and map_selector.selected >= 0 \
-			and not map_selector.disabled:
-		previous_selection = str(
-			map_selector.get_item_metadata(map_selector.selected)
-		)
-	map_selector.clear()
-	var previous_index := -1
+	var visible_entries: Array[Dictionary] = []
 	for entry in entries:
 		var file_name := str(entry.get("file_name", "")).strip_edges()
 		if file_name.is_empty():
 			continue
 		var manifest := entry.get("manifest", {}) as Dictionary
-		var display_name := str(manifest.get("display_name", file_name))
-		var point_count := int(manifest.get("point_count", 0))
-		map_selector.add_item("%s · %s 点" % [display_name, _format_count(point_count)])
-		map_selector.set_item_metadata(map_selector.item_count - 1, file_name)
-		if file_name == previous_selection:
-			previous_index = map_selector.item_count - 1
-	if map_selector.item_count == 0:
-		map_selector.add_item("服务器地图库为空")
+		visible_entries.append({
+			"file_name": file_name,
+			"display_name": str(manifest.get("display_name", file_name)),
+			"point_count": int(manifest.get("point_count", 0)),
+		})
+	var signature := JSON.stringify(visible_entries)
+	if signature == _map_library_signature:
+		return
+	_map_library_signature = signature
+	var was_open := map_list_panel.visible
+	for child in map_items.get_children():
+		map_items.remove_child(child)
+		child.queue_free()
+	var selected_entry: Dictionary = {}
+	for entry in visible_entries:
+		var file_name := str(entry.get("file_name", ""))
+		var display_name := str(entry.get("display_name", file_name))
+		var point_count := int(entry.get("point_count", 0))
+		var item_text := "%s · %s 点" % [display_name, _format_count(point_count)]
+		var item_button := Button.new()
+		item_button.text = item_text
+		item_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		item_button.custom_minimum_size = Vector2(0.0, 42.0)
+		item_button.add_theme_font_size_override("font_size", 16)
+		item_button.tooltip_text = file_name
+		item_button.pressed.connect(
+			_select_map.bind(file_name, item_text, true)
+		)
+		map_items.add_child(item_button)
+		if file_name == _selected_map_id:
+			selected_entry = entry
+	if visible_entries.is_empty():
+		_selected_map_id = ""
+		map_selector.text = "服务器地图库为空"
 		map_selector.disabled = true
+		map_list_panel.visible = false
 		map_selected.emit("")
 		return
 	map_selector.disabled = false
-	map_selector.select(
-		previous_index if previous_index >= 0 else map_selector.item_count - 1
+	if selected_entry.is_empty():
+		selected_entry = visible_entries.back()
+	var selected_file_name := str(selected_entry.get("file_name", ""))
+	var selected_display_name := str(
+		selected_entry.get("display_name", selected_file_name)
 	)
-	_on_map_item_selected(map_selector.selected)
+	var selected_point_count := int(selected_entry.get("point_count", 0))
+	_select_map(
+		selected_file_name,
+		"%s · %s 点" % [
+			selected_display_name,
+			_format_count(selected_point_count),
+		],
+		false,
+	)
+	map_list_panel.visible = was_open
+	map_selected.emit(_selected_map_id)
 
 
 func show_error(message: String) -> void:
@@ -295,11 +340,19 @@ func show_error(message: String) -> void:
 	set_view_state(ViewState.ERROR)
 
 
-func _on_map_item_selected(index: int) -> void:
-	if index < 0 or index >= map_selector.item_count or map_selector.disabled:
-		map_selected.emit("")
+func _toggle_map_list() -> void:
+	if map_selector.disabled:
+		map_list_panel.visible = false
 		return
-	map_selected.emit(str(map_selector.get_item_metadata(index)))
+	map_list_panel.visible = not map_list_panel.visible
+
+
+func _select_map(map_id: String, display_text: String, emit_selection: bool) -> void:
+	_selected_map_id = map_id
+	map_selector.text = "%s  ▼" % display_text
+	map_list_panel.visible = false
+	if emit_selection:
+		map_selected.emit(_selected_map_id)
 
 
 func _refresh_pages() -> void:

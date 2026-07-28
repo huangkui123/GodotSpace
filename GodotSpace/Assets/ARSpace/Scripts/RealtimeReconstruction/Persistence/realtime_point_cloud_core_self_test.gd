@@ -227,6 +227,24 @@ func _test_renderer(store: ReconstructionPointCloudMapStore) -> void:
 	var renderer := Renderer.new()
 	renderer.max_points_per_batch = 2
 	root.add_child(renderer)
+	var point_material := Renderer.make_point_material(4.0)
+	_expect(
+		point_material is ShaderMaterial and point_material.shader != null,
+		"renderer must use an explicit XR-safe point shader"
+	)
+	if point_material is ShaderMaterial and point_material.shader != null:
+		_expect(
+			point_material.shader.code.contains("ALBEDO = COLOR.rgb") \
+				and point_material.shader.code.contains("ALPHA = 1.0"),
+			"point shader must preserve RGB vertex colors with opaque alpha"
+		)
+		_expect(
+			is_equal_approx(
+				float(point_material.get_shader_parameter("point_size")),
+				4.0
+			),
+			"point shader must receive the requested point size"
+		)
 	_expect(renderer.rebuild_from_store(store), "renderer must rebuild from map store")
 	_expect(
 		renderer.get_rendered_point_count() == 4,

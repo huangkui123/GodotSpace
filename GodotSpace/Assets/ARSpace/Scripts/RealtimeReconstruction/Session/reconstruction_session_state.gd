@@ -389,6 +389,10 @@ func _request_action(action: StringName, payload: Dictionary) -> bool:
 		return _reject(action, "只有天上端可以请求该重建操作。")
 	var request_sequence := _next_client_request_sequence
 	_next_client_request_sequence += 1
+	print(
+		"Realtime reconstruction request submitted: action=%s sequence=%d revision=%d peer=%d"
+		% [action, request_sequence, _state_revision, _get_safe_local_peer_id()]
+	)
 	rpc_id(
 		SERVER_PEER_ID,
 		"_server_request_reconstruction_action",
@@ -432,6 +436,10 @@ func _server_request_reconstruction_action(
 	if not basic_error.is_empty():
 		_reject_remote(sender_id, action, basic_error)
 		return
+	print(
+		"Realtime reconstruction request received: action=%s sequence=%d revision=%d peer=%d"
+		% [action, request_sequence, expected_state_revision, sender_id]
+	)
 	_server_request_sequence_by_peer[sender_id] = request_sequence
 	var role := _get_peer_role(sender_id)
 	if not apply_authoritative_action(
@@ -698,6 +706,15 @@ func _commit_state(next_state: int, previous_snapshot: Dictionary = {}) -> void:
 		previous_state = int(previous_snapshot["state"])
 	_state = next_state
 	_state_revision += 1
+	print(
+		"Realtime reconstruction state changed: %s -> %s revision=%d session=%s"
+		% [
+			state_name(previous_state),
+			state_name(_state),
+			_state_revision,
+			_session_id,
+		]
+	)
 	var current_snapshot := get_snapshot()
 	_emit_snapshot_differences(previous_snapshot, current_snapshot, previous_state)
 	if multiplayer.has_multiplayer_peer() and multiplayer.is_server():

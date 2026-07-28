@@ -5,6 +5,7 @@ const Registration := preload(
 )
 
 const EPSILON: float = 0.0005
+const ROTATION_EPSILON_RADIANS: float = 0.001
 
 var _failures: PackedStringArray = []
 
@@ -24,16 +25,22 @@ func _run() -> void:
 
 	var expected_scale := 2.25
 	var expected_yaw := deg_to_rad(32.0)
-	var expected_rotation := Basis(Vector3.UP, expected_yaw)
+	var expected_pitch := deg_to_rad(-18.0)
+	var expected_roll := deg_to_rad(11.0)
+	var expected_rotation := (
+		Basis(Vector3.UP, expected_yaw)
+		* Basis(Vector3.RIGHT, expected_pitch)
+		* Basis(Vector3.FORWARD, expected_roll)
+	).orthonormalized()
 	var expected_translation := Vector3(1.2, 0.35, -2.4)
 	var source_positions: Array[Vector3] = [
 		Vector3(0.0, 0.0, 0.0),
-		Vector3(0.10, 0.02, 0.02),
-		Vector3(0.22, 0.04, 0.08),
-		Vector3(0.34, 0.06, 0.16),
-		Vector3(0.43, 0.08, 0.27),
-		Vector3(0.48, 0.10, 0.39),
-		Vector3(0.52, 0.12, 0.53),
+		Vector3(0.10, 0.04, 0.02),
+		Vector3(0.22, -0.03, 0.08),
+		Vector3(0.34, 0.11, 0.16),
+		Vector3(0.43, -0.06, 0.27),
+		Vector3(0.48, 0.15, 0.39),
+		Vector3(0.52, 0.01, 0.53),
 	]
 
 	registration.begin_collection()
@@ -74,17 +81,36 @@ func _run() -> void:
 		) < EPSILON,
 		"automatic solve must recover translation"
 	)
+	var recovered_rotation_values := automatic.get(
+		"rotation_quaternion",
+		[]
+	) as Array
+	var recovered_rotation := Basis(Quaternion(
+		float(recovered_rotation_values[0]),
+		float(recovered_rotation_values[1]),
+		float(recovered_rotation_values[2]),
+		float(recovered_rotation_values[3])
+	).normalized())
+	_expect(
+		Quaternion(recovered_rotation).angle_to(Quaternion(expected_rotation)) \
+			< ROTATION_EPSILON_RADIANS,
+		"automatic solve must recover pitch, yaw, and roll"
+	)
 	_expect(
 		float(quality.get("position_rms_cm", 999.0)) < 0.01,
 		"synthetic position RMS must be near zero"
 	)
 	_expect(
-		float(quality.get("rotation_rms_deg", 999.0)) < 0.01,
+		float(quality.get("rotation_rms_deg", 999.0)) < 0.05,
 		"synthetic rotation RMS must be near zero"
 	)
 	_expect(
 		int(quality.get("pair_count", 0)) == source_positions.size(),
 		"solve must use exact frame-id pairs"
+	)
+	_expect(
+		str(quality.get("target_pose_mode", "")) == "head_fallback",
+		"solve without PICO extrinsics must record the head fallback"
 	)
 	_expect(
 		_transform_is_equal(root_node.transform, registration.get_combined_transform()),
@@ -208,6 +234,62 @@ func _run() -> void:
 		"trajectory shorter than 0.3 m must be rejected"
 	)
 
+	var extrinsic_registration := Registration.new()
+	root.add_child(extrinsic_registration)
+	_add_extrinsic_samples(
+		extrinsic_registration,
+		expected_scale,
+		expected_rotation,
+		expected_translation
+	)
+	var extrinsic_result: Dictionary = extrinsic_registration.solve_automatic()
+	_expect(
+		bool(extrinsic_result.get("ok", false)),
+		"valid PICO camera-to-head extrinsics must produce a solution"
+	)
+	var extrinsic_quality := extrinsic_registration.get_quality()
+	_expect(
+		str(extrinsic_quality.get("target_pose_mode", "")) == "pico_camera_to_head",
+		"solver must select the physically correct PICO extrinsic direction"
+	)
+	_expect(
+		bool(extrinsic_quality.get("pico_extrinsics_used", false)),
+		"quality metadata must report PICO extrinsic use"
+	)
+
+	var bad_quality_registration := Registration.new()
+	root.add_child(bad_quality_registration)
+	bad_quality_registration.begin_collection()
+	for index in range(source_positions.size()):
+		var ratio := float(index) / float(source_positions.size() - 1)
+		var source_transform := Transform3D(Basis.IDENTITY, source_positions[index])
+		var bad_offset := Vector3(0.35, -0.25, 0.2) \
+			if index % 2 == 0 else Vector3(-0.35, 0.25, -0.2)
+		var target_transform := Transform3D(
+			Basis(Vector3.UP, ratio * 1.5),
+			expected_translation \
+				+ expected_rotation * source_positions[index] * expected_scale \
+				+ bad_offset
+		)
+		var bad_frame_id := "bad_%d" % index
+		bad_quality_registration.add_pico_sample(
+			bad_frame_id,
+			{"timestamp_seconds": ratio * 6.0},
+			target_transform
+		)
+		bad_quality_registration.add_lingbot_sample(bad_frame_id, source_transform)
+	var bad_quality_result: Dictionary = bad_quality_registration.solve_automatic()
+	_expect(
+		not bool(bad_quality_result.get("ok", true)),
+		"registration with excessive residuals must be rejected"
+	)
+	_expect(
+		not bool(
+			bad_quality_registration.get_registration_manifest().get("solved", true)
+		),
+		"rejected registration must not set the solved flag"
+	)
+
 	registration.reset_registration()
 	_expect(
 		not bool(registration.get_registration_manifest().get("solved", true)),
@@ -224,6 +306,8 @@ func _run() -> void:
 
 	short_registration.queue_free()
 	static_registration.queue_free()
+	extrinsic_registration.queue_free()
+	bad_quality_registration.queue_free()
 	restored_registration.queue_free()
 	second_root.queue_free()
 	registration.queue_free()
@@ -258,6 +342,76 @@ func _add_simple_samples(
 			target_transform
 		)
 		registration.add_lingbot_sample(frame_id, source_transform)
+
+
+func _add_extrinsic_samples(
+	registration: Node,
+	expected_scale: float,
+	expected_rotation: Basis,
+	expected_translation: Vector3
+) -> void:
+	var camera_to_head := Transform3D(
+		Basis(Vector3.UP, deg_to_rad(4.0)),
+		Vector3(-0.035, 0.025, -0.045)
+	)
+	var source_positions: Array[Vector3] = [
+		Vector3(0.0, 0.0, 0.0),
+		Vector3(0.12, 0.05, 0.03),
+		Vector3(0.23, -0.04, 0.10),
+		Vector3(0.35, 0.13, 0.18),
+		Vector3(0.46, -0.05, 0.30),
+		Vector3(0.55, 0.16, 0.43),
+		Vector3(0.62, 0.02, 0.58),
+	]
+	registration.begin_collection()
+	for index in range(source_positions.size()):
+		var ratio := float(index) / float(source_positions.size() - 1)
+		var source_basis := (
+			Basis(Vector3.UP, ratio * 0.5)
+			* Basis(Vector3.RIGHT, ratio * 0.2)
+		).orthonormalized()
+		var source_camera := Transform3D(source_basis, source_positions[index])
+		var target_camera := Transform3D(
+			expected_rotation * source_basis,
+			expected_translation \
+				+ expected_rotation * source_positions[index] * expected_scale
+		)
+		var target_head := target_camera * camera_to_head.affine_inverse()
+		var frame_id := "extrinsic_%d" % index
+		registration.add_pico_sample(
+			frame_id,
+			{
+				"timestamp_seconds": ratio * 6.0,
+				"selected_camera_index": 0,
+				"camera_extrinsics_status": 1,
+				"camera_extrinsics_primary": _transform_to_row_major(
+					camera_to_head
+				),
+			},
+			target_head
+		)
+		registration.add_lingbot_sample(frame_id, source_camera)
+
+
+func _transform_to_row_major(transform: Transform3D) -> Array[float]:
+	return [
+		transform.basis.x.x,
+		transform.basis.y.x,
+		transform.basis.z.x,
+		transform.origin.x,
+		transform.basis.x.y,
+		transform.basis.y.y,
+		transform.basis.z.y,
+		transform.origin.y,
+		transform.basis.x.z,
+		transform.basis.y.z,
+		transform.basis.z.z,
+		transform.origin.z,
+		0.0,
+		0.0,
+		0.0,
+		1.0,
+	]
 
 
 func _array_vector3(values: Array) -> Vector3:

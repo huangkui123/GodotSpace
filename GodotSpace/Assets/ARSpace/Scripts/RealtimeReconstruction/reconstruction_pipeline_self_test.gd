@@ -69,7 +69,7 @@ func _init() -> void:
 	)
 
 	var valid_snapshot := {
-		"schema_version": 1,
+		"schema_version": 2,
 		"point_data_auth_token": "0123456789abcdef0123456789abcdef",
 		"services": {},
 		"registration": {},
@@ -113,6 +113,13 @@ func _init() -> void:
 	_expect(
 		pipeline._accept_lab_chunk_sequence("session-b", "1").is_empty(),
 		"a fresh LingBot generation must start at sequence 1",
+	)
+	_expect(
+		pipeline._auto_save_display_name(
+			"2026-07-28T12-34-56",
+			"最终",
+		) == "2026-07-28T12-34-56_最终_自动保存",
+		"automatic-save labels must be filename suffixes",
 	)
 
 	pipeline.free()

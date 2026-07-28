@@ -38,6 +38,9 @@ const GsmapStore := preload(
 const RegistrationController := preload(
 	"res://Assets/ARSpace/Scripts/RealtimeReconstruction/Registration/reconstruction_registration.gd"
 )
+const DiagnosticsLoggerScript := preload(
+	"res://Assets/ARSpace/Scripts/RealtimeReconstruction/Diagnostics/reconstruction_diagnostics_logger.gd"
+)
 
 signal pipeline_snapshot_changed(snapshot: Dictionary)
 signal manual_adjustment_rejected(message: String)
@@ -90,12 +93,21 @@ var _pico_to_server_offset_usec := 0
 var _stop_drain_pending := false
 var _stop_drain_started_msec := 0
 var _stop_drain_last_packet_msec := 0
+var _diagnostics = DiagnosticsLoggerScript.new()
 
 
 func _ready() -> void:
 	add_to_group("reconstruction_pipeline_controller")
 	set_process(true)
 	call_deferred("_bind_dependencies")
+
+
+func _exit_tree() -> void:
+	if _diagnostics.is_active():
+		_diagnostics.close_session({
+			"reason": "pipeline_exit",
+			"runtime": _build_diagnostics_runtime_snapshot(),
+		})
 
 
 func _process(_delta: float) -> void:
@@ -311,6 +323,15 @@ func _on_preflight_requested(
 ) -> void:
 	var is_retry := bool(options.get("retry", false))
 	var restart_stream := not is_retry or bool(options.get("restart_stream", false))
+	if not is_retry or not _diagnostics.is_active():
+		_start_diagnostics_session(_session_id, _source_peer_id, options)
+	else:
+		_diagnostics.log_event("preflight_retry_requested", {
+			"source_peer_id": _source_peer_id,
+			"options": options.duplicate(true),
+			"restart_stream": restart_stream,
+			"runtime": _build_diagnostics_runtime_snapshot(),
+		})
 	_cancel_stop_drain()
 	if restart_stream:
 		_stale_lab_session_id = _last_lab_session_id
@@ -344,11 +365,19 @@ func _on_collection_started(_session_id: String) -> void:
 	_pending_solve_result.clear()
 	_accepting_lab_output = true
 	_lingbot_bridge.call("set_forwarding_enabled", true)
+	_diagnostics.log_event("collection_started", {
+		"runtime": _build_diagnostics_runtime_snapshot(),
+	})
 	_publish_server_snapshot(true)
 
 
 func _on_solve_requested(_session_id: String) -> void:
 	if not bool(_pending_solve_result.get("ok", false)):
+		_diagnostics.log_event("solve_rejected", {
+			"reason": "registration_solve_missing",
+			"registration_error": str(_registration.call("get_last_error")),
+			"runtime": _build_diagnostics_runtime_snapshot(),
+		})
 		_session.call(
 			"server_report_error",
 			"registration_solve_missing",
@@ -357,6 +386,10 @@ func _on_solve_requested(_session_id: String) -> void:
 		return
 	var manifest := _pending_solve_result.get("manifest", {}) as Dictionary
 	var quality := manifest.get("quality", {}) as Dictionary
+	_diagnostics.log_event("solve_completed", {
+		"manifest": manifest.duplicate(true),
+		"quality": quality.duplicate(true),
+	})
 	_session.call("server_mark_solve_complete", quality)
 	_publish_server_snapshot(true)
 
@@ -364,11 +397,22 @@ func _on_solve_requested(_session_id: String) -> void:
 func _on_live_started(_session_id: String, _map_version: int) -> void:
 	_apply_registration_to_runtime(true)
 	_auto_save_map("已确认")
+	_diagnostics.log_event("reconstruction_live", {
+		"map_version": _map_version,
+		"registration": (
+			_registration.call("get_registration_manifest") as Dictionary
+		).duplicate(true),
+		"runtime": _build_diagnostics_runtime_snapshot(),
+	})
 	_publish_server_snapshot(true)
 
 
 func _on_reconstruction_stopped(_session_id: String, _map_version: int) -> void:
 	_lingbot_bridge.call("set_forwarding_enabled", false)
+	_diagnostics.log_event("reconstruction_stop_requested", {
+		"map_version": _map_version,
+		"runtime": _build_diagnostics_runtime_snapshot(),
+	})
 	if _accepting_lab_output and not bool(_session.call("is_imported_session")):
 		_stop_drain_pending = true
 		_stop_drain_started_msec = Time.get_ticks_msec()
@@ -376,10 +420,16 @@ func _on_reconstruction_stopped(_session_id: String, _map_version: int) -> void:
 	else:
 		_accepting_lab_output = false
 		_auto_save_map("最终")
+		_close_diagnostics_session("stopped")
 	_publish_server_snapshot(true)
 
 
 func _on_map_reset_requested(_previous_session_id: String, _map_version: int) -> void:
+	_diagnostics.log_event("map_reset_requested", {
+		"previous_session_id": _previous_session_id,
+		"map_version": _map_version,
+		"runtime": _build_diagnostics_runtime_snapshot(),
+	})
 	_cancel_stop_drain()
 	_accepting_lab_output = false
 	_lingbot_bridge.call("set_forwarding_enabled", false)
@@ -387,6 +437,7 @@ func _on_map_reset_requested(_previous_session_id: String, _map_version: int) ->
 	if _registration.has_method("reset_registration"):
 		_registration.call("reset_registration")
 	_refresh_map_library()
+	_close_diagnostics_session("map_reset")
 	_publish_server_snapshot(true)
 
 
@@ -480,12 +531,18 @@ func _on_export_requested(
 
 func _on_session_error_reported(
 	_session_id: String,
-	_error_code: String,
-	_message: String,
+	error_code: String,
+	message: String,
 ) -> void:
+	_diagnostics.log_event("session_error", {
+		"error_code": error_code,
+		"message": message,
+		"runtime": _build_diagnostics_runtime_snapshot(),
+	})
 	_cancel_stop_drain()
 	_accepting_lab_output = false
 	_lingbot_bridge.call("set_forwarding_enabled", false)
+	_close_diagnostics_session("error")
 	_publish_server_snapshot(true)
 
 
@@ -519,7 +576,7 @@ func _on_pico_frame_received(
 			"metadata": sample_metadata,
 			"resolve_after_usec": receive_usec + PICO_POSE_SETTLE_USEC,
 		}
-	_lingbot_bridge.call(
+	var forwarded_to_lab := bool(_lingbot_bridge.call(
 		"enqueue_frame",
 		frame_id,
 		timestamp_ns,
@@ -527,7 +584,18 @@ func _on_pico_frame_received(
 		height,
 		metadata,
 		jpeg_bytes,
-	)
+	))
+	if _diagnostics.is_active():
+		_diagnostics.log_pico_frame(
+			frame_id,
+			timestamp_ns,
+			width,
+			height,
+			metadata,
+			jpeg_bytes,
+			forwarded_to_lab,
+			_lingbot_bridge.call("get_status_snapshot") as Dictionary,
+		)
 
 
 func _on_lingbot_point_packet(packet: PackedByteArray) -> void:
@@ -556,6 +624,29 @@ func _on_lingbot_point_packet(packet: PackedByteArray) -> void:
 			"点云数据没有包含有效点块。",
 		)
 		return
+	if _diagnostics.is_active():
+		var camera_pose: Dictionary = {}
+		if bool(source_chunk.get("has_camera_pose")):
+			camera_pose = _transform_to_diagnostics(
+				source_chunk.get("camera_to_lingbot_world") as Transform3D
+			)
+		_diagnostics.log_event("lingbot_point_chunk_received", {
+			"packet_bytes": packet.size(),
+			"session_id": str(source_chunk.get("session_id")),
+			"map_id": str(source_chunk.get("map_id")),
+			"chunk_id": str(source_chunk.get("chunk_id")),
+			"source_frame_id": int(source_chunk.get("source_frame_id")),
+			"timestamp_usec": int(source_chunk.get("timestamp_usec")),
+			"source_point_count": int(source_chunk.call("point_count")),
+			"confidence_count": (
+				source_chunk.get("confidence_u8") as PackedByteArray
+			).size(),
+			"has_camera_pose": bool(source_chunk.get("has_camera_pose")),
+			"camera_to_lingbot_world": camera_pose,
+			"metadata_extensions": (
+				source_chunk.get("metadata_extensions") as Dictionary
+			).duplicate(true),
+		})
 	var sequence_result := _accept_lab_chunk_sequence(
 		str(source_chunk.get("session_id")),
 		str(source_chunk.get("chunk_id")),
@@ -589,6 +680,15 @@ func _on_lingbot_point_packet(packet: PackedByteArray) -> void:
 		)
 		_frame_receive_usec.erase(source_frame_id)
 	var ingest_error := int(_point_runtime.call("ingest_packet", packet, true))
+	_diagnostics.log_event("lingbot_point_chunk_ingested", {
+		"chunk_id": str(source_chunk.get("chunk_id")),
+		"source_frame_id": source_frame_id,
+		"latency_ms": _latency_ms,
+		"result": error_string(ingest_error),
+		"runtime_points": (
+			_point_runtime.call("get_stats_snapshot") as Dictionary
+		).duplicate(true),
+	})
 	if ingest_error != OK:
 		_session.call(
 			"server_report_error",
@@ -598,12 +698,17 @@ func _on_lingbot_point_packet(packet: PackedByteArray) -> void:
 
 
 func _on_point_chunk_accepted(
-	_chunk_id: String,
-	_point_count: int,
-	_total_points: int,
+	chunk_id: String,
+	point_count: int,
+	total_points: int,
 ) -> void:
 	_point_packets_window += 1
 	_chunks_since_map_version = true
+	_diagnostics.log_event("point_chunk_accepted", {
+		"chunk_id": chunk_id,
+		"filtered_point_count": point_count,
+		"total_retained_points": total_points,
+	})
 	if not multiplayer.is_server():
 		return
 	if str(_session.call("get_state_name")) == "collecting":
@@ -621,8 +726,18 @@ func _attempt_automatic_solve() -> void:
 	_last_solve_attempt_msec = now
 	var result := _registration.call("solve_automatic") as Dictionary
 	if not bool(result.get("ok", false)):
+		_diagnostics.log_event("automatic_solve_attempt_failed", {
+			"paired_sample_count": _paired_sample_count,
+			"error": str(result.get(
+				"error",
+				_registration.call("get_last_error"),
+			)),
+		})
 		return
 	_pending_solve_result = result
+	_diagnostics.log_event("automatic_solve_ready", {
+		"result": result.duplicate(true),
+	})
 	_session.call("server_mark_collection_complete")
 
 
@@ -634,9 +749,12 @@ func _on_registration_sample_count_changed(
 	_paired_sample_count = paired_count
 
 
-func _on_registration_changed(_manifest: Dictionary) -> void:
+func _on_registration_changed(manifest: Dictionary) -> void:
 	if not multiplayer.is_server():
 		return
+	_diagnostics.log_event("registration_changed", {
+		"manifest": manifest.duplicate(true),
+	})
 	_apply_registration_to_runtime(
 		str(_session.call("get_state_name")) in ["live", "stopped"]
 	)
@@ -995,8 +1113,15 @@ func _update_pico_clock_offset(timestamp_ns: int, receive_usec: int) -> void:
 		return
 	var observed_offset := receive_usec - int(timestamp_ns / 1000)
 	if not _pico_clock_offset_valid or observed_offset < _pico_to_server_offset_usec:
+		var previous_offset := _pico_to_server_offset_usec
 		_pico_to_server_offset_usec = observed_offset
 		_pico_clock_offset_valid = true
+		_diagnostics.log_event("pico_clock_offset_updated", {
+			"frame_timestamp_ns": timestamp_ns,
+			"server_receive_usec": receive_usec,
+			"observed_offset_usec": observed_offset,
+			"previous_offset_usec": previous_offset,
+		})
 
 
 func _flush_pending_pico_pose_samples() -> void:
@@ -1016,7 +1141,8 @@ func _flush_pending_pico_pose_samples() -> void:
 		if _pico_clock_offset_valid and timestamp_ns > 0:
 			target_server_usec = int(timestamp_ns / 1000) \
 				+ _pico_to_server_offset_usec
-		var aligned_transform: Variant = _closest_sky_pose(target_server_usec)
+		var alignment := _closest_sky_pose_result(target_server_usec)
+		var aligned_transform: Variant = alignment.get("transform")
 		var aligned_metadata := (
 			pending.get("metadata", {}) as Dictionary
 		).duplicate(true)
@@ -1026,20 +1152,43 @@ func _flush_pending_pico_pose_samples() -> void:
 			if _pico_clock_offset_valid
 			else "server_arrival_fallback"
 		)
-		_registration.call(
+		var sample_accepted := bool(_registration.call(
 			"add_pico_sample",
 			frame_id,
 			aligned_metadata,
 			aligned_transform,
-		)
+		))
+		var aligned_transform_log: Dictionary = {}
+		if aligned_transform is Transform3D:
+			aligned_transform_log = _transform_to_diagnostics(
+				aligned_transform as Transform3D
+			)
+		_diagnostics.log_event("pico_registration_sample", {
+			"frame_id": frame_id,
+			"frame_timestamp_ns": timestamp_ns,
+			"target_server_usec": target_server_usec,
+			"clock_offset_usec": _pico_to_server_offset_usec,
+			"clock_offset_valid": _pico_clock_offset_valid,
+			"pose_history_samples": _sky_pose_history.size(),
+			"closest_pose_error_usec": int(
+				alignment.get("error_usec", -1)
+			),
+			"aligned_transform_available": aligned_transform != null,
+			"aligned_godot_camera": aligned_transform_log,
+			"registration_accepted": sample_accepted,
+			"registration_error": str(_registration.call("get_last_error")),
+		})
 		completed.append(frame_id)
 	for frame_id in completed:
 		_pending_pico_pose_samples.erase(frame_id)
 
 
-func _closest_sky_pose(target_server_usec: int) -> Variant:
+func _closest_sky_pose_result(target_server_usec: int) -> Dictionary:
 	if _sky_pose_history.is_empty():
-		return _get_sky_camera_transform()
+		return {
+			"transform": _get_sky_camera_transform(),
+			"error_usec": -1,
+		}
 	var closest: Transform3D = _sky_pose_history[0].get(
 		"transform",
 		Transform3D.IDENTITY,
@@ -1057,8 +1206,14 @@ func _closest_sky_pose(target_server_usec: int) -> Variant:
 		closest_distance = distance
 		closest = sample.get("transform", closest) as Transform3D
 	if closest_distance > MAX_POSE_ALIGNMENT_ERROR_USEC:
-		return null
-	return closest
+		return {
+			"transform": null,
+			"error_usec": closest_distance,
+		}
+	return {
+		"transform": closest,
+		"error_usec": closest_distance,
+	}
 
 
 func _apply_registration_to_runtime(confirmed: bool) -> void:
@@ -1177,7 +1332,7 @@ func _export_current_map(display_name: String, confirmed: bool) -> Dictionary:
 			_registration.call("get_registration_manifest") as Dictionary,
 			confirmed,
 		),
-		"voxel_size_m": 0.025,
+		"voxel_size_m": float(_point_runtime.get("voxel_size_model_units")),
 		"model_name": "lingbot-map",
 		"model_version": "stream-adapter-v1",
 	}
@@ -1199,7 +1354,11 @@ func _auto_save_map(stage: String) -> void:
 	if store == null or bool(store.call("is_empty")):
 		return
 	var timestamp := Time.get_datetime_string_from_system(false, true).replace(":", "-")
-	_export_current_map("自动保存_%s_%s" % [timestamp, stage], true)
+	_export_current_map(_auto_save_display_name(timestamp, stage), true)
+
+
+func _auto_save_display_name(timestamp: String, stage: String) -> String:
+	return "%s_%s_自动保存" % [timestamp, stage]
 
 
 func _refresh_map_library() -> void:
@@ -1236,6 +1395,7 @@ func _update_rate_stats() -> void:
 	_input_frames_window = 0
 	_point_packets_window = 0
 	_stats_window_started_msec = now
+	_diagnostics.log_event("periodic_stats", _build_diagnostics_runtime_snapshot())
 
 
 func _collection_instruction(elapsed_seconds: float) -> String:
@@ -1356,6 +1516,7 @@ func _process_stop_drain() -> void:
 	_stop_drain_pending = false
 	_accepting_lab_output = false
 	_auto_save_map("最终")
+	_close_diagnostics_session("stopped_after_drain")
 	_publish_server_snapshot(true)
 
 
@@ -1363,6 +1524,144 @@ func _cancel_stop_drain() -> void:
 	_stop_drain_pending = false
 	_stop_drain_started_msec = 0
 	_stop_drain_last_packet_msec = 0
+
+
+func _start_diagnostics_session(
+	session_id: String,
+	source_peer_id: int,
+	options: Dictionary,
+) -> void:
+	if _diagnostics.is_active():
+		_close_diagnostics_session("superseded")
+	var configuration := {
+		"source_peer_id": source_peer_id,
+		"source_peer_role": _get_peer_role(source_peer_id),
+		"start_options": options.duplicate(true),
+		"session": (_session.call("get_snapshot") as Dictionary).duplicate(true),
+		"engine": Engine.get_version_info().duplicate(true),
+		"os": {
+			"name": OS.get_name(),
+			"version": OS.get_version(),
+			"model_name": OS.get_model_name(),
+			"command_line_user_args": Array(OS.get_cmdline_user_args()),
+		},
+		"pipeline_parameters": {
+			"status_schema_version": STATUS_SCHEMA_VERSION,
+			"preflight_timeout_msec": PREFLIGHT_TIMEOUT_MSEC,
+			"solve_retry_msec": SOLVE_RETRY_MSEC,
+			"map_version_interval_msec": MAP_VERSION_INTERVAL_MSEC,
+			"sky_pose_history_window_usec": SKY_POSE_HISTORY_WINDOW_USEC,
+			"pico_pose_settle_usec": PICO_POSE_SETTLE_USEC,
+			"network_pose_interpolation_delay_usec": (
+				NETWORK_POSE_INTERPOLATION_DELAY_USEC
+			),
+			"max_network_pose_age_msec": MAX_NETWORK_POSE_AGE_MSEC,
+			"max_pose_alignment_error_usec": MAX_POSE_ALIGNMENT_ERROR_USEC,
+			"stop_drain_min_msec": STOP_DRAIN_MIN_MSEC,
+			"stop_drain_max_msec": STOP_DRAIN_MAX_MSEC,
+			"stop_drain_quiet_msec": STOP_DRAIN_QUIET_MSEC,
+			"point_data_port": POINT_DATA_PORT,
+		},
+		"point_runtime_parameters": {
+			"enable_voxel_filter": bool(_point_runtime.get("enable_voxel_filter")),
+			"voxel_size_model_units": float(
+				_point_runtime.get("voxel_size_model_units")
+			),
+			"point_size_pixels": float(_point_runtime.get("point_size")),
+			"max_points_per_batch": int(
+				_point_runtime.get("max_points_per_batch")
+			),
+			"auto_bind_data_channel": bool(
+				_point_runtime.get("auto_bind_data_channel")
+			),
+		},
+		"effective_services": {
+			"pico_receiver": (
+				_pico_receiver.call("get_status_snapshot") as Dictionary
+			).duplicate(true),
+			"lingbot_bridge": (
+				_lingbot_bridge.call("get_status_snapshot") as Dictionary
+			).duplicate(true),
+			"point_data_server": (
+				_data_server.call("get_status_snapshot") as Dictionary
+			).duplicate(true),
+		},
+		"registration": (
+			_registration.call("get_registration_manifest") as Dictionary
+		).duplicate(true),
+	}
+	if not _diagnostics.start_session(session_id, configuration):
+		push_warning("实时重建诊断日志启动失败: %s" % _diagnostics.get_last_error())
+		return
+	print(
+		"实时重建诊断目录: %s"
+		% _diagnostics.get_globalized_session_directory()
+	)
+
+
+func _close_diagnostics_session(reason: String) -> void:
+	if not _diagnostics.is_active():
+		return
+	_diagnostics.close_session({
+		"reason": reason,
+		"runtime": _build_diagnostics_runtime_snapshot(),
+		"last_autosave_file": _last_autosave_file,
+	})
+
+
+func _build_diagnostics_runtime_snapshot() -> Dictionary:
+	var snapshot := {
+		"input_fps": _input_fps,
+		"point_update_hz": _point_update_hz,
+		"last_latency_ms": _latency_ms,
+		"paired_sample_count": _paired_sample_count,
+		"accepting_lab_output": _accepting_lab_output,
+		"stop_drain_pending": _stop_drain_pending,
+		"pico_clock_offset_valid": _pico_clock_offset_valid,
+		"pico_to_server_offset_usec": _pico_to_server_offset_usec,
+		"last_lab_session_id": _last_lab_session_id,
+		"last_lab_chunk_number": _last_lab_chunk_number,
+	}
+	if _session != null:
+		snapshot["session"] = (
+			_session.call("get_snapshot") as Dictionary
+		).duplicate(true)
+	if _pico_receiver != null:
+		snapshot["pico_receiver"] = (
+			_pico_receiver.call("get_status_snapshot") as Dictionary
+		).duplicate(true)
+	if _lingbot_bridge != null:
+		snapshot["lingbot_bridge"] = (
+			_lingbot_bridge.call("get_status_snapshot") as Dictionary
+		).duplicate(true)
+	if _data_server != null:
+		snapshot["point_data_server"] = (
+			_data_server.call("get_status_snapshot") as Dictionary
+		).duplicate(true)
+	if _point_runtime != null:
+		snapshot["point_runtime"] = (
+			_point_runtime.call("get_stats_snapshot") as Dictionary
+		).duplicate(true)
+	if _registration != null:
+		snapshot["registration"] = (
+			_registration.call("get_registration_manifest") as Dictionary
+		).duplicate(true)
+	return snapshot
+
+
+func _transform_to_diagnostics(transform: Transform3D) -> Dictionary:
+	return {
+		"basis_columns": [
+			[transform.basis.x.x, transform.basis.x.y, transform.basis.x.z],
+			[transform.basis.y.x, transform.basis.y.y, transform.basis.y.z],
+			[transform.basis.z.x, transform.basis.z.y, transform.basis.z.z],
+		],
+		"origin_xyz": [
+			transform.origin.x,
+			transform.origin.y,
+			transform.origin.z,
+		],
+	}
 
 
 func _identity_sim3() -> Dictionary:

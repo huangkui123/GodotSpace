@@ -4,6 +4,8 @@ const PANEL_SCENE_PATH := \
 	"res://Assets/ARSpace/Scenes/RealtimeReconstruction/RealtimeReconstructionPanel.tscn"
 const PANEL_SURFACE_SCENE_PATH := \
 	"res://Assets/ARSpace/Scenes/RealtimeReconstruction/RealtimeReconstructionPanelSurface.tscn"
+const PANEL_INPUT_BODY_SCRIPT_PATH := \
+	"res://Assets/ARSpace/Scripts/RealtimeReconstruction/UI/reconstruction_panel_input_body.gd"
 const WORKSPACE_SCENE_PATH := \
 	"res://Assets/ARSpace/Scenes/RealtimeReconstruction/RealtimeReconstructionWorkspace.tscn"
 const MAIN_MENU_SCENE_PATH := \
@@ -14,6 +16,7 @@ const PanelUI := preload(
 const WorkspaceController := preload(
 	"res://Assets/ARSpace/Scripts/RealtimeReconstruction/UI/reconstruction_workspace_controller.gd"
 )
+const PanelInputBody := preload(PANEL_INPUT_BODY_SCRIPT_PATH)
 
 var _failures: PackedStringArray = []
 
@@ -101,9 +104,21 @@ func _run() -> void:
 	_expect(surface_scene != null, "reconstruction panel surface must load")
 	_expect(workspace_scene != null, "reconstruction workspace scene must load")
 	_expect(main_menu_scene != null, "main menu scene must load after adding the entry")
-	if panel_scene == null or workspace_scene == null or main_menu_scene == null:
+	if panel_scene == null \
+			or surface_scene == null \
+			or workspace_scene == null \
+			or main_menu_scene == null:
 		_finish()
 		return
+
+	var detached_surface := surface_scene.instantiate()
+	root.add_child(detached_surface)
+	await process_frame
+	var detached_input_body := detached_surface.get_node("StaticBody3D")
+	root.remove_child(detached_surface)
+	detached_surface.call("_on_pointer_event", null)
+	detached_input_body.call("_on_pointer_event", null)
+	detached_surface.free()
 
 	var panel := panel_scene.instantiate()
 	root.add_child(panel)
@@ -157,18 +172,97 @@ func _run() -> void:
 		workspace.get_node_or_null("LocalPanelHost/PanelSurface") != null,
 		"workspace must own one local 3D panel surface"
 	)
+	var panel_input_body := workspace.get_node_or_null(
+		"LocalPanelHost/PanelSurface/StaticBody3D"
+	)
+	_expect(
+		panel_input_body != null and panel_input_body.get_script() == PanelInputBody,
+		"reconstruction panel must suppress duplicate XR touch input"
+	)
 	var workspace_panel := workspace.get("_panel_ui") as Node
 	_expect(workspace_panel != null, "workspace must bind its local panel")
+	workspace.set("_local_role", "sky")
+	if workspace_panel != null:
+		workspace_panel.configure_role("sky")
+	if workspace_panel != null and panel_input_body != null:
+		var test_map_entries: Array[Dictionary] = [
+			{
+				"file_name": "room_a.gsmap",
+				"manifest": {
+					"display_name": "Room A",
+					"point_count": 1000,
+				},
+			},
+			{
+				"file_name": "room_b.gsmap",
+				"manifest": {
+					"display_name": "Room B",
+					"point_count": 2000,
+				},
+			},
+		]
+		workspace_panel.call("set_map_library", test_map_entries)
+		await process_frame
+		var map_selector := workspace_panel.get_node(
+			"Margin/Layout/Pages/SkyPages/PreparePage/Content/MapRow/MapChooser/MapSelector"
+		) as Button
+		var map_list_panel := workspace_panel.get_node(
+			"Margin/Layout/Pages/SkyPages/PreparePage/Content/MapRow/MapChooser/MapListPanel"
+		) as PanelContainer
+		var map_items := workspace_panel.get_node(
+			"Margin/Layout/Pages/SkyPages/PreparePage/Content/MapRow/MapChooser/MapListPanel/MapListMargin/MapScroll/MapItems"
+		) as VBoxContainer
+		var selector_center := map_selector.get_global_rect().get_center()
+		panel_input_body.call("_report_touch_down", 0, selector_center)
+		panel_input_body.call("_report_mouse_down", selector_center)
+		panel_input_body.call("_report_touch_up", 0, selector_center)
+		panel_input_body.call("_report_mouse_up", selector_center)
+		await process_frame
+		_expect(
+			map_list_panel.visible,
+			"one XR click must leave the embedded server map list open"
+		)
+		for refresh_index in range(6):
+			workspace_panel.call("set_map_library", test_map_entries)
+			workspace.set_start_prerequisites_ready(true)
+			workspace_panel.call(
+				"set_service_status",
+				&"helper",
+				true,
+				"refresh %d" % refresh_index,
+			)
+			await create_timer(0.2).timeout
+			_expect(
+				map_list_panel.visible,
+				"periodic status refresh %d must not close the embedded map list" \
+					% refresh_index
+			)
+		var first_map_button := map_items.get_child(0) as Button
+		first_map_button.pressed.emit()
+		_expect(
+			not map_list_panel.visible \
+				and str(workspace.get("_selected_import_map_id")) == "room_a.gsmap",
+			"choosing an embedded map item must select it and close the list"
+		)
 	_expect(
 		workspace.get("_session_controller") == fake_session,
 		"workspace must bind the authoritative reconstruction session"
 	)
 	workspace.set_start_prerequisites_ready(true)
-	workspace.call("_on_start_requested")
+	var start_button := workspace_panel.get_node(
+		"Margin/Layout/Pages/SkyPages/PreparePage/Content/Actions/StartButton"
+	) as Button
+	_expect(not start_button.disabled, "ready Sky workspace must enable the start button")
+	start_button.pressed.emit()
 	_expect(
 		fake_session.count(&"start") == 1,
-		"start UI action must call request_start"
+		"start button signal must call request_start"
 	)
+	_expect(
+		int(workspace_panel.get("_view_state")) == PanelUI.ViewState.PREFLIGHT,
+		"start must immediately show request progress before the Server snapshot arrives"
+	)
+	fake_session.publish_state("preflight", 1)
 	workspace.set_selected_import_map_id("")
 	workspace.call("_on_import_requested")
 	_expect(
@@ -189,6 +283,7 @@ func _run() -> void:
 	workspace.call("_on_export_requested")
 	workspace.call("_on_cancel_requested")
 	workspace.call("_on_clear_requested")
+	fake_session.publish_state("stopped", 6)
 	workspace.call("_on_new_session_requested")
 	_expect(fake_session.count(&"confirm") == 1, "confirm UI action must call request_confirm")
 	_expect(
@@ -198,8 +293,9 @@ func _run() -> void:
 	_expect(fake_session.count(&"stop") == 1, "stop UI action must call request_stop")
 	_expect(
 		fake_session.count(&"export") == 1 \
-			and not fake_session.last_export_name.is_empty(),
-		"export UI action must provide a default name to request_export"
+			and fake_session.last_export_name.ends_with("_实时重建") \
+			and not fake_session.last_export_name.begins_with("实时重建_"),
+		"export UI action must use the realtime-reconstruction label as a suffix"
 	)
 	_expect(
 		fake_session.count(&"reset") == 2,
@@ -223,7 +319,22 @@ func _run() -> void:
 	fake_session.reject(&"confirm", "测试拒绝")
 	_expect(
 		int(workspace_panel.get("_view_state")) == PanelUI.ViewState.ERROR,
-		"session rejection signals must surface in the panel"
+		"non-start rejection signals must surface in the error page"
+	)
+	fake_session.publish_state("idle", 0)
+	workspace.set_start_prerequisites_ready(true)
+	workspace.call("_on_start_requested")
+	fake_session.reject(&"start", "测试开始拒绝")
+	workspace.set_start_prerequisites_ready(true)
+	_expect(
+		int(workspace_panel.get("_view_state")) == PanelUI.ViewState.PREPARE,
+		"start rejection must remain visible on the prepare page"
+	)
+	_expect(
+		"测试开始拒绝" in str(workspace_panel.get_node(
+			"Margin/Layout/Pages/SkyPages/PreparePage/Content/Description"
+		).text),
+		"idle snapshots must not erase the start rejection feedback"
 	)
 
 	workspace.set("_workspace_active", true)

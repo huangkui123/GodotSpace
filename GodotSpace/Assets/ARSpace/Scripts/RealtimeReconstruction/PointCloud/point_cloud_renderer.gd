@@ -11,11 +11,26 @@ const MapStore := preload(
 # Keep the only mutable mesh small. Incoming chunks can update the tail batch
 # repeatedly, so a 100k tail caused avoidable full-array uploads on XR clients.
 const DEFAULT_POINTS_PER_BATCH: int = 10_000
+const POINT_SHADER_CODE: String = """
+shader_type spatial;
+render_mode unshaded, cull_disabled, depth_draw_opaque, blend_mix;
+
+uniform float point_size : hint_range(1.0, 16.0, 0.25) = 4.0;
+
+void vertex() {
+	POINT_SIZE = point_size;
+}
+
+void fragment() {
+	ALBEDO = COLOR.rgb;
+	ALPHA = 1.0;
+}
+"""
 
 @export_range(1_000, 50_000, 1_000) var max_points_per_batch: int = (
 	DEFAULT_POINTS_PER_BATCH
 )
-@export_range(1.0, 16.0, 0.25) var point_size: float = 2.0
+@export_range(1.0, 16.0, 0.25) var point_size: float = 4.0
 
 var _batch_positions: Array[PackedVector3Array] = []
 var _batch_colors: Array[PackedColorArray] = []
@@ -131,12 +146,12 @@ static func build_point_mesh(
 	return mesh
 
 
-static func make_point_material(requested_point_size: float) -> StandardMaterial3D:
-	var material := StandardMaterial3D.new()
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	material.vertex_color_use_as_albedo = true
-	material.use_point_size = true
-	material.point_size = maxf(requested_point_size, 1.0)
+static func make_point_material(requested_point_size: float) -> ShaderMaterial:
+	var shader := Shader.new()
+	shader.code = POINT_SHADER_CODE
+	var material := ShaderMaterial.new()
+	material.shader = shader
+	material.set_shader_parameter("point_size", maxf(requested_point_size, 1.0))
 	return material
 
 

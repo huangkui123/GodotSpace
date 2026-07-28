@@ -15,7 +15,7 @@ enum AppendResult {
 	CHUNK_CONFLICT,
 }
 
-const DEFAULT_MAX_POINTS: int = 1_000_000
+const DEFAULT_MAX_POINTS: int = 2_000_000
 
 var max_points: int = DEFAULT_MAX_POINTS
 var session_id: String = ""

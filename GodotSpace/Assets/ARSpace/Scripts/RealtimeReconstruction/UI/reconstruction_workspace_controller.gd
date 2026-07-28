@@ -9,8 +9,10 @@ const SERVER_PEER_ID: int = 1
 const ROLE_PC_GROUND: String = "pc_ground"
 const ROLE_GROUND_VR: String = "ground_vr"
 const ROLE_SKY: String = "sky"
+const ROLE_UNKNOWN: String = "unknown"
 const PANEL_DISTANCE_METERS: float = 1.3
 const PANEL_VERTICAL_OFFSET_METERS: float = -0.15
+const START_REQUEST_TIMEOUT_MSEC: int = 5000
 
 signal workspace_entered(role: String)
 signal workspace_exited(role: String)
@@ -44,14 +46,35 @@ var _start_disabled_reason: String = "等待 PICO Helper、Lab 和点云通道"
 var _shared_space_alignment: Node
 var _previous_ground_anchor_path: NodePath
 var _last_applied_state_name: String = ""
+var _network_handler: Node
+var _start_request_pending: bool = false
+var _start_request_started_msec: int = 0
+var _start_feedback_message: String = ""
 
 
 func _ready() -> void:
 	add_to_group("reconstruction_workspace_controller")
 	panel_host.visible = false
 	reconstruction_root.visible = false
+	set_process(true)
 	call_deferred("_bind_panel")
 	call_deferred("_bind_session_controller")
+	call_deferred("_bind_network_role")
+
+
+func _process(_delta: float) -> void:
+	if not _start_request_pending:
+		return
+	if Time.get_ticks_msec() - _start_request_started_msec < START_REQUEST_TIMEOUT_MSEC:
+		return
+	_start_request_pending = false
+	_start_feedback_message = (
+		"PC Server 在 5 秒内没有确认开始请求。"
+		+ "请确认天上端仍已连接，并检查两端是否运行同一版本。"
+	)
+	if _session_controller != null and _session_controller.has_method("request_snapshot"):
+		_session_controller.call("request_snapshot")
+	_refresh_panel_from_session()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -257,6 +280,36 @@ func _bind_session_controller() -> void:
 	_refresh_panel_from_session()
 
 
+func _bind_network_role() -> void:
+	_network_handler = get_node_or_null("/root/NetworkHandler")
+	if _network_handler == null:
+		return
+	if _network_handler.has_signal("local_role_assigned"):
+		var local_role_callback := Callable(self, "_on_local_role_assigned")
+		if not _network_handler.local_role_assigned.is_connected(local_role_callback):
+			_network_handler.local_role_assigned.connect(local_role_callback)
+	_refresh_authoritative_local_role()
+
+
+func _on_local_role_assigned(assigned_role: String, _can_annotate: bool) -> void:
+	if assigned_role not in [ROLE_PC_GROUND, ROLE_GROUND_VR, ROLE_SKY, ROLE_UNKNOWN]:
+		return
+	_refresh_authoritative_local_role()
+
+
+func _refresh_authoritative_local_role() -> void:
+	if _network_handler == null \
+			or not _network_handler.has_method("get_local_assigned_role"):
+		return
+	var assigned_role := str(_network_handler.call("get_local_assigned_role"))
+	if assigned_role not in [ROLE_PC_GROUND, ROLE_GROUND_VR, ROLE_SKY]:
+		return
+	_local_role = assigned_role
+	if _panel_ui != null:
+		_panel_ui.configure_role(_local_role)
+		_refresh_panel_from_session()
+
+
 func _refresh_panel_from_session() -> void:
 	if _panel_ui == null:
 		return
@@ -271,9 +324,14 @@ func _on_session_snapshot_changed(snapshot: Dictionary) -> void:
 	_apply_ui_snapshot(snapshot)
 
 
-func _on_session_operation_rejected(_action: StringName, message: String) -> void:
+func _on_session_operation_rejected(action: StringName, message: String) -> void:
 	if _panel_ui != null:
-		_panel_ui.show_error(message)
+		if action == &"start":
+			_start_request_pending = false
+			_start_feedback_message = message
+			_refresh_panel_from_session()
+		else:
+			_panel_ui.show_error(message)
 
 
 func _apply_ui_snapshot(snapshot: Dictionary) -> void:
@@ -282,6 +340,9 @@ func _apply_ui_snapshot(snapshot: Dictionary) -> void:
 	var state_name := str(snapshot.get("state_name", snapshot.get("state", "idle"))).to_lower()
 	var did_state_change := state_name != _last_applied_state_name
 	_last_applied_state_name = state_name
+	if state_name not in ["idle", "stopped"]:
+		_start_request_pending = false
+		_start_feedback_message = ""
 	var view_state: int = PanelUI.ViewState.PREPARE
 	var message := ""
 	match state_name:
@@ -303,6 +364,12 @@ func _apply_ui_snapshot(snapshot: Dictionary) -> void:
 		"error":
 			view_state = PanelUI.ViewState.ERROR
 			message = str(snapshot.get("error_message", "重建会话发生错误。"))
+	if state_name in ["idle", "stopped"] and _start_request_pending:
+		view_state = PanelUI.ViewState.PREFLIGHT
+		message = "开始请求已发送，正在等待 PC Server 确认。"
+	elif state_name in ["idle", "stopped"] and not _start_feedback_message.is_empty():
+		view_state = PanelUI.ViewState.PREPARE
+		message = _start_feedback_message
 	_panel_ui.set_view_state(view_state, message)
 	_panel_ui.set_imported_session(
 		bool(snapshot.get("session_is_imported", false))
@@ -316,10 +383,12 @@ func _apply_ui_snapshot(snapshot: Dictionary) -> void:
 			set_point_cloud_visible(bool(snapshot.get("has_published_map", false)))
 	var can_start := _local_role == ROLE_SKY \
 		and state_name == "idle" \
-		and _start_prerequisites_ready
+		and _start_prerequisites_ready \
+		and not _start_request_pending \
+		and _has_authoritative_sky_role()
 	_panel_ui.set_start_enabled(
 		can_start,
-		"" if can_start else _start_disabled_reason
+		"" if can_start else _start_button_disabled_reason()
 	)
 	if _local_role == ROLE_GROUND_VR:
 		var map_version := int(snapshot.get("map_version", 0))
@@ -396,14 +465,60 @@ func _on_manual_adjustment_requested(kind: StringName, amount: float) -> void:
 
 
 func _request_start_if_ready() -> void:
+	if _start_request_pending:
+		return
 	if not _start_prerequisites_ready:
+		_start_feedback_message = _start_disabled_reason
 		if _panel_ui != null:
 			_panel_ui.set_view_state(
 				PanelUI.ViewState.PREPARE,
 				_start_disabled_reason
 			)
 		return
-	_call_session(&"request_start", [{}])
+	if not _has_authoritative_sky_role():
+		_start_feedback_message = "正在等待 PC Server 确认本机为天上端，请稍后重试。"
+		if _panel_ui != null:
+			_panel_ui.set_view_state(
+				PanelUI.ViewState.PREPARE,
+				_start_feedback_message
+			)
+		return
+	_start_request_pending = true
+	_start_request_started_msec = Time.get_ticks_msec()
+	_start_feedback_message = ""
+	if _panel_ui != null:
+		_panel_ui.set_view_state(
+			PanelUI.ViewState.PREFLIGHT,
+			"开始请求已发送，正在等待 PC Server 确认。"
+		)
+		_panel_ui.set_start_enabled(false, "正在等待 PC Server 确认")
+	if not _call_session(&"request_start", [{}]) and _start_request_pending:
+		_start_request_pending = false
+		_start_feedback_message = "开始请求未能发送，请检查天上端与 PC Server 的连接。"
+		_refresh_panel_from_session()
+
+
+func _has_authoritative_sky_role() -> bool:
+	if not multiplayer.has_multiplayer_peer() or multiplayer.is_server():
+		return _local_role == ROLE_SKY
+	var active_peer := multiplayer.multiplayer_peer
+	if active_peer == null \
+			or active_peer.get_connection_status() != MultiplayerPeer.CONNECTION_CONNECTED:
+		return false
+	var network_handler := _network_handler
+	if network_handler == null:
+		network_handler = get_node_or_null("/root/NetworkHandler")
+	if network_handler == null or not network_handler.has_method("get_local_assigned_role"):
+		return false
+	return str(network_handler.call("get_local_assigned_role")) == ROLE_SKY
+
+
+func _start_button_disabled_reason() -> String:
+	if _start_request_pending:
+		return "正在等待 PC Server 确认"
+	if not _has_authoritative_sky_role():
+		return "等待 PC Server 分配天上端角色"
+	return _start_disabled_reason
 
 
 func _has_confirmed_shared_map() -> bool:
@@ -420,7 +535,7 @@ func _has_confirmed_shared_map() -> bool:
 
 func _default_export_name() -> String:
 	var timestamp := Time.get_datetime_dict_from_system()
-	return "实时重建_%04d-%02d-%02d_%02d-%02d-%02d" % [
+	return "%04d-%02d-%02d_%02d-%02d-%02d_实时重建" % [
 		int(timestamp.get("year", 0)),
 		int(timestamp.get("month", 0)),
 		int(timestamp.get("day", 0)),

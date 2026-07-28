@@ -9,6 +9,9 @@ const WINDOW_DOCK_SLOT_SCENE: PackedScene = preload("res://Assets/ARSpace/Scenes
 const MAIN_MENU_STATE_MANAGER_SCRIPT: Script = preload("res://Assets/ARSpace/Scripts/UI/shared_main_menu_state.gd")
 const DRAWING_MANAGER_SCRIPT: Script = preload("res://Assets/ARSpace/Scripts/SpatialDrawing/spatial_drawing_manager.gd")
 const STROKE_RENDERER_SCRIPT: Script = preload("res://Assets/ARSpace/Scripts/SpatialDrawing/spatial_stroke_renderer.gd")
+const RECONSTRUCTION_SESSION_SCRIPT: Script = preload(
+	"res://Assets/ARSpace/Scripts/RealtimeReconstruction/Session/reconstruction_session_state.gd"
+)
 const ROLE_ARG: String = "--collab-process-role="
 const PORT_ARG: String = "--collab-process-port="
 const DEFAULT_PORT: int = 43280
@@ -50,6 +53,7 @@ var _annotation_manager: Node
 var _window_manager: Node
 var _main_menu_state_manager: Node
 var _drawing_manager: Node
+var _reconstruction_session: Node
 var _failures: Array[String] = []
 var _last_rejected_peer_id: int = 0
 var _last_rejection_reason: String = ""
@@ -207,6 +211,18 @@ func _run_server() -> void:
 	_check(_count_role(ROLE_PC_GROUND) == 1, "server should keep exactly one PC Ground role")
 	_check(_count_role(ROLE_GROUND_VR) == 1, "server should keep exactly one Ground VR role")
 	_check(_count_role(ROLE_SKY) == 1, "server should keep exactly one Sky role")
+	_check(
+		await _wait_for_reconstruction_state("preflight"),
+		"server should receive the Sky start-reconstruction request"
+	)
+	_check(
+		bool(_reconstruction_session.call("server_mark_preflight_ready")),
+		"server should advance the accepted reconstruction request"
+	)
+	_check(
+		await _wait_for_reconstruction_state("collecting"),
+		"server should enter reconstruction collection"
+	)
 	_check(await _wait_for_player_roles(), "server player replicas should match the role registry")
 	_check(await _wait_for_remote_avatars(2), "server should receive both remote player poses")
 	_check(await _wait_for_drawing_count(2), "server should receive the Sky spatial stroke")
@@ -383,6 +399,14 @@ func _run_sky_client() -> void:
 	_check(await _wait_for_local_role(ROLE_SKY), "Sky client should receive its Server-assigned role")
 	_check(await _wait_for_player_count(3), "Sky client should receive all existing players")
 	_check(await _wait_for_role_count(3), "Sky client should receive all session roles")
+	_check(
+		bool(_reconstruction_session.call("request_start", {})),
+		"registered Sky should submit the start-reconstruction request"
+	)
+	_check(
+		await _wait_for_reconstruction_state("collecting"),
+		"Sky should receive the Server-authoritative collecting state"
+	)
 	_check(await _wait_for_annotation_count(1), "late Sky client should receive the annotation snapshot")
 	_check(await _wait_for_drawing_count(1), "late Sky client should receive the Ground VR drawing snapshot")
 	_check(_annotation_text_count(FIRST_ANNOTATION_TEXT) == 1, "late Sky snapshot should contain the annotation once")
@@ -576,6 +600,11 @@ func _create_world(_world_name: String) -> Node3D:
 	_main_menu_state_manager.set("peer_authority_path", NodePath("/root/NetworkHandler"))
 	_main_menu_state_manager.set("warn_on_rejection", false)
 	spatial_windows.add_child(_main_menu_state_manager)
+	_reconstruction_session = RECONSTRUCTION_SESSION_SCRIPT.new()
+	_reconstruction_session.name = "ReconstructionSession"
+	_reconstruction_session.set("peer_authority_path", NodePath("/root/NetworkHandler"))
+	_reconstruction_session.set("warn_on_rejection", false)
+	world.add_child(_reconstruction_session)
 
 	var spawner := SPAWNER_SCRIPT.new() as MultiplayerSpawner
 	spawner.name = "MultiplayerSpawner"
@@ -606,6 +635,7 @@ func _disconnect_and_free_world() -> void:
 	_window_manager = null
 	_main_menu_state_manager = null
 	_drawing_manager = null
+	_reconstruction_session = null
 	var old_peer := _peer
 	_peer = null
 	multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
@@ -663,6 +693,16 @@ func _wait_for_role_count(expected_count: int) -> bool:
 		var network_handler := _get_network_handler()
 		if network_handler != null \
 				and (network_handler.call("get_peer_roles") as Dictionary).size() == expected_count:
+			return true
+		await get_tree().process_frame
+	return false
+
+
+func _wait_for_reconstruction_state(expected_state: String) -> bool:
+	var deadline := Time.get_ticks_msec() + STAGE_TIMEOUT_MSEC
+	while Time.get_ticks_msec() < deadline:
+		if _reconstruction_session != null \
+				and str(_reconstruction_session.call("get_state_name")) == expected_state:
 			return true
 		await get_tree().process_frame
 	return false

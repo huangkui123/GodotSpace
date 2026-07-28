@@ -80,13 +80,13 @@
 [ext_resource type="Script" uid="uid://dkh2nglllndtn" path="res://Assets/ARSpace/Scripts/UI/shared_main_menu_state.gd" id="80_main_menu_state"]
 [ext_resource type="PackedScene" uid="uid://d2fbdsgnue5ju" path="res://Assets/ARSpace/Scenes/SpatialDrawing/SpatialDrawingSystem.tscn" id="81_spatial_drawing"]
 [ext_resource type="PackedScene" path="res://Assets/ARSpace/Scenes/RealtimeReconstruction/RealtimeReconstructionWorkspace.tscn" id="82_reconstruction_workspace"]
-[ext_resource type="Script" path="res://Assets/ARSpace/Scripts/RealtimeReconstruction/Capture/pico_frame_receiver.gd" id="83_pico_frame_receiver"]
-[ext_resource type="Script" path="res://Assets/ARSpace/Scripts/RealtimeReconstruction/Session/reconstruction_session_state.gd" id="84_reconstruction_session"]
-[ext_resource type="Script" path="res://Assets/ARSpace/Scripts/RealtimeReconstruction/Network/lingbot_stream_bridge.gd" id="85_lingbot_bridge"]
-[ext_resource type="Script" path="res://Assets/ARSpace/Scripts/RealtimeReconstruction/Network/point_cloud_data_server.gd" id="86_point_data_server"]
-[ext_resource type="Script" path="res://Assets/ARSpace/Scripts/RealtimeReconstruction/Network/point_cloud_data_client.gd" id="87_point_data_client"]
-[ext_resource type="Script" path="res://Assets/ARSpace/Scripts/RealtimeReconstruction/Registration/reconstruction_registration.gd" id="88_reconstruction_registration"]
-[ext_resource type="Script" path="res://Assets/ARSpace/Scripts/RealtimeReconstruction/reconstruction_pipeline_controller.gd" id="89_reconstruction_pipeline"]
+[ext_resource type="Script" uid="uid://c0o8mg1axexs1" path="res://Assets/ARSpace/Scripts/RealtimeReconstruction/Capture/pico_frame_receiver.gd" id="83_pico_frame_receiver"]
+[ext_resource type="Script" uid="uid://bh5a6u3lybnxw" path="res://Assets/ARSpace/Scripts/RealtimeReconstruction/Session/reconstruction_session_state.gd" id="84_reconstruction_session"]
+[ext_resource type="Script" uid="uid://cv5n8ed7lw660" path="res://Assets/ARSpace/Scripts/RealtimeReconstruction/Network/lingbot_stream_bridge.gd" id="85_lingbot_bridge"]
+[ext_resource type="Script" uid="uid://bg5bt7jsqpyxc" path="res://Assets/ARSpace/Scripts/RealtimeReconstruction/Network/point_cloud_data_server.gd" id="86_point_data_server"]
+[ext_resource type="Script" uid="uid://dnuull275aunh" path="res://Assets/ARSpace/Scripts/RealtimeReconstruction/Network/point_cloud_data_client.gd" id="87_point_data_client"]
+[ext_resource type="Script" uid="uid://py05w2fpc803" path="res://Assets/ARSpace/Scripts/RealtimeReconstruction/Registration/reconstruction_registration.gd" id="88_reconstruction_registration"]
+[ext_resource type="Script" uid="uid://fl1s7g4s41ua" path="res://Assets/ARSpace/Scripts/RealtimeReconstruction/reconstruction_pipeline_controller.gd" id="89_reconstruction_pipeline"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_m4rif"]
 resource_name = "Default-Skybox"
@@ -2468,6 +2468,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.485887, 1.11515, 3.06135)
 
 [node name="DownPlane" type="Node3D" parent="."]
 transform = Transform3D(-2.62268e-07, -2, 8.74228e-08, 0, -8.74228e-08, -2, 6, -8.74228e-08, 3.82137e-15, 0, -0.242068, 3)
+visible = false
 
 [node name="MeshRenderer" type="MeshInstance3D" parent="DownPlane"]
 transform = Transform3D(1, 0, 0, 0, 1, -8.35187e-23, 4.23516e-22, -8.35187e-23, 1, 0, 5.70077e-08, 1.30418)

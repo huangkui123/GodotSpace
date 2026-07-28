@@ -1,6 +1,6 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=5 format=3 uid="uid://5snb6ikydf4y"]
 
-[ext_resource type="Script" path="res://Assets/ARSpace/Scripts/RealtimeReconstruction/UI/reconstruction_panel_ui.gd" id="1_script"]
+[ext_resource type="Script" uid="uid://cv3102niiq36w" path="res://Assets/ARSpace/Scripts/RealtimeReconstruction/UI/reconstruction_panel_ui.gd" id="1_script"]
 
 [sub_resource type="StyleBoxFlat" id="StylePanel"]
 bg_color = Color(0.055, 0.085, 0.16, 0.97)
@@ -14,13 +14,6 @@ corner_radius_top_right = 16
 corner_radius_bottom_right = 16
 corner_radius_bottom_left = 16
 
-[sub_resource type="StyleBoxFlat" id="StylePrimary"]
-bg_color = Color(0.12, 0.48, 0.88, 1)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-
 [sub_resource type="StyleBoxFlat" id="StyleSecondary"]
 bg_color = Color(0.15, 0.2, 0.31, 1)
 border_width_left = 1
@@ -33,9 +26,16 @@ corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
 
+[sub_resource type="StyleBoxFlat" id="StylePrimary"]
+bg_color = Color(0.12, 0.48, 0.88, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
 [node name="RealtimeReconstructionPanel" type="PanelContainer" groups=["reconstruction_panel_ui"]]
-offset_right = 760.0
-offset_bottom = 720.0
+offset_right = 662.0
+offset_bottom = 722.0
 theme_override_styles/panel = SubResource("StylePanel")
 script = ExtResource("1_script")
 
@@ -183,7 +183,8 @@ horizontal_alignment = 1
 layout_mode = 2
 theme_override_colors/font_color = Color(0.68, 0.75, 0.88, 1)
 theme_override_font_sizes/font_size = 18
-text = "请先在 PICO 本机启动 Spatial Anchor Helper。\n服务全部就绪后，开始按钮会自动启用。"
+text = "请先在 PICO 本机启动 Spatial Anchor Helper。
+服务全部就绪后，开始按钮会自动启用。"
 horizontal_alignment = 1
 autowrap_mode = 2
 
@@ -196,16 +197,43 @@ alignment = 1
 layout_mode = 2
 theme_override_font_sizes/font_size = 18
 text = "服务器地图库"
+vertical_alignment = 1
 
-[node name="MapSelector" type="OptionButton" parent="Margin/Layout/Pages/SkyPages/PreparePage/Content/MapRow"]
+[node name="MapChooser" type="VBoxContainer" parent="Margin/Layout/Pages/SkyPages/PreparePage/Content/MapRow"]
 custom_minimum_size = Vector2(360, 46)
 layout_mode = 2
-disabled = true
+theme_override_constants/separation = 6
+
+[node name="MapSelector" type="Button" parent="Margin/Layout/Pages/SkyPages/PreparePage/Content/MapRow/MapChooser"]
+custom_minimum_size = Vector2(360, 46)
+layout_mode = 2
 theme_override_font_sizes/font_size = 17
-item_count = 1
-selected = 0
-popup/item_0/text = "服务器地图库为空"
-popup/item_0/id = 0
+theme_override_styles/normal = SubResource("StyleSecondary")
+disabled = true
+text = "服务器地图库为空"
+alignment = 0
+
+[node name="MapListPanel" type="PanelContainer" parent="Margin/Layout/Pages/SkyPages/PreparePage/Content/MapRow/MapChooser"]
+visible = false
+custom_minimum_size = Vector2(360, 170)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleSecondary")
+
+[node name="MapListMargin" type="MarginContainer" parent="Margin/Layout/Pages/SkyPages/PreparePage/Content/MapRow/MapChooser/MapListPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 6
+
+[node name="MapScroll" type="ScrollContainer" parent="Margin/Layout/Pages/SkyPages/PreparePage/Content/MapRow/MapChooser/MapListPanel/MapListMargin"]
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="MapItems" type="VBoxContainer" parent="Margin/Layout/Pages/SkyPages/PreparePage/Content/MapRow/MapChooser/MapListPanel/MapListMargin/MapScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
 
 [node name="Actions" type="HBoxContainer" parent="Margin/Layout/Pages/SkyPages/PreparePage/Content"]
 layout_mode = 2
@@ -215,9 +243,9 @@ alignment = 1
 [node name="StartButton" type="Button" parent="Margin/Layout/Pages/SkyPages/PreparePage/Content/Actions"]
 custom_minimum_size = Vector2(190, 58)
 layout_mode = 2
-disabled = true
 theme_override_font_sizes/font_size = 21
 theme_override_styles/normal = SubResource("StylePrimary")
+disabled = true
 text = "开始新的重建"
 
 [node name="ImportButton" type="Button" parent="Margin/Layout/Pages/SkyPages/PreparePage/Content/Actions"]
@@ -258,8 +286,6 @@ autowrap_mode = 2
 [node name="Progress" type="ProgressBar" parent="Margin/Layout/Pages/SkyPages/CollectingPage/Content"]
 custom_minimum_size = Vector2(0, 34)
 layout_mode = 2
-value = 0.0
-show_percentage = true
 
 [node name="CancelButton" type="Button" parent="Margin/Layout/Pages/SkyPages/CollectingPage/Content"]
 custom_minimum_size = Vector2(150, 54)
@@ -463,7 +489,8 @@ horizontal_alignment = 1
 layout_mode = 2
 theme_override_colors/font_color = Color(0.72, 0.82, 0.96, 1)
 theme_override_font_sizes/font_size = 19
-text = "输入 -- FPS　点云 -- Hz　延迟 -- ms\n点数 --　运行 --:--"
+text = "输入 -- FPS　点云 -- Hz　延迟 -- ms
+点数 --　运行 --:--"
 horizontal_alignment = 1
 
 [node name="PointCloudToggle" type="CheckButton" parent="Margin/Layout/Pages/SkyPages/LivePage/Content"]
@@ -604,7 +631,8 @@ horizontal_alignment = 1
 layout_mode = 2
 theme_override_colors/font_color = Color(0.72, 0.82, 0.96, 1)
 theme_override_font_sizes/font_size = 19
-text = "输入 -- FPS　点云 -- Hz　延迟 -- ms\n点数 --　运行 --:--"
+text = "输入 -- FPS　点云 -- Hz　延迟 -- ms
+点数 --　运行 --:--"
 horizontal_alignment = 1
 
 [node name="PointCloudToggle" type="CheckButton" parent="Margin/Layout/Pages/GroundPage/Content"]
