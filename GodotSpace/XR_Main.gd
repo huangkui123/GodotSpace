@@ -75,10 +75,23 @@ func _on_network_role_selected(is_server_role: bool) -> void:
 
 
 func _apply_runtime_profile() -> void:
+	_configure_spacebox_rendering()
 	if runtime_profile.uses_xr():
 		_enter_xr_runtime()
 	else:
 		_enter_desktop_runtime()
+
+
+func _configure_spacebox_rendering() -> void:
+	var spacebox := get_node_or_null("SpaceBox")
+	if spacebox != null and spacebox.has_method(
+		"configure_for_runtime_profile"
+	):
+		spacebox.call(
+			"configure_for_runtime_profile",
+			runtime_profile,
+			enable_passthrough
+		)
 
 
 func _enter_desktop_runtime() -> void:
