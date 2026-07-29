@@ -63,6 +63,10 @@ class MockPointer extends Node3D:
 	var target: Node
 
 
+class MockWindowRoot extends Node3D:
+	var screen_size: Vector2 = Vector2(1000.0, 600.0)
+
+
 func _initialize() -> void:
 	call_deferred("_run")
 
@@ -401,40 +405,51 @@ func _test_spawn_policy() -> void:
 	)
 	await process_frame
 	await process_frame
+	var parent_transform := Transform3D(
+		Basis(Vector3.UP, deg_to_rad(30.0)).scaled(Vector3(1.6, 1.6, 1.6)),
+		Vector3(0.0, 1.35, -1.5)
+	)
+	parent.call("_set_window_transform", parent_transform)
 	_dock_manager.call("focus_window", parent)
 	child.call("close_window")
 	child.call("open_window", parent, true)
 	var anchor := parent.call("get_child_spawn_anchor") as Node3D
 	_check(anchor != null, "parent should expose ChildSpawnAnchor3D")
+	parent_transform = parent.call("get_window_global_transform") as Transform3D
+	var child_transform := child.call("get_window_global_transform") as Transform3D
+	var expected_parent_offset := 0.8 + 0.08 + 0.4
+	var parent_offset := child_transform.origin - parent_transform.origin
+	_check(
+		is_equal_approx(parent_offset.length(), expected_parent_offset),
+		"a child window should open 50 pixels beyond its parent's right edge"
+	)
+	_check(
+		parent_offset.dot(parent_transform.basis.x.normalized()) > 0.94,
+		"a child window should open on the parent's right"
+	)
+	_check(
+		child_transform.basis.orthonormalized().is_equal_approx(
+			parent_transform.basis.orthonormalized()
+		),
+		"a child window should inherit the parent's orientation"
+	)
+	var stale_transform := child_transform
+	stale_transform.origin = Vector3(20.0, 6.0, 20.0)
+	child.call("_set_window_transform", stale_transform)
+	_check(
+		int(child.call("get_state")) == STATE_FLOATING,
+		"moving an open child should keep it in the floating state"
+	)
 	if anchor != null:
-		_check(
-			child.call("get_window_global_transform").origin.is_equal_approx(anchor.global_position),
-			"explicit parent anchor should be the first spawn choice"
-		)
-		var stale_transform := child.call("get_window_global_transform") as Transform3D
-		stale_transform.origin = Vector3(20.0, 6.0, 20.0)
-		child.call("_set_window_transform", stale_transform)
-		_check(
-			int(child.call("get_state")) == STATE_FLOATING,
-			"moving an open child should keep it in the floating state"
-		)
-		child.call("open_window", parent, true)
-		_check(
-			child.call("get_window_global_transform").origin.is_equal_approx(anchor.global_position),
-			"an explicit reposition must replace a stale transform even when the child is already floating"
-		)
 		anchor.position = Vector3(100.0, 0.0, 0.0)
-		child.call("close_window")
-		child.call("open_window", parent, true)
-		var bounded_offset := (
-			child.call("get_window_global_transform") as Transform3D
-		).origin - (
-			parent.call("get_window_global_transform") as Transform3D
-		).origin
-		_check(
-			bounded_offset.length() < 2.5,
-			"a malformed parent anchor must not spawn a child far from its clicked window"
-		)
+	child.call("open_window", parent, true)
+	var reopened_offset := (
+		child.call("get_window_global_transform") as Transform3D
+	).origin - parent_transform.origin
+	_check(
+		is_equal_approx(reopened_offset.length(), expected_parent_offset),
+		"an explicit reposition should ignore the parent anchor and retain the 50-pixel gap"
+	)
 	var focused_parent := _make_window(
 		&"focused_parent",
 		SCOPE_LOCAL,
@@ -489,8 +504,6 @@ func _test_spawn_policy() -> void:
 		fallback.basis.get_scale().is_equal_approx(Vector3(0.75, 0.75, 0.75)),
 		"spawn policy should preserve the child window's own scale"
 	)
-
-
 func _test_authoritative_state() -> void:
 	var shared_window := _make_window(
 		&"shared_a",
@@ -640,7 +653,7 @@ func _make_window(
 	size_m: Vector2,
 	with_anchor: bool = false
 ) -> Node:
-	var window_root := Node3D.new()
+	var window_root := MockWindowRoot.new()
 	window_root.name = str(window_id)
 	window_root.position = position
 	_shared_origin.add_child(window_root)

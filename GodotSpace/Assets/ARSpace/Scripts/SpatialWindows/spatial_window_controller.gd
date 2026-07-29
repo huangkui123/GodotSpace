@@ -175,6 +175,30 @@ func get_window_size_m() -> Vector2:
 	return window_size_m
 
 
+func get_effective_window_size_m() -> Vector2:
+	if _window_root == null:
+		return window_size_m
+	var current_scale := _window_root.global_transform.basis.get_scale()
+	return Vector2(
+		window_size_m.x * current_scale.x / maxf(absf(_floating_scale.x), 0.0001),
+		window_size_m.y * current_scale.y / maxf(absf(_floating_scale.y), 0.0001)
+	)
+
+
+func get_window_pixel_size() -> Vector2:
+	if _window_root == null:
+		return Vector2.ZERO
+	for property_name in ["screen_size", "viewport_size"]:
+		if not _has_property(_window_root, property_name):
+			continue
+		var size_value = _window_root.get(property_name)
+		if size_value is Vector2:
+			var pixel_size := size_value as Vector2
+			if pixel_size.x > 0.0 and pixel_size.y > 0.0:
+				return pixel_size
+	return Vector2.ZERO
+
+
 func get_window_global_transform() -> Transform3D:
 	return _window_root.global_transform if _window_root != null else Transform3D.IDENTITY
 
@@ -749,7 +773,6 @@ func _get_viewpoint() -> Node3D:
 		return camera
 	var found := get_tree().root.find_child("XRCamera3D", true, false)
 	return found as Node3D
-
 
 func _face_user_basis(position: Vector3, scale_value: Vector3) -> Basis:
 	var viewpoint := _get_viewpoint()
