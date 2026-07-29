@@ -54,6 +54,17 @@ func _run() -> void:
 	var closed: Dictionary = router.call("_tool_close_album", {}, {"request_id": "album-close-request", "tool_call_id": "album-close-tool"})
 	if not _check(bool(closed.get("ok", false)) and not bool(album_view.visible), "Authorized close-album tool failed."):
 		return
+	album_view.page_count = 3
+	album_view.page_index = 2
+	album_view.visible = true
+	album_requests["album-previous-request"] = {
+		"speaker_peer_id": 1, "status": "agent_running",
+		"snapshot": {"album": album_view.call("get_album_snapshot"), "task_guide": {"visible": false}},
+		"allowed_tools": PackedStringArray(["previous_album_page"]),
+	}
+	var album_previous: Dictionary = router.call("_tool_previous_album_page", {}, {"request_id": "album-previous-request", "tool_call_id": "album-previous-tool"})
+	if not _check(bool(album_previous.get("ok", false)) and int(album_view.page_index) == 1, "Authorized previous-album-page tool moved in the wrong direction."):
+		return
 
 	var detail_scene: PackedScene = load("res://Assets/ARSpace/Prefabs/UI/WorkListInfoCanvas.tscn")
 	var list_scene: PackedScene = load("res://Assets/ARSpace/Prefabs/UI/WorkListCanvas/WorkListView.tscn")
@@ -74,6 +85,15 @@ func _run() -> void:
 	task_snapshot["can_previous"] = false
 	var snapshot := {"album": {"visible": false}, "task_guide": task_snapshot}
 	var requests := router.get("_requests") as Dictionary
+	var first_page_tools := router.call("_allowed_tools_for_snapshot", snapshot) as PackedStringArray
+	if not _check(first_page_tools.has("next_task_step") and not first_page_tools.has("previous_task_step"), "First-page tool authorization did not match factual navigation state."):
+		return
+	var sorted_tools := first_page_tools.duplicate()
+	sorted_tools.sort()
+	if not _check(first_page_tools == sorted_tools, "Allowed tools contain ordering-based routing hints."):
+		return
+	if not _check(not snapshot.has("ui_routing_hint"), "Snapshot still contains a semantic UI routing hint."):
+		return
 
 	requests["read-request"] = {
 		"speaker_peer_id": 1, "status": "agent_running", "snapshot": snapshot,
@@ -117,6 +137,14 @@ func _run() -> void:
 	back_snapshot["visible"] = true
 	var moved_back: Dictionary = router.call("_tool_previous_task_step", {}, {"request_id": "back-request", "tool_call_id": "back-tool"})
 	if not _check(bool(moved_back.get("ok", false)) and int(detail_view.page_index) == 1, "Authorized previous-step tool failed."):
+		return
+	requests["decision-request"] = {
+		"speaker_peer_id": 1, "status": "agent_running", "snapshot": snapshot,
+		"allowed_tools": PackedStringArray(["previous_task_step"]),
+	}
+	router.call("_on_agent_routing_decision", "decision-request", "tool", "previous_task_step")
+	var decision_record := requests["decision-request"] as Dictionary
+	if not _check(str(decision_record.get("qwen_tool_name", "")) == "previous_task_step", "Qwen routing metadata was not retained for diagnostics."):
 		return
 	requests["goto-request"] = {
 		"speaker_peer_id": 1, "status": "agent_running", "snapshot": {},

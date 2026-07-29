@@ -1,6 +1,7 @@
 extends Node
 
 signal connection_state_changed(connected: bool)
+signal assistant_routing_decision_received(request_id: String, route: String, tool_name: String)
 signal assistant_final_received(request_id: String, answer: String)
 signal run_error_received(request_id: String, code: String, message: String)
 
@@ -238,7 +239,13 @@ func _handle_envelope(envelope: Dictionary) -> void:
 		_last_pong_msec = Time.get_ticks_msec()
 	elif message_type == "assistant_final":
 		var payload := _dictionary(envelope.get("payload", {}))
-		assistant_final_received.emit(str(envelope.get("request_id", "")), str(payload.get("answer", "")))
+		var request_id := str(envelope.get("request_id", ""))
+		assistant_routing_decision_received.emit(
+			request_id,
+			str(payload.get("route", "")),
+			str(payload.get("tool_name", ""))
+		)
+		assistant_final_received.emit(request_id, str(payload.get("answer", "")))
 	elif message_type == "run_error":
 		var payload := _dictionary(envelope.get("payload", {}))
 		run_error_received.emit(

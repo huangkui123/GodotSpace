@@ -69,6 +69,23 @@ func _run() -> void:
 		])
 		return
 
+	voice_chat.voice_transcript_received.emit({
+		"speaker_peer_id": 1,
+		"speaker_name": "航天员",
+		"text": "助手，翻到上一页",
+		"is_final": true,
+		"source": "asr",
+	})
+	if not await _wait_for_answers(3):
+		return
+	if not _check(int(detail_view.page_index) == 2, "Previous-page request did not move the task guide backward exactly one page."):
+		var router := root.get_node_or_null("AssistantCommandRouter")
+		push_error("Previous-page diagnostics: answers=%s router=%s" % [
+			_answers,
+			router.get_debug_state() if router != null else {},
+		])
+		return
+
 	print("Task Agent voice-to-tool end-to-end self test passed.")
 	quit(0)
 

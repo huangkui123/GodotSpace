@@ -46,6 +46,7 @@ func _ready() -> void:
 		agent.register_tool("previous_task_step", Callable(self, "_tool_previous_task_step"))
 		agent.register_tool("replay_current_task_step", Callable(self, "_tool_replay_current_task_step"))
 		agent.register_tool("delegate_deepseek", Callable(self, "_tool_delegate_deepseek"))
+		agent.assistant_routing_decision_received.connect(_on_agent_routing_decision)
 		agent.assistant_final_received.connect(_on_agent_answer)
 		agent.run_error_received.connect(_on_agent_error)
 
@@ -217,7 +218,6 @@ func _receive_snapshot(request_id: String, result: Dictionary) -> void:
 		return
 	var record := _requests[request_id] as Dictionary
 	var snapshot := (result.get("data", {}) as Dictionary).duplicate(true)
-	snapshot["ui_routing_hint"] = _build_ui_routing_hint(snapshot)
 	record["snapshot"] = snapshot
 	record["allowed_tools"] = _allowed_tools_for_snapshot(snapshot)
 	_requests[request_id] = record
@@ -245,6 +245,7 @@ func _allowed_tools_for_snapshot(snapshot: Dictionary) -> PackedStringArray:
 	tools.append("open_album")
 	tools.append("open_task_guide")
 	tools.append("delegate_deepseek")
+	tools.sort()
 	return tools
 
 
@@ -268,30 +269,6 @@ func _append_task_guide_tools(tools: PackedStringArray, guide: Dictionary) -> vo
 		tools.append("go_to_task_guide_page")
 		if bool(guide.get("can_previous", false)):
 			tools.append("previous_task_step")
-
-
-func _build_ui_routing_hint(snapshot: Dictionary) -> Dictionary:
-	var album := snapshot.get("album", {}) as Dictionary
-	var guide := snapshot.get("task_guide", {}) as Dictionary
-	var album_visible := bool(album.get("visible", false))
-	var guide_visible := bool(guide.get("visible", false))
-	var visible_panel := "none"
-	var page_turn_target := "none"
-	if guide_visible and not album_visible:
-		visible_panel = "task_guide"
-		page_turn_target = "next_task_step"
-	elif album_visible and not guide_visible:
-		visible_panel = "album"
-		page_turn_target = "next_album_page"
-	elif guide_visible and album_visible:
-		visible_panel = "album_and_task_guide"
-		page_turn_target = "ask_for_clarification"
-	return {
-		"visible_panel": visible_panel,
-		"page_turn_target_when_user_omits_target": page_turn_target,
-		"open_album_requires_explicit_album_request": true,
-		"completion_phrases_require_next_task_step": true,
-	}
 
 
 func _expire_snapshot_request(request_id: String, timeout_seconds: float = SNAPSHOT_TIMEOUT_SECONDS) -> void:
@@ -626,6 +603,19 @@ func _on_agent_answer(request_id: String, answer: String) -> void:
 	_requests.erase(request_id)
 
 
+func _on_agent_routing_decision(request_id: String, route: String, tool_name: String) -> void:
+	if not _requests.has(request_id):
+		return
+	var record := _requests[request_id] as Dictionary
+	record["qwen_route"] = route
+	record["qwen_tool_name"] = tool_name
+	_requests[request_id] = record
+	_record_event("agent_decision", request_id, {
+		"route": route,
+		"tool_name": tool_name,
+	})
+
+
 func _on_agent_error(request_id: String, code: String, message: String) -> void:
 	if code == "too_late" and _requests.has(request_id):
 		return
@@ -678,15 +668,12 @@ func _record_request_history(
 	if assistant == null or not assistant.has_method("record_external_qa"):
 		return
 	var operation := str(record.get("last_operation", ""))
-	var route := "direct_answer"
-	if operation == "delegate_deepseek":
-		route = "delegate_deepseek"
-	elif not operation.is_empty():
-		route = "tool"
+	var route := str(record.get("qwen_route", "direct_answer"))
+	var tool_name := str(record.get("qwen_tool_name", operation))
 	assistant.call("record_external_qa", request_id, str(record.get("text", "")), answer, success, {
 		"provider": "local_qwen_agent",
 		"route": route,
-		"tool_name": operation,
+		"tool_name": tool_name,
 		"speaker_peer_id": int(record.get("speaker_peer_id", SERVER_PEER_ID)),
 		"error_code": error_code,
 	})
