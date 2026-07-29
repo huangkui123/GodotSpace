@@ -24,7 +24,7 @@ class PicoCastService : Service() {
     override fun onCreate() {
         super.onCreate()
         executor = Executors.newSingleThreadExecutor()
-        castProvider = PicoCastProvider(this)
+        castProvider = PicoCastProvider(this, ::onCastConnectionStateChanged)
         startForegroundWithStatus("等待开始 PICO 投屏")
     }
 
@@ -83,9 +83,30 @@ class PicoCastService : Service() {
         runCatching {
             PicoCastControlSender.publishLive(config, rtmpUrl)
         }.onSuccess {
-            updateStatus("PICO 投屏已发布到 ${config.host}:${config.controlPort}")
+            updateStatus(
+                "投屏地址已发送到 ${config.host}:${config.controlPort}，等待 PC 连接",
+            )
         }.onFailure { throwable ->
             updateStatus("投屏已启动，但上报失败: ${PicoCastControlSender.describeFailure(throwable)}")
+        }
+    }
+
+    private fun onCastConnectionStateChanged(state: Int) {
+        if (!::executor.isInitialized || executor.isShutdown) {
+            return
+        }
+        executor.execute {
+            if (!castStarted) {
+                return@execute
+            }
+            updateStatus(
+                when (state) {
+                    CAST_CONNECTED -> "PICO 投屏连接已建立"
+                    CAST_DISCONNECTED -> "PICO 投屏等待 PC 连接"
+                    CAST_NO_MIC_PERMISSION -> "PICO 投屏异常: 缺少麦克风权限"
+                    else -> "PICO 投屏状态未知: $state"
+                },
+            )
         }
     }
 
@@ -169,6 +190,9 @@ class PicoCastService : Service() {
         private const val ACTION_STOP = "com.picospatialanchor.helper.action.STOP_PICO_CAST"
         private const val NOTIFICATION_CHANNEL_ID = "pico_cast_control"
         private const val NOTIFICATION_ID = 1002
+        private const val CAST_DISCONNECTED = 0
+        private const val CAST_CONNECTED = 1
+        private const val CAST_NO_MIC_PERMISSION = 2
 
         @Volatile
         private var lastStatusMessage: String = "等待开始 PICO 投屏"

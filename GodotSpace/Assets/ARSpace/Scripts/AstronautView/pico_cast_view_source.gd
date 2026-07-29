@@ -7,6 +7,9 @@ extends "res://Assets/ARSpace/Scripts/AstronautView/astronaut_view_source.gd"
 const DEFAULT_FFMPEG_STREAM_CLASS := &"FFmpegVideoStream"
 const METADATA_UPDATE_INTERVAL_MSEC := 500
 const CONNECT_TIMEOUT_MSEC := 8000
+const OPEN_FAILURE_GRACE_MSEC := 750
+const RETRY_DELAY_MSEC := 4000
+const MAX_OPEN_ATTEMPTS := 4
 
 @export var ffmpeg_stream_class: StringName = DEFAULT_FFMPEG_STREAM_CLASS
 
@@ -19,6 +22,9 @@ var _last_texture: Texture2D
 var _next_metadata_update_msec := 0
 var _connect_started_msec := 0
 var _reported_connect_timeout := false
+var _open_attempt_count := 0
+var _next_retry_msec := 0
+var _retry_pending := false
 
 
 func _ready() -> void:
@@ -35,13 +41,15 @@ func set_cast_session(rtmp_url: String, metadata: Dictionary = {}) -> void:
 	_rtmp_url = normalized_url
 	_session_metadata = metadata.duplicate(true)
 	if _rtmp_url.is_empty():
-		_stop_stream()
+		_stop_stream(true)
 		_publish_texture(null)
 		_publish_metadata({})
 		_publish_waiting_status()
 		return
-	if url_changed and _is_requested:
-		_open_decoder()
+	if url_changed:
+		_reset_open_attempts()
+		if _is_requested:
+			_open_decoder()
 	elif _is_requested:
 		_update_metadata(true)
 
@@ -54,6 +62,7 @@ func set_control_status(message: String) -> void:
 
 func start(_source_peer_id: int) -> void:
 	_is_requested = true
+	_reset_open_attempts()
 	if _rtmp_url.is_empty():
 		_publish_waiting_status()
 		return
@@ -62,7 +71,7 @@ func start(_source_peer_id: int) -> void:
 
 func stop() -> void:
 	_is_requested = false
-	_stop_stream()
+	_stop_stream(true)
 	_publish_texture(null)
 	_publish_metadata({})
 	_publish_status(Status.IDLE, "")
@@ -75,23 +84,34 @@ func get_texture() -> Texture2D:
 func _process(_delta: float) -> void:
 	if _video_player == null:
 		return
+	var now_msec := Time.get_ticks_msec()
+	var attempt_age_msec := now_msec - _connect_started_msec
+	var playback_failed := not _video_player.is_playing() \
+		and attempt_age_msec >= OPEN_FAILURE_GRACE_MSEC
+	if playback_failed:
+		if _last_texture != null:
+			_last_texture = null
+			_publish_texture(null)
+		_handle_open_failure(now_msec, false)
+		_update_metadata()
+		return
 	var texture := _video_player.get_video_texture()
 	if texture != _last_texture:
 		_last_texture = texture
 		_publish_texture(_last_texture)
 	if _last_texture != null:
+		_retry_pending = false
+		_next_retry_msec = 0
 		_publish_status(Status.LIVE, "PICO 头显实时投屏")
-	elif not _video_player.is_playing():
-		_publish_status(Status.ERROR, "FFmpeg 无法打开 PICO RTMP 投屏")
-	elif not _reported_connect_timeout \
-			and Time.get_ticks_msec() - _connect_started_msec >= CONNECT_TIMEOUT_MSEC:
-		_reported_connect_timeout = true
-		_publish_status(Status.STALLED, "PICO RTMP 未在 8 秒内输出视频帧")
+	else:
+		var attempt_timed_out := attempt_age_msec >= CONNECT_TIMEOUT_MSEC
+		if attempt_timed_out:
+			_handle_open_failure(now_msec, true)
 	_update_metadata()
 
 
 func _open_decoder() -> void:
-	_stop_stream()
+	_stop_stream(false)
 	if not ClassDB.class_exists(ffmpeg_stream_class):
 		_publish_status(
 			Status.ERROR,
@@ -102,6 +122,7 @@ func _open_decoder() -> void:
 	if stream == null:
 		_publish_status(Status.ERROR, "PICO RTMP 解码扩展不是 VideoStream")
 		return
+	_open_attempt_count += 1
 	stream.file = _normalize_decoder_url(_rtmp_url)
 	_video_player = VideoStreamPlayer.new()
 	_video_player.name = "PicoCastRTMPPlayer"
@@ -111,13 +132,21 @@ func _open_decoder() -> void:
 	_video_player.play()
 	_connect_started_msec = Time.get_ticks_msec()
 	_reported_connect_timeout = false
+	_next_retry_msec = 0
+	_retry_pending = false
 	_next_metadata_update_msec = 0
 	set_process(true)
-	_publish_status(Status.CONNECTING, "正在连接 PICO RTMP 投屏")
+	_publish_status(
+		Status.CONNECTING,
+		"正在连接 PICO RTMP 投屏（第 %d/%d 次）" % [
+			_open_attempt_count,
+			MAX_OPEN_ATTEMPTS,
+		],
+	)
 	_update_metadata(true)
 
 
-func _stop_stream() -> void:
+func _stop_stream(reset_attempts: bool = false) -> void:
 	set_process(false)
 	if _video_player != null and is_instance_valid(_video_player):
 		_video_player.stop()
@@ -125,6 +154,39 @@ func _stop_stream() -> void:
 	_video_player = null
 	_last_texture = null
 	_connect_started_msec = 0
+	_reported_connect_timeout = false
+	_next_retry_msec = 0
+	_retry_pending = false
+	if reset_attempts:
+		_reset_open_attempts()
+
+
+func _handle_open_failure(now_msec: int, timed_out: bool) -> void:
+	if _retry_pending:
+		if now_msec >= _next_retry_msec:
+			_open_decoder()
+		return
+	if _open_attempt_count >= MAX_OPEN_ATTEMPTS:
+		set_process(false)
+		_publish_status(
+			Status.ERROR,
+			"FFmpeg 连续 %d 次无法建立 PICO RTMP 投屏，请查看 Godot 日志" \
+				% MAX_OPEN_ATTEMPTS,
+		)
+		return
+	_reported_connect_timeout = timed_out
+	_retry_pending = true
+	_next_retry_msec = now_msec + RETRY_DELAY_MSEC
+	_publish_status(
+		Status.STALLED,
+		"PICO RTMP 第 %d 次连接失败，4 秒后重试" % _open_attempt_count,
+	)
+
+
+func _reset_open_attempts() -> void:
+	_open_attempt_count = 0
+	_next_retry_msec = 0
+	_retry_pending = false
 	_reported_connect_timeout = false
 
 

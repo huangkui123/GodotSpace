@@ -16,6 +16,7 @@ func _init() -> void:
 	_test_pico_listen_flag_is_removed_for_decoder()
 	_test_control_failure_is_reported()
 	_test_missing_ffmpeg_decoder_is_reported()
+	_test_new_session_resets_decoder_retries()
 	if _failures.is_empty():
 		print("PICO Cast control self-test passed.")
 		quit(0)
@@ -108,6 +109,26 @@ func _test_missing_ffmpeg_decoder_is_reported() -> void:
 	)
 	source.queue_free()
 	await process_frame
+
+
+func _test_new_session_resets_decoder_retries() -> void:
+	var source := PicoCastSourceScript.new()
+	source.set("_open_attempt_count", 3)
+	source.set("_retry_pending", true)
+	source.call(
+		"set_cast_session",
+		"rtmp://192.168.10.2:1935/live/new-session",
+		{},
+	)
+	_expect(
+		int(source.get("_open_attempt_count")) == 0,
+		"A new PICO Cast session should reset the decoder retry budget.",
+	)
+	_expect(
+		not bool(source.get("_retry_pending")),
+		"A new PICO Cast session should clear a pending decoder retry.",
+	)
+	source.queue_free()
 
 
 func _expect(condition: bool, message: String) -> void:
