@@ -19,6 +19,7 @@ const SETTING_WAKE_WORDS := "arspace/llm_assistant/wake_words"
 const SETTING_MAX_CONTEXT_ENTRIES := "arspace/llm_assistant/max_context_entries"
 const SETTING_MAX_PROMPT_CONTEXT_CHARS := "arspace/llm_assistant/max_prompt_context_chars"
 const SETTING_MAX_TOKENS := "arspace/llm_assistant/max_tokens"
+const SETTING_REQUEST_TIMEOUT_SECONDS := "arspace/llm_assistant/request_timeout_seconds"
 const SETTING_USE_LOCAL_FALLBACK := "arspace/llm_assistant/use_local_fallback_when_unconfigured"
 const SETTING_KNOWLEDGE_BASE_PATH := "arspace/llm_assistant/knowledge_base_path"
 const SETTING_KNOWLEDGE_DIRECTORIES := "arspace/llm_assistant/knowledge_directories"
@@ -40,6 +41,7 @@ const LLM_CALL_LOG_PATH := "user://llm_assistant_logs/deepseek_calls.jsonl"
 @export_range(0.0, 1.0, 0.05) var temperature: float = 0.2
 @export_range(128, 4096, 64) var max_tokens: int = 384
 @export_range(400, 8000, 100) var max_prompt_context_chars: int = 1200
+@export_range(10.0, 180.0, 5.0) var request_timeout_seconds: float = 90.0
 @export var use_local_fallback_when_unconfigured: bool = true
 
 @export_group("Voice Trigger")
@@ -361,6 +363,7 @@ func _apply_project_settings() -> void:
 	max_context_entries = int(ProjectSettings.get_setting(SETTING_MAX_CONTEXT_ENTRIES, max_context_entries))
 	max_prompt_context_chars = int(ProjectSettings.get_setting(SETTING_MAX_PROMPT_CONTEXT_CHARS, max_prompt_context_chars))
 	max_tokens = int(ProjectSettings.get_setting(SETTING_MAX_TOKENS, max_tokens))
+	request_timeout_seconds = float(ProjectSettings.get_setting(SETTING_REQUEST_TIMEOUT_SECONDS, request_timeout_seconds))
 	use_local_fallback_when_unconfigured = bool(ProjectSettings.get_setting(SETTING_USE_LOCAL_FALLBACK, use_local_fallback_when_unconfigured))
 	max_conversation_turns = int(ProjectSettings.get_setting(SETTING_MAX_CONVERSATION_TURNS, max_conversation_turns))
 
@@ -409,7 +412,7 @@ func _packed_string_array_from_variant(value: Variant) -> PackedStringArray:
 func _setup_http_request() -> void:
 	_http_request = HTTPRequest.new()
 	_http_request.name = "LLMHttpRequest"
-	_http_request.timeout = 45.0
+	_http_request.timeout = request_timeout_seconds
 	add_child(_http_request)
 	_http_request.request_completed.connect(_on_http_request_completed)
 

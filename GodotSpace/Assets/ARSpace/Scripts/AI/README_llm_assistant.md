@@ -30,6 +30,7 @@
 - `llm_assistant/max_context_entries`
 - `llm_assistant/max_prompt_context_chars`
 - `llm_assistant/max_tokens`
+- `llm_assistant/request_timeout_seconds`
 - `llm_assistant/max_conversation_turns`
 - `llm_assistant/use_local_fallback_when_unconfigured`
 - `llm_assistant/knowledge_base_path`
@@ -47,6 +48,7 @@
 
 委派给 DeepSeek 的当前任务步骤会优先于普通检索结果写入提示词。知识与对话上下文受
 `max_prompt_context_chars` 统一限制，输出长度由 `max_tokens` 限制，避免长时间使用后超过模型上下文窗口。
+DeepSeek HTTP 请求默认允许 90 秒；Gateway 的 `delegate_deepseek` 应设置为更长的 120 秒，避免传输层先行截断。
 
 ## 验证命令
 

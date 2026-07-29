@@ -12,8 +12,14 @@ func _init() -> void:
 func _run() -> void:
 	var client := root.get_node_or_null("LocalAgentClient")
 	var voice_chat := root.get_node_or_null("VoiceChat")
-	if not _check(client != null and voice_chat != null, "Required Agent autoloads are missing."):
+	var assistant := root.get_node_or_null("LLMAssistantService")
+	if not _check(client != null and voice_chat != null and assistant != null, "Required Agent autoloads are missing."):
 		return
+	# Keep this bridge test deterministic and independent of a paid DeepSeek key.
+	assistant.endpoint_url = ""
+	assistant.api_key = ""
+	assistant.api_key_environment_name = ""
+	assistant.use_local_fallback_when_unconfigured = true
 	client.assistant_final_received.connect(func(_request_id: String, answer: String) -> void:
 		_answer_count += 1
 		_answers.append(answer)
@@ -84,6 +90,18 @@ func _run() -> void:
 			_answers,
 			router.get_debug_state() if router != null else {},
 		])
+		return
+
+	voice_chat.voice_transcript_received.emit({
+		"speaker_peer_id": 1,
+		"speaker_name": "航天员",
+		"text": "助手，这一页在讲什么",
+		"is_final": true,
+		"source": "asr",
+	})
+	if not await _wait_for_answers(4):
+		return
+	if not _check(_answers[3].find("当前未配置在线 LLM") != -1, "Current-page explanation did not complete through delegate_deepseek."):
 		return
 
 	print("Task Agent voice-to-tool end-to-end self test passed.")

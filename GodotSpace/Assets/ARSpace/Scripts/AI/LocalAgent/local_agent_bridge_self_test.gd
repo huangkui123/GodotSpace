@@ -32,6 +32,21 @@ class DeferredAdapter:
 	func execute(_arguments: Dictionary, _context: Dictionary) -> Dictionary:
 		return {"__deferred__": true}
 
+class SynchronousDeferredAdapter:
+	extends RefCounted
+	var client: Node
+
+	func _init(target_client: Node) -> void:
+		client = target_client
+
+	func execute(_arguments: Dictionary, context: Dictionary) -> Dictionary:
+		client.call("complete_deferred_tool_call", str(context.get("tool_call_id", "")), {
+			"ok": true,
+			"data": {"completed_synchronously": true},
+			"error": null,
+		})
+		return {"__deferred__": true}
+
 
 func _init() -> void:
 	call_deferred("_run")
@@ -132,12 +147,30 @@ func _run() -> void:
 	)
 	if not _check(bool((replayed_deferred.get("data", {}) as Dictionary).get("completed", false)), "deferred result was not cached after completion"):
 		return
+	var synchronous_adapter := SynchronousDeferredAdapter.new(client)
+	if not _check(registry.register_tool("synchronous_deferred_tool", Callable(synchronous_adapter, "execute")), "synchronous deferred tool registration failed"):
+		return
+	var synchronous_result := client.execute_tool_call_for_test(
+		"tool-synchronous-deferred",
+		"synchronous_deferred_tool",
+		{},
+		"request-synchronous-deferred"
+	)
+	if not _check(
+		bool((synchronous_result.get("data", {}) as Dictionary).get("completed_synchronously", false)),
+		"synchronous deferred completion was lost before cache registration"
+	):
+		return
 	client.execute_tool_call_for_test(
 		"tool-abandoned", "deferred_tool", {}, "request-abandoned"
 	)
 	client.abandon_deferred_tool_calls_for_request("request-abandoned")
 	var cache_after_abandon := client.get("_tool_result_cache") as Dictionary
 	if not _check(not cache_after_abandon.has("tool-abandoned"), "abandoned deferred tool remained cached"):
+		return
+	if not _check(not client.complete_deferred_tool_call("tool-abandoned", {
+		"ok": true, "data": {"late": true}, "error": null,
+	}), "late completion after abandon was retained as an early result"):
 		return
 
 	var protocol_client := ClientScript.new()

@@ -29,6 +29,7 @@ llm_assistant/wake_words=PackedStringArray("助手", "智能助手", "LLM")
 llm_assistant/max_context_entries=5
 llm_assistant/max_prompt_context_chars=1200
 llm_assistant/max_tokens=384
+llm_assistant/request_timeout_seconds=90.0
 llm_assistant/max_conversation_turns=6
 llm_assistant/use_local_fallback_when_unconfigured=true
 llm_assistant/knowledge_base_path="res://Assets/ARSpace/Data/llm_knowledge_base.json"

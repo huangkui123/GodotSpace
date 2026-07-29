@@ -26,6 +26,8 @@ var _reconnect_seconds := 1.0
 var _last_ping_msec := 0
 var _last_pong_msec := 0
 var _tool_result_cache: Dictionary = {}
+var _early_deferred_results: Dictionary = {}
+var _resolving_tool_calls: Dictionary = {}
 var _last_error := ""
 var _last_error_msec := 0
 var _server_role_selected := false
@@ -87,6 +89,7 @@ func get_debug_state() -> Dictionary:
 		"session_id": _session_id,
 		"registered_tools": _registry.registered_tools() if _registry != null else PackedStringArray(),
 		"cached_tool_result_count": _tool_result_cache.size(),
+		"early_deferred_result_count": _early_deferred_results.size(),
 		"last_error": _last_error,
 		"last_error_msec": _last_error_msec,
 		"last_pong_msec": _last_pong_msec,
@@ -125,14 +128,22 @@ func submit_user_message(
 
 
 func complete_deferred_tool_call(tool_call_id: String, result: Dictionary) -> bool:
-	if not _tool_result_cache.has(tool_call_id):
-		return false
-	var cached := _tool_result_cache[tool_call_id] as Dictionary
-	if not bool(cached.get("pending", false)):
-		return false
 	var normalized: Dictionary = _registry.normalize_result(result) if _registry != null else ToolRegistryScript._error(
 		"tool_registry_not_ready", "The Local Agent tool registry is not ready."
 	)
+	if not _tool_result_cache.has(tool_call_id):
+		if not _resolving_tool_calls.has(tool_call_id):
+			return false
+		# A local fallback may finish synchronously while the registry callback is
+		# still returning __deferred__. Preserve it until _resolve_tool_call()
+		# installs the correlated request/tool cache entry.
+		_early_deferred_results[tool_call_id] = normalized.duplicate(true)
+		while _early_deferred_results.size() > MAX_CACHED_TOOL_RESULTS:
+			_early_deferred_results.erase(_early_deferred_results.keys().front())
+		return true
+	var cached := _tool_result_cache[tool_call_id] as Dictionary
+	if not bool(cached.get("pending", false)):
+		return false
 	cached["pending"] = false
 	cached["result"] = normalized.duplicate(true)
 	_tool_result_cache[tool_call_id] = cached
@@ -290,13 +301,26 @@ func _resolve_tool_call(
 	var result: Dictionary = ToolRegistryScript._error(
 		"tool_registry_not_ready", "The Local Agent tool registry is not ready."
 	)
+	_early_deferred_results.erase(tool_call_id)
+	_resolving_tool_calls[tool_call_id] = true
 	if _registry != null:
 		result = _registry.dispatch(tool_name, arguments, {
 			"request_id": request_id,
 			"tool_call_id": tool_call_id,
 			"tool_name": tool_name,
 		})
+	_resolving_tool_calls.erase(tool_call_id)
 	if bool(result.get("__deferred__", false)):
+		if _early_deferred_results.has(tool_call_id):
+			var early_result := (_early_deferred_results[tool_call_id] as Dictionary).duplicate(true)
+			_early_deferred_results.erase(tool_call_id)
+			_tool_result_cache[tool_call_id] = {
+				"request_id": request_id,
+				"tool_name": tool_name,
+				"pending": false,
+				"result": early_result.duplicate(true),
+			}
+			return early_result
 		_tool_result_cache[tool_call_id] = {
 			"request_id": request_id,
 			"tool_name": tool_name,
@@ -370,6 +394,8 @@ func _disable_connection() -> void:
 	_hello_sent = false
 	_session_id = ""
 	_tool_result_cache.clear()
+	_early_deferred_results.clear()
+	_resolving_tool_calls.clear()
 	_set_connected(false)
 
 

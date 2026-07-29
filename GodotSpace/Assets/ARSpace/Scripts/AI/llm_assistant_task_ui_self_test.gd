@@ -59,6 +59,7 @@ func _run() -> void:
 	assistant.use_local_fallback_when_unconfigured = true
 	assistant.max_tokens = 384
 	assistant.max_prompt_context_chars = 1200
+	assistant.request_timeout_seconds = 90.0
 	assistant.answer_completed.connect(func(_question: String, answer: String, sources: Array) -> void:
 		_answer_completed = not answer.strip_edges().is_empty()
 		_task_source_seen = _has_source(sources, "当前专家任务指导")
@@ -71,6 +72,10 @@ func _run() -> void:
 		return
 	if not bool(state.get("listening", false)):
 		_fail("Assistant service is not listening without opening the assistant panel.")
+		return
+	var http_request := assistant.get("_http_request") as HTTPRequest
+	if http_request == null or not is_equal_approx(http_request.timeout, 90.0):
+		_fail("DeepSeek HTTP timeout does not preserve the Gateway timeout margin.")
 		return
 	var bounded_request := assistant.call("_build_chat_completion_request", "这一步在讲什么", [{
 		"source": "当前专家任务步骤",
