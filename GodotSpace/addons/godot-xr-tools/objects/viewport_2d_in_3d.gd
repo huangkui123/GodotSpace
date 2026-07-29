@@ -336,6 +336,12 @@ func connect_scene_signal(which : String, callback : Callable, flags : int = 0):
 
 # Handle pointer event from screen-body
 func _on_pointer_event(event: XRToolsPointerEvent):
+	if not is_inside_tree() \
+			or multiplayer == null \
+			or not is_instance_valid(event) \
+			or not is_instance_valid(event.pointer) \
+			or not is_instance_valid(event.target):
+		return
 	if multiplayer.is_server():
 		# 如果自己就是服务器，直接处理事件
 		pass

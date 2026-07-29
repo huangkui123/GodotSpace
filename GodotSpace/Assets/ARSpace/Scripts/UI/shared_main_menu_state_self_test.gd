@@ -95,8 +95,8 @@ func _run() -> void:
 		"res://Assets/ARSpace/Prefabs/UI/MainMenuCanvas/canvas.gd"
 	)
 	_expect(
-		canvas_text.contains("PanelWindowZoom.set_window_visible(canvas, is_visible)"),
-		"MainMenu child-window buttons must use the shared spatial-window API"
+		canvas_text.contains("PanelWindowZoom.set_window_visible(canvas, is_visible, self)"),
+		"MainMenu child-window buttons must pass their explicit spatial parent"
 	)
 
 	mode_layout.queue_free()

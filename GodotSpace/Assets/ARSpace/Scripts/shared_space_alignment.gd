@@ -25,6 +25,7 @@ var _is_aligned: bool = false
 var _recenter_canvas: CanvasLayer
 var _recenter_button: Button
 var _status_label: Label
+var _force_recenter_pending: bool = false
 
 
 func _ready() -> void:
@@ -48,13 +49,15 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _process(delta: float) -> void:
+	if _is_reconstruction_workspace_active() and not _force_recenter_pending:
+		return
 	_waiting_seconds += delta
 	_retry_seconds += delta
 	if _retry_seconds < retry_interval_seconds:
 		return
 	_retry_seconds = 0.0
 
-	if recenter():
+	if recenter(_force_recenter_pending):
 		set_process(false)
 		return
 
@@ -68,7 +71,9 @@ func _process(delta: float) -> void:
 
 ## Aligns the current HMD's horizontal position and yaw with the role anchor.
 ## Head height and pitch/roll remain controlled by the XR tracking runtime.
-func recenter() -> bool:
+func recenter(force: bool = false) -> bool:
+	if _is_reconstruction_workspace_active() and not force:
+		return false
 	if _runtime_profile == null:
 		_runtime_profile = RuntimeProfile.current()
 	if not _runtime_profile.is_valid() or not _runtime_profile.uses_xr():
@@ -85,13 +90,18 @@ func recenter() -> bool:
 
 	xr_origin.global_transform = compute_origin_transform(xr_camera.transform, anchor.global_transform)
 	_is_aligned = true
+	_force_recenter_pending = false
 	_timeout_reported = false
 	_set_status("共享空间：已对齐")
 	alignment_succeeded.emit("ground" if _runtime_profile.is_ground() else "sky", anchor)
 	return true
 
 
-func request_recenter() -> void:
+func request_recenter(force: bool = false) -> void:
+	if _is_reconstruction_workspace_active() and not force:
+		_set_status("共享空间：实时重建期间已锁定全局对齐")
+		return
+	_force_recenter_pending = force
 	_waiting_seconds = 0.0
 	_retry_seconds = retry_interval_seconds
 	_timeout_reported = false
@@ -175,6 +185,15 @@ func _bind_recenter_controllers(xr_origin: XROrigin3D) -> void:
 func _on_controller_button_pressed(button_name: String) -> void:
 	if StringName(button_name) == RECENTER_CONTROLLER_BUTTON:
 		request_recenter()
+
+
+func _is_reconstruction_workspace_active() -> bool:
+	var workspace := get_tree().get_first_node_in_group(
+		"reconstruction_workspace_controller"
+	)
+	return workspace != null \
+		and workspace.has_method("is_workspace_active") \
+		and bool(workspace.call("is_workspace_active"))
 
 
 func _build_recenter_controls() -> void:

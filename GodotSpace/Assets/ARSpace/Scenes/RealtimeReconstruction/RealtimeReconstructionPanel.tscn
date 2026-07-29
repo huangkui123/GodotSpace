@@ -1,0 +1,646 @@
+[gd_scene load_steps=5 format=3 uid="uid://5snb6ikydf4y"]
+
+[ext_resource type="Script" uid="uid://cv3102niiq36w" path="res://Assets/ARSpace/Scripts/RealtimeReconstruction/UI/reconstruction_panel_ui.gd" id="1_script"]
+
+[sub_resource type="StyleBoxFlat" id="StylePanel"]
+bg_color = Color(0.055, 0.085, 0.16, 0.97)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.18, 0.52, 0.88, 1)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+
+[sub_resource type="StyleBoxFlat" id="StyleSecondary"]
+bg_color = Color(0.15, 0.2, 0.31, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.31, 0.42, 0.62, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StylePrimary"]
+bg_color = Color(0.12, 0.48, 0.88, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="RealtimeReconstructionPanel" type="PanelContainer" groups=["reconstruction_panel_ui"]]
+offset_right = 726.0
+offset_bottom = 722.0
+theme_override_styles/panel = SubResource("StylePanel")
+script = ExtResource("1_script")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 22
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 22
+theme_override_constants/margin_bottom = 18
+
+[node name="Layout" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Header" type="HBoxContainer" parent="Margin/Layout"]
+custom_minimum_size = Vector2(0, 54)
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="Margin/Layout/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.9, 0.95, 1, 1)
+theme_override_font_sizes/font_size = 27
+text = "实时重建控制台"
+vertical_alignment = 1
+
+[node name="RoleLabel" type="Label" parent="Margin/Layout/Header"]
+custom_minimum_size = Vector2(86, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.52, 0.76, 1, 1)
+theme_override_font_sizes/font_size = 19
+text = "天上端"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="StateLabel" type="Label" parent="Margin/Layout/Header"]
+custom_minimum_size = Vector2(104, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.34, 0.92, 0.64, 1)
+theme_override_font_sizes/font_size = 19
+text = "准备"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="RecenterButton" type="Button" parent="Margin/Layout/Header"]
+custom_minimum_size = Vector2(106, 44)
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+theme_override_styles/normal = SubResource("StyleSecondary")
+text = "置于面前"
+
+[node name="ExitButton" type="Button" parent="Margin/Layout/Header"]
+custom_minimum_size = Vector2(72, 44)
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+theme_override_styles/normal = SubResource("StyleSecondary")
+text = "退出"
+
+[node name="Separator" type="HSeparator" parent="Margin/Layout"]
+layout_mode = 2
+
+[node name="ServiceGrid" type="GridContainer" parent="Margin/Layout"]
+layout_mode = 2
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 6
+columns = 4
+
+[node name="HelperTitle" type="Label" parent="Margin/Layout/ServiceGrid"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.62, 0.7, 0.86, 1)
+text = "PICO Helper"
+
+[node name="HelperStatus" type="Label" parent="Margin/Layout/ServiceGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "等待中"
+autowrap_mode = 1
+
+[node name="LabTitle" type="Label" parent="Margin/Layout/ServiceGrid"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.62, 0.7, 0.86, 1)
+text = "Lab"
+
+[node name="LabStatus" type="Label" parent="Margin/Layout/ServiceGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "等待中"
+autowrap_mode = 1
+
+[node name="PointChannelTitle" type="Label" parent="Margin/Layout/ServiceGrid"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.62, 0.7, 0.86, 1)
+text = "点云通道"
+
+[node name="PointChannelStatus" type="Label" parent="Margin/Layout/ServiceGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "等待中"
+autowrap_mode = 1
+
+[node name="StorageTitle" type="Label" parent="Margin/Layout/ServiceGrid"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.62, 0.7, 0.86, 1)
+text = "地图存储"
+
+[node name="StorageStatus" type="Label" parent="Margin/Layout/ServiceGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "已就绪"
+autowrap_mode = 1
+
+[node name="Separator2" type="HSeparator" parent="Margin/Layout"]
+layout_mode = 2
+
+[node name="Pages" type="Control" parent="Margin/Layout"]
+custom_minimum_size = Vector2(0, 520)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="SkyPages" type="Control" parent="Margin/Layout/Pages"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PreparePage" type="MarginContainer" parent="Margin/Layout/Pages/SkyPages"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Content" type="VBoxContainer" parent="Margin/Layout/Pages/SkyPages/PreparePage"]
+layout_mode = 2
+theme_override_constants/separation = 18
+alignment = 1
+
+[node name="Headline" type="Label" parent="Margin/Layout/Pages/SkyPages/PreparePage/Content"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "准备扫描并共享真实空间"
+horizontal_alignment = 1
+
+[node name="Description" type="Label" parent="Margin/Layout/Pages/SkyPages/PreparePage/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.68, 0.75, 0.88, 1)
+theme_override_font_sizes/font_size = 18
+text = "请先在 PICO 本机启动 Spatial Anchor Helper。
+服务全部就绪后，开始按钮会自动启用。"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="MapRow" type="HBoxContainer" parent="Margin/Layout/Pages/SkyPages/PreparePage/Content"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="MapLabel" type="Label" parent="Margin/Layout/Pages/SkyPages/PreparePage/Content/MapRow"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "服务器地图库"
+vertical_alignment = 1
+
+[node name="MapChooser" type="VBoxContainer" parent="Margin/Layout/Pages/SkyPages/PreparePage/Content/MapRow"]
+custom_minimum_size = Vector2(360, 46)
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="MapSelector" type="Button" parent="Margin/Layout/Pages/SkyPages/PreparePage/Content/MapRow/MapChooser"]
+custom_minimum_size = Vector2(360, 46)
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+theme_override_styles/normal = SubResource("StyleSecondary")
+disabled = true
+text = "服务器地图库为空"
+alignment = 0
+
+[node name="MapListPanel" type="PanelContainer" parent="Margin/Layout/Pages/SkyPages/PreparePage/Content/MapRow/MapChooser"]
+visible = false
+custom_minimum_size = Vector2(360, 170)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleSecondary")
+
+[node name="MapListMargin" type="MarginContainer" parent="Margin/Layout/Pages/SkyPages/PreparePage/Content/MapRow/MapChooser/MapListPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 6
+
+[node name="MapScroll" type="ScrollContainer" parent="Margin/Layout/Pages/SkyPages/PreparePage/Content/MapRow/MapChooser/MapListPanel/MapListMargin"]
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="MapItems" type="VBoxContainer" parent="Margin/Layout/Pages/SkyPages/PreparePage/Content/MapRow/MapChooser/MapListPanel/MapListMargin/MapScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="Actions" type="HBoxContainer" parent="Margin/Layout/Pages/SkyPages/PreparePage/Content"]
+layout_mode = 2
+theme_override_constants/separation = 14
+alignment = 1
+
+[node name="StartButton" type="Button" parent="Margin/Layout/Pages/SkyPages/PreparePage/Content/Actions"]
+custom_minimum_size = Vector2(190, 58)
+layout_mode = 2
+theme_override_font_sizes/font_size = 21
+theme_override_styles/normal = SubResource("StylePrimary")
+disabled = true
+text = "开始新的重建"
+
+[node name="ImportButton" type="Button" parent="Margin/Layout/Pages/SkyPages/PreparePage/Content/Actions"]
+custom_minimum_size = Vector2(150, 58)
+layout_mode = 2
+theme_override_font_sizes/font_size = 21
+theme_override_styles/normal = SubResource("StyleSecondary")
+text = "导入地图"
+
+[node name="CollectingPage" type="MarginContainer" parent="Margin/Layout/Pages/SkyPages"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Content" type="VBoxContainer" parent="Margin/Layout/Pages/SkyPages/CollectingPage"]
+layout_mode = 2
+theme_override_constants/separation = 18
+alignment = 1
+
+[node name="Headline" type="Label" parent="Margin/Layout/Pages/SkyPages/CollectingPage/Content"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "初始化采集"
+horizontal_alignment = 1
+
+[node name="Instruction" type="Label" parent="Margin/Layout/Pages/SkyPages/CollectingPage/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.78, 0.84, 0.96, 1)
+theme_override_font_sizes/font_size = 19
+text = "缓慢左右移动 30–50 cm，再前后移动 30–50 cm，并做少量转头。"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="Progress" type="ProgressBar" parent="Margin/Layout/Pages/SkyPages/CollectingPage/Content"]
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+
+[node name="CancelButton" type="Button" parent="Margin/Layout/Pages/SkyPages/CollectingPage/Content"]
+custom_minimum_size = Vector2(150, 54)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/normal = SubResource("StyleSecondary")
+text = "取消"
+
+[node name="SolvingPage" type="MarginContainer" parent="Margin/Layout/Pages/SkyPages"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Content" type="VBoxContainer" parent="Margin/Layout/Pages/SkyPages/SolvingPage"]
+layout_mode = 2
+theme_override_constants/separation = 18
+alignment = 1
+
+[node name="Headline" type="Label" parent="Margin/Layout/Pages/SkyPages/SolvingPage/Content"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "正在自动配准"
+horizontal_alignment = 1
+
+[node name="Message" type="Label" parent="Margin/Layout/Pages/SkyPages/SolvingPage/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.68, 0.75, 0.88, 1)
+theme_override_font_sizes/font_size = 19
+text = "正在匹配 PICO、Godot 与 LingBot 相机轨迹…"
+horizontal_alignment = 1
+
+[node name="PreviewPage" type="MarginContainer" parent="Margin/Layout/Pages/SkyPages"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Content" type="VBoxContainer" parent="Margin/Layout/Pages/SkyPages/PreviewPage"]
+layout_mode = 2
+theme_override_constants/separation = 9
+
+[node name="Metrics" type="Label" parent="Margin/Layout/Pages/SkyPages/PreviewPage/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.38, 0.9, 0.66, 1)
+theme_override_font_sizes/font_size = 17
+text = "位置 RMS -- cm　旋转 RMS --°　尺度 --"
+horizontal_alignment = 1
+
+[node name="ModeRow" type="HBoxContainer" parent="Margin/Layout/Pages/SkyPages/PreviewPage/Content"]
+layout_mode = 2
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="FineToggle" type="CheckButton" parent="Margin/Layout/Pages/SkyPages/PreviewPage/Content/ModeRow"]
+layout_mode = 2
+text = "粗调"
+
+[node name="AdvancedToggle" type="CheckButton" parent="Margin/Layout/Pages/SkyPages/PreviewPage/Content/ModeRow"]
+layout_mode = 2
+text = "高级旋转"
+
+[node name="TranslationRow" type="HBoxContainer" parent="Margin/Layout/Pages/SkyPages/PreviewPage/Content"]
+layout_mode = 2
+theme_override_constants/separation = 6
+alignment = 1
+
+[node name="Label" type="Label" parent="Margin/Layout/Pages/SkyPages/PreviewPage/Content/TranslationRow"]
+layout_mode = 2
+text = "平移"
+
+[node name="XMinus" type="Button" parent="Margin/Layout/Pages/SkyPages/PreviewPage/Content/TranslationRow"]
+custom_minimum_size = Vector2(74, 44)
+layout_mode = 2
+text = "X−"
+
+[node name="XPlus" type="Button" parent="Margin/Layout/Pages/SkyPages/PreviewPage/Content/TranslationRow"]
+custom_minimum_size = Vector2(74, 44)
+layout_mode = 2
+text = "X+"
+
+[node name="YMinus" type="Button" parent="Margin/Layout/Pages/SkyPages/PreviewPage/Content/TranslationRow"]
+custom_minimum_size = Vector2(74, 44)
+layout_mode = 2
+text = "Y−"
+
+[node name="YPlus" type="Button" parent="Margin/Layout/Pages/SkyPages/PreviewPage/Content/TranslationRow"]
+custom_minimum_size = Vector2(74, 44)
+layout_mode = 2
+text = "Y+"
+
+[node name="ZMinus" type="Button" parent="Margin/Layout/Pages/SkyPages/PreviewPage/Content/TranslationRow"]
+custom_minimum_size = Vector2(74, 44)
+layout_mode = 2
+text = "Z−"
+
+[node name="ZPlus" type="Button" parent="Margin/Layout/Pages/SkyPages/PreviewPage/Content/TranslationRow"]
+custom_minimum_size = Vector2(74, 44)
+layout_mode = 2
+text = "Z+"
+
+[node name="RotationScaleRow" type="HBoxContainer" parent="Margin/Layout/Pages/SkyPages/PreviewPage/Content"]
+layout_mode = 2
+theme_override_constants/separation = 6
+alignment = 1
+
+[node name="Label" type="Label" parent="Margin/Layout/Pages/SkyPages/PreviewPage/Content/RotationScaleRow"]
+layout_mode = 2
+text = "旋转/缩放"
+
+[node name="YawMinus" type="Button" parent="Margin/Layout/Pages/SkyPages/PreviewPage/Content/RotationScaleRow"]
+custom_minimum_size = Vector2(90, 44)
+layout_mode = 2
+text = "Yaw−"
+
+[node name="YawPlus" type="Button" parent="Margin/Layout/Pages/SkyPages/PreviewPage/Content/RotationScaleRow"]
+custom_minimum_size = Vector2(90, 44)
+layout_mode = 2
+text = "Yaw+"
+
+[node name="ScaleMinus" type="Button" parent="Margin/Layout/Pages/SkyPages/PreviewPage/Content/RotationScaleRow"]
+custom_minimum_size = Vector2(90, 44)
+layout_mode = 2
+text = "缩放−"
+
+[node name="ScalePlus" type="Button" parent="Margin/Layout/Pages/SkyPages/PreviewPage/Content/RotationScaleRow"]
+custom_minimum_size = Vector2(90, 44)
+layout_mode = 2
+text = "缩放+"
+
+[node name="AdvancedRotationRow" type="HBoxContainer" parent="Margin/Layout/Pages/SkyPages/PreviewPage/Content"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 6
+alignment = 1
+
+[node name="PitchMinus" type="Button" parent="Margin/Layout/Pages/SkyPages/PreviewPage/Content/AdvancedRotationRow"]
+custom_minimum_size = Vector2(96, 42)
+layout_mode = 2
+text = "Pitch−"
+
+[node name="PitchPlus" type="Button" parent="Margin/Layout/Pages/SkyPages/PreviewPage/Content/AdvancedRotationRow"]
+custom_minimum_size = Vector2(96, 42)
+layout_mode = 2
+text = "Pitch+"
+
+[node name="RollMinus" type="Button" parent="Margin/Layout/Pages/SkyPages/PreviewPage/Content/AdvancedRotationRow"]
+custom_minimum_size = Vector2(96, 42)
+layout_mode = 2
+text = "Roll−"
+
+[node name="RollPlus" type="Button" parent="Margin/Layout/Pages/SkyPages/PreviewPage/Content/AdvancedRotationRow"]
+custom_minimum_size = Vector2(96, 42)
+layout_mode = 2
+text = "Roll+"
+
+[node name="Actions" type="HBoxContainer" parent="Margin/Layout/Pages/SkyPages/PreviewPage/Content"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="ConfirmButton" type="Button" parent="Margin/Layout/Pages/SkyPages/PreviewPage/Content/Actions"]
+custom_minimum_size = Vector2(170, 52)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StylePrimary")
+text = "确认并发布"
+
+[node name="RetryButton" type="Button" parent="Margin/Layout/Pages/SkyPages/PreviewPage/Content/Actions"]
+custom_minimum_size = Vector2(150, 52)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleSecondary")
+text = "重新采集"
+
+[node name="LivePage" type="MarginContainer" parent="Margin/Layout/Pages/SkyPages"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Content" type="VBoxContainer" parent="Margin/Layout/Pages/SkyPages/LivePage"]
+layout_mode = 2
+theme_override_constants/separation = 18
+alignment = 1
+
+[node name="Headline" type="Label" parent="Margin/Layout/Pages/SkyPages/LivePage/Content"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "实时重建进行中"
+horizontal_alignment = 1
+
+[node name="Stats" type="Label" parent="Margin/Layout/Pages/SkyPages/LivePage/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.82, 0.96, 1)
+theme_override_font_sizes/font_size = 19
+text = "输入 -- FPS　点云 -- Hz　延迟 -- ms
+点数 --　运行 --:--"
+horizontal_alignment = 1
+
+[node name="PointCloudToggle" type="CheckButton" parent="Margin/Layout/Pages/SkyPages/LivePage/Content"]
+layout_mode = 2
+size_flags_horizontal = 4
+text = "显示重建点云"
+
+[node name="Actions" type="HBoxContainer" parent="Margin/Layout/Pages/SkyPages/LivePage/Content"]
+layout_mode = 2
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="StopButton" type="Button" parent="Margin/Layout/Pages/SkyPages/LivePage/Content/Actions"]
+custom_minimum_size = Vector2(146, 52)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StylePrimary")
+text = "停止并保留"
+
+[node name="ReregisterButton" type="Button" parent="Margin/Layout/Pages/SkyPages/LivePage/Content/Actions"]
+custom_minimum_size = Vector2(130, 52)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleSecondary")
+text = "重新配准"
+
+[node name="ExportButton" type="Button" parent="Margin/Layout/Pages/SkyPages/LivePage/Content/Actions"]
+custom_minimum_size = Vector2(110, 52)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleSecondary")
+text = "导出"
+
+[node name="StoppedPage" type="MarginContainer" parent="Margin/Layout/Pages/SkyPages"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Content" type="VBoxContainer" parent="Margin/Layout/Pages/SkyPages/StoppedPage"]
+layout_mode = 2
+theme_override_constants/separation = 18
+alignment = 1
+
+[node name="Headline" type="Label" parent="Margin/Layout/Pages/SkyPages/StoppedPage/Content"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "重建已停止，地图仍然保留"
+horizontal_alignment = 1
+
+[node name="Actions" type="HBoxContainer" parent="Margin/Layout/Pages/SkyPages/StoppedPage/Content"]
+layout_mode = 2
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="ExportButton" type="Button" parent="Margin/Layout/Pages/SkyPages/StoppedPage/Content/Actions"]
+custom_minimum_size = Vector2(120, 52)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StylePrimary")
+text = "导出地图"
+
+[node name="NewButton" type="Button" parent="Margin/Layout/Pages/SkyPages/StoppedPage/Content/Actions"]
+custom_minimum_size = Vector2(150, 52)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleSecondary")
+text = "开始新会话"
+
+[node name="ClearButton" type="Button" parent="Margin/Layout/Pages/SkyPages/StoppedPage/Content/Actions"]
+custom_minimum_size = Vector2(120, 52)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleSecondary")
+text = "清空地图"
+
+[node name="ErrorPage" type="MarginContainer" parent="Margin/Layout/Pages/SkyPages"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Content" type="VBoxContainer" parent="Margin/Layout/Pages/SkyPages/ErrorPage"]
+layout_mode = 2
+theme_override_constants/separation = 18
+alignment = 1
+
+[node name="Headline" type="Label" parent="Margin/Layout/Pages/SkyPages/ErrorPage/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.4, 0.4, 1)
+theme_override_font_sizes/font_size = 26
+text = "实时重建暂时不可用"
+horizontal_alignment = 1
+
+[node name="Message" type="Label" parent="Margin/Layout/Pages/SkyPages/ErrorPage/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.86, 0.68, 0.68, 1)
+theme_override_font_sizes/font_size = 19
+text = "请检查 PICO Helper、Lab 和网络连接。"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="RetryButton" type="Button" parent="Margin/Layout/Pages/SkyPages/ErrorPage/Content"]
+custom_minimum_size = Vector2(150, 52)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/normal = SubResource("StyleSecondary")
+text = "重新检测"
+
+[node name="GroundPage" type="MarginContainer" parent="Margin/Layout/Pages"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Content" type="VBoxContainer" parent="Margin/Layout/Pages/GroundPage"]
+layout_mode = 2
+theme_override_constants/separation = 18
+alignment = 1
+
+[node name="Headline" type="Label" parent="Margin/Layout/Pages/GroundPage/Content"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "天上实时场景"
+horizontal_alignment = 1
+
+[node name="Status" type="Label" parent="Margin/Layout/Pages/GroundPage/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.38, 0.9, 0.66, 1)
+theme_override_font_sizes/font_size = 19
+text = "已进入共享重建场景"
+horizontal_alignment = 1
+
+[node name="Stats" type="Label" parent="Margin/Layout/Pages/GroundPage/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.82, 0.96, 1)
+theme_override_font_sizes/font_size = 19
+text = "输入 -- FPS　点云 -- Hz　延迟 -- ms
+点数 --　运行 --:--"
+horizontal_alignment = 1
+
+[node name="PointCloudToggle" type="CheckButton" parent="Margin/Layout/Pages/GroundPage/Content"]
+layout_mode = 2
+size_flags_horizontal = 4
+button_pressed = true
+text = "显示重建点云"

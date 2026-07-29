@@ -23,15 +23,21 @@ class MainActivity : AppCompatActivity() {
     private lateinit var jpegQualityInput: EditText
     private lateinit var renderModeInput: EditText
     private lateinit var rawOutputCheck: CheckBox
+    private lateinit var picoCastPortInput: EditText
+    private lateinit var picoCastTokenInput: EditText
     private lateinit var statusText: TextView
     private lateinit var defaultsText: TextView
 
-    private var startAfterPermissionGrant = false
+    private var pendingPermissionAction = PendingPermissionAction.NONE
 
     private val uiHandler = Handler(Looper.getMainLooper())
     private val statusUpdater = object : Runnable {
         override fun run() {
-            statusText.text = AnchorCaptureService.latestStatusMessage()
+            statusText.text = buildString {
+                append(AnchorCaptureService.latestStatusMessage())
+                append("\nPICO 投屏：")
+                append(PicoCastService.latestStatusMessage())
+            }
             uiHandler.postDelayed(this, STATUS_REFRESH_INTERVAL_MS)
         }
     }
@@ -48,6 +54,8 @@ class MainActivity : AppCompatActivity() {
         jpegQualityInput = findViewById(R.id.input_jpeg_quality)
         renderModeInput = findViewById(R.id.input_render_mode)
         rawOutputCheck = findViewById(R.id.check_raw_output)
+        picoCastPortInput = findViewById(R.id.input_pico_cast_port)
+        picoCastTokenInput = findViewById(R.id.input_pico_cast_token)
         statusText = findViewById(R.id.text_status)
         defaultsText = findViewById(R.id.text_defaults)
 
@@ -62,6 +70,9 @@ class MainActivity : AppCompatActivity() {
         rawOutputCheck.isChecked = prefs.getBoolean(
             PREF_OUTPUT_CAMERA_RAW_DATA,
             AnchorStreamConfig.DEFAULT_OUTPUT_CAMERA_RAW_DATA,
+        )
+        picoCastPortInput.setText(
+            prefs.getInt(PREF_PICO_CAST_PORT, PicoCastConfig.DEFAULT_CONTROL_PORT).toString(),
         )
         defaultsText.text = getString(
             R.string.stream_defaults_template,
@@ -78,9 +89,9 @@ class MainActivity : AppCompatActivity() {
         )
 
         findViewById<Button>(R.id.button_start).setOnClickListener {
-            startAfterPermissionGrant = true
-            if (PermissionUtils.checkPermission(this, requiredPermissions(), true) == PermissionUtils.CHECK_RESULT_OK) {
-                startAfterPermissionGrant = false
+            pendingPermissionAction = PendingPermissionAction.START_CAPTURE
+            if (PermissionUtils.checkPermission(this, capturePermissions(), true) == PermissionUtils.CHECK_RESULT_OK) {
+                pendingPermissionAction = PendingPermissionAction.NONE
                 startStreaming()
             } else {
                 statusText.text = getString(R.string.status_waiting_permission)
@@ -89,6 +100,20 @@ class MainActivity : AppCompatActivity() {
 
         findViewById<Button>(R.id.button_stop).setOnClickListener {
             startService(AnchorCaptureService.buildStopIntent(this))
+        }
+
+        findViewById<Button>(R.id.button_start_pico_cast).setOnClickListener {
+            pendingPermissionAction = PendingPermissionAction.START_PICO_CAST
+            if (PermissionUtils.checkPermission(this, picoCastPermissions(), true) == PermissionUtils.CHECK_RESULT_OK) {
+                pendingPermissionAction = PendingPermissionAction.NONE
+                startPicoCast()
+            } else {
+                statusText.text = getString(R.string.status_waiting_permission)
+            }
+        }
+
+        findViewById<Button>(R.id.button_stop_pico_cast).setOnClickListener {
+            startService(PicoCastService.buildStopIntent(this))
         }
     }
 
@@ -108,12 +133,24 @@ class MainActivity : AppCompatActivity() {
         grantResults: IntArray,
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode != PermissionUtils.REQUEST_CODE || !startAfterPermissionGrant) {
+        if (requestCode != PermissionUtils.REQUEST_CODE ||
+            pendingPermissionAction == PendingPermissionAction.NONE
+        ) {
             return
         }
-        startAfterPermissionGrant = false
-        if (PermissionUtils.isPermissionGranted(this, requiredPermissions())) {
-            startStreaming()
+        val action = pendingPermissionAction
+        pendingPermissionAction = PendingPermissionAction.NONE
+        val requiredPermissions = when (action) {
+            PendingPermissionAction.START_CAPTURE -> capturePermissions()
+            PendingPermissionAction.START_PICO_CAST -> picoCastPermissions()
+            PendingPermissionAction.NONE -> emptyArray()
+        }
+        if (PermissionUtils.isPermissionGranted(this, requiredPermissions)) {
+            when (action) {
+                PendingPermissionAction.START_CAPTURE -> startStreaming()
+                PendingPermissionAction.START_PICO_CAST -> startPicoCast()
+                PendingPermissionAction.NONE -> Unit
+            }
         } else {
             statusText.text = getString(R.string.status_permission_denied)
         }
@@ -189,12 +226,65 @@ class MainActivity : AppCompatActivity() {
         statusText.text = getString(R.string.status_starting)
     }
 
-    private fun requiredPermissions(): Array<String> {
+    private fun startPicoCast() {
+        val host = hostInput.text.toString().trim()
+        val controlPort = picoCastPortInput.text.toString().trim().toIntOrNull()
+        val controlToken = picoCastTokenInput.text.toString().trim()
+        if (host.isBlank()) {
+            statusText.text = getString(R.string.status_invalid_host)
+            return
+        }
+        if (controlPort == null || controlPort !in 1..65535) {
+            statusText.text = getString(R.string.status_invalid_port)
+            return
+        }
+        if (controlToken.isBlank()) {
+            statusText.text = "请输入投屏控制令牌"
+            return
+        }
+
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+            .edit()
+            .putString(PREF_HOST, host)
+            .putInt(PREF_PICO_CAST_PORT, controlPort)
+            .apply()
+
+        ContextCompat.startForegroundService(
+            this,
+            PicoCastService.buildStartIntent(
+                this,
+                PicoCastConfig(
+                    host = host,
+                    controlPort = controlPort,
+                    controlToken = controlToken,
+                ),
+            ),
+        )
+        statusText.text = "PICO 投屏服务正在启动"
+    }
+
+    private fun capturePermissions(): Array<String> {
         val permissions = mutableListOf(Manifest.permission.CAMERA)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             permissions += Manifest.permission.POST_NOTIFICATIONS
         }
         return permissions.toTypedArray()
+    }
+
+    private fun picoCastPermissions(): Array<String> {
+        // The PICO Enterprise API requires microphone permission when
+        // PICOCastInit is called, even though this helper disables cast audio.
+        val permissions = mutableListOf(Manifest.permission.RECORD_AUDIO)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissions += Manifest.permission.POST_NOTIFICATIONS
+        }
+        return permissions.toTypedArray()
+    }
+
+    private enum class PendingPermissionAction {
+        NONE,
+        START_CAPTURE,
+        START_PICO_CAST,
     }
 
     companion object {
@@ -207,6 +297,7 @@ class MainActivity : AppCompatActivity() {
         private const val PREF_JPEG_QUALITY = "stream_jpeg_quality"
         private const val PREF_RENDER_MODE = "stream_render_mode"
         private const val PREF_OUTPUT_CAMERA_RAW_DATA = "stream_output_camera_raw_data"
+        private const val PREF_PICO_CAST_PORT = "pico_cast_control_port"
         private const val STATUS_REFRESH_INTERVAL_MS = 1_000L
     }
 }

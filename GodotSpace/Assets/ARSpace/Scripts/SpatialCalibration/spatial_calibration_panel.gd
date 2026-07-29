@@ -29,6 +29,7 @@ const PREVIEW_CAMERA_PATH := NodePath("UI/SubViewportContainer/SubViewport/Camer
 
 var server: TCPServer = TCPServer.new()
 var client: StreamPeerTCP
+var shared_receiver: Node
 var recv_buffer: PackedByteArray = PackedByteArray()
 var ack_buffer: PackedByteArray = PackedByteArray()
 var last_frame_jpeg_bytes: PackedByteArray = PackedByteArray()
@@ -103,11 +104,17 @@ func _ready() -> void:
 	_load_depth_prediction_endpoint()
 	_setup_depth_prediction_client()
 	_reset_selection(false)
-	_start_listening(DEFAULT_PORT)
+	if not _bind_shared_receiver():
+		push_warning("共享 PICO 收帧服务未找到，空间标定退回独立监听模式")
+		_start_listening(DEFAULT_PORT)
 	set_process(true)
 
 
 func _exit_tree() -> void:
+	if shared_receiver != null:
+		_disconnect_shared_receiver()
+		_clear_remote_preview()
+		return
 	_disconnect_client("")
 	if server.is_listening():
 		server.stop()
@@ -115,6 +122,9 @@ func _exit_tree() -> void:
 
 
 func _process(_delta: float) -> void:
+	if shared_receiver != null:
+		_update_fps_stats()
+		return
 	if server.is_connection_available():
 		_accept_client()
 
@@ -169,10 +179,22 @@ func _on_start_pressed() -> void:
 	if port <= 0 or port > 65535:
 		_set_status("Invalid port. Use 1-65535.")
 		return
+	if shared_receiver != null:
+		if _is_reconstruction_capture_active():
+			_set_status("实时重建正在使用共享视频端口，不能重新监听。")
+			return
+		shared_receiver.call("start_listening", port)
+		return
 	_start_listening(port)
 
 
 func _on_stop_pressed() -> void:
+	if shared_receiver != null:
+		if _is_reconstruction_capture_active():
+			_set_status("实时重建正在使用共享视频流，请先在重建面板停止会话。")
+			return
+		shared_receiver.call("stop_listening", "Stream listener stopped")
+		return
 	_disconnect_client("Stream listener stopped")
 	if server.is_listening():
 		server.stop()
@@ -193,6 +215,100 @@ func _start_listening(port: int) -> void:
 	_refresh_addresses(port)
 	_set_status("Listening for Pico helper on port %d" % port)
 	_refresh_stats()
+
+
+func _bind_shared_receiver() -> bool:
+	shared_receiver = get_tree().get_first_node_in_group("pico_frame_receiver")
+	if shared_receiver == null:
+		return false
+
+	var frame_callback := Callable(self, "_on_shared_frame_received")
+	if not shared_receiver.is_connected(&"frame_received", frame_callback):
+		shared_receiver.connect(&"frame_received", frame_callback)
+	var status_callback := Callable(self, "_on_shared_receiver_status_changed")
+	if not shared_receiver.is_connected(&"status_changed", status_callback):
+		shared_receiver.connect(&"status_changed", status_callback)
+	var stats_callback := Callable(self, "_on_shared_receiver_stats_changed")
+	if not shared_receiver.is_connected(&"stats_changed", stats_callback):
+		shared_receiver.connect(&"stats_changed", stats_callback)
+
+	if shared_receiver.has_method("get_status_snapshot"):
+		_on_shared_receiver_stats_changed(
+			shared_receiver.call("get_status_snapshot") as Dictionary
+		)
+	if shared_receiver.has_method("get_local_addresses"):
+		var addresses: Array = shared_receiver.call("get_local_addresses")
+		address_label.text = "Point Pico helper to: %s" % ", ".join(
+			PackedStringArray(addresses)
+		)
+	return true
+
+
+func _disconnect_shared_receiver() -> void:
+	if shared_receiver == null or not is_instance_valid(shared_receiver):
+		shared_receiver = null
+		return
+	var connections := {
+		&"frame_received": Callable(self, "_on_shared_frame_received"),
+		&"status_changed": Callable(self, "_on_shared_receiver_status_changed"),
+		&"stats_changed": Callable(self, "_on_shared_receiver_stats_changed"),
+	}
+	for signal_name: StringName in connections:
+		var callback: Callable = connections[signal_name]
+		if shared_receiver.is_connected(signal_name, callback):
+			shared_receiver.disconnect(signal_name, callback)
+	shared_receiver = null
+
+
+func _on_shared_frame_received(
+	frame_id: int,
+	timestamp_ns: int,
+	width: int,
+	height: int,
+	metadata: Dictionary,
+	jpeg_bytes: PackedByteArray,
+) -> void:
+	if not is_visible_in_tree():
+		return
+	_show_frame(jpeg_bytes, width, height, frame_id, timestamp_ns, metadata)
+
+
+func _on_shared_receiver_status_changed(status: String) -> void:
+	_set_status(status)
+
+
+func _on_shared_receiver_stats_changed(snapshot: Dictionary) -> void:
+	if stats_label == null:
+		return
+	var connection_text := "disconnected"
+	if bool(snapshot.get("connected", false)):
+		connection_text = "connected"
+	elif bool(snapshot.get("listening", false)):
+		connection_text = "listening"
+	stats_label.text = "State: %s | Frame: %d | Size: %dx%d | FPS: %.1f | Dropped: %d | Decode avg: %.1fms" % [
+		connection_text,
+		int(snapshot.get("last_frame_id", -1)),
+		int(snapshot.get("last_frame_width", 0)),
+		int(snapshot.get("last_frame_height", 0)),
+		float(snapshot.get("fps", 0.0)),
+		int(snapshot.get("dropped_frames", 0)),
+		decode_avg_ms_display,
+	]
+
+
+func _is_reconstruction_capture_active() -> bool:
+	var session := get_tree().get_first_node_in_group(
+		"reconstruction_session_controller"
+	)
+	if session == null or not session.has_method("get_state_name"):
+		return false
+	return str(session.call("get_state_name")) in [
+		"preflight",
+		"collecting",
+		"solving",
+		"preview",
+		"live",
+	]
 
 
 func _accept_client() -> void:

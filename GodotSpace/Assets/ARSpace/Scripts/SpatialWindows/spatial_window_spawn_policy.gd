@@ -2,7 +2,8 @@ extends RefCounted
 
 const DEFAULT_HEAD_DISTANCE_M: float = 1.5
 const DEFAULT_VERTICAL_OFFSET_M: float = -0.15
-const DEFAULT_WINDOW_GAP_M: float = 0.12
+const CHILD_WINDOW_GAP_PIXELS: float = 50.0
+const DEFAULT_WINDOW_GAP_M: float = 0.07
 const OVERLAP_MARGIN_M: float = 0.08
 const FALLBACK_FORWARD: Vector3 = Vector3(0.0, 0.0, -1.0)
 
@@ -17,25 +18,24 @@ static func calculate_spawn_transform(
 	var window_scale := current_transform.basis.get_scale()
 	var window_size := _get_window_size(window_controller)
 	var parent := parent_controller
-	if parent == null and dock_manager != null and dock_manager.has_method("get_last_focused_window"):
+	if parent == null \
+			and dock_manager != null \
+			and dock_manager.has_method("get_last_focused_window"):
 		parent = dock_manager.call("get_last_focused_window", window_controller) as Node
 
 	var base_transform := current_transform
-	var spawn_anchor := _get_spawn_anchor(parent)
-	if spawn_anchor != null:
-		base_transform = _transform_with_scale(spawn_anchor.global_transform, window_scale)
-	elif parent != null and is_instance_valid(parent):
+	if parent != null and is_instance_valid(parent):
 		var parent_transform := _get_window_transform(parent)
 		var parent_size := _get_window_size(parent)
 		var right := _safe_axis(parent_transform.basis.x, Vector3.RIGHT)
-		var offset := (parent_size.x + window_size.x) * 0.5 + DEFAULT_WINDOW_GAP_M
+		var offset := (parent_size.x + window_size.x) * 0.5 \
+			+ _get_parent_window_gap_m(parent)
 		base_transform.origin = parent_transform.origin + right * offset
-		base_transform.basis = _face_user_basis(
-			base_transform.origin,
-			_get_viewpoint_position(viewpoint, parent_transform.origin - parent_transform.basis.z),
-			window_scale,
-			parent_transform.basis
+		base_transform.basis = parent_transform.basis.orthonormalized().scaled(
+			_safe_scale(window_scale)
 		)
+		if _is_finite_transform(base_transform):
+			return base_transform
 	else:
 		var head_transform := viewpoint.global_transform if viewpoint != null else Transform3D.IDENTITY
 		var forward := _safe_axis(-head_transform.basis.z, FALLBACK_FORWARD)
@@ -116,14 +116,6 @@ static func _overlaps_existing(
 	return false
 
 
-static func _get_spawn_anchor(controller: Node) -> Node3D:
-	if controller != null \
-			and is_instance_valid(controller) \
-			and controller.has_method("get_child_spawn_anchor"):
-		return controller.call("get_child_spawn_anchor") as Node3D
-	return null
-
-
 static func _get_window_transform(controller: Node) -> Transform3D:
 	if controller != null and is_instance_valid(controller):
 		if controller.has_method("get_window_global_transform"):
@@ -134,24 +126,41 @@ static func _get_window_transform(controller: Node) -> Transform3D:
 
 
 static func _get_window_size(controller: Node) -> Vector2:
-	if controller != null \
-			and is_instance_valid(controller) \
-			and controller.has_method("get_window_size_m"):
-		var size_value = controller.call("get_window_size_m")
+	if controller == null or not is_instance_valid(controller):
+		return Vector2(0.8, 0.5)
+	var size_method := "get_effective_window_size_m" \
+		if controller.has_method("get_effective_window_size_m") \
+		else "get_window_size_m"
+	if controller.has_method(size_method):
+		var size_value = controller.call(size_method)
 		if size_value is Vector2:
 			var size := size_value as Vector2
 			return Vector2(maxf(size.x, 0.05), maxf(size.y, 0.05))
 	return Vector2(0.8, 0.5)
 
 
-static func _get_viewpoint_position(viewpoint: Node3D, fallback: Vector3) -> Vector3:
-	return viewpoint.global_position if viewpoint != null else fallback
+static func _get_parent_window_gap_m(parent_controller: Node) -> float:
+	var parent_size := _get_window_size(parent_controller)
+	var parent_pixel_size := _get_window_pixel_size(parent_controller)
+	if parent_pixel_size.x <= 0.0:
+		return DEFAULT_WINDOW_GAP_M
+	return maxf(
+		parent_size.x / parent_pixel_size.x * CHILD_WINDOW_GAP_PIXELS,
+		0.0
+	)
 
 
-static func _transform_with_scale(source: Transform3D, scale_value: Vector3) -> Transform3D:
-	var result := source
-	result.basis = source.basis.orthonormalized().scaled(_safe_scale(scale_value))
-	return result
+static func _get_window_pixel_size(controller: Node) -> Vector2:
+	if controller == null \
+			or not is_instance_valid(controller) \
+			or not controller.has_method("get_window_pixel_size"):
+		return Vector2.ZERO
+	var size_value = controller.call("get_window_pixel_size")
+	if size_value is Vector2:
+		var size := size_value as Vector2
+		if size.x > 0.0 and size.y > 0.0:
+			return size
+	return Vector2.ZERO
 
 
 static func _face_user_basis(

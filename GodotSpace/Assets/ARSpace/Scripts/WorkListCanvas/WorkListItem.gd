@@ -2,6 +2,7 @@ extends Control
 
 class_name WorkListItem
 
+const PanelWindowZoom = preload("res://Assets/ARSpace/Scripts/UI/panel_window_zoom.gd")
 const DEBUG_LOGS := false
 
 @export var item_data: WorkListData
@@ -27,7 +28,11 @@ func click_btn():
 
 	var work_info = Global.work_list_info_canvas
 	if work_info:
-		work_info.visible = true
+		PanelWindowZoom.set_window_visible(
+			work_info,
+			true,
+			Global.main_menu_canvas
+		)
 		work_info.on_refresh_data_change_view(item_data.info_data_result)
 
 	if DEBUG_LOGS: print(self.name, ": Index = ", item_data.id)

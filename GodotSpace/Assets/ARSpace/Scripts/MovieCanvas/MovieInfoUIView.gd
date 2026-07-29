@@ -18,8 +18,7 @@ func _ready():
 	videoname = ""
 
 func set_video_name(name: String):
-	if not self.visible:
-		self.visible = true
+	PanelWindowZoom.set_window_visible(self, true, Global.movie_canvas)
 	title_label.text = name
 	videoname = name
 	p_info.set_video(name)

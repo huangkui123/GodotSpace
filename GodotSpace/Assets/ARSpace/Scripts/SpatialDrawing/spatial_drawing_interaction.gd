@@ -66,7 +66,6 @@ var _tip_distance_m: float = initial_tip_distance_m
 var _last_axis_adjust_msec: int = 0
 var _last_trigger_pressed: bool = false
 var _last_toggle_pressed: bool = false
-var _last_right_primary_pressed: bool = false
 var _last_left_primary_pressed: bool = false
 var _last_left_secondary_pressed: bool = false
 var _status_message: String = ""
@@ -445,7 +444,6 @@ func _poll_input() -> void:
 	var trigger_pressed := Input.is_key_pressed(TEST_TRIGGER_KEY) \
 		if test_mode \
 		else _tracker_input_pressed(right_tracker, &"trigger")
-	var right_primary_pressed := _tracker_input_pressed(right_tracker, &"ax_button")
 	var left_primary_pressed := _tracker_input_pressed(left_tracker, &"ax_button")
 	var left_secondary_pressed := _tracker_input_pressed(left_tracker, &"by_button")
 
@@ -456,9 +454,7 @@ func _poll_input() -> void:
 			set_drawing_mode(true)
 
 	if _awaiting_exit_confirmation:
-		if right_primary_pressed and not _last_right_primary_pressed:
-			resolve_exit(true)
-		elif left_secondary_pressed and not _last_left_secondary_pressed:
+		if left_secondary_pressed and not _last_left_secondary_pressed:
 			resolve_exit(false)
 	elif _drawing_mode:
 		if trigger_pressed and not _last_trigger_pressed:
@@ -472,12 +468,6 @@ func _poll_input() -> void:
 		elif not trigger_pressed and _last_trigger_pressed:
 			_finish_active_stroke()
 
-		var right_grip := _tracker_input_pressed(right_tracker, &"grip")
-		if right_primary_pressed and not _last_right_primary_pressed:
-			if right_grip:
-				request_clear_published()
-			else:
-				sync_pending_drafts()
 		if left_primary_pressed and not _last_left_primary_pressed:
 			undo_last_local_draft()
 		if left_secondary_pressed and not _last_left_secondary_pressed:
@@ -486,7 +476,6 @@ func _poll_input() -> void:
 
 	_last_trigger_pressed = trigger_pressed
 	_last_toggle_pressed = toggle_pressed
-	_last_right_primary_pressed = right_primary_pressed
 	_last_left_primary_pressed = left_primary_pressed
 	_last_left_secondary_pressed = left_secondary_pressed
 

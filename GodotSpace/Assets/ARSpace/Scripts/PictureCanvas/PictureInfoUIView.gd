@@ -17,7 +17,7 @@ func _ready():
 
 func set_image_name(name: String):
 	if DEBUG_LOGS: print("set_image_name: " + name)
-	self.visible = true
+	PanelWindowZoom.set_window_visible(self, true, Global.picture_canvas)
 	title_label.text = name
 	imagename = name
 	p_info.set_image(name)

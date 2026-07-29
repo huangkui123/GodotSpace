@@ -37,11 +37,18 @@ static func toggle_window(panel_root: Node, zoom_factor: float = DEFAULT_ZOOM_FA
 		_maximize(target, zoom_factor)
 
 
-static func set_window_visible(panel_root: Node, is_visible: bool) -> void:
+static func set_window_visible(
+	panel_root: Node,
+	is_visible: bool,
+	parent_panel_root: Node = null
+) -> void:
 	var spatial_controller := _get_spatial_window_controller(panel_root)
 	if spatial_controller != null:
 		if is_visible:
-			spatial_controller.call("open_window", null, true)
+			var parent_controller := _get_spatial_window_controller(
+				parent_panel_root
+			)
+			spatial_controller.call("open_window", parent_controller, true)
 		else:
 			spatial_controller.call("close_window")
 		return
@@ -79,6 +86,8 @@ static func _restore(target: Node) -> void:
 
 
 static func _get_window_target(panel_root: Node) -> Node:
+	if panel_root == null:
+		return null
 	var viewport := panel_root.get_viewport()
 	if viewport != null:
 		var viewport_parent := viewport.get_parent()

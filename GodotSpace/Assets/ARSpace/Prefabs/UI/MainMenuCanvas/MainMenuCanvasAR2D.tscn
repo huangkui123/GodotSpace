@@ -122,6 +122,26 @@ text = "AI"
 horizontal_alignment = 1
 vertical_alignment = 1
 
+[node name="RealtimeReconstruction" parent="Canvas/WorkTabView/GridContainer" instance=ExtResource("6_2boyx")]
+layout_mode = 2
+
+[node name="Name" parent="Canvas/WorkTabView/GridContainer/RealtimeReconstruction" index="1"]
+offset_left = 54.0
+offset_right = 146.0
+text = "实时重建"
+
+[node name="Badge" type="Label" parent="Canvas/WorkTabView/GridContainer/RealtimeReconstruction"]
+layout_mode = 0
+offset_left = 67.0
+offset_top = 55.0
+offset_right = 141.0
+offset_bottom = 107.0
+theme_override_colors/font_color = Color(0.32, 0.88, 0.72, 1)
+theme_override_font_sizes/font_size = 26
+text = "3D"
+horizontal_alignment = 1
+vertical_alignment = 1
+
 [node name="WorkListView" parent="Canvas/WorkTabView" instance=ExtResource("7_0jeco")]
 visible = false
 offset_right = 0.0
@@ -331,6 +351,7 @@ texture = ExtResource("19_gv5p4")
 [connection signal="pressed" from="Canvas/LifeTabView/Scroll View/Viewport/Content/Movie" to="Canvas" method="_on_movie_pressed"]
 [connection signal="pressed" from="Canvas/WorkTabView/GridContainer/WorkList" to="Canvas" method="_on_work_list_pressed"]
 [connection signal="pressed" from="Canvas/WorkTabView/GridContainer/LLMAssistant" to="Canvas" method="_on_llm_assistant_pressed"]
+[connection signal="pressed" from="Canvas/WorkTabView/GridContainer/RealtimeReconstruction" to="Canvas" method="_on_realtime_reconstruction_pressed"]
 [connection signal="pressed" from="Canvas/WorkTabView/WorkListView/BackButton" to="Canvas" method="_on_back_button_pressed"]
 [connection signal="pressed" from="Canvas/WorkTabView/LLMAssistantView/BackButton" to="Canvas" method="_on_llm_back_button_pressed"]
 [connection signal="pressed" from="Canvas/Navcation/ModeLayout/VoiceCallTab" to="Canvas" method="_on_voice_call_pressed"]
@@ -343,6 +364,7 @@ texture = ExtResource("19_gv5p4")
 [editable path="Canvas/LifeTabView/Scroll View/Viewport/Content/Weather"]
 [editable path="Canvas/LifeTabView/Scroll View/Viewport/Content/MoleGame"]
 [editable path="Canvas/WorkTabView/GridContainer/LLMAssistant"]
+[editable path="Canvas/WorkTabView/GridContainer/RealtimeReconstruction"]
 [editable path="Canvas/WorkTabView/WorkListView"]
 [editable path="Canvas/WorkTabView/LLMAssistantView"]
 [editable path="Canvas/TopMenuBox/DragBox"]

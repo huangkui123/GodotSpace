@@ -1,26 +1,23 @@
 extends Node3D
 
 const RuntimeProfileScript = preload("res://Assets/ARSpace/Scripts/runtime_profile.gd")
-const AstronautViewSourceScript = preload(
-	"res://Assets/ARSpace/Scripts/AstronautView/astronaut_view_source.gd"
-)
-const SERVER_PEER_ID: int = 1
 const SOURCE_REFRESH_INTERVAL_MSEC: int = 250
 
-@export var network_handler_path: NodePath = NodePath("/root/NetworkHandler")
 @export var window_surface_path: NodePath = NodePath("WindowSurface")
-@export var default_source_path: NodePath = NodePath("VirtualCameraViewSource")
+@export var pico_cast_source_path: NodePath = NodePath("PicoCastViewSource")
+@export var pico_cast_control_receiver_path: NodePath = NodePath("PicoCastControlReceiver")
 @export var spatial_window_controller_path: NodePath = NodePath("SpatialWindowController")
 @export_range(1, 20, 1) var capture_exclusion_visual_layer: int = 20
 
 var _runtime_profile
-var _network_handler: Node
 var _window_surface: Node3D
 var _spatial_window_controller: Node
 var _panel: Node
 var _view_source: Node
+var _pico_cast_view_source: Node
+var _pico_cast_control_receiver: Node
 var _window_open: bool = true
-var _bound_sky_peer_id: int = 0
+var _source_started: bool = false
 var _next_source_refresh_msec: int = 0
 var _default_surface_transform: Transform3D = Transform3D.IDENTITY
 var _source_generation: int = 0
@@ -35,15 +32,17 @@ func _ready() -> void:
 	if _window_surface != null:
 		_default_surface_transform = _window_surface.transform
 		_apply_capture_exclusion_layer(_window_surface)
-	_network_handler = get_node_or_null(network_handler_path)
-	_connect_network_signals()
+	_pico_cast_view_source = get_node_or_null(pico_cast_source_path)
+	_pico_cast_control_receiver = get_node_or_null(pico_cast_control_receiver_path)
+	_connect_pico_cast_receiver()
 	_bind_panel()
-	set_view_source(get_node_or_null(default_source_path))
+	set_view_source(_pico_cast_view_source)
 	refresh_profile()
 
 
 func _exit_tree() -> void:
-	_disconnect_network_signals()
+	_stop_pico_cast_receiver()
+	_disconnect_pico_cast_receiver()
 	_disconnect_source()
 
 
@@ -59,6 +58,10 @@ func refresh_profile() -> void:
 	_runtime_profile = RuntimeProfileScript.current()
 	var should_show := _profile_shows_astronaut_view()
 	visible = should_show
+	if should_show:
+		_start_pico_cast_receiver()
+	else:
+		_stop_pico_cast_receiver()
 	if should_show and _window_open:
 		if _spatial_window_controller != null:
 			_spatial_window_controller.call("open_window", null, false)
@@ -96,10 +99,6 @@ func get_view_source() -> Node:
 
 func get_panel() -> Node:
 	return _panel
-
-
-func get_bound_sky_peer_id() -> int:
-	return _bound_sky_peer_id
 
 
 func is_window_open() -> bool:
@@ -145,37 +144,15 @@ func _profile_shows_astronaut_view() -> bool:
 func _refresh_source_binding(force: bool = false) -> void:
 	if not _profile_shows_astronaut_view() or not _window_open or _view_source == null:
 		return
-	var sky_peer_id := _get_sky_peer_id()
-	if multiplayer.has_multiplayer_peer() and sky_peer_id == multiplayer.get_unique_id():
-		_stop_source()
-		if _panel != null:
-			_panel.call(
-				"set_view_status",
-				AstronautViewSourceScript.Status.ERROR,
-				"天上端来源不能是本机"
-			)
-		return
-	if sky_peer_id <= SERVER_PEER_ID:
-		if force or _bound_sky_peer_id != 0:
-			_stop_source()
-			_set_panel_waiting()
-		return
-	if not force and sky_peer_id == _bound_sky_peer_id:
-		return
-	_bound_sky_peer_id = sky_peer_id
-	_view_source.call("start", sky_peer_id)
+	if force or not _source_started:
+		_source_started = true
+		_view_source.call("start", 0)
 
 
 func _stop_source() -> void:
-	_bound_sky_peer_id = 0
+	_source_started = false
 	if _view_source != null and _view_source.has_method("stop"):
 		_view_source.call("stop")
-
-
-func _get_sky_peer_id() -> int:
-	if _network_handler != null and _network_handler.has_method("get_sky_peer_id"):
-		return int(_network_handler.call("get_sky_peer_id"))
-	return 0
 
 
 func _is_valid_view_source(source: Node) -> bool:
@@ -226,6 +203,7 @@ func _disconnect_source() -> void:
 	if _view_source.has_method("stop"):
 		_view_source.call("stop")
 	_view_source = null
+	_source_started = false
 
 
 func _on_source_texture_changed(texture: Texture2D, generation: int) -> void:
@@ -270,46 +248,65 @@ func _bind_panel() -> void:
 		_panel.call("set_view_metadata", _view_source.call("get_metadata"))
 
 
-func _set_panel_waiting() -> void:
-	if _panel == null:
+func _connect_pico_cast_receiver() -> void:
+	if _pico_cast_control_receiver == null:
 		return
-	_panel.call("set_view_texture", null)
-	_panel.call("set_view_metadata", {})
-	_panel.call(
-		"set_view_status",
-		AstronautViewSourceScript.Status.IDLE,
-		"等待天上端连接"
-	)
+	if _pico_cast_control_receiver.has_signal("session_changed") \
+			and not _pico_cast_control_receiver.session_changed.is_connected(_on_pico_cast_session_changed):
+		_pico_cast_control_receiver.session_changed.connect(_on_pico_cast_session_changed)
+	if _pico_cast_control_receiver.has_signal("receiver_status_changed") \
+			and not _pico_cast_control_receiver.receiver_status_changed.is_connected(
+				_on_pico_cast_receiver_status_changed
+			):
+		_pico_cast_control_receiver.receiver_status_changed.connect(
+			_on_pico_cast_receiver_status_changed
+		)
+	if _pico_cast_control_receiver.has_method("get_current_rtmp_url"):
+		_on_pico_cast_session_changed(
+			str(_pico_cast_control_receiver.call("get_current_rtmp_url")),
+			_pico_cast_control_receiver.call("get_current_metadata") as Dictionary
+		)
+	if _pico_cast_control_receiver.has_method("get_status_message"):
+		_on_pico_cast_receiver_status_changed(
+			str(_pico_cast_control_receiver.call("get_status_message"))
+		)
 
 
-func _connect_network_signals() -> void:
-	if _network_handler != null \
-			and _network_handler.has_signal("peer_role_changed") \
-			and not _network_handler.peer_role_changed.is_connected(_on_peer_role_changed):
-		_network_handler.peer_role_changed.connect(_on_peer_role_changed)
-	if not multiplayer.peer_connected.is_connected(_on_peer_connection_changed):
-		multiplayer.peer_connected.connect(_on_peer_connection_changed)
-	if not multiplayer.peer_disconnected.is_connected(_on_peer_connection_changed):
-		multiplayer.peer_disconnected.connect(_on_peer_connection_changed)
+func _disconnect_pico_cast_receiver() -> void:
+	if _pico_cast_control_receiver != null \
+			and _pico_cast_control_receiver.has_signal("session_changed") \
+			and _pico_cast_control_receiver.session_changed.is_connected(_on_pico_cast_session_changed):
+		_pico_cast_control_receiver.session_changed.disconnect(_on_pico_cast_session_changed)
+	if _pico_cast_control_receiver != null \
+			and _pico_cast_control_receiver.has_signal("receiver_status_changed") \
+			and _pico_cast_control_receiver.receiver_status_changed.is_connected(
+				_on_pico_cast_receiver_status_changed
+			):
+		_pico_cast_control_receiver.receiver_status_changed.disconnect(
+			_on_pico_cast_receiver_status_changed
+		)
 
 
-func _disconnect_network_signals() -> void:
-	if _network_handler != null \
-			and _network_handler.has_signal("peer_role_changed") \
-			and _network_handler.peer_role_changed.is_connected(_on_peer_role_changed):
-		_network_handler.peer_role_changed.disconnect(_on_peer_role_changed)
-	if multiplayer.peer_connected.is_connected(_on_peer_connection_changed):
-		multiplayer.peer_connected.disconnect(_on_peer_connection_changed)
-	if multiplayer.peer_disconnected.is_connected(_on_peer_connection_changed):
-		multiplayer.peer_disconnected.disconnect(_on_peer_connection_changed)
+func _start_pico_cast_receiver() -> void:
+	if _pico_cast_control_receiver != null \
+			and _pico_cast_control_receiver.has_method("start_receiver"):
+		_pico_cast_control_receiver.call("start_receiver")
 
 
-func _on_peer_role_changed(_peer_id: int, _assigned_role: String) -> void:
-	_refresh_source_binding(true)
+func _stop_pico_cast_receiver() -> void:
+	if _pico_cast_control_receiver != null \
+			and _pico_cast_control_receiver.has_method("stop_receiver"):
+		_pico_cast_control_receiver.call("stop_receiver")
 
 
-func _on_peer_connection_changed(_peer_id: int) -> void:
-	_refresh_source_binding(true)
+func _on_pico_cast_session_changed(rtmp_url: String, metadata: Dictionary) -> void:
+	if _pico_cast_view_source != null and _pico_cast_view_source.has_method("set_cast_session"):
+		_pico_cast_view_source.call("set_cast_session", rtmp_url, metadata)
+
+
+func _on_pico_cast_receiver_status_changed(message: String) -> void:
+	if _pico_cast_view_source != null and _pico_cast_view_source.has_method("set_control_status"):
+		_pico_cast_view_source.call("set_control_status", message)
 
 
 func _apply_capture_exclusion_layer(node: Node) -> void:

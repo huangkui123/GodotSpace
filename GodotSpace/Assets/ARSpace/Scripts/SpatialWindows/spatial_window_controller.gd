@@ -92,6 +92,7 @@ var _setup_complete: bool = false
 var _active_tween: Tween
 var _remote_preview_active: bool = false
 var _remote_preview_target: Transform3D = Transform3D.IDENTITY
+var _local_visibility_suppressed: bool = false
 
 
 func _ready() -> void:
@@ -174,6 +175,30 @@ func get_window_size_m() -> Vector2:
 	return window_size_m
 
 
+func get_effective_window_size_m() -> Vector2:
+	if _window_root == null:
+		return window_size_m
+	var current_scale := _window_root.global_transform.basis.get_scale()
+	return Vector2(
+		window_size_m.x * current_scale.x / maxf(absf(_floating_scale.x), 0.0001),
+		window_size_m.y * current_scale.y / maxf(absf(_floating_scale.y), 0.0001)
+	)
+
+
+func get_window_pixel_size() -> Vector2:
+	if _window_root == null:
+		return Vector2.ZERO
+	for property_name in ["screen_size", "viewport_size"]:
+		if not _has_property(_window_root, property_name):
+			continue
+		var size_value = _window_root.get(property_name)
+		if size_value is Vector2:
+			var pixel_size := size_value as Vector2
+			if pixel_size.x > 0.0 and pixel_size.y > 0.0:
+				return pixel_size
+	return Vector2.ZERO
+
+
 func get_window_global_transform() -> Transform3D:
 	return _window_root.global_transform if _window_root != null else Transform3D.IDENTITY
 
@@ -224,7 +249,8 @@ func get_window_config() -> Dictionary:
 func open_window(parent_controller: Node = null, reposition: bool = true) -> bool:
 	if _window_root == null:
 		return false
-	if _state == WindowState.HIDDEN and reposition:
+	_local_visibility_suppressed = false
+	if reposition:
 		var spawn_transform := SpawnPolicy.calculate_spawn_transform(
 			self,
 			parent_controller,
@@ -241,6 +267,17 @@ func open_window(parent_controller: Node = null, reposition: bool = true) -> boo
 	if scope == WindowScope.SHARED and _state_manager != null and not _applying_authority:
 		_state_manager.call("request_open_window", window_id, get_shared_transform())
 	window_opened.emit(window_id)
+	return true
+
+
+func toggle_local_visibility() -> bool:
+	if _window_root == null:
+		return false
+	if _state == WindowState.HIDDEN:
+		_local_visibility_suppressed = false
+		return open_window(null, false)
+	_local_visibility_suppressed = not _local_visibility_suppressed
+	_set_visibility_target(true)
 	return true
 
 
@@ -698,10 +735,11 @@ func _on_visibility_target_changed() -> void:
 func _set_visibility_target(value: bool) -> void:
 	if _visibility_target == null or not _has_property(_visibility_target, "visible"):
 		return
-	if bool(_visibility_target.get("visible")) == value:
+	var effective_value := value and not _local_visibility_suppressed
+	if bool(_visibility_target.get("visible")) == effective_value:
 		return
 	_changing_visibility = true
-	_visibility_target.set("visible", value)
+	_visibility_target.set("visible", effective_value)
 	_changing_visibility = false
 
 
@@ -735,7 +773,6 @@ func _get_viewpoint() -> Node3D:
 		return camera
 	var found := get_tree().root.find_child("XRCamera3D", true, false)
 	return found as Node3D
-
 
 func _face_user_basis(position: Vector3, scale_value: Vector3) -> Basis:
 	var viewpoint := _get_viewpoint()

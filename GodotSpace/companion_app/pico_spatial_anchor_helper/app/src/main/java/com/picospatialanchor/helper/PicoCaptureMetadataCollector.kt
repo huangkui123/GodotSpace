@@ -31,8 +31,6 @@ class PicoCaptureMetadataCollector {
         )
     }.getOrNull()
 
-    private val captureStatusOk: Int = resolveCaptureStatusOk()
-
     fun buildMetadataBytes(
         capture: PXRCapture?,
         config: AnchorStreamConfig,
@@ -57,6 +55,8 @@ class PicoCaptureMetadataCollector {
             .put("render_mode", config.renderMode)
             .put("render_mode_name", renderModeName(config.renderMode))
             .put("output_camera_raw_data", config.outputCameraRawData)
+            .put("configured_horizontal_fov_degrees", config.horizontalFovDegrees)
+            .put("configured_vertical_fov_degrees", config.verticalFovDegrees)
             .put(
                 "output_camera_mode_name",
                 if (config.outputCameraRawData) OUTPUT_MODE_RAW else OUTPUT_MODE_RECTIFIED
@@ -76,11 +76,15 @@ class PicoCaptureMetadataCollector {
         metadata
             .put("camera_intrinsics_status", intrinsics.status)
             .put("camera_intrinsics_probe", intrinsics.probeName)
-            .put("camera_intrinsics_arg0", intrinsics.arg0)
-            .put("camera_intrinsics_arg1", intrinsics.arg1)
-            .put("camera_intrinsics_arg2", intrinsics.arg2)
-            .put("camera_intrinsics_arg3", intrinsics.arg3)
+            .put("camera_intrinsics_width", intrinsics.width)
+            .put("camera_intrinsics_height", intrinsics.height)
+            .put("camera_intrinsics_horizontal_fov_degrees", intrinsics.horizontalFovDegrees)
+            .put("camera_intrinsics_vertical_fov_degrees", intrinsics.verticalFovDegrees)
             .put("camera_intrinsics_value_count", intrinsics.values.size)
+            .put(
+                "camera_intrinsics_value_order",
+                PicoCameraCalibration.INTRINSICS_VALUE_ORDER,
+            )
             .put("camera_intrinsics", toJsonArray(intrinsics.values))
             .put("camera_intrinsics_all", intrinsicsResultsToJson(intrinsicsResults))
             .put("camera_intrinsics_probe_count", intrinsicsResults.size)
@@ -89,6 +93,10 @@ class PicoCaptureMetadataCollector {
         val extrinsics = collectExtrinsics(capture)
         metadata
             .put("camera_extrinsics_status", extrinsics.status)
+            .put(
+                "camera_extrinsics_call_succeeded",
+                extrinsics.status == NATIVE_BOOLEAN_SUCCESS,
+            )
             .put("camera_extrinsics_primary_count", extrinsics.primaryValues.size)
             .put("camera_extrinsics_primary", toJsonArray(extrinsics.primaryValues))
             .put("camera_extrinsics_secondary_count", extrinsics.secondaryValues.size)
@@ -119,10 +127,10 @@ class PicoCaptureMetadataCollector {
             val status = invokeInt(
                 method,
                 capture,
-                probe.arg0,
-                probe.arg1,
-                probe.arg2,
-                probe.arg3,
+                probe.width,
+                probe.height,
+                probe.horizontalFovDegrees,
+                probe.verticalFovDegrees,
                 valuesBuffer,
                 valueCountHolder,
             )
@@ -130,10 +138,10 @@ class PicoCaptureMetadataCollector {
             val result = IntrinsicsResult(
                 status = status,
                 probeName = probe.name,
-                arg0 = probe.arg0,
-                arg1 = probe.arg1,
-                arg2 = probe.arg2,
-                arg3 = probe.arg3,
+                width = probe.width,
+                height = probe.height,
+                horizontalFovDegrees = probe.horizontalFovDegrees,
+                verticalFovDegrees = probe.verticalFovDegrees,
                 values = values,
             )
             results += result
@@ -150,9 +158,8 @@ class PicoCaptureMetadataCollector {
 
     private fun selectBestIntrinsics(results: List<IntrinsicsResult>): IntrinsicsResult {
         return results.firstOrNull { result ->
-            result.status == captureStatusOk && result.values.isNotEmpty()
-        } ?: results.firstOrNull { result ->
-            result.values.isNotEmpty()
+            result.status == NATIVE_BOOLEAN_SUCCESS &&
+                PicoCameraCalibration.isValidIntrinsics(result.values)
         } ?: results.lastOrNull() ?: IntrinsicsResult(
             status = STATUS_INVOCATION_FAILED,
             probeName = "not_invoked",
@@ -185,56 +192,33 @@ class PicoCaptureMetadataCollector {
         frameWidth: Int,
         frameHeight: Int,
     ): List<IntrinsicsProbe> {
-        val cameraIndex = selectCameraIndex(config.renderMode)
+        val horizontalFov = config.horizontalFovDegrees
+            .takeIf(PicoCameraCalibration::isValidFov)
+            ?: AnchorStreamConfig.DEFAULT_HORIZONTAL_FOV_DEGREES
+        val verticalFov = config.verticalFovDegrees
+            .takeIf(PicoCameraCalibration::isValidFov)
+            ?: AnchorStreamConfig.DEFAULT_VERTICAL_FOV_DEGREES
         return listOf(
             IntrinsicsProbe(
-                name = "render_mode_frame_size",
-                arg0 = config.renderMode,
-                arg1 = cameraIndex,
-                arg2 = frameWidth.toDouble(),
-                arg3 = frameHeight.toDouble(),
+                name = "frame_size_configured_fov",
+                width = frameWidth,
+                height = frameHeight,
+                horizontalFovDegrees = horizontalFov,
+                verticalFovDegrees = verticalFov,
             ),
             IntrinsicsProbe(
-                name = "camera_index_frame_size",
-                arg0 = cameraIndex,
-                arg1 = config.renderMode,
-                arg2 = frameWidth.toDouble(),
-                arg3 = frameHeight.toDouble(),
-            ),
-            IntrinsicsProbe(
-                name = "render_mode_stream_size",
-                arg0 = config.renderMode,
-                arg1 = cameraIndex,
-                arg2 = config.width.toDouble(),
-                arg3 = config.height.toDouble(),
-            ),
-            IntrinsicsProbe(
-                name = "camera_index_stream_size",
-                arg0 = cameraIndex,
-                arg1 = config.renderMode,
-                arg2 = config.width.toDouble(),
-                arg3 = config.height.toDouble(),
-            ),
-            IntrinsicsProbe(
-                name = "render_mode_clip_range",
-                arg0 = config.renderMode,
-                arg1 = cameraIndex,
-                arg2 = DEFAULT_NEAR_Z,
-                arg3 = DEFAULT_FAR_Z,
-            ),
-            IntrinsicsProbe(
-                name = "camera_index_clip_range",
-                arg0 = cameraIndex,
-                arg1 = config.renderMode,
-                arg2 = DEFAULT_NEAR_Z,
-                arg3 = DEFAULT_FAR_Z,
+                name = "stream_size_configured_fov",
+                width = config.width,
+                height = config.height,
+                horizontalFovDegrees = horizontalFov,
+                verticalFovDegrees = verticalFov,
             ),
         ).distinctBy { probe ->
             listOf(
-                probe.arg0,
-                probe.arg1,
-                probe.arg2,
-                probe.arg3,
+                probe.width,
+                probe.height,
+                probe.horizontalFovDegrees,
+                probe.verticalFovDegrees,
             )
         }
     }
@@ -283,11 +267,15 @@ class PicoCaptureMetadataCollector {
                 JSONObject()
                     .put("status", result.status)
                     .put("probe", result.probeName)
-                    .put("arg0", result.arg0)
-                    .put("arg1", result.arg1)
-                    .put("arg2", result.arg2)
-                    .put("arg3", result.arg3)
+                    .put("width", result.width)
+                    .put("height", result.height)
+                    .put("horizontal_fov_degrees", result.horizontalFovDegrees)
+                    .put("vertical_fov_degrees", result.verticalFovDegrees)
                     .put("value_count", result.values.size)
+                    .put(
+                        "valid",
+                        PicoCameraCalibration.isValidIntrinsics(result.values),
+                    )
                     .put("values", toJsonArray(result.values))
             )
         }
@@ -313,15 +301,17 @@ class PicoCaptureMetadataCollector {
     }
 
     private fun annotateIntrinsics(metadata: JSONObject, values: List<Double>) {
-        metadata.put("camera_intrinsics_available", values.isNotEmpty())
-        if (values.size < 4) {
+        val available = PicoCameraCalibration.isValidIntrinsics(values)
+        metadata.put("camera_intrinsics_available", available)
+        if (!available) {
+            metadata.put("camera_intrinsics_error", "invalid_cx_cy_fx_fy")
             return
         }
         metadata
-            .put("camera_intrinsics_fx", values[0])
-            .put("camera_intrinsics_fy", values[1])
-            .put("camera_intrinsics_cx", values[2])
-            .put("camera_intrinsics_cy", values[3])
+            .put("camera_intrinsics_cx", values[0])
+            .put("camera_intrinsics_cy", values[1])
+            .put("camera_intrinsics_fx", values[2])
+            .put("camera_intrinsics_fy", values[3])
     }
 
     private fun annotateExtrinsics(
@@ -329,8 +319,9 @@ class PicoCaptureMetadataCollector {
         keyPrefix: String,
         values: List<Double>,
     ) {
-        metadata.put("${keyPrefix}_available", values.isNotEmpty())
-        if (values.size != MATRIX_4X4_SIZE) {
+        val available = PicoCameraCalibration.isValidExtrinsic(values)
+        metadata.put("${keyPrefix}_available", available)
+        if (!available) {
             return
         }
         metadata.put("${keyPrefix}_matrix_4x4", toMatrix4x4JsonArray(values))
@@ -356,31 +347,21 @@ class PicoCaptureMetadataCollector {
         return matrix
     }
 
-    private fun resolveCaptureStatusOk(): Int {
-        return runCatching {
-            PXRCapture::class.java.getField(FIELD_CAPTURE_STATUS_OK).getInt(null)
-        }.recoverCatching {
-            val field = PXRCapture::class.java.getDeclaredField(FIELD_CAPTURE_STATUS_OK)
-            field.isAccessible = true
-            field.getInt(null)
-        }.getOrDefault(DEFAULT_CAPTURE_STATUS_OK)
-    }
-
     data class IntrinsicsProbe(
         val name: String,
-        val arg0: Int,
-        val arg1: Int,
-        val arg2: Double,
-        val arg3: Double,
+        val width: Int,
+        val height: Int,
+        val horizontalFovDegrees: Double,
+        val verticalFovDegrees: Double,
     )
 
     data class IntrinsicsResult(
         val status: Int,
         val probeName: String,
-        val arg0: Int = 0,
-        val arg1: Int = 0,
-        val arg2: Double = 0.0,
-        val arg3: Double = 0.0,
+        val width: Int = 0,
+        val height: Int = 0,
+        val horizontalFovDegrees: Double = 0.0,
+        val verticalFovDegrees: Double = 0.0,
         val values: List<Double> = emptyList(),
     )
 
@@ -393,17 +374,14 @@ class PicoCaptureMetadataCollector {
     companion object {
         private const val METHOD_GET_CAMERA_INTRINSICS = "getCameraIntrinsics"
         private const val METHOD_GET_CAMERA_EXTRINSICS = "getCameraExtrinsics"
-        private const val FIELD_CAPTURE_STATUS_OK = "CAPTURE_STATUS_OK"
-        private const val DEFAULT_CAPTURE_STATUS_OK = 0
+        // The capturelib JNI methods expose boolean success as int: 1 succeeds.
+        private const val NATIVE_BOOLEAN_SUCCESS = 1
         private const val STATUS_METHOD_MISSING = Int.MIN_VALUE
         private const val STATUS_INVOCATION_FAILED = Int.MIN_VALUE + 1
         private const val STATUS_CAPTURE_UNAVAILABLE = Int.MIN_VALUE + 2
         private const val METADATA_SCHEMA_VERSION = 1
         private const val INTRINSICS_BUFFER_SIZE = 64
         private const val EXTRINSICS_BUFFER_SIZE = 64
-        private const val MATRIX_4X4_SIZE = 16
-        private const val DEFAULT_NEAR_Z = 0.01
-        private const val DEFAULT_FAR_Z = 1000.0
         private const val CAMERA_INDEX_LEFT = 0
         private const val CAMERA_INDEX_RIGHT = 1
         private const val RENDER_MODE_LEFT = 0
