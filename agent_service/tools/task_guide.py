@@ -8,9 +8,8 @@ from agent_service.tools.godot_rpc_tool import GodotRpcTool
 class OpenTaskGuideTool(GodotRpcTool):
     name = "open_task_guide"
     description = (
-        "Open the enabled GodotSpace task guide. Use this only when the user "
-        "explicitly asks to open or show the named guide. The MVP exposes only "
-        "task_id 1, 无容器样品实验流程."
+        "打开 GodotSpace 中指定的实验指导书。当前只开放 task_id 1，"
+        "即“无容器样品实验流程”。"
     )
     parameters = {
         "type": "object",
@@ -18,7 +17,7 @@ class OpenTaskGuideTool(GodotRpcTool):
             "task_id": {
                 "type": "integer",
                 "enum": [1],
-                "description": "Stable enabled task ID. 1 is 无容器样品实验流程.",
+                "description": "指导书 ID；当前只能是 1。",
             }
         },
         "required": ["task_id"],
@@ -38,8 +37,8 @@ class OpenTaskGuideTool(GodotRpcTool):
 class GetCurrentTaskStepTool(GodotRpcTool):
     name = "get_current_task_step"
     description = (
-        "Read the currently open task step without changing the task page. Use only "
-        "when the user explicitly asks to read or repeat the current step."
+        "读取并返回当前实验指导书正在显示的步骤及其内容，不改变指导书页码；"
+        "它不负责解释操作方法。"
     )
     parameters = {"type": "object", "properties": {}, "required": []}
 
@@ -53,10 +52,10 @@ class GetCurrentTaskStepTool(GodotRpcTool):
 class NextTaskStepTool(GodotRpcTool):
     name = "next_task_step"
     description = (
-        "Advance the active task exactly one step. Use this for an explicit "
-        "command such as 进入下一步, 这一步做完了，继续, or 这一步我做完了，接下来需要做什么. "
-        "If the task guide is the only visible paged panel, 翻到下一页, 下一步是什么, "
-        "or 下一步应该做什么 also mean this tool."
+        "继续当前任务流程：将可见的实验指导书向后推进一个步骤，并显示推进后的"
+        "步骤内容。用户表示当前步骤已经完成并希望继续流程时，也由它推进。"
+        "它不影响相册，也不接收目标页码；多个分页界面同时可见时，只有用户明确"
+        "指向任务、步骤或指导书才能选择它。"
     )
     parameters = {"type": "object", "properties": {}, "required": []}
 
@@ -70,8 +69,9 @@ class NextTaskStepTool(GodotRpcTool):
 class GoToTaskGuidePageTool(GodotRpcTool):
     name = "go_to_task_guide_page"
     description = (
-        "Turn the visible task guide directly to the requested 1-based page/step number. "
-        "Use for a request such as 翻到第3页 or 跳到第3步."
+        "仅在用户明确给出目标页码或步骤编号时，将当前可见的实验指导书直接切换"
+        "到该页或步骤；不影响相册。多个分页界面同时可见时，用户还必须明确指向"
+        "任务、步骤或指导书。"
     )
     parameters = {
         "type": "object",
@@ -79,7 +79,7 @@ class GoToTaskGuidePageTool(GodotRpcTool):
             "page": {
                 "type": "integer",
                 "minimum": 1,
-                "description": "The 1-based task guide page requested by the user.",
+                "description": "指导书目标页码或步骤编号，从 1 开始。",
             }
         },
         "required": ["page"],

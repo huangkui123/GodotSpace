@@ -358,16 +358,11 @@ def _compact_agent_context(context: dict[str, Any]) -> dict[str, Any]:
         return str(value or "").strip()[:limit]
 
     result: dict[str, Any] = {}
-    hint = context.get("ui_routing_hint")
-    if isinstance(hint, dict):
-        result["ui_routing_hint"] = {
-            "visible_panel": text(hint.get("visible_panel"), 48),
-            "page_turn_target_when_user_omits_target": text(
-                hint.get("page_turn_target_when_user_omits_target"), 48
-            ),
-        }
+    visible_panels: list[str] = []
     album = context.get("album")
     if isinstance(album, dict):
+        if album.get("visible") is True:
+            visible_panels.append("album")
         result["album"] = {
             key: album.get(key)
             for key in ("visible", "page", "page_count", "can_next", "can_previous")
@@ -375,6 +370,8 @@ def _compact_agent_context(context: dict[str, Any]) -> dict[str, Any]:
         }
     guide = context.get("task_guide")
     if isinstance(guide, dict):
+        if guide.get("visible") is True:
+            visible_panels.append("task_guide")
         compact_guide: dict[str, Any] = {
             key: guide.get(key)
             for key in (
@@ -388,15 +385,8 @@ def _compact_agent_context(context: dict[str, Any]) -> dict[str, Any]:
             )
             if key in guide
         }
-        for name in ("current_step", "next_step_preview"):
-            step = guide.get(name)
-            if isinstance(step, dict):
-                compact_guide[name] = {
-                    "step": step.get("step"),
-                    "title": text(step.get("title"), 120),
-                    "info": text(step.get("info"), 240),
-                }
         result["task_guide"] = compact_guide
+    result["visible_panels"] = visible_panels
     return result
 
 

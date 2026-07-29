@@ -8,10 +8,8 @@ from agent_service.tools.godot_rpc_tool import GodotRpcTool
 class OpenAlbumTool(GodotRpcTool):
     name = "open_album"
     description = (
-        "Open the photo album UI in GodotSpace. Use this only when the user explicitly "
-        "asks to open, show, or view the album or photos. Never use it merely to turn "
-        "a page; use next_album_page or previous_album_page for an already visible album. "
-        "Never use it when the user negates or cancels that action. Repeated calls are safe."
+        "打开 GodotSpace 相册界面，可选显示指定页并刷新相册数据；"
+        "它不负责已打开相册的向前或向后翻页。"
     )
     parameters = {
         "type": "object",
@@ -19,11 +17,11 @@ class OpenAlbumTool(GodotRpcTool):
             "page": {
                 "type": "integer",
                 "minimum": 1,
-                "description": "Album page to show, starting from 1.",
+                "description": "打开后显示的相册页码，从 1 开始。",
             },
             "refresh": {
                 "type": "boolean",
-                "description": "Refresh the album data before showing it.",
+                "description": "显示前是否刷新相册数据。",
             },
         },
         "required": [],

@@ -19,24 +19,30 @@ class _EmptyArgumentsTool(GodotRpcTool):
 
 class CloseAlbumTool(_EmptyArgumentsTool):
     name = "close_album"
-    description = "Close the currently visible photo album. Use only for an explicit close/hide album request."
+    description = "关闭当前可见的相册界面，不影响实验指导书。"
 
 
 class NextAlbumPageTool(_EmptyArgumentsTool):
     name = "next_album_page"
-    description = "Turn the visible photo album forward exactly one page."
+    description = (
+        "将当前可见的相册向后翻一页，不影响实验指导书，也不接收目标页码。"
+        "多个分页界面同时可见时，只有用户明确指向相册或照片才能选择它。"
+    )
 
 
 class GoToAlbumPageTool(GodotRpcTool):
     name = "go_to_album_page"
-    description = "Turn the visible photo album directly to the requested 1-based page number."
+    description = (
+        "仅在用户明确给出目标页码时，将当前可见的相册直接切换到该页，不影响"
+        "实验指导书。多个分页界面同时可见时，用户还必须明确指向相册或照片。"
+    )
     parameters = {
         "type": "object",
         "properties": {
             "page": {
                 "type": "integer",
                 "minimum": 1,
-                "description": "The 1-based album page requested by the user.",
+                "description": "相册目标页码，从 1 开始。",
             }
         },
         "required": ["page"],
@@ -54,32 +60,40 @@ class GoToAlbumPageTool(GodotRpcTool):
 
 class PreviousAlbumPageTool(_EmptyArgumentsTool):
     name = "previous_album_page"
-    description = "Turn the visible photo album back exactly one page."
+    description = (
+        "将当前可见的相册向前返回一页，不影响实验指导书。多个分页界面同时"
+        "可见时，只有用户明确指向相册或照片才能选择它。"
+    )
 
 
 class GetAlbumStateTool(_EmptyArgumentsTool):
     name = "get_album_state"
-    description = "Read the visible photo album page and navigation state without changing it."
+    description = "读取当前相册页码和翻页状态，不改变相册。"
 
 
 class CloseTaskGuideTool(_EmptyArgumentsTool):
     name = "close_task_guide"
-    description = "Close the currently visible task guide."
+    description = "关闭当前可见的实验指导书，不影响相册。"
 
 
 class PreviousTaskStepTool(_EmptyArgumentsTool):
     name = "previous_task_step"
-    description = "Move the visible task guide back exactly one step."
+    description = (
+        "将当前可见的实验指导书向前返回上一步或上一页，不影响相册，也不负责"
+        "知识问答。多个分页界面同时可见时，只有用户明确指向任务、步骤或指导书"
+        "才能选择它。"
+    )
 
 
 class ReplayCurrentTaskStepTool(_EmptyArgumentsTool):
     name = "replay_current_task_step"
-    description = "Replay the current task step animation."
+    description = "重新播放当前实验指导步骤的动画，不改变指导书页码。"
 
 
 class DelegateDeepSeekTool(_EmptyArgumentsTool):
     name = "delegate_deepseek"
     description = (
-        "Ask the configured DeepSeek specialist with local manual knowledge and the current "
-        "sanitized UI snapshot. Use for how-to, manual, or expert questions, not UI actions."
+        "查询实验手册、当前步骤怎样操作、步骤含义或专业知识时，使用这个唯一的"
+        "知识来源交给 DeepSeek 回答；不要由路由模型自行编造专业答案。该工具只"
+        "回答知识问题，不打开、关闭或翻动任何 UI。"
     )

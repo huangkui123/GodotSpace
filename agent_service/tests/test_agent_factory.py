@@ -7,8 +7,10 @@ from unittest.mock import patch
 
 from agent_service.agent_factory import (
     AgentFactory,
+    ROUTING_DECISION_SYSTEM_MESSAGE,
     _extract_final_answer,
-    _parse_routing_decision,
+    _extract_selected_tool,
+    _tool_catalog,
 )
 from agent_service.config import Settings
 from agent_service.connection_manager import ConnectionManager
@@ -42,6 +44,7 @@ class AgentFactoryTests(unittest.TestCase):
         self.assertEqual(config["model"], "local-test-model")
         self.assertEqual(config["model_server"], "http://127.0.0.1:9000/v1")
         self.assertEqual(config["api_key"], "test-key")
+        self.assertEqual(config["generate_cfg"]["temperature"], 0.0)
         self.assertEqual(config["generate_cfg"]["fncall_prompt_type"], "nous")
 
     @unittest.skipUnless(
@@ -57,7 +60,21 @@ class AgentFactoryTests(unittest.TestCase):
 
             def run(self, **kwargs: Any) -> Any:
                 captured["run"] = kwargs
-                yield [{"role": "assistant", "content": '{"route":"direct_answer","tool":"","arguments":{},"answer":"你好。"}'}]
+                tool = next(
+                    item
+                    for item in captured["function_list"]
+                    if item.name == "respond_directly"
+                )
+                result = tool.call('{"text":"你好。"}')
+                yield [
+                    {"role": "assistant", "content": ""},
+                    {
+                        "role": "function",
+                        "name": "respond_directly",
+                        "content": result,
+                    },
+                    {"role": "assistant", "content": "你好。"},
+                ]
 
         factory = AgentFactory(Settings(), ConnectionManager())
         with patch("qwen_agent.agents.FnCallAgent", FakeFnCallAgent):
@@ -69,21 +86,39 @@ class AgentFactoryTests(unittest.TestCase):
 
         self.assertEqual(result.answer, "你好。")
         self.assertEqual(captured["llm"]["model_type"], "qwenvl_oai")
-        self.assertEqual(captured["function_list"], [])
-        self.assertIn("唯一允许的工具", captured["run"]["messages"][0]["content"])
+        self.assertEqual(
+            [tool.name for tool in captured["function_list"]],
+            ["open_album", "respond_directly", "clarify_ui_target"],
+        )
+        self.assertIn("工具名称、作用和参数定义", captured["system_message"])
+        prompt = captured["run"]["messages"][0]["content"]
+        self.assertIn("本次可用工具定义", prompt)
+        self.assertIn('"name":"open_album"', prompt)
+        self.assertIn('"description":', prompt)
+        self.assertIn('"parameters":', prompt)
         self.assertEqual(captured["run"]["lang"], "zh")
 
     @unittest.skipUnless(
         importlib.util.find_spec("qwen_agent") is not None,
         "qwen_agent is not installed in this Python environment",
     )
-    def test_run_allows_qwen_direct_answer_without_tool_call(self) -> None:
+    def test_run_allows_qwen_direct_response_tool(self) -> None:
         class FakeFnCallAgent:
-            def __init__(self, **_kwargs: Any) -> None:
-                pass
+            def __init__(self, **kwargs: Any) -> None:
+                self._tools = kwargs["function_list"]
 
             def run(self, **_kwargs: Any) -> Any:
-                yield [{"role": "assistant", "content": '{"route":"direct_answer","tool":"","arguments":{},"answer":"你好。"}'}]
+                tool = next(item for item in self._tools if item.name == "respond_directly")
+                result = tool.call('{"text":"你好。"}')
+                yield [
+                    {"role": "assistant", "content": ""},
+                    {
+                        "role": "function",
+                        "name": "respond_directly",
+                        "content": result,
+                    },
+                    {"role": "assistant", "content": "你好。"},
+                ]
 
         factory = AgentFactory(Settings(), ConnectionManager())
         with patch("qwen_agent.agents.FnCallAgent", FakeFnCallAgent):
@@ -99,22 +134,37 @@ class AgentFactoryTests(unittest.TestCase):
         importlib.util.find_spec("qwen_agent") is not None,
         "qwen_agent is not installed in this Python environment",
     )
-    def test_tool_decision_is_dispatched_without_model_function_call(self) -> None:
+    def test_native_tool_decision_is_dispatched(self) -> None:
         captured: dict[str, Any] = {}
 
         class FakeFnCallAgent:
-            def __init__(self, **_kwargs: Any) -> None:
-                pass
+            def __init__(self, **kwargs: Any) -> None:
+                self._tools = kwargs["function_list"]
 
             def run(self, **_kwargs: Any) -> Any:
+                tool_result = self._tools[0].call("{}")
                 yield [
                     {
                         "role": "assistant",
-                        "content": '{"route":"tool","tool":"next_task_step","arguments":{},"answer":""}',
-                    }
+                        "content": "",
+                    },
+                    {
+                        "role": "function",
+                        "name": "next_task_step",
+                        "content": tool_result,
+                    },
+                    {"role": "assistant", "content": "操作完成。"},
                 ]
 
         class FakeTool:
+            name = "next_task_step"
+            description = "将指导书推进一步。"
+            parameters = {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            }
+
             def call(self, arguments: str) -> str:
                 captured["arguments"] = arguments
                 return '{"ok":true,"data":{"snapshot":{"page_index":2}},"error":null}'
@@ -134,35 +184,52 @@ class AgentFactoryTests(unittest.TestCase):
         self.assertEqual(result.route, "tool")
         self.assertEqual(result.tool_name, "next_task_step")
         self.assertEqual(captured["arguments"], "{}")
-        build_tools.assert_called_once_with("session-1", "request-1", ["next_task_step"])
+        build_tools.assert_called_once_with(
+            "session-1",
+            "request-1",
+            ["next_task_step"],
+        )
 
-    def test_rejects_tool_outside_request_authorization(self) -> None:
+    def test_tool_catalog_exposes_trusted_description_and_strict_schema(self) -> None:
+        class FakeTool:
+            name = "previous_task_step"
+            description = "将指导书返回上一步。"
+            parameters = {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            }
+
+        catalog = _tool_catalog([FakeTool()])
+
+        self.assertEqual(catalog[0]["name"], "previous_task_step")
+        self.assertEqual(catalog[0]["description"], "将指导书返回上一步。")
+        self.assertFalse(catalog[0]["parameters"]["additionalProperties"])
+
+    def test_routing_prompt_contains_no_phrase_to_tool_mapping(self) -> None:
+        self.assertNotIn("下一步应该做什么", ROUTING_DECISION_SYSTEM_MESSAGE)
+        self.assertNotIn("next_task_step first", ROUTING_DECISION_SYSTEM_MESSAGE)
+        self.assertNotIn("page_turn_target", ROUTING_DECISION_SYSTEM_MESSAGE)
+        self.assertIn("工具名称、作用和参数定义", ROUTING_DECISION_SYSTEM_MESSAGE)
+
+    def test_rejects_multiple_selected_tools(self) -> None:
         with self.assertRaises(RuntimeError):
-            _parse_routing_decision(
-                '{"route":"tool","tool":"next_task_step","arguments":{},"answer":""}',
-                ["open_album"],
+            _extract_selected_tool(
+                [
+                    {"role": "function", "name": "next_task_step", "content": "{}"},
+                    {
+                        "role": "function",
+                        "name": "previous_task_step",
+                        "content": "{}",
+                    },
+                ]
             )
 
-    def test_accepts_authorized_task_advance_decision(self) -> None:
-        decision = _parse_routing_decision(
-            '{"route":"tool","tool":"next_task_step","arguments":{},"answer":""}',
-            ["next_task_step"],
+    def test_extracts_one_native_qwen_tool_result(self) -> None:
+        selected = _extract_selected_tool(
+            [{"role": "function", "name": "next_task_step", "content": "{}"}]
         )
-        self.assertEqual(decision.tool, "next_task_step")
-
-    def test_normalizes_qwen_direct_tool_route(self) -> None:
-        decision = _parse_routing_decision(
-            '{"route":"next_task_step","tool":"","arguments":{},"answer":"下一步"}',
-            ["next_task_step", "delegate_deepseek"],
-        )
-        self.assertEqual(decision.route, "tool")
-        self.assertEqual(decision.tool, "next_task_step")
-
-        duplicated = _parse_routing_decision(
-            '{"route":"next_task_step","tool":"next_task_step","arguments":{},"answer":""}',
-            ["next_task_step"],
-        )
-        self.assertEqual(duplicated.tool, "next_task_step")
+        self.assertEqual(selected, "next_task_step")
 
     @unittest.skipUnless(
         importlib.util.find_spec("qwen_agent") is not None,

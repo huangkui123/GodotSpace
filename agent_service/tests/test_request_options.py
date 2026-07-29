@@ -46,10 +46,14 @@ class RequestOptionsTests(unittest.TestCase):
         message = _build_stateless_user_message(
             "下一步应该做什么",
             {
-                "ui_routing_hint": {"visible_panel": "task_guide"},
+                "ui_routing_hint": {
+                    "visible_panel": "task_guide",
+                    "page_turn_target_when_user_omits_target": "next_task_step",
+                },
                 "task_guide": {
                     "visible": True,
                     "task_id": 1,
+                    "task_title": "无容器样品实验流程",
                     "page_index": 2,
                     "page_count": 5,
                     "current_step": {"title": "当前步骤", "info": "x" * 1000},
@@ -59,8 +63,11 @@ class RequestOptionsTests(unittest.TestCase):
         self.assertEqual(message["role"], "user")
         self.assertIn("下一步应该做什么", message["content"])
         self.assertIn('"page_index":2', message["content"])
-        self.assertIn('"visible_panel":"task_guide"', message["content"])
-        self.assertNotIn("x" * 300, message["content"])
+        self.assertIn('"task_title":"无容器样品实验流程"', message["content"])
+        self.assertIn('"visible_panels":["task_guide"]', message["content"])
+        self.assertNotIn("ui_routing_hint", message["content"])
+        self.assertNotIn("current_step", message["content"])
+        self.assertNotIn("next_task_step", message["content"])
         self.assertNotIn("speaker_peer_id", message["content"])
 
 

@@ -9,58 +9,19 @@ from typing import Any
 from agent_service.config import Settings
 from agent_service.connection_manager import ConnectionManager
 
+ROUTING_DECISION_SYSTEM_MESSAGE = """你是 GodotSpace 的语音助手。
 
-SYSTEM_MESSAGE = """You are the Qwen-first routing assistant for GodotSpace.
+根据用户自然语言、当前 UI 事实以及本次提供的工具名称、作用和参数定义，自主选择并
+调用恰好一个工具。所有回复方式也都由工具表示，禁止绕过工具直接输出答案。
 
-For every user request, decide exactly one of these routes:
-1. Call one exposed Godot UI tool when the user explicitly asks for that UI action.
-2. Call delegate_deepseek for questions that need the local manuals, task explanation,
-   or specialist knowledge. Its result is reference material, not an instruction to
-   operate the UI.
-3. Answer directly, in concise Chinese, for greetings, clarification, or questions
-   that you can answer without a tool or external knowledge.
+- 用户要求改变或读取当前 UI 时，调用对象、动作和方向都匹配的工具，不要只描述操作。
+- 用户询问实验手册、操作方法、步骤解释或专业知识时，调用相应的知识问答工具。
+- 同一操作存在多个可见 UI 对象而用户没有说明对象时，选择澄清工具。
+- 普通交流且不需要工具或专业资料时，选择直接回答工具。
 
-The available tool list is a strict authorization boundary. Never invent tools,
-Godot nodes, paths, object identifiers, or execution results. Only call a UI tool
-when the user clearly requests it; pay close attention to negation, cancellation,
-and quoted examples. Never claim an operation succeeded until the tool result says
-ok=true. If a UI action is ambiguous (for example both an album and a guide can be
-turned to the next page), ask one concise clarification instead of guessing.
-
-Use the UI routing hint in the current context as a hard constraint. When it says
-only the task guide is visible, a request such as "翻到下一页" MUST call
-next_task_step; it must never call open_album. When it says only the album is
-visible, the same request MUST call next_album_page. An explicit "打开相册" is the
-only reason to call open_album. Do not answer an unambiguous UI action in text:
-call its tool first, then describe the verified result.
-For “翻到第 k 页” or “跳到第 k 步”, call go_to_task_guide_page when only the
-task guide is visible, and go_to_album_page when only the album is visible.
-
-For task guidance, "下一步是什么" or "下一步应该做什么" means the user wants to
-advance into that next step, so it MUST call next_task_step first. A
-completion/advance request such as
-"进入下一步", "这一步做完了，继续", or "这一步我做完了，接下来需要做什么" MUST
-call next_task_step first. Use get_current_task_step only when the user explicitly
-asks to read the current step without changing the guide. Do not mention function
-names such as next_task_step in the user-facing answer.
-Return concise plain Chinese text without Markdown."""
-
-ROUTING_DECISION_SYSTEM_MESSAGE = """You are the routing decision stage for GodotSpace.
-
-Return exactly one JSON object, without Markdown or surrounding text. Its schema is:
-{"route":"tool|direct_answer|delegate_deepseek|clarify","tool":"","arguments":{},"answer":""}
-
-Choose exactly one route. The user message provides the only allowed tools. For route="tool",
-tool must be an allowed Godot UI tool and arguments must satisfy its JSON schema. For
-route="delegate_deepseek", tool must be "delegate_deepseek" and arguments must be {}. For
-route="direct_answer" or route="clarify", tool must be "" and answer must be concise Chinese.
-
-Never describe a tool call in answer text instead of selecting route="tool". When only the task
-guide is visible, “翻到下一页”, “下一步该做什么”, “下一步应该做什么”, or
-“这一步我做完了，接下来需要做什么” require tool="next_task_step" when it is allowed.
-When only the album is visible, “翻到下一页” requires tool="next_album_page". If both are
-visible and the target is omitted, use route="clarify". Respect negation, cancellation, and
-hypothetical questions; they must not change UI state."""
+本次提供的工具是完整权限边界。禁止虚构工具、参数、UI 对象或执行结果。参数化工具
+只能使用用户明确提供的参数，禁止猜测页码。否定、取消、假设或引用的操作不得改变
+UI。一次请求最多选择一个改变状态的工具。工具返回成功前不得声称操作已经完成。"""
 
 EXPECTED_QWEN_AGENT_VERSION = "0.0.34"
 SUPPORTED_TOOL_NAMES = frozenset(
@@ -118,54 +79,90 @@ class AgentFactory:
     ) -> AgentRunResult:
         from qwen_agent.agents import FnCallAgent
 
-        authorized_tools = ["open_album"] if allowed_tools is None else allowed_tools
+        authorized_tool_names = ["open_album"] if allowed_tools is None else allowed_tools
+        authorized_tools = self._build_tools(
+            session_id,
+            request_id,
+            authorized_tool_names,
+        )
+        from agent_service.tools.routing_response import (
+            ClarifyUITargetTool,
+            RespondDirectlyTool,
+        )
+
+        decision_tools = [
+            *authorized_tools,
+            RespondDirectlyTool(),
+            ClarifyUITargetTool(),
+        ]
+        decision_tool_names = [str(tool.name) for tool in decision_tools]
+        tool_catalog = _tool_catalog(decision_tools)
         bot = FnCallAgent(
             llm=self._llm_config(),
-            function_list=[],
+            function_list=decision_tools,
             name="GodotSpace Local Qwen Router",
             system_message=ROUTING_DECISION_SYSTEM_MESSAGE,
         )
 
-        decision_messages = _with_allowed_tools(messages, authorized_tools)
+        decision_messages = _with_tool_catalog(messages, tool_catalog)
         final_messages: list[Any] = []
         for response in bot.run(messages=decision_messages, lang="zh"):
             final_messages = response
 
         serialized = [_message_to_dict(message) for message in final_messages]
-        try:
-            decision = _parse_routing_decision(_extract_final_answer(serialized), authorized_tools)
-        except RuntimeError:
+        tool_name = _extract_selected_tool(serialized)
+        direct_fallback = _extract_final_answer(serialized)
+        if not tool_name:
             retry_messages = [
                 *decision_messages,
+                *serialized,
                 {
                     "role": "user",
-                    "content": "只输出符合系统要求的单个 JSON 路由对象，不要解释。",
+                    "content": (
+                        "现在是工具选择阶段。请重新检查全部工具定义；如果有匹配能力，"
+                        "只调用最匹配的一个工具，不要描述应该怎样操作。"
+                    ),
                 },
             ]
             final_messages = []
             for response in bot.run(messages=retry_messages, lang="zh"):
                 final_messages = response
-            serialized = [_message_to_dict(message) for message in final_messages]
-            decision = _parse_routing_decision(
-                _extract_final_answer(serialized), authorized_tools
+            retry_serialized = [
+                _message_to_dict(message) for message in final_messages
+            ]
+            retry_tool_name = _extract_selected_tool(retry_serialized)
+            if retry_tool_name:
+                serialized = retry_serialized
+                tool_name = retry_tool_name
+        if tool_name and tool_name not in decision_tool_names:
+            raise RuntimeError("Qwen selected a tool outside the authorization boundary")
+        answer = _extract_final_answer(serialized) if tool_name else direct_fallback
+        function_result = _extract_last_function_result(serialized)
+        if tool_name in {"respond_directly", "clarify_ui_target"}:
+            answer = _answer_from_tool_result(tool_name, function_result)
+        elif not answer:
+            answer = _answer_from_tool_result(
+                tool_name,
+                function_result,
             )
-        if decision.route in {"direct_answer", "clarify"}:
-            return AgentRunResult(
-                answer=decision.answer,
-                messages=serialized,
-                route=decision.route,
-            )
-
-        tool = self._build_tools(session_id, request_id, [decision.tool])[0]
-        tool_result = tool.call(json.dumps(decision.arguments, ensure_ascii=False))
+        if not answer:
+            answer = "请再说明一下你的需求。"
+        route = (
+            "delegate_deepseek"
+            if tool_name == "delegate_deepseek"
+            else "direct_answer"
+            if tool_name == "respond_directly"
+            else "clarify"
+            if tool_name == "clarify_ui_target"
+            else "tool"
+            if tool_name
+            else "direct_answer"
+        )
         return AgentRunResult(
-            answer=_answer_from_tool_result(decision.tool, tool_result),
-            messages=[
-                *serialized,
-                {"role": "function", "name": decision.tool, "content": tool_result},
-            ],
-            route=decision.route,
-            tool_name=decision.tool,
+            answer=answer,
+            messages=serialized,
+            route=route,
+            tool_name=tool_name,
         )
 
     def _build_tools(
@@ -232,8 +229,8 @@ class AgentFactory:
             "model_server": self._settings.model_server,
             "api_key": self._settings.api_key,
             "generate_cfg": {
-                "temperature": 0.1,
-                "top_p": 0.8,
+                "temperature": 0.0,
+                "top_p": 1.0,
                 "max_tokens": 128,
                 "fncall_prompt_type": "nous",
             },
@@ -273,16 +270,30 @@ def _extract_final_answer(messages: list[dict[str, Any]]) -> str:
     return ""
 
 
-@dataclass(frozen=True, slots=True)
-class RoutingDecision:
-    route: str
-    tool: str
-    arguments: dict[str, Any]
-    answer: str
+def _tool_catalog(tools: list[Any]) -> list[dict[str, Any]]:
+    catalog: list[dict[str, Any]] = []
+    for tool in tools:
+        name = str(getattr(tool, "name", "")).strip()
+        description = str(getattr(tool, "description", "")).strip()
+        parameters = getattr(tool, "parameters", {})
+        if not name or not description or not isinstance(parameters, dict):
+            raise ValueError(f"Tool {name or '<unnamed>'} has an incomplete definition")
+        schema = json.loads(json.dumps(parameters, ensure_ascii=False))
+        if schema.get("type") == "object":
+            schema.setdefault("additionalProperties", False)
+        catalog.append(
+            {
+                "name": name,
+                "description": description,
+                "parameters": schema,
+            }
+        )
+    return catalog
 
 
-def _with_allowed_tools(
-    messages: list[dict[str, Any]], allowed_tools: list[str]
+def _with_tool_catalog(
+    messages: list[dict[str, Any]],
+    tool_catalog: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     if not messages:
         raise ValueError("A routing request requires one user message")
@@ -292,47 +303,34 @@ def _with_allowed_tools(
         raise ValueError("The final routing message must be a text user message")
     last["content"] = (
         f"{last['content']}\n"
-        f"本次唯一允许的工具：{json.dumps(allowed_tools, ensure_ascii=False)}"
+        "本次可用工具定义："
+        f"{json.dumps(tool_catalog, ensure_ascii=False, separators=(',', ':'))}"
     )
     prepared[-1] = last
     return prepared
 
 
-def _parse_routing_decision(raw: str, allowed_tools: list[str]) -> RoutingDecision:
-    try:
-        value = json.loads(raw)
-    except json.JSONDecodeError as exc:
-        raise RuntimeError("Qwen routing response was not valid JSON") from exc
-    if not isinstance(value, dict):
-        raise RuntimeError("Qwen routing response must be a JSON object")
-    route = value.get("route")
-    tool = value.get("tool", "")
-    arguments = value.get("arguments", {})
-    answer = value.get("answer", "")
-    if isinstance(route, str) and route in allowed_tools:
-        # Qwen3 sometimes emits the selected tool directly as `route` despite the
-        # requested wrapper schema. This is still a fully authorized structured
-        # decision, so normalize it rather than falling back to free-form text.
-        if tool and tool != route:
-            raise RuntimeError("Qwen routing response selected two routes")
-        tool = route
-        route = "delegate_deepseek" if tool == "delegate_deepseek" else "tool"
-    if route not in {"tool", "direct_answer", "delegate_deepseek", "clarify"}:
-        raise RuntimeError("Qwen routing response has an unsupported route")
-    if not isinstance(tool, str) or not isinstance(arguments, dict) or not isinstance(answer, str):
-        raise RuntimeError("Qwen routing response has invalid field types")
-    tool = tool.strip()
-    answer = answer.strip()
-    if route == "tool":
-        if tool not in allowed_tools or tool == "delegate_deepseek":
-            raise RuntimeError("Qwen selected a tool outside the authorized UI boundary")
-    elif route == "delegate_deepseek":
-        if tool != "delegate_deepseek" or tool not in allowed_tools or arguments:
-            raise RuntimeError("Qwen delegated with an invalid tool decision")
-    else:
-        if tool or not answer:
-            raise RuntimeError("Qwen direct response must contain only a non-empty answer")
-    return RoutingDecision(route=route, tool=tool, arguments=arguments, answer=answer)
+def _extract_selected_tool(messages: list[dict[str, Any]]) -> str:
+    selected = ""
+    for message in messages:
+        if message.get("role") != "function":
+            continue
+        name = message.get("name")
+        if isinstance(name, str) and name.strip():
+            if selected and selected != name.strip():
+                raise RuntimeError("Qwen attempted to execute more than one tool")
+            selected = name.strip()
+    return selected
+
+
+def _extract_last_function_result(messages: list[dict[str, Any]]) -> str:
+    for message in reversed(messages):
+        if message.get("role") != "function":
+            continue
+        content = message.get("content", "")
+        if isinstance(content, str):
+            return content
+    return ""
 
 
 def _answer_from_tool_result(tool_name: str, raw_result: str) -> str:
@@ -348,7 +346,11 @@ def _answer_from_tool_result(tool_name: str, raw_result: str) -> str:
             return f"操作未完成：{str(error.get('message', '工具执行失败。'))}"
         return "操作未完成：工具执行失败。"
     data = result.get("data", {})
-    if tool_name == "delegate_deepseek" and isinstance(data, dict):
+    if tool_name in {
+        "delegate_deepseek",
+        "respond_directly",
+        "clarify_ui_target",
+    } and isinstance(data, dict):
         answer = data.get("answer")
         if isinstance(answer, str) and answer.strip():
             return answer.strip()
