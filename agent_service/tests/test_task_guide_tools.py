@@ -67,6 +67,21 @@ class TaskGuideToolTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             tool.call('{"expected_page_index": 4}')
 
+    def test_direct_page_normalizes_explicit_chinese_ordinal(self) -> None:
+        from agent_service.tools import GoToTaskGuidePageTool
+
+        manager, tool = self._make_tool(
+            GoToTaskGuidePageTool, state_changing=True
+        )
+        for value in (3, 3.0, "3", "三", "第三页"):
+            with self.subTest(value=value):
+                json.loads(tool.call({"page": value}))
+                self.assertEqual(manager.calls[-1]["arguments"], {"page": 3})
+        for value in (True, 0, -1, "第三章", "abc"):
+            with self.subTest(invalid=value):
+                with self.assertRaises(ValueError):
+                    tool.call({"page": value})
+
 
 if __name__ == "__main__":
     unittest.main()

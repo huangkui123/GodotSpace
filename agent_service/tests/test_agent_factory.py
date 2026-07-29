@@ -58,6 +58,7 @@ class AgentFactoryTests(unittest.TestCase):
         self.assertEqual(config["api_key"], "test-key")
         self.assertEqual(config["generate_cfg"]["temperature"], 0.0)
         self.assertEqual(config["generate_cfg"]["fncall_prompt_type"], "nous")
+        self.assertEqual(Settings().deepseek_tool_timeout_seconds, 120.0)
 
     @unittest.skipUnless(
         importlib.util.find_spec("qwen_agent") is not None,

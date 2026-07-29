@@ -122,6 +122,14 @@ def _cases() -> list[RoutingCase]:
             expected_arguments={"page": 3},
         ),
         RoutingCase(
+            "guide Chinese ordinal page",
+            "翻到第三页",
+            _guide_context(),
+            guide_tools,
+            "go_to_task_guide_page",
+            expected_arguments={"page": 3},
+        ),
+        RoutingCase(
             "album previous page",
             "翻到上一页",
             _album_context(),
@@ -142,6 +150,14 @@ def _cases() -> list[RoutingCase]:
             album_tools,
             "go_to_album_page",
             expected_arguments={"page": 5},
+        ),
+        RoutingCase(
+            "album Chinese ordinal page",
+            "翻到第三页",
+            _album_context(),
+            album_tools,
+            "go_to_album_page",
+            expected_arguments={"page": 3},
         ),
         RoutingCase(
             "both explicit guide",

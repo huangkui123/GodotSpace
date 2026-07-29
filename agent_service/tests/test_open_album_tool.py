@@ -72,6 +72,21 @@ class OpenAlbumToolTests(unittest.TestCase):
         self.assertEqual(result["error"]["code"], "target_offline")
         self.assertIn("not available", result["error"]["message"])
 
+    def test_direct_album_page_normalizes_explicit_chinese_ordinal(self) -> None:
+        from agent_service.tools import GoToAlbumPageTool
+
+        manager = FakeConnectionManager()
+        tool = GoToAlbumPageTool(
+            manager,  # type: ignore[arg-type]
+            "session-1",
+            "request-1",
+            timeout_seconds=1.0,
+            max_calls=2,
+        )
+        result = json.loads(tool.call({"page": "第三页"}))
+        self.assertTrue(result["ok"])
+        self.assertEqual(manager.calls[0]["arguments"], {"page": 3})
+
 
 if __name__ == "__main__":
     unittest.main()

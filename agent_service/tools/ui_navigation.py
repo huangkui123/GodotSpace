@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from agent_service.tools.godot_rpc_tool import GodotRpcTool
+from agent_service.tools.page_number import parse_page_arguments
 
 
 class _EmptyArgumentsTool(GodotRpcTool):
@@ -51,13 +52,9 @@ class GoToAlbumPageTool(GodotRpcTool):
     }
 
     def call(self, params: str | dict[str, Any], **kwargs: Any) -> str:
-        arguments = self._verify_json_format_args(params, strict_json=True)
-        if set(arguments) != {"page"}:
-            raise ValueError("go_to_album_page requires only an integer page parameter")
-        page = arguments["page"]
-        if not isinstance(page, int) or isinstance(page, bool) or page < 1:
-            raise ValueError("page must be an integer greater than zero")
-        return self.call_godot({"page": page})
+        return self.call_godot(
+            parse_page_arguments(params, tool_name="go_to_album_page")
+        )
 
 
 class PreviousAlbumPageTool(_EmptyArgumentsTool):
