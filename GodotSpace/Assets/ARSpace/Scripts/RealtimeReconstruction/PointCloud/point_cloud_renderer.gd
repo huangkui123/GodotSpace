@@ -16,6 +16,7 @@ shader_type spatial;
 render_mode unshaded, cull_disabled, depth_draw_opaque, blend_mix;
 
 uniform float point_size : hint_range(1.0, 16.0, 0.25) = 4.0;
+uniform float arspace_opacity : hint_range(0.0, 1.0, 0.01) = 1.0;
 
 void vertex() {
 	POINT_SIZE = point_size;
@@ -23,7 +24,7 @@ void vertex() {
 
 void fragment() {
 	ALBEDO = COLOR.rgb;
-	ALPHA = 1.0;
+	ALPHA = arspace_opacity;
 }
 """
 

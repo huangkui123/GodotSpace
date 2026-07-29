@@ -2,15 +2,7 @@
 extends Node3D
 
 const DEBUG_LOGS := false
-const CABIN_SHELL_MESH_PATHS: Array[NodePath] = [
-	NodePath("SpaceBox/FrontDor/MeshRenderer"),
-	NodePath("SpaceBox/RightPlane/MeshRenderer"),
-	NodePath("SpaceBox/LeftPlane/MeshRenderer"),
-	NodePath("SpaceBox/UpPlane/MeshRenderer"),
-	NodePath("SpaceBox/DownPlane/MeshRenderer"),
-	NodePath("SpaceBox/BackDor/MeshRenderer"),
-]
-const SKY_MR_HIDDEN_NODE_PATHS: Array[NodePath] = [
+const SKY_MR_VISIBLE_NODE_PATHS: Array[NodePath] = [
 	NodePath("SpaceBox/DownPlane"),
 	NodePath("SpaceBox/BackDor"),
 ]
@@ -20,9 +12,7 @@ const SKY_MR_HIDDEN_NODE_PATHS: Array[NodePath] = [
 
 @onready var worklist1 := $SpaceBox/WorkEffect/WorkList1
 
-var _original_shell_materials: Dictionary = {}
-var _original_sky_hidden_visibility: Dictionary = {}
-var _sky_mr_transparency_enabled: bool = false
+var _original_sky_surface_visibility: Dictionary = {}
 
 
 func _ready():
@@ -31,91 +21,31 @@ func _ready():
 	if DEBUG_LOGS: print("✅ SpaceBox 控制器已注册到 Global 单例")
 
 
-func configure_for_runtime_profile(
-	profile,
-	passthrough_enabled: bool = true
-) -> void:
-	var sky_mr_enabled := _should_enable_sky_mr_transparency(
-		profile,
-		passthrough_enabled
-	)
-	_set_sky_mr_transparency(sky_mr_enabled)
-	_set_sky_mr_hidden_surfaces(sky_mr_enabled)
+func configure_for_runtime_profile(profile) -> void:
+	_set_sky_mr_surfaces_visible(_should_show_sky_mr_surfaces(profile))
 
 
-func _should_enable_sky_mr_transparency(
-	profile,
-	passthrough_enabled: bool
-) -> bool:
+func _should_show_sky_mr_surfaces(profile) -> bool:
 	return bool(
 		profile != null
 		and profile.is_valid()
 		and profile.is_sky()
 		and profile.uses_xr()
-		and profile.uses_passthrough()
-		and passthrough_enabled
 	)
 
 
-func _set_sky_mr_transparency(enabled: bool) -> void:
-	_cache_original_shell_materials()
-	if _sky_mr_transparency_enabled == enabled:
-		return
-
-	for mesh_path in CABIN_SHELL_MESH_PATHS:
-		var mesh_instance := get_node_or_null(mesh_path) as MeshInstance3D
-		if mesh_instance == null:
-			push_warning("舱体透明配置缺少网格：%s" % mesh_path)
-			continue
-		var original_material = _original_shell_materials.get(mesh_path)
-		if not enabled:
-			mesh_instance.set_surface_override_material(0, original_material)
-			continue
-		var source_material := original_material as BaseMaterial3D
-		if source_material == null:
-			source_material = mesh_instance.get_active_material(0) as BaseMaterial3D
-		if source_material == null:
-			push_warning("舱体透明配置缺少材质：%s" % mesh_path)
-			continue
-		var transparent_material := _make_sky_mr_material(source_material)
-		mesh_instance.set_surface_override_material(0, transparent_material)
-
-	_sky_mr_transparency_enabled = enabled
-
-
-func _make_sky_mr_material(
-	source_material: BaseMaterial3D
-) -> BaseMaterial3D:
-	var transparent_material := source_material.duplicate(true) as BaseMaterial3D
-	transparent_material.resource_local_to_scene = true
-	transparent_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	return transparent_material
-
-
-func _set_sky_mr_hidden_surfaces(enabled: bool) -> void:
-	for node_path in SKY_MR_HIDDEN_NODE_PATHS:
+func _set_sky_mr_surfaces_visible(enabled: bool) -> void:
+	for node_path in SKY_MR_VISIBLE_NODE_PATHS:
 		var surface := get_node_or_null(node_path) as Node3D
 		if surface == null:
-			push_warning("天上端舱体隐藏配置缺少节点：%s" % node_path)
+			push_warning("天上端舱体显示配置缺少节点：%s" % node_path)
 			continue
-		if not _original_sky_hidden_visibility.has(node_path):
-			_original_sky_hidden_visibility[node_path] = surface.visible
+		if not _original_sky_surface_visibility.has(node_path):
+			_original_sky_surface_visibility[node_path] = surface.visible
 		surface.visible = (
-			false
+			true
 			if enabled
-			else bool(_original_sky_hidden_visibility[node_path])
-		)
-
-
-func _cache_original_shell_materials() -> void:
-	for mesh_path in CABIN_SHELL_MESH_PATHS:
-		if _original_shell_materials.has(mesh_path):
-			continue
-		var mesh_instance := get_node_or_null(mesh_path) as MeshInstance3D
-		if mesh_instance == null:
-			continue
-		_original_shell_materials[mesh_path] = (
-			mesh_instance.get_surface_override_material(0)
+			else bool(_original_sky_surface_visibility[node_path])
 		)
 
 

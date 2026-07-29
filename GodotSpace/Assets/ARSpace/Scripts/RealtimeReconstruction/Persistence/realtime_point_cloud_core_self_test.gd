@@ -235,8 +235,10 @@ func _test_renderer(store: ReconstructionPointCloudMapStore) -> void:
 	if point_material is ShaderMaterial and point_material.shader != null:
 		_expect(
 			point_material.shader.code.contains("ALBEDO = COLOR.rgb") \
-				and point_material.shader.code.contains("ALPHA = 1.0"),
-			"point shader must preserve RGB vertex colors with opaque alpha"
+				and point_material.shader.code.contains(
+					"ALPHA = arspace_opacity"
+				),
+			"point shader must preserve RGB vertex colors with adjustable alpha"
 		)
 		_expect(
 			is_equal_approx(

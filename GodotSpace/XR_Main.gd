@@ -12,6 +12,15 @@ const MAIN_PANEL_TOGGLE_DEBOUNCE_MS: int = 180
 const VIRTUAL_ANNOTATION_SETTING: StringName = &"arspace/virtual_annotation_enabled"
 const VIRTUAL_ANNOTATION_SCENE_PATH: String = \
 	"res://Assets/ARSpace/Scenes/VirtualAnnotationSystem.tscn"
+const SKY_OBJECT_OPACITY: float = 0.5
+const SKY_PANEL_UI_OPACITY: float = 0.8
+const SKY_BOUNDARY_SURFACE_OPACITY: float = 0.25
+const SKY_BOUNDARY_SURFACE_NAMES: Array[StringName] = [
+	&"DownPlane",
+	&"BackDor",
+]
+const SKY_TRANSPARENCY_STATE_META: StringName = \
+	&"_arspace_sky_transparency_state"
 
 var xr_interface: XRInterface
 var runtime_profile
@@ -33,6 +42,8 @@ var passthrough_supported_modes_logged: bool = false
 var passthrough_unavailable_warned: bool = false
 var _last_right_a_pressed: bool = false
 var _last_main_panel_toggle_ms: int = -MAIN_PANEL_TOGGLE_DEBOUNCE_MS
+var _sky_geometry_transparency_enabled: bool = false
+var _sky_transparent_material_cache: Dictionary = {}
 
 
 func _enter_tree() -> void:
@@ -53,12 +64,17 @@ func _ready() -> void:
 
 	if NetworkHandler.has_signal("network_role_selected") and not NetworkHandler.network_role_selected.is_connected(_on_network_role_selected):
 		NetworkHandler.network_role_selected.connect(_on_network_role_selected)
+	if not get_tree().node_added.is_connected(_on_scene_node_added):
+		get_tree().node_added.connect(_on_scene_node_added)
 
 	_update_preview_container_visibility()
 	_apply_runtime_profile()
 
 
 func _exit_tree() -> void:
+	_set_sky_geometry_transparency(false)
+	if get_tree().node_added.is_connected(_on_scene_node_added):
+		get_tree().node_added.disconnect(_on_scene_node_added)
 	_shutdown_openxr()
 
 func _on_network_role_selected(is_server_role: bool) -> void:
@@ -76,6 +92,7 @@ func _on_network_role_selected(is_server_role: bool) -> void:
 
 func _apply_runtime_profile() -> void:
 	_configure_spacebox_rendering()
+	_configure_scene_geometry_rendering()
 	if runtime_profile.uses_xr():
 		_enter_xr_runtime()
 	else:
@@ -89,9 +106,279 @@ func _configure_spacebox_rendering() -> void:
 	):
 		spacebox.call(
 			"configure_for_runtime_profile",
-			runtime_profile,
-			enable_passthrough
+			runtime_profile
 		)
+
+
+func _configure_scene_geometry_rendering() -> void:
+	_set_sky_geometry_transparency(
+		runtime_profile != null
+		and runtime_profile.is_valid()
+		and runtime_profile.is_sky()
+		and runtime_profile.uses_xr()
+	)
+
+
+func _set_sky_geometry_transparency(enabled: bool) -> void:
+	_sky_geometry_transparency_enabled = enabled
+	if enabled:
+		_apply_sky_transparency_to_subtree(self)
+	else:
+		_restore_geometry_transparency_in_subtree(self)
+		_sky_transparent_material_cache.clear()
+
+
+func _apply_sky_transparency_to_subtree(root: Node) -> void:
+	if not is_instance_valid(root):
+		return
+	if root is MeshInstance3D:
+		_apply_sky_mesh_transparency(root as MeshInstance3D)
+	elif root is Label3D:
+		_apply_sky_label_transparency(root as Label3D)
+	elif root is SpriteBase3D:
+		_apply_sky_sprite_transparency(root as SpriteBase3D)
+	for child in root.get_children():
+		_apply_sky_transparency_to_subtree(child)
+
+
+func _restore_geometry_transparency_in_subtree(root: Node) -> void:
+	if not is_instance_valid(root):
+		return
+	if root is MeshInstance3D:
+		_restore_sky_mesh_transparency(root as MeshInstance3D)
+	elif root is Label3D:
+		_restore_sky_label_transparency(root as Label3D)
+	elif root is SpriteBase3D:
+		_restore_sky_sprite_transparency(root as SpriteBase3D)
+	for child in root.get_children():
+		_restore_geometry_transparency_in_subtree(child)
+
+
+func _apply_sky_mesh_transparency(mesh_instance: MeshInstance3D) -> void:
+	if mesh_instance.has_meta(SKY_TRANSPARENCY_STATE_META):
+		return
+
+	var object_opacity := _get_sky_mesh_opacity(mesh_instance)
+	var state := {
+		"material_override": mesh_instance.material_override,
+		"surface_overrides": [],
+	}
+	var source_override := mesh_instance.material_override
+	if source_override != null:
+		var transparent_override := _get_sky_transparent_material(
+			source_override,
+			object_opacity
+		)
+		if transparent_override == source_override:
+			return
+		mesh_instance.set_meta(SKY_TRANSPARENCY_STATE_META, state)
+		mesh_instance.material_override = transparent_override
+		return
+
+	if mesh_instance.mesh == null:
+		return
+	var surface_count := mesh_instance.mesh.get_surface_count()
+	if surface_count <= 0:
+		return
+	var original_surface_overrides: Array = state["surface_overrides"]
+	var transparent_surfaces: Array[Material] = []
+	for surface_index in range(surface_count):
+		original_surface_overrides.append(
+			mesh_instance.get_surface_override_material(surface_index)
+		)
+		transparent_surfaces.append(_get_sky_transparent_material(
+			mesh_instance.get_active_material(surface_index),
+			object_opacity
+		))
+	mesh_instance.set_meta(SKY_TRANSPARENCY_STATE_META, state)
+	for surface_index in range(surface_count):
+		mesh_instance.set_surface_override_material(
+			surface_index,
+			transparent_surfaces[surface_index]
+		)
+
+
+func _get_sky_mesh_opacity(mesh_instance: MeshInstance3D) -> float:
+	var current: Node = mesh_instance
+	while current != null and current != self:
+		if current.name in SKY_BOUNDARY_SURFACE_NAMES:
+			return SKY_BOUNDARY_SURFACE_OPACITY
+		current = current.get_parent()
+	return SKY_OBJECT_OPACITY
+
+
+func _restore_sky_mesh_transparency(mesh_instance: MeshInstance3D) -> void:
+	if not mesh_instance.has_meta(SKY_TRANSPARENCY_STATE_META):
+		return
+	var state := mesh_instance.get_meta(
+		SKY_TRANSPARENCY_STATE_META
+	) as Dictionary
+	mesh_instance.material_override = state.get("material_override") as Material
+	var original_surface_overrides := state.get(
+		"surface_overrides",
+		[]
+	) as Array
+	for surface_index in range(original_surface_overrides.size()):
+		mesh_instance.set_surface_override_material(
+			surface_index,
+			original_surface_overrides[surface_index] as Material
+		)
+	mesh_instance.remove_meta(SKY_TRANSPARENCY_STATE_META)
+
+
+func _apply_sky_label_transparency(label: Label3D) -> void:
+	if label.has_meta(SKY_TRANSPARENCY_STATE_META):
+		return
+	label.set_meta(SKY_TRANSPARENCY_STATE_META, {
+		"modulate": label.modulate,
+		"outline_modulate": label.outline_modulate,
+	})
+	var label_modulate := label.modulate
+	label_modulate.a *= SKY_OBJECT_OPACITY
+	label.modulate = label_modulate
+	var outline_modulate := label.outline_modulate
+	outline_modulate.a *= SKY_OBJECT_OPACITY
+	label.outline_modulate = outline_modulate
+
+
+func _restore_sky_label_transparency(label: Label3D) -> void:
+	if not label.has_meta(SKY_TRANSPARENCY_STATE_META):
+		return
+	var state := label.get_meta(SKY_TRANSPARENCY_STATE_META) as Dictionary
+	label.modulate = state.get("modulate", Color.WHITE) as Color
+	label.outline_modulate = state.get(
+		"outline_modulate",
+		Color.BLACK
+	) as Color
+	label.remove_meta(SKY_TRANSPARENCY_STATE_META)
+
+
+func _apply_sky_sprite_transparency(sprite: SpriteBase3D) -> void:
+	if sprite.has_meta(SKY_TRANSPARENCY_STATE_META):
+		return
+	sprite.set_meta(SKY_TRANSPARENCY_STATE_META, {
+		"modulate": sprite.modulate,
+	})
+	var sprite_modulate := sprite.modulate
+	sprite_modulate.a *= SKY_OBJECT_OPACITY
+	sprite.modulate = sprite_modulate
+
+
+func _restore_sky_sprite_transparency(sprite: SpriteBase3D) -> void:
+	if not sprite.has_meta(SKY_TRANSPARENCY_STATE_META):
+		return
+	var state := sprite.get_meta(SKY_TRANSPARENCY_STATE_META) as Dictionary
+	sprite.modulate = state.get("modulate", Color.WHITE) as Color
+	sprite.remove_meta(SKY_TRANSPARENCY_STATE_META)
+
+
+func _get_sky_transparent_material(
+	source: Material,
+	object_opacity: float = SKY_OBJECT_OPACITY
+) -> Material:
+	var source_id: int = 0 if source == null else source.get_instance_id()
+	var cache_key := "%d:%.4f" % [source_id, object_opacity]
+	if _sky_transparent_material_cache.has(cache_key):
+		return _sky_transparent_material_cache[cache_key] as Material
+
+	var transparent_material: Material
+	if source == null:
+		var default_material := StandardMaterial3D.new()
+		default_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		default_material.albedo_color = Color(
+			1.0,
+			1.0,
+			1.0,
+			object_opacity
+		)
+		transparent_material = default_material
+	elif source is BaseMaterial3D:
+		var source_base_material := source as BaseMaterial3D
+		var source_was_opaque := (
+			source_base_material.transparency
+			== BaseMaterial3D.TRANSPARENCY_DISABLED
+		)
+		# Keep live ViewportTexture and other runtime texture references intact.
+		# Deep duplication breaks relative viewport paths and renders magenta.
+		var base_material := source.duplicate(false) as BaseMaterial3D
+		base_material.resource_local_to_scene = true
+		base_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		var albedo_color := base_material.albedo_color
+		var target_opacity := (
+			SKY_PANEL_UI_OPACITY
+			if source_base_material.albedo_texture is ViewportTexture
+			else object_opacity
+		)
+		# Opaque imported materials can contain arbitrary ignored alpha values.
+		# Give those a stable role-specific opacity instead of multiplying stale alpha.
+		albedo_color.a = (
+			target_opacity
+			if source_was_opaque
+			else albedo_color.a * target_opacity
+		)
+		base_material.albedo_color = albedo_color
+		transparent_material = base_material
+	elif source is ShaderMaterial:
+		transparent_material = _make_sky_transparent_shader_material(
+			source as ShaderMaterial,
+			object_opacity
+		)
+	else:
+		transparent_material = source
+
+	_sky_transparent_material_cache[cache_key] = transparent_material
+	return transparent_material
+
+
+func _make_sky_transparent_shader_material(
+	source: ShaderMaterial,
+	object_opacity: float
+) -> ShaderMaterial:
+	var transparent_material := source.duplicate(false) as ShaderMaterial
+	transparent_material.resource_local_to_scene = true
+	if transparent_material.shader == null:
+		return transparent_material
+	for uniform_info in transparent_material.shader.get_shader_uniform_list():
+		var uniform_name := StringName(uniform_info.get("name", ""))
+		var uniform_type := int(uniform_info.get("type", TYPE_NIL))
+		var value = transparent_material.get_shader_parameter(uniform_name)
+		if uniform_type == TYPE_COLOR and value is Color:
+			var color := value as Color
+			color.a *= object_opacity
+			transparent_material.set_shader_parameter(uniform_name, color)
+		elif uniform_type == TYPE_FLOAT \
+				and str(uniform_name).to_lower() in [
+					"alpha",
+					"opacity",
+					"arspace_opacity",
+				]:
+			var opacity_value: float = (
+				float(value)
+				if value is float or value is int
+				else 1.0
+			)
+			transparent_material.set_shader_parameter(
+				uniform_name,
+				opacity_value * object_opacity
+			)
+	return transparent_material
+
+
+func _on_scene_node_added(node: Node) -> void:
+	if node != self and not is_ancestor_of(node):
+		return
+	call_deferred("_refresh_scene_geometry_subtree", node)
+
+
+func _refresh_scene_geometry_subtree(root: Node) -> void:
+	if not is_instance_valid(root):
+		return
+	if root != self and not is_ancestor_of(root):
+		return
+	if _sky_geometry_transparency_enabled:
+		_apply_sky_transparency_to_subtree(root)
+	else:
+		_restore_geometry_transparency_in_subtree(root)
 
 
 func _enter_desktop_runtime() -> void:
