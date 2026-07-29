@@ -26,6 +26,7 @@ bash scripts/test_assistant_command_router.sh # wake state, history, and task ad
 bash scripts/test_llm_assistant_voice_panel.sh # voice waiting-card UI self-check
 bash scripts/test_task_agent_remote_e2e.sh    # Server + target Client task RPC check
 bash scripts/test_task_agent_multi_client_e2e.sh # two-speaker isolation check
+bash scripts/test_assistant_history_multi_client.sh # targeted Client history sync check
 bash scripts/smoke_task_agent_live.sh         # real Qwen voice-to-tool smoke check
 python scripts/check_agent_gateway.py         # inspect readiness
 ```

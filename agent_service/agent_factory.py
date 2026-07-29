@@ -16,12 +16,15 @@ ROUTING_DECISION_SYSTEM_MESSAGE = """你是 GodotSpace 的语音助手。
 
 - 用户要求改变或读取当前 UI 时，调用对象、动作和方向都匹配的工具，不要只描述操作。
 - 用户询问实验手册、操作方法、步骤解释或专业知识时，调用相应的知识问答工具。
-- 同一操作存在多个可见 UI 对象而用户没有说明对象时，选择澄清工具。
+- 当前上下文的 visible_panels 同时列出多个对象，并且同一操作可作用于其中多个
+  对象时：用户未明确对象必须选择澄清；用户已明确说出对象则直接选择对应工具。
+  不得根据工具顺序或当前页码猜测对象。
 - 普通交流且不需要工具或专业资料时，选择直接回答工具。
 
 本次提供的工具是完整权限边界。禁止虚构工具、参数、UI 对象或执行结果。参数化工具
 只能使用用户明确提供的参数，禁止猜测页码。否定、取消、假设或引用的操作不得改变
-UI。一次请求最多选择一个改变状态的工具。工具返回成功前不得声称操作已经完成。"""
+UI。“不要、别、无需、取消”等否定请求只能选择直接回答或澄清，绝对不得调用改变
+状态的工具。一次请求最多选择一个改变状态的工具。工具返回成功前不得声称操作已经完成。"""
 
 EXPECTED_QWEN_AGENT_VERSION = "0.0.34"
 SUPPORTED_TOOL_NAMES = frozenset(
@@ -96,7 +99,6 @@ class AgentFactory:
             ClarifyUITargetTool(),
         ]
         decision_tool_names = [str(tool.name) for tool in decision_tools]
-        tool_catalog = _tool_catalog(decision_tools)
         bot = FnCallAgent(
             llm=self._llm_config(),
             function_list=decision_tools,
@@ -104,10 +106,18 @@ class AgentFactory:
             system_message=ROUTING_DECISION_SYSTEM_MESSAGE,
         )
 
-        decision_messages = _with_tool_catalog(messages, tool_catalog)
+        # FnCallAgent passes every BaseTool definition to Qwen through the native
+        # function-calling prompt. Do not append a second JSON copy to the user
+        # message: that duplicate catalog can exceed small vLLM context windows.
+        decision_messages = _with_tool_purpose_summary(
+            messages,
+            decision_tools,
+        )
         final_messages: list[Any] = []
         for response in bot.run(messages=decision_messages, lang="zh"):
             final_messages = response
+            if _contains_function_result(final_messages):
+                break
 
         serialized = [_message_to_dict(message) for message in final_messages]
         tool_name = _extract_selected_tool(serialized)
@@ -127,6 +137,8 @@ class AgentFactory:
             final_messages = []
             for response in bot.run(messages=retry_messages, lang="zh"):
                 final_messages = response
+                if _contains_function_result(final_messages):
+                    break
             retry_serialized = [
                 _message_to_dict(message) for message in final_messages
             ]
@@ -210,12 +222,17 @@ class AgentFactory:
         tools: list[Any] = []
         for tool_name in allowed_tools:
             tool_type, state_changing = tool_types[tool_name]
+            timeout_seconds = (
+                self._settings.deepseek_tool_timeout_seconds
+                if tool_name == "delegate_deepseek"
+                else self._settings.tool_timeout_seconds
+            )
             tools.append(
                 tool_type(
                     self._connection_manager,
                     session_id,
                     request_id,
-                    timeout_seconds=self._settings.tool_timeout_seconds,
+                    timeout_seconds=timeout_seconds,
                     max_calls=self._settings.max_tool_calls_per_run,
                     state_changing=state_changing,
                 )
@@ -248,6 +265,10 @@ def _message_to_dict(message: Any) -> dict[str, Any]:
         if value is not None:
             result[name] = value
     return result
+
+
+def _contains_function_result(messages: list[Any]) -> bool:
+    return any(_message_to_dict(message).get("role") == "function" for message in messages)
 
 
 def _extract_final_answer(messages: list[dict[str, Any]]) -> str:
@@ -291,9 +312,9 @@ def _tool_catalog(tools: list[Any]) -> list[dict[str, Any]]:
     return catalog
 
 
-def _with_tool_catalog(
+def _with_tool_purpose_summary(
     messages: list[dict[str, Any]],
-    tool_catalog: list[dict[str, Any]],
+    tools: list[Any],
 ) -> list[dict[str, Any]]:
     if not messages:
         raise ValueError("A routing request requires one user message")
@@ -301,11 +322,10 @@ def _with_tool_catalog(
     last = dict(prepared[-1])
     if last.get("role") != "user" or not isinstance(last.get("content"), str):
         raise ValueError("The final routing message must be a text user message")
-    last["content"] = (
-        f"{last['content']}\n"
-        "本次可用工具定义："
-        f"{json.dumps(tool_catalog, ensure_ascii=False, separators=(',', ':'))}"
+    summaries = "\n".join(
+        f"- {tool.name}：{tool.description}" for tool in tools
     )
+    last["content"] = f"{last['content']}\n本次工具作用摘要（参数仍以函数定义为准）：\n{summaries}"
     prepared[-1] = last
     return prepared
 

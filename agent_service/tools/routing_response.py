@@ -45,5 +45,6 @@ class ClarifyUITargetTool(_TextResponseTool):
     name = "clarify_ui_target"
     description = (
         "当相册和实验指导书等多个 UI 对象同时可执行同一操作，而用户没有说明"
-        "操作对象时，用一句简洁中文询问用户要操作哪个对象；它不修改 UI。"
+        "操作对象时，用一句简洁中文询问用户要操作哪个对象；它不修改 UI。用户"
+        "已经明确说出相册、照片、指导书、任务或步骤时，不应选择本工具。"
     )

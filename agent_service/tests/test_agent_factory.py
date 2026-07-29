@@ -33,6 +33,18 @@ class AgentFactoryTests(unittest.TestCase):
         )
         self.assertEqual(answer, "完成")
 
+    def test_detects_first_function_result_without_waiting_for_second_inference(self) -> None:
+        from agent_service.agent_factory import _contains_function_result
+
+        self.assertFalse(
+            _contains_function_result([{"role": "assistant", "content": ""}])
+        )
+        self.assertTrue(
+            _contains_function_result(
+                [{"role": "function", "name": "open_album", "content": "{}"}]
+            )
+        )
+
     def test_llm_config_targets_local_qwenvl_server(self) -> None:
         settings = Settings(
             model_name="local-test-model",
@@ -92,10 +104,15 @@ class AgentFactoryTests(unittest.TestCase):
         )
         self.assertIn("工具名称、作用和参数定义", captured["system_message"])
         prompt = captured["run"]["messages"][0]["content"]
-        self.assertIn("本次可用工具定义", prompt)
-        self.assertIn('"name":"open_album"', prompt)
-        self.assertIn('"description":', prompt)
-        self.assertIn('"parameters":', prompt)
+        self.assertTrue(prompt.startswith("你好\n"))
+        self.assertIn("open_album", prompt)
+        self.assertIn("respond_directly", prompt)
+        self.assertIn("clarify_ui_target", prompt)
+        self.assertNotIn('"parameters"', prompt)
+        open_album = captured["function_list"][0]
+        self.assertEqual(open_album.name, "open_album")
+        self.assertTrue(open_album.description)
+        self.assertIsInstance(open_album.parameters, dict)
         self.assertEqual(captured["run"]["lang"], "zh")
 
     @unittest.skipUnless(
@@ -255,7 +272,10 @@ class AgentFactoryTests(unittest.TestCase):
         "qwen_agent is not installed in this Python environment",
     )
     def test_builds_navigation_and_deepseek_tools(self) -> None:
-        factory = AgentFactory(Settings(), ConnectionManager())
+        factory = AgentFactory(
+            Settings(tool_timeout_seconds=3.0, deepseek_tool_timeout_seconds=47.0),
+            ConnectionManager(),
+        )
         tools = factory._build_tools(
             "session-1",
             "request-1",
@@ -269,6 +289,10 @@ class AgentFactoryTests(unittest.TestCase):
         self.assertTrue(tools[1]._state_changing)
         self.assertTrue(tools[2]._state_changing)
         self.assertFalse(tools[3]._state_changing)
+        self.assertEqual(tools[0]._timeout_seconds, 3.0)
+        self.assertEqual(tools[1]._timeout_seconds, 3.0)
+        self.assertEqual(tools[2]._timeout_seconds, 3.0)
+        self.assertEqual(tools[3]._timeout_seconds, 47.0)
 
     @unittest.skipUnless(
         importlib.util.find_spec("qwen_agent") is not None,

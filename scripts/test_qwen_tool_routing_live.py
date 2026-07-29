@@ -49,13 +49,13 @@ def _guide_context(*, page: int = 2, album_visible: bool = False) -> dict[str, A
     }
 
 
-def _album_context(*, page: int = 2) -> dict[str, Any]:
+def _album_context(*, page: int = 2, page_count: int = 8) -> dict[str, Any]:
     return {
         "album": {
             "visible": True,
             "page": page,
-            "page_count": 4,
-            "can_next": page < 4,
+            "page_count": page_count,
+            "can_next": page < page_count,
             "can_previous": page > 1,
         },
         "task_guide": {"visible": False},
@@ -136,6 +136,14 @@ def _cases() -> list[RoutingCase]:
             "next_album_page",
         ),
         RoutingCase(
+            "album direct page",
+            "翻到相册第5页",
+            _album_context(),
+            album_tools,
+            "go_to_album_page",
+            expected_arguments={"page": 5},
+        ),
+        RoutingCase(
             "both explicit guide",
             "指导书翻到上一页",
             _guide_context(album_visible=True),
@@ -148,6 +156,14 @@ def _cases() -> list[RoutingCase]:
             _guide_context(album_visible=True),
             both_tools,
             "previous_album_page",
+        ),
+        RoutingCase(
+            "both explicit album direct page",
+            "翻到相册第5页",
+            _guide_context(album_visible=True),
+            both_tools,
+            "go_to_album_page",
+            expected_arguments={"page": 5},
         ),
         RoutingCase(
             "both ambiguous target",
@@ -166,6 +182,14 @@ def _cases() -> list[RoutingCase]:
         RoutingCase(
             "manual knowledge",
             "当前这一步具体应该怎么操作",
+            _guide_context(),
+            guide_tools,
+            "delegate_deepseek",
+            expected_routes=("delegate_deepseek",),
+        ),
+        RoutingCase(
+            "current step explanation",
+            "这一步在讲什么",
             _guide_context(),
             guide_tools,
             "delegate_deepseek",
