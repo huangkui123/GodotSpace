@@ -664,19 +664,49 @@ func _record_request_history(
 	success: bool,
 	error_code: String = ""
 ) -> void:
+	var metadata := {
+		"provider": "local_qwen_agent",
+		"route": str(record.get("qwen_route", "direct_answer")),
+		"tool_name": str(record.get("qwen_tool_name", record.get("last_operation", ""))),
+		"error_code": error_code,
+	}
+	var speaker_peer_id := int(record.get("speaker_peer_id", SERVER_PEER_ID))
+	if _is_local_target(speaker_peer_id):
+		_apply_history_entry(request_id, str(record.get("text", "")), answer, success, metadata)
+	elif _is_peer_connected(speaker_peer_id):
+		rpc_id(
+			speaker_peer_id,
+			"_client_record_assistant_history",
+			request_id,
+			str(record.get("text", "")),
+			answer,
+			success,
+			metadata
+		)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _client_record_assistant_history(
+	request_id: String,
+	question: String,
+	answer: String,
+	success: bool,
+	metadata: Dictionary
+) -> void:
+	_apply_history_entry(request_id, question, answer, success, metadata)
+
+
+func _apply_history_entry(
+	request_id: String,
+	question: String,
+	answer: String,
+	success: bool,
+	metadata: Dictionary
+) -> void:
 	var assistant := get_node_or_null("/root/LLMAssistantService")
 	if assistant == null or not assistant.has_method("record_external_qa"):
 		return
-	var operation := str(record.get("last_operation", ""))
-	var route := str(record.get("qwen_route", "direct_answer"))
-	var tool_name := str(record.get("qwen_tool_name", operation))
-	assistant.call("record_external_qa", request_id, str(record.get("text", "")), answer, success, {
-		"provider": "local_qwen_agent",
-		"route": route,
-		"tool_name": tool_name,
-		"speaker_peer_id": int(record.get("speaker_peer_id", SERVER_PEER_ID)),
-		"error_code": error_code,
-	})
+	assistant.call("record_external_qa", request_id, question, answer, success, metadata)
 
 
 func _is_successful_final_result(record: Dictionary) -> bool:

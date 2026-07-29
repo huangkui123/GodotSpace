@@ -57,6 +57,8 @@ func _run() -> void:
 	assistant.require_wake_word = true
 	assistant.wake_words = PackedStringArray(["助手"])
 	assistant.use_local_fallback_when_unconfigured = true
+	assistant.max_tokens = 384
+	assistant.max_prompt_context_chars = 1200
 	assistant.answer_completed.connect(func(_question: String, answer: String, sources: Array) -> void:
 		_answer_completed = not answer.strip_edges().is_empty()
 		_task_source_seen = _has_source(sources, "当前专家任务指导")
@@ -69,6 +71,22 @@ func _run() -> void:
 		return
 	if not bool(state.get("listening", false)):
 		_fail("Assistant service is not listening without opening the assistant panel.")
+		return
+	var bounded_request := assistant.call("_build_chat_completion_request", "这一步在讲什么", [{
+		"source": "当前专家任务步骤",
+		"title": "当前步骤优先",
+		"content": "当前步骤关键内容。" + "长".repeat(3000),
+	}, {
+		"source": "普通知识库",
+		"title": "低优先级条目",
+		"content": "低优先级内容。" + "长".repeat(3000),
+	}], "历史".repeat(1000)) as Dictionary
+	var bounded_messages := bounded_request.get("messages", []) as Array
+	var bounded_user_message := str((bounded_messages[2] as Dictionary).get("content", ""))
+	if int(bounded_request.get("max_tokens", 0)) != 384 \
+			or bounded_user_message.length() > 1400 \
+			or bounded_user_message.find("当前步骤关键内容") == -1:
+		_fail("DeepSeek prompt did not enforce its context budget or prioritize current task context.")
 		return
 
 	var voice_chat := root.get_node_or_null("VoiceChat")

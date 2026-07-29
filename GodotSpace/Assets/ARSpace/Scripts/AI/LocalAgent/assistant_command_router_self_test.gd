@@ -65,6 +65,15 @@ func _run() -> void:
 	var album_previous: Dictionary = router.call("_tool_previous_album_page", {}, {"request_id": "album-previous-request", "tool_call_id": "album-previous-tool"})
 	if not _check(bool(album_previous.get("ok", false)) and int(album_view.page_index) == 1, "Authorized previous-album-page tool moved in the wrong direction."):
 		return
+	album_view.page_count = 6
+	album_requests["album-goto-request"] = {
+		"speaker_peer_id": 1, "status": "agent_running",
+		"snapshot": {"album": album_view.call("get_album_snapshot"), "task_guide": {"visible": false}},
+		"allowed_tools": PackedStringArray(["go_to_album_page"]),
+	}
+	var album_goto: Dictionary = router.call("_tool_go_to_album_page", {"page": 5}, {"request_id": "album-goto-request", "tool_call_id": "album-goto-tool"})
+	if not _check(bool(album_goto.get("ok", false)) and int(album_view.page_index) == 5, "Authorized direct album page jump did not reach page 5."):
+		return
 
 	var detail_scene: PackedScene = load("res://Assets/ARSpace/Prefabs/UI/WorkListInfoCanvas.tscn")
 	var list_scene: PackedScene = load("res://Assets/ARSpace/Prefabs/UI/WorkListCanvas/WorkListView.tscn")

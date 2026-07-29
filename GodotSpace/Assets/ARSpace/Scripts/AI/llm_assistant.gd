@@ -17,6 +17,8 @@ const SETTING_API_KEY_ENVIRONMENT_NAME := "arspace/llm_assistant/api_key_environ
 const SETTING_REQUIRE_WAKE_WORD := "arspace/llm_assistant/require_wake_word"
 const SETTING_WAKE_WORDS := "arspace/llm_assistant/wake_words"
 const SETTING_MAX_CONTEXT_ENTRIES := "arspace/llm_assistant/max_context_entries"
+const SETTING_MAX_PROMPT_CONTEXT_CHARS := "arspace/llm_assistant/max_prompt_context_chars"
+const SETTING_MAX_TOKENS := "arspace/llm_assistant/max_tokens"
 const SETTING_USE_LOCAL_FALLBACK := "arspace/llm_assistant/use_local_fallback_when_unconfigured"
 const SETTING_KNOWLEDGE_BASE_PATH := "arspace/llm_assistant/knowledge_base_path"
 const SETTING_KNOWLEDGE_DIRECTORIES := "arspace/llm_assistant/knowledge_directories"
@@ -36,7 +38,8 @@ const LLM_CALL_LOG_PATH := "user://llm_assistant_logs/deepseek_calls.jsonl"
 @export var api_key: String = ""
 @export var api_key_environment_name: String = "OPENAI_API_KEY"
 @export_range(0.0, 1.0, 0.05) var temperature: float = 0.2
-@export_range(256, 4096, 64) var max_tokens: int = 700
+@export_range(128, 4096, 64) var max_tokens: int = 384
+@export_range(400, 8000, 100) var max_prompt_context_chars: int = 1200
 @export var use_local_fallback_when_unconfigured: bool = true
 
 @export_group("Voice Trigger")
@@ -162,10 +165,11 @@ func request_delegated_answer(
 	var clean_question := question.strip_edges()
 	if clean_request_id.is_empty() or clean_question.is_empty():
 		return
-	var sources := _search_sources(clean_question)
+	var sources: Array = []
 	for entry in runtime_entries:
 		if typeof(entry) == TYPE_DICTIONARY:
 			sources.append(entry)
+	sources.append_array(_search_sources(clean_question))
 	if _active_question != "":
 		_pending_questions.append({
 			"question": clean_question,
@@ -209,6 +213,8 @@ func _begin_question(
 		"timestamp": Time.get_datetime_string_from_system(false, true),
 		"endpoint_url": endpoint_url,
 		"model": model,
+		"max_tokens": max_tokens,
+		"max_prompt_context_chars": max_prompt_context_chars,
 		"question": clean_question,
 		"sources": _summarize_sources_for_log(_active_sources),
 		"request_body": request_body,
@@ -353,6 +359,8 @@ func _apply_project_settings() -> void:
 	api_key_environment_name = str(ProjectSettings.get_setting(SETTING_API_KEY_ENVIRONMENT_NAME, api_key_environment_name)).strip_edges()
 	require_wake_word = bool(ProjectSettings.get_setting(SETTING_REQUIRE_WAKE_WORD, require_wake_word))
 	max_context_entries = int(ProjectSettings.get_setting(SETTING_MAX_CONTEXT_ENTRIES, max_context_entries))
+	max_prompt_context_chars = int(ProjectSettings.get_setting(SETTING_MAX_PROMPT_CONTEXT_CHARS, max_prompt_context_chars))
+	max_tokens = int(ProjectSettings.get_setting(SETTING_MAX_TOKENS, max_tokens))
 	use_local_fallback_when_unconfigured = bool(ProjectSettings.get_setting(SETTING_USE_LOCAL_FALLBACK, use_local_fallback_when_unconfigured))
 	max_conversation_turns = int(ProjectSettings.get_setting(SETTING_MAX_CONVERSATION_TURNS, max_conversation_turns))
 
@@ -453,10 +461,12 @@ func _strip_wake_word(text: String) -> String:
 
 
 func _build_chat_completion_request(question: String, sources: Array, conversation_context: String) -> Dictionary:
-	var context := _format_sources_for_prompt(sources)
+	var context := _format_sources_for_prompt(sources, max_prompt_context_chars)
 	var conversation := conversation_context.strip_edges()
 	if conversation.is_empty():
 		conversation = "暂无近期对话。"
+	var remaining_context_chars := maxi(0, max_prompt_context_chars - context.length())
+	conversation = _truncate_prompt_text(conversation, remaining_context_chars)
 	return {
 		"model": model,
 		"temperature": temperature,
@@ -478,7 +488,7 @@ func _build_chat_completion_request(question: String, sources: Array, conversati
 	}
 
 
-func _format_sources_for_prompt(sources: Array) -> String:
+func _format_sources_for_prompt(sources: Array, character_limit: int = 1200) -> String:
 	if sources.is_empty():
 		return "暂无命中的本地知识条目。"
 
@@ -491,7 +501,18 @@ func _format_sources_for_prompt(sources: Array) -> String:
 			str(source.get("title", "未命名条目")),
 			str(source.get("content", "")),
 		])
-	return "\n\n".join(lines)
+	return _truncate_prompt_text("\n\n".join(lines), character_limit)
+
+
+func _truncate_prompt_text(text: String, character_limit: int) -> String:
+	var clean_text := text.strip_edges()
+	if character_limit <= 0:
+		return ""
+	if clean_text.length() <= character_limit:
+		return clean_text
+	if character_limit == 1:
+		return "…"
+	return clean_text.substr(0, character_limit - 1).strip_edges() + "…"
 
 
 func _append_conversation_turn(role: String, speaker: String, text: String) -> void:

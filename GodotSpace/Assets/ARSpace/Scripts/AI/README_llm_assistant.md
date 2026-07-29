@@ -28,6 +28,8 @@
 - `llm_assistant/require_wake_word`
 - `llm_assistant/wake_words`
 - `llm_assistant/max_context_entries`
+- `llm_assistant/max_prompt_context_chars`
+- `llm_assistant/max_tokens`
 - `llm_assistant/max_conversation_turns`
 - `llm_assistant/use_local_fallback_when_unconfigured`
 - `llm_assistant/knowledge_base_path`
@@ -42,6 +44,9 @@
 不要把真实密钥提交到工程文件。
 
 在线 LLM 调用日志会写入 `user://llm_assistant_logs/deepseek_calls.jsonl`。日志为 JSONL 格式，每次调用包含一条 `request` 和一条 `response` 记录；不会记录 API key。
+
+委派给 DeepSeek 的当前任务步骤会优先于普通检索结果写入提示词。知识与对话上下文受
+`max_prompt_context_chars` 统一限制，输出长度由 `max_tokens` 限制，避免长时间使用后超过模型上下文窗口。
 
 ## 验证命令
 
