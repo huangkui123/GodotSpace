@@ -231,6 +231,17 @@ func can_peer_control_shared_windows(peer_id: int) -> bool:
 	]
 
 
+func can_peer_control_work_steps(peer_id: int) -> bool:
+	# Work-list selection drives shared model visibility and animation. Every
+	# admitted collaboration role may advance or replay a step, while unknown
+	# and rejected peers remain read-only.
+	return get_peer_role(peer_id) in [
+		ROLE_PC_GROUND,
+		ROLE_GROUND_VR,
+		ROLE_SKY,
+	]
+
+
 func can_peer_draw(peer_id: int) -> bool:
 	# Space drawing is deliberately narrower than annotations and shared
 	# windows: only the two immersive roles may publish strokes. Peer 1 is

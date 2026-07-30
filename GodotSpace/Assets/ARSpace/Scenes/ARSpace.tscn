@@ -1,4 +1,4 @@
-[gd_scene load_steps=121 format=4 uid="uid://ca028g0q2kstx"]
+[gd_scene load_steps=122 format=4 uid="uid://ca028g0q2kstx"]
 
 [ext_resource type="Script" uid="uid://d1pt7mdt5llk4" path="res://XR_Main.gd" id="1_g432p"]
 [ext_resource type="Script" uid="uid://bt6aew4asx754" path="res://Assets/ARSpace/Scenes/SpaceBox.gd" id="2_wjh8v"]
@@ -77,6 +77,7 @@
 [ext_resource type="Script" uid="uid://bne1vany8gbbl" path="res://Assets/ARSpace/Scripts/SpatialWindows/spatial_window_controller.gd" id="78_window_controller"]
 [ext_resource type="Script" uid="uid://b8h6eq065pwfc" path="res://Assets/ARSpace/Scripts/SpatialWindows/spatial_viewport_2d_in_3d_body.gd" id="79_safe_body"]
 [ext_resource type="Script" uid="uid://dkh2nglllndtn" path="res://Assets/ARSpace/Scripts/UI/shared_main_menu_state.gd" id="80_main_menu_state"]
+[ext_resource type="Script" path="res://Assets/ARSpace/Scripts/WorkListCanvas/shared_work_step_state.gd" id="80_work_step_state"]
 [ext_resource type="PackedScene" uid="uid://d2fbdsgnue5ju" path="res://Assets/ARSpace/Scenes/SpatialDrawing/SpatialDrawingSystem.tscn" id="81_spatial_drawing"]
 [ext_resource type="PackedScene" path="res://Assets/ARSpace/Scenes/RealtimeReconstruction/RealtimeReconstructionWorkspace.tscn" id="82_reconstruction_workspace"]
 [ext_resource type="Script" uid="uid://c0o8mg1axexs1" path="res://Assets/ARSpace/Scripts/RealtimeReconstruction/Capture/pico_frame_receiver.gd" id="83_pico_frame_receiver"]
@@ -359,6 +360,9 @@ dock_manager_path = NodePath("../../WindowDockSlots")
 
 [node name="MainMenuState" type="Node" parent="SharedSpaceOrigin/SpatialWindows"]
 script = ExtResource("80_main_menu_state")
+
+[node name="WorkStepState" type="Node" parent="SharedSpaceOrigin/SpatialWindows"]
+script = ExtResource("80_work_step_state")
 
 [node name="WindowDockSlots" type="Node3D" parent="SharedSpaceOrigin"]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, -3.4714, -0.330399, 0.899759)
