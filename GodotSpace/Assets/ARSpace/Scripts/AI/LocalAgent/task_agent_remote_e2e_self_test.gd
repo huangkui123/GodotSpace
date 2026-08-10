@@ -2,6 +2,7 @@ extends SceneTree
 
 var _answer_count := 0
 var _run_error := ""
+const LOCAL_AGENT_ENDPOINT_SETTING := "arspace/local_agent/endpoint_url"
 
 
 func _init() -> void:
@@ -28,6 +29,14 @@ func _run_server() -> void:
 	if not network.start_server():
 		_fail("Unable to start the remote E2E Server.")
 		return
+	var mock_gateway_port := _mock_gateway_port()
+	if mock_gateway_port > 0:
+		ProjectSettings.set_setting(
+			LOCAL_AGENT_ENDPOINT_SETTING,
+			"ws://127.0.0.1:%d/ws/godot" % mock_gateway_port
+		)
+		agent.call("_disable_connection")
+		agent.call("_try_connect")
 	agent.assistant_final_received.connect(func(_request_id: String, _answer: String) -> void:
 		_answer_count += 1
 	)
@@ -49,7 +58,7 @@ func _run_server() -> void:
 	voice_chat.voice_transcript_received.emit({
 		"speaker_peer_id": target_peer_id,
 		"speaker_name": "远端航天员",
-		"text": "打开相册",
+		"text": "助手，打开相册",
 		"is_final": true,
 		"source": "asr",
 	})
@@ -58,7 +67,7 @@ func _run_server() -> void:
 	voice_chat.voice_transcript_received.emit({
 		"speaker_peer_id": target_peer_id,
 		"speaker_name": "远端航天员",
-		"text": "打开无容器样品实验指导书",
+		"text": "助手，打开无容器样品实验指导书",
 		"is_final": true,
 		"source": "asr",
 	})
@@ -67,7 +76,7 @@ func _run_server() -> void:
 	voice_chat.voice_transcript_received.emit({
 		"speaker_peer_id": target_peer_id,
 		"speaker_name": "远端航天员",
-		"text": "下一步应该做什么",
+		"text": "助手，下一步应该做什么",
 		"is_final": true,
 		"source": "asr",
 	})
@@ -76,7 +85,7 @@ func _run_server() -> void:
 	voice_chat.voice_transcript_received.emit({
 		"speaker_peer_id": target_peer_id,
 		"speaker_name": "远端航天员",
-		"text": "进入下一步",
+		"text": "助手，进入下一步",
 		"is_final": true,
 		"source": "asr",
 	})
@@ -137,6 +146,15 @@ func _wait_for_answers(expected: int) -> bool:
 		_fail("Timed out waiting for remote Agent answer %d." % expected)
 		return false
 	return true
+
+
+func _mock_gateway_port() -> int:
+	const PREFIX := "--mock-gateway-port="
+	for argument in OS.get_cmdline_user_args():
+		if argument.begins_with(PREFIX):
+			var value := argument.trim_prefix(PREFIX)
+			return value.to_int() if value.is_valid_int() else 0
+	return 0
 
 
 func _fail(message: String) -> void:

@@ -31,6 +31,7 @@
 - `llm_assistant/max_prompt_context_chars`
 - `llm_assistant/max_tokens`
 - `llm_assistant/request_timeout_seconds`
+- `llm_assistant/thinking_enabled`
 - `llm_assistant/max_conversation_turns`
 - `llm_assistant/use_local_fallback_when_unconfigured`
 - `llm_assistant/knowledge_base_path`
@@ -41,6 +42,7 @@
 - endpoint: `https://api.deepseek.com/chat/completions`
 - model: `deepseek-v4-pro`
 - API key 环境变量名：`DEEPSEEK_API_KEY`
+- thinking mode: 默认关闭，优先保证语音问答响应速度
 
 不要把真实密钥提交到工程文件。
 
@@ -49,6 +51,8 @@
 委派给 DeepSeek 的当前任务步骤会优先于普通检索结果写入提示词。知识与对话上下文受
 `max_prompt_context_chars` 统一限制，输出长度由 `max_tokens` 限制，避免长时间使用后超过模型上下文窗口。
 DeepSeek HTTP 请求默认允许 90 秒；Gateway 的 `delegate_deepseek` 应设置为更长的 120 秒，避免传输层先行截断。
+如确实需要复杂推理，可将 `llm_assistant/thinking_enabled` 设为 `true`；普通指导书
+解释保持关闭，避免 V4 默认思考模式长时间占用输出预算并触发超时。
 
 ## 验证命令
 

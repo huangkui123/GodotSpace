@@ -20,6 +20,7 @@ const SETTING_MAX_CONTEXT_ENTRIES := "arspace/llm_assistant/max_context_entries"
 const SETTING_MAX_PROMPT_CONTEXT_CHARS := "arspace/llm_assistant/max_prompt_context_chars"
 const SETTING_MAX_TOKENS := "arspace/llm_assistant/max_tokens"
 const SETTING_REQUEST_TIMEOUT_SECONDS := "arspace/llm_assistant/request_timeout_seconds"
+const SETTING_THINKING_ENABLED := "arspace/llm_assistant/thinking_enabled"
 const SETTING_USE_LOCAL_FALLBACK := "arspace/llm_assistant/use_local_fallback_when_unconfigured"
 const SETTING_KNOWLEDGE_BASE_PATH := "arspace/llm_assistant/knowledge_base_path"
 const SETTING_KNOWLEDGE_DIRECTORIES := "arspace/llm_assistant/knowledge_directories"
@@ -42,6 +43,7 @@ const LLM_CALL_LOG_PATH := "user://llm_assistant_logs/deepseek_calls.jsonl"
 @export_range(128, 4096, 64) var max_tokens: int = 384
 @export_range(400, 8000, 100) var max_prompt_context_chars: int = 1200
 @export_range(10.0, 180.0, 5.0) var request_timeout_seconds: float = 90.0
+@export var thinking_enabled: bool = false
 @export var use_local_fallback_when_unconfigured: bool = true
 
 @export_group("Voice Trigger")
@@ -129,6 +131,7 @@ func get_debug_state() -> Dictionary:
 		"endpoint_configured": not endpoint_url.strip_edges().is_empty(),
 		"model": model,
 		"api_key_configured": not _get_api_key().is_empty(),
+		"thinking_enabled": thinking_enabled,
 		"local_fallback_enabled": use_local_fallback_when_unconfigured,
 		"active_question": _active_question,
 		"pending_question_count": _pending_questions.size(),
@@ -364,6 +367,7 @@ func _apply_project_settings() -> void:
 	max_prompt_context_chars = int(ProjectSettings.get_setting(SETTING_MAX_PROMPT_CONTEXT_CHARS, max_prompt_context_chars))
 	max_tokens = int(ProjectSettings.get_setting(SETTING_MAX_TOKENS, max_tokens))
 	request_timeout_seconds = float(ProjectSettings.get_setting(SETTING_REQUEST_TIMEOUT_SECONDS, request_timeout_seconds))
+	thinking_enabled = bool(ProjectSettings.get_setting(SETTING_THINKING_ENABLED, thinking_enabled))
 	use_local_fallback_when_unconfigured = bool(ProjectSettings.get_setting(SETTING_USE_LOCAL_FALLBACK, use_local_fallback_when_unconfigured))
 	max_conversation_turns = int(ProjectSettings.get_setting(SETTING_MAX_CONVERSATION_TURNS, max_conversation_turns))
 
@@ -470,7 +474,7 @@ func _build_chat_completion_request(question: String, sources: Array, conversati
 		conversation = "暂无近期对话。"
 	var remaining_context_chars := maxi(0, max_prompt_context_chars - context.length())
 	conversation = _truncate_prompt_text(conversation, remaining_context_chars)
-	return {
+	var request := {
 		"model": model,
 		"temperature": temperature,
 		"max_tokens": max_tokens,
@@ -489,6 +493,11 @@ func _build_chat_completion_request(question: String, sources: Array, conversati
 			},
 		],
 	}
+	if model.begins_with("deepseek-") or endpoint_url.contains("api.deepseek.com"):
+		request["thinking"] = {
+			"type": "enabled" if thinking_enabled else "disabled",
+		}
+	return request
 
 
 func _format_sources_for_prompt(sources: Array, character_limit: int = 1200) -> String:
@@ -605,7 +614,10 @@ func _on_http_request_completed(result: int, response_code: int, _headers: Packe
 		"response_body": response_body,
 	})
 	if result != HTTPRequest.RESULT_SUCCESS:
-		_fail_active_question("LLM 请求失败：%s" % result)
+		if result == HTTPRequest.RESULT_TIMEOUT:
+			_fail_active_question("LLM 请求超时（%.0f 秒），请稍后重试。" % request_timeout_seconds)
+		else:
+			_fail_active_question("LLM 请求失败：%s" % result)
 		return
 	if response_code < 200 or response_code >= 300:
 		_fail_active_question("LLM 服务返回 HTTP %d：%s" % [response_code, body.get_string_from_utf8()])

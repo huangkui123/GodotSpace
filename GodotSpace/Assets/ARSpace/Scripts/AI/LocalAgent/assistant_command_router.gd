@@ -263,6 +263,7 @@ func _append_album_tools(tools: PackedStringArray, album: Dictionary) -> void:
 func _append_task_guide_tools(tools: PackedStringArray, guide: Dictionary) -> void:
 	if bool(guide.get("visible", false)):
 		tools.append("close_task_guide")
+		tools.append("get_current_task_step")
 		tools.append("replay_current_task_step")
 		if bool(guide.get("can_next", false)):
 			tools.append("next_task_step")
@@ -381,9 +382,18 @@ func _execute_authorized_page_tool(arguments: Dictionary, context: Dictionary, t
 	var validation := _authorize(context, tool_name)
 	if not bool(validation.get("ok", false)):
 		return validation
-	if arguments.size() != 1 or not arguments.has("page") or typeof(arguments.get("page")) != TYPE_INT or int(arguments.get("page")) < 1:
+	if arguments.size() != 1 or not arguments.has("page") or not _is_positive_integer(arguments.get("page")):
 		return _error("invalid_arguments", "%s requires a positive integer page." % tool_name)
 	return _execute_or_defer_target_tool(_request_id(context), context, operation, {"page": int(arguments.get("page"))})
+
+
+func _is_positive_integer(value: Variant) -> bool:
+	if typeof(value) == TYPE_INT:
+		return int(value) > 0
+	if typeof(value) == TYPE_FLOAT:
+		var number := float(value)
+		return number > 0.0 and is_equal_approx(number, floorf(number))
+	return false
 
 
 func _move_task_step(arguments: Dictionary, context: Dictionary, tool_name: String, operation: String) -> Dictionary:
@@ -454,11 +464,11 @@ func _operation_label(operation: String) -> String:
 		"album_next": "翻到相册下一页",
 		"album_previous": "返回相册上一页",
 		"album_goto": "跳转相册页面",
-		"guide_open": "打开指导书",
-		"guide_close": "关闭指导书",
+		"guide_open": "打开工作清单",
+		"guide_close": "关闭工作清单",
 		"guide_advance": "切换到下一步",
 		"guide_previous": "返回上一步",
-		"guide_goto": "跳转指导书步骤",
+		"guide_goto": "跳转工作清单步骤",
 		"guide_replay": "读取当前步骤",
 		"delegate_deepseek": "查询实验知识",
 	}
@@ -743,18 +753,18 @@ func _verified_answer_or_model_answer(record: Dictionary, model_answer: String) 
 		var current_step := snapshot.get("current_step", {}) as Dictionary
 		var title := str(current_step.get("title", "")).strip_edges()
 		var info := str(current_step.get("info", "")).strip_edges()
-		var message := "已切换到指导书第 %d 步。" % int(snapshot.get("page_index", 0))
+		var message := "已切换到工作清单第 %d 步。" % int(snapshot.get("page_index", 0))
 		if not title.is_empty():
 			message += "接下来：%s。" % title
 		if not info.is_empty():
 			message += info
 		return message
 	if operation == "guide_previous":
-		return "已返回指导书第 %d 步。" % int(snapshot.get("page_index", 0))
+		return "已返回工作清单第 %d 步。" % int(snapshot.get("page_index", 0))
 	if operation == "guide_open":
-		return "已打开指导书第 %d 步。" % int(snapshot.get("page_index", 1))
+		return "已打开工作清单第 %d 步。" % int(snapshot.get("page_index", 1))
 	if operation == "guide_close":
-		return "已关闭指导书。"
+		return "已关闭工作清单。"
 	if operation == "album_open":
 		return "已打开相册第 %d 页。" % int(data.get("page", 1))
 	if operation == "album_next":
@@ -766,7 +776,7 @@ func _verified_answer_or_model_answer(record: Dictionary, model_answer: String) 
 	if operation == "album_close":
 		return "已关闭相册。"
 	if operation == "guide_goto":
-		return "已切换到指导书第 %d 步。" % int(snapshot.get("page_index", 0))
+		return "已切换到工作清单第 %d 步。" % int(snapshot.get("page_index", 0))
 	return model_answer
 
 

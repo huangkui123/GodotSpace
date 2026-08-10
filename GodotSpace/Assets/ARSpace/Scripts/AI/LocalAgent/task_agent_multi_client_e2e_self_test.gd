@@ -92,7 +92,7 @@ func _emit_transcript(voice_chat: Node, peer_id: int, text: String) -> void:
 	voice_chat.voice_transcript_received.emit({
 		"speaker_peer_id": peer_id,
 		"speaker_name": "远端航天员",
-		"text": text,
+		"text": "助手，%s" % text,
 		"is_final": true,
 		"source": "asr",
 	})

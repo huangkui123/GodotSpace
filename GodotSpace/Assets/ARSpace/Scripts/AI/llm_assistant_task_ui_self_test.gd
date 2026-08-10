@@ -93,6 +93,10 @@ func _run() -> void:
 			or bounded_user_message.find("当前步骤关键内容") == -1:
 		_fail("DeepSeek prompt did not enforce its context budget or prioritize current task context.")
 		return
+	var thinking := bounded_request.get("thinking", {}) as Dictionary
+	if str(thinking.get("type", "")) != "disabled":
+		_fail("DeepSeek voice guidance must disable long thinking by default.")
+		return
 
 	var voice_chat := root.get_node_or_null("VoiceChat")
 	if voice_chat == null or not voice_chat.has_signal("voice_transcript_received"):

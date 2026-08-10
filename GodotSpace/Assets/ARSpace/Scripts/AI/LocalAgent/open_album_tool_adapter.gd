@@ -36,7 +36,7 @@ func execute_action(action: String, arguments: Dictionary = {}) -> Dictionary:
 	if action != "goto" and not arguments.is_empty():
 		return _error("invalid_arguments", "%s does not accept arguments." % action)
 	if action == "goto":
-		if arguments.size() != 1 or not arguments.has("page") or typeof(arguments.get("page")) != TYPE_INT or int(arguments.get("page")) < 1:
+		if arguments.size() != 1 or not arguments.has("page") or not _is_positive_integer(arguments.get("page")):
 			return _error("invalid_arguments", "goto requires a positive integer page.")
 	var album := _resolve_album()
 	if album == null or not is_instance_valid(album):
@@ -54,6 +54,15 @@ func execute_action(action: String, arguments: Dictionary = {}) -> Dictionary:
 	if action == "state":
 		return {"ok": true, "data": value if typeof(value) == TYPE_DICTIONARY else {}, "error": null}
 	return value as Dictionary if typeof(value) == TYPE_DICTIONARY else _error("invalid_album_result", "The photo album returned an invalid result.")
+
+
+static func _is_positive_integer(value: Variant) -> bool:
+	if typeof(value) == TYPE_INT:
+		return int(value) > 0
+	if typeof(value) == TYPE_FLOAT:
+		var number := float(value)
+		return number > 0.0 and is_equal_approx(number, floorf(number))
+	return false
 
 
 func _resolve_album() -> Node:

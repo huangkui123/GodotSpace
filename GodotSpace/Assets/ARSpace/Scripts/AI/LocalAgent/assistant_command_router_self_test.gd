@@ -71,7 +71,12 @@ func _run() -> void:
 		"snapshot": {"album": album_view.call("get_album_snapshot"), "task_guide": {"visible": false}},
 		"allowed_tools": PackedStringArray(["go_to_album_page"]),
 	}
-	var album_goto: Dictionary = router.call("_tool_go_to_album_page", {"page": 5}, {"request_id": "album-goto-request", "tool_call_id": "album-goto-tool"})
+	var fractional_album_goto: Dictionary = router.call("_tool_go_to_album_page", {"page": 5.5}, {"request_id": "album-goto-request", "tool_call_id": "album-goto-fractional-tool"})
+	if not _check(_error_code(fractional_album_goto) == "invalid_arguments" and int(album_view.page_index) == 1, "Fractional album page was not rejected."):
+		return
+	# Godot's JSON parser represents protocol numbers as floats. An integral
+	# value must survive the real WebSocket path even though direct calls use ints.
+	var album_goto: Dictionary = router.call("_tool_go_to_album_page", {"page": 5.0}, {"request_id": "album-goto-request", "tool_call_id": "album-goto-tool"})
 	if not _check(bool(album_goto.get("ok", false)) and int(album_view.page_index) == 5, "Authorized direct album page jump did not reach page 5."):
 		return
 
@@ -159,13 +164,18 @@ func _run() -> void:
 		"speaker_peer_id": 1, "status": "agent_running", "snapshot": {},
 		"allowed_tools": PackedStringArray(["go_to_task_guide_page"]),
 	}
-	var jumped: Dictionary = router.call("_tool_go_to_task_guide_page", {"page": 2}, {"request_id": "goto-request", "tool_call_id": "goto-tool"})
+	var jumped: Dictionary = router.call("_tool_go_to_task_guide_page", {"page": 2.0}, {"request_id": "goto-request", "tool_call_id": "goto-tool"})
 	if not _check(bool(jumped.get("ok", false)) and int(detail_view.page_index) == 2, "Authorized direct task-guide page jump failed."):
 		return
 	var verified_success: String = router.call("_verified_answer_or_model_answer", {
 		"verified_ui_result": {"operation": "guide_advance", "result": {"ok": true, "data": {"snapshot": {"page_index": 3}}, "error": null}},
 	}, "模型文字")
-	if not _check(verified_success == "已切换到指导书第 3 步。", "Verified UI result did not override model wording."):
+	if not _check(verified_success == "已切换到工作清单第 3 步。", "Verified UI result did not use the default work-checklist name."):
+		return
+	var verified_open: String = router.call("_verified_answer_or_model_answer", {
+		"verified_ui_result": {"operation": "guide_open", "result": {"ok": true, "data": {"snapshot": {"page_index": 1}}, "error": null}},
+	}, "模型文字")
+	if not _check(verified_open == "已打开工作清单第 1 步。", "Open confirmation did not use the default work-checklist name."):
 		return
 	var verified_failure: String = router.call("_verified_answer_or_model_answer", {
 		"verified_ui_result": {"operation": "guide_advance", "result": {"ok": false, "data": {}, "error": {"code": "already_last_step", "message": "Already at last step."}}},
