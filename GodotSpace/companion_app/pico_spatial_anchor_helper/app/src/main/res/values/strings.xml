@@ -29,4 +29,13 @@
     <string name="helper_hint">这个 helper 会一直抓取 Pico 相机预览，并把 JPEG 帧通过局域网 TCP 发给 Godot。</string>
     <string name="background_note">启动成功后可以切到后台，再打开你的 Godot/串流应用。服务会通过前台通知保持存活。</string>
     <string name="stream_defaults_template">默认参数：%1$dx%2$d，%3$d FPS，JPEG %4$d，渲染模式 %5$d，%6$s</string>
+    <string name="pico_cast_title">PICO 头显投屏（RTMP）</string>
+    <string name="pico_cast_hint">使用上方 Godot 接收端 IP。控制端口默认 8788；令牌必须与 PC 的 GODOTSPACE_PICO_CAST_CONTROL_TOKEN 一致。投屏音频会关闭，避免与语音聊天叠音。</string>
+    <string name="pico_cast_control_port">Godot 投屏控制端口（默认 8788）</string>
+    <string name="pico_cast_control_token">投屏控制令牌</string>
+    <string name="pico_cast_default_token">pico-cast</string>
+    <string name="start_pico_cast">开始 PICO 投屏</string>
+    <string name="stop_pico_cast">停止 PICO 投屏</string>
+    <string name="pico_cast_notification_title">PICO 投屏正在运行</string>
+    <string name="pico_cast_notification_channel_name">PICO 投屏控制</string>
 </resources>

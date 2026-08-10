@@ -115,6 +115,50 @@
             android:text="@string/stop_streaming" />
 
         <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:text="@string/pico_cast_title"
+            android:textAppearance="?attr/textAppearanceTitleMedium" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/pico_cast_hint" />
+
+        <EditText
+            android:id="@+id/input_pico_cast_port"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:hint="@string/pico_cast_control_port"
+            android:inputType="number" />
+
+        <EditText
+            android:id="@+id/input_pico_cast_token"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:hint="@string/pico_cast_control_token"
+            android:inputType="text"
+            android:text="@string/pico_cast_default_token" />
+
+        <Button
+            android:id="@+id/button_start_pico_cast"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/start_pico_cast" />
+
+        <Button
+            android:id="@+id/button_stop_pico_cast"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/stop_pico_cast" />
+
+        <TextView
             android:id="@+id/text_status"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

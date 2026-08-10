@@ -1,0 +1,15 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="PackedScene" path="res://addons/godot-xr-tools/objects/viewport_2d_in_3d.tscn" id="1_viewport"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Scenes/RealtimeReconstruction/RealtimeReconstructionPanel.tscn" id="2_panel"]
+[ext_resource type="Script" path="res://Assets/ARSpace/Scripts/RealtimeReconstruction/UI/reconstruction_panel_input_body.gd" id="3_input_body"]
+
+[node name="PanelSurface" instance=ExtResource("1_viewport")]
+scale = Vector3(0.0012, 0.0012, 0.0012)
+screen_size = Vector2(760, 720)
+scene = ExtResource("2_panel")
+viewport_size = Vector2(760, 720)
+allow_window_drag = true
+
+[node name="StaticBody3D" parent="." index="2"]
+script = ExtResource("3_input_body")

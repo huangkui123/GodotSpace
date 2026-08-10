@@ -27,10 +27,6 @@ const OPCODE_PING := 0x9
 const OPCODE_PONG := 0xA
 
 @export_group("Tencent Cloud ASR")
-@export var app_id: String = ""
-@export var secret_id: String = ""
-@export var secret_key: String = ""
-@export var use_environment_credentials: bool = true
 @export var engine_model_type: String = "16k_zh_en"
 @export var hotword_list: String = ""
 
@@ -47,6 +43,7 @@ const OPCODE_PONG := 0xA
 @export_group("Streaming")
 @export_range(40, 200, 40) var packet_duration_msec: int = 200
 @export_range(1000, 6000, 500) var max_buffered_audio_msec: int = 3000
+@export_range(1000, 15000, 500) var connect_timeout_msec: int = 5000
 @export var debug_logs: bool = false
 
 var _tcp: StreamPeerTCP
@@ -68,6 +65,9 @@ var _last_close_detail := ""
 var _credential_source := ""
 var _packets_sent := 0
 var _bytes_sent := 0
+var _finish_requested := false
+var _end_sent := false
+var _connection_started_msec := 0
 
 
 func _ready() -> void:
@@ -85,7 +85,7 @@ func set_input_active(active: bool) -> void:
 
 
 func start_transcription() -> bool:
-	stop_transcription()
+	cancel_transcription()
 
 	var credentials := _get_credentials()
 	if str(credentials.get("app_id", "")).is_empty() \
@@ -102,6 +102,9 @@ func start_transcription() -> bool:
 	_last_close_detail = ""
 	_packets_sent = 0
 	_bytes_sent = 0
+	_finish_requested = false
+	_end_sent = false
+	_connection_started_msec = Time.get_ticks_msec()
 	_clear_audio_buffers()
 	_http_response_buffer.clear()
 	_ws_read_buffer.clear()
@@ -124,11 +127,26 @@ func start_transcription() -> bool:
 
 
 func stop_transcription() -> void:
+	cancel_transcription()
+
+
+func finish_transcription() -> void:
+	if _connection_state == STATE_CLOSED:
+		return
 	_input_active = false
+	_finish_requested = true
+	_send_end_if_ready()
+
+
+func cancel_transcription() -> void:
+	if _connection_state == STATE_CLOSED:
+		_input_active = false
+		_finish_requested = false
+		_end_sent = false
+		return
+	_input_active = false
+	_finish_requested = false
 	if _connection_state == STATE_OPEN:
-		if _handshake_ok:
-			_flush_audio_packets(true)
-			_send_ws_text(JSON.stringify({"type": "end"}))
 		_send_ws_frame(OPCODE_CLOSE, PackedByteArray())
 	_reset_connection(true)
 
@@ -165,10 +183,18 @@ func get_debug_state() -> Dictionary:
 		"credential_source": _credential_source,
 		"packets_sent": _packets_sent,
 		"bytes_sent": _bytes_sent,
+		"finish_requested": _finish_requested,
+		"end_sent": _end_sent,
 	}
 
 
 func _process(_delta: float) -> void:
+	if _connection_state != STATE_CLOSED \
+			and _connection_state != STATE_OPEN \
+			and Time.get_ticks_msec() - _connection_started_msec > connect_timeout_msec:
+		_emit_error(ERR_TIMEOUT, "Tencent ASR connection timed out.")
+		_reset_connection(false)
+		return
 	match _connection_state:
 		STATE_TCP_CONNECTING:
 			_process_tcp_connect()
@@ -377,6 +403,8 @@ func _handle_text_message(message: String) -> void:
 			var slice_type := int(result.get("slice_type", -1))
 			transcribed_msg.emit(slice_type == 2, text)
 
+	_send_end_if_ready()
+
 	if int(data.get("final", 0)) == 1:
 		connection_state_changed.emit("finished", _voice_id)
 		_reset_connection(false)
@@ -440,6 +468,17 @@ func _flush_audio_packets(force: bool) -> void:
 	if force and _pcm_buffer.size() > 0:
 		_send_pcm_packet(_pcm_buffer)
 		_pcm_buffer.clear()
+
+
+func _send_end_if_ready() -> void:
+	if not _finish_requested or _end_sent:
+		return
+	if _connection_state != STATE_OPEN or not _handshake_ok:
+		return
+	_flush_audio_packets(true)
+	if _send_ws_text(JSON.stringify({"type": "end"})):
+		_end_sent = true
+		connection_state_changed.emit("finalizing", _voice_id)
 
 
 func _send_pcm_packet(packet: PackedByteArray) -> bool:
@@ -560,21 +599,10 @@ func _build_query(params: Dictionary, url_encode_values: bool) -> String:
 
 
 func _get_credentials() -> Dictionary:
-	var resolved_app_id := app_id.strip_edges()
-	var resolved_secret_id := secret_id.strip_edges()
-	var resolved_secret_key := secret_key.strip_edges()
-	var has_scene_credentials := not resolved_app_id.is_empty() \
-			or not resolved_secret_id.is_empty() \
-			or not resolved_secret_key.is_empty()
-	if has_scene_credentials:
-		_credential_source = "scene"
-	elif use_environment_credentials:
-		_credential_source = "environment"
-		resolved_app_id = OS.get_environment(ENV_APP_ID).strip_edges()
-		resolved_secret_id = OS.get_environment(ENV_SECRET_ID).strip_edges()
-		resolved_secret_key = OS.get_environment(ENV_SECRET_KEY).strip_edges()
-	else:
-		_credential_source = "none"
+	_credential_source = "environment"
+	var resolved_app_id := OS.get_environment(ENV_APP_ID).strip_edges()
+	var resolved_secret_id := OS.get_environment(ENV_SECRET_ID).strip_edges()
+	var resolved_secret_key := OS.get_environment(ENV_SECRET_KEY).strip_edges()
 	return {
 		"app_id": resolved_app_id,
 		"secret_id": resolved_secret_id,
@@ -608,6 +636,9 @@ func _reset_connection(emit_stopped: bool) -> void:
 	_connection_state = STATE_CLOSED
 	_handshake_ok = false
 	_input_active = false
+	_finish_requested = false
+	_end_sent = false
+	_connection_started_msec = 0
 	_http_response_buffer.clear()
 	_ws_read_buffer.clear()
 	_clear_audio_buffers()

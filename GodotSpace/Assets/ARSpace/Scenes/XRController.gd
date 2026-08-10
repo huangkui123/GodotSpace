@@ -1,8 +1,5 @@
 extends Node3D
 
-@export var viewport2d_node_path: NodePath = "Viewport2DIn3D"
-
-var _viewport_node: Node = null
 var _xr_origin_node: Node = null
 var _left_controller: XRController3D = null
 var _right_controller: XRController3D = null
@@ -11,10 +8,6 @@ func _ready():
 	call_deferred("_delayed_init")
 
 func _delayed_init():
-	_viewport_node = get_node_or_null(viewport2d_node_path)
-	if not _viewport_node:
-		printerr("❌ 未找到 Viewport2DIn3D 节点: ", viewport2d_node_path)
-		return
 	_xr_origin_node = _find_xr_origin(get_tree().root)
 	if not _xr_origin_node:
 		printerr("❌ 未找到 XROrigin3D 节点")
@@ -50,12 +43,7 @@ func _find_xr_origin(root: Node) -> Node:
 
 func _on_button_pressed(button_name: String, controller: XRController3D):
 	# print("🎮 按钮按下：", button_name, " 来自控制器：", controller.name)
-	if button_name == "ax_button":
-		_toggle_viewport()
-
-func _toggle_viewport():
-	if _viewport_node:
-		_viewport_node.visible = !_viewport_node.visible
-		print("👁️ Viewport2DIn3D 当前可见状态: ", _viewport_node.visible)
-	else:
-		printerr("❌ Viewport节点无效")
+	if button_name == "ax_button" and controller == _right_controller:
+		var scene := get_tree().current_scene
+		if scene != null and scene.has_method("request_toggle_main_panel_ui"):
+			scene.call("request_toggle_main_panel_ui")

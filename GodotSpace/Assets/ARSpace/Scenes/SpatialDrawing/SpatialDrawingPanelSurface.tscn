@@ -1,0 +1,19 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="PackedScene" path="res://addons/godot-xr-tools/objects/viewport_2d_in_3d.tscn" id="1_viewport"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Scenes/SpatialDrawing/SpatialDrawingPanel.tscn" id="2_panel"]
+[ext_resource type="Script" path="res://Assets/ARSpace/Scripts/SpatialWindows/spatial_viewport_2d_in_3d.gd" id="3_safe_surface"]
+[ext_resource type="Script" path="res://Assets/ARSpace/Scripts/SpatialWindows/spatial_viewport_2d_in_3d_body.gd" id="4_safe_body"]
+
+[node name="PanelSurface" instance=ExtResource("1_viewport")]
+scale = Vector3(0.0003, 0.0003, 0.0003)
+script = ExtResource("3_safe_surface")
+screen_size = Vector2(760, 340)
+scene = ExtResource("2_panel")
+viewport_size = Vector2(760, 340)
+allow_window_drag = false
+
+[node name="StaticBody3D" parent="." index="2"]
+script = ExtResource("4_safe_body")
+
+[editable path="StaticBody3D"]

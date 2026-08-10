@@ -1,0 +1,109 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Assets/ARSpace/Scripts/AstronautView/astronaut_view_panel.gd" id="1_panel"]
+
+[node name="AstronautViewPanel" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_panel")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.025, 0.035, 0.055, 0.98)
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 14.0
+offset_top = 12.0
+offset_right = -14.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Header" type="HBoxContainer" parent="Margin/VBox"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SourceLabel" type="Label" parent="Margin/VBox/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.82, 0.91, 1, 1)
+theme_override_font_sizes/font_size = 24
+text = "PICO 头显投屏"
+vertical_alignment = 1
+
+[node name="RestoreButton" type="Button" parent="Margin/VBox/Header"]
+custom_minimum_size = Vector2(88, 40)
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "恢复位置"
+
+[node name="CloseButton" type="Button" parent="Margin/VBox/Header"]
+custom_minimum_size = Vector2(68, 40)
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "关闭"
+
+[node name="ViewFrame" type="Control" parent="Margin/VBox"]
+custom_minimum_size = Vector2(0, 330)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ViewTexture" type="TextureRect" parent="Margin/VBox/ViewFrame"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="StatusOverlay" type="ColorRect" parent="Margin/VBox/ViewFrame"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.025, 0.035, 0.06, 0.9)
+
+[node name="StatusLabel" type="Label" parent="Margin/VBox/ViewFrame/StatusOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.88, 0.93, 1, 1)
+theme_override_font_sizes/font_size = 26
+text = "等待 PICO 头显投屏"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="DebugLabel" type="Label" parent="Margin/VBox"]
+custom_minimum_size = Vector2(0, 22)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.65, 0.75, 1)
+theme_override_font_sizes/font_size = 15
+text = "PICO RTMP · 等待投屏会话"
+horizontal_alignment = 2

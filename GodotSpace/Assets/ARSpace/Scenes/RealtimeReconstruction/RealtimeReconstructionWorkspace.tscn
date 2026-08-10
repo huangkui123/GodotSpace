@@ -1,0 +1,20 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://Assets/ARSpace/Scripts/RealtimeReconstruction/UI/reconstruction_workspace_controller.gd" id="1_controller"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Scenes/RealtimeReconstruction/RealtimeReconstructionPanelSurface.tscn" id="2_panel"]
+[ext_resource type="Script" path="res://Assets/ARSpace/Scripts/RealtimeReconstruction/PointCloud/reconstruction_point_cloud_runtime.gd" id="3_point_cloud_runtime"]
+
+[node name="ReconstructionWorkspace" type="Node3D"]
+script = ExtResource("1_controller")
+
+[node name="ReconstructionRoot" type="Node3D" parent="." groups=["reconstruction_root"]]
+
+[node name="PointCloudChunks" type="Node3D" parent="ReconstructionRoot" groups=["reconstruction_point_cloud_chunks"]]
+script = ExtResource("3_point_cloud_runtime")
+
+[node name="GroundSpawnAnchor" type="Marker3D" parent="." groups=["ground_spawn_anchor"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 0, 0)
+
+[node name="LocalPanelHost" type="Node3D" parent="."]
+
+[node name="PanelSurface" parent="LocalPanelHost" instance=ExtResource("2_panel")]

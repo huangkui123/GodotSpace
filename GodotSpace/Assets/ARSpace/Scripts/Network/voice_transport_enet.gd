@@ -46,6 +46,8 @@ func send_downlink_voice_packet(target_peer_id: int, packet: PackedByteArray) ->
 	return true
 
 func send_speaking_state(is_speaking: bool) -> void:
+	if not multiplayer.has_multiplayer_peer():
+		return
 	if multiplayer.is_server():
 		speaking_state_received.emit(multiplayer.get_unique_id(), is_speaking)
 		return
@@ -57,6 +59,8 @@ func send_speaking_state(is_speaking: bool) -> void:
 	rpc_id(SERVER_PEER_ID, "_server_speaking_state", is_speaking)
 
 func send_voice_level_state(peak: float, peak_db: float, mic_open: bool) -> void:
+	if not multiplayer.has_multiplayer_peer():
+		return
 	if multiplayer.is_server():
 		voice_level_states_sent += 1
 		voice_level_received.emit(multiplayer.get_unique_id(), peak, peak_db, mic_open)
@@ -211,5 +215,5 @@ func get_debug_state() -> Dictionary:
 		"transcription_state_packets_sent": transcription_state_packets_sent,
 		"transcription_state_packets_received": transcription_state_packets_received,
 		"has_peer": multiplayer.has_multiplayer_peer(),
-		"is_server": multiplayer.is_server(),
+		"is_server": multiplayer.has_multiplayer_peer() and multiplayer.is_server(),
 	}

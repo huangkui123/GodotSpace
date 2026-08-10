@@ -58,7 +58,7 @@ func open_task(task_id: int, result: WorkListInfoDataResult) -> Dictionary:
 		})
 
 	_current_task_id = task_id
-	visible = true
+	PanelWindowZoom.set_window_visible(self, true, Global.main_menu_canvas)
 	on_refresh_data_change_view(result)
 	return _tool_success({
 		"changed": true,
@@ -167,7 +167,7 @@ func close_task_guide() -> Dictionary:
 		return _tool_error("no_active_task", "No task guide is currently open.")
 	_stop_current_step_voice()
 	_hide_llm_assistant_view()
-	visible = false
+	PanelWindowZoom.set_window_visible(self, false)
 	return _tool_success({"changed": true})
 
 

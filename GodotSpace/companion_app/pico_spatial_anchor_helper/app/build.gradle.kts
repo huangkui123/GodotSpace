@@ -3,6 +3,21 @@ plugins {
     alias(libs.plugins.kotlin.android)
 }
 
+val removeGodotImportSidecars by tasks.registering(Delete::class) {
+    delete(
+        fileTree("src/main/res") {
+            include("mipmap-*/*.webp.import")
+        },
+        fileTree("build") {
+            include("**/mipmap-*/*.webp.import")
+        },
+    )
+}
+
+tasks.named("preBuild") {
+    dependsOn(removeGodotImportSidecars)
+}
+
 android {
     namespace = "com.picospatialanchor.helper"
     compileSdk = 35

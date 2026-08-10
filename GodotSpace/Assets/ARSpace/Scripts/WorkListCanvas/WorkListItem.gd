@@ -2,6 +2,7 @@ extends Control
 
 class_name WorkListItem
 
+const PanelWindowZoom = preload("res://Assets/ARSpace/Scripts/UI/panel_window_zoom.gd")
 const DEBUG_LOGS := false
 
 @export var item_data: WorkListData
@@ -28,6 +29,13 @@ func click_btn():
 	var work_info = Global.work_list_info_canvas
 	if work_info and work_info.has_method("open_task"):
 		work_info.call("open_task", item_data.id, item_data.info_data_result)
+	elif work_info:
+		PanelWindowZoom.set_window_visible(
+			work_info,
+			true,
+			Global.main_menu_canvas
+		)
+		work_info.on_refresh_data_change_view(item_data.info_data_result)
 
 	if DEBUG_LOGS: print(self.name, ": Index = ", item_data.id)
 
@@ -35,8 +43,10 @@ func close_guide():
 	if DEBUG_LOGS: print(self.name, ": Step = 1")
 
 	var work_info = Global.work_list_info_canvas
-	if work_info:
-		work_info.visible = false
+	if work_info and work_info.has_method("close_task_guide"):
+		work_info.call("close_task_guide")
+	elif work_info:
+		PanelWindowZoom.set_window_visible(work_info, false)
 
 func refresh_info(data: WorkListData):
 	self.visible = true

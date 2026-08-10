@@ -52,6 +52,12 @@ func global_to_viewport(p_at : Vector3) -> Vector2:
 
 # Pointer event handler
 func _on_pointer_event(event: XRToolsPointerEvent):
+	if not is_inside_tree() \
+			or multiplayer == null \
+			or not is_instance_valid(event) \
+			or not is_instance_valid(event.pointer) \
+			or not is_instance_valid(event.target):
+		return
 	if multiplayer.is_server():
 		pass
 	else:
