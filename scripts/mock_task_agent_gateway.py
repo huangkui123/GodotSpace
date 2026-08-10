@@ -43,6 +43,12 @@ async def receive_type(connection: ServerConnection, expected: str) -> dict[str,
             return message
 
 
+def require_authorized_tool(payload: dict[str, Any], tool_name: str) -> None:
+    allowed_tools = payload.get("allowed_tools", [])
+    if not isinstance(allowed_tools, list) or tool_name not in allowed_tools:
+        raise RuntimeError(f"tool {tool_name} was not authorized: {payload}")
+
+
 async def run_tool_round(
     connection: ServerConnection,
     *,
@@ -56,12 +62,12 @@ async def run_tool_round(
     payload = request["payload"]
     if expected_text not in payload.get("text", ""):
         raise RuntimeError(f"unexpected transcript: {payload}")
-    if payload.get("allowed_tools") != [tool_name]:
-        raise RuntimeError(f"unexpected tool authorization: {payload}")
+    require_authorized_tool(payload, tool_name)
     context = payload.get("context", {})
     if "speaker_peer_id" in context:
         raise RuntimeError("speaker_peer_id leaked into the Gateway context")
-    if context.get("page_index") != expected_page:
+    task_context = context.get("task_guide", context)
+    if task_context.get("page_index") != expected_page:
         raise RuntimeError(f"unexpected task snapshot: {context}")
 
     request_id = request["request_id"]
@@ -78,8 +84,15 @@ async def run_tool_round(
         raise RuntimeError(f"{tool_name} failed: {result['payload']}")
     result_data = result["payload"].get("data", {})
     result_snapshot = result_data.get("snapshot", result_data)
-    target_page = expected_page + 1 if tool_name == "next_task_step" else expected_page
-    if result_snapshot.get("page_index") != target_page:
+    target_page = expected_page
+    if tool_name == "next_task_step":
+        target_page += 1
+    elif tool_name == "previous_task_step":
+        target_page -= 1
+    if (
+        tool_name != "delegate_deepseek"
+        and result_snapshot.get("page_index") != target_page
+    ):
         raise RuntimeError(f"{tool_name} returned the wrong page: {result_snapshot}")
     await connection.send(
         envelope(
@@ -95,19 +108,35 @@ async def handle(connection: ServerConnection) -> None:
     await connection.send(envelope("hello_ack", {"client_id": "task-e2e"}))
     await run_tool_round(
         connection,
-        expected_text="下一步应该做什么",
-        tool_name="get_current_task_step",
-        tool_call_id="tool-read",
+        expected_text="这一步我做完了",
+        tool_name="next_task_step",
+        tool_call_id="tool-complete",
         expected_page=1,
-        answer="下一步是准备工具。",
+        answer="已完成当前步骤并进入下一步。",
     )
     await run_tool_round(
         connection,
-        expected_text="进入下一步",
+        expected_text="下一步该做什么",
         tool_name="next_task_step",
         tool_call_id="tool-advance",
-        expected_page=1,
+        expected_page=2,
         answer="已进入下一步。",
+    )
+    await run_tool_round(
+        connection,
+        expected_text="翻到上一页",
+        tool_name="previous_task_step",
+        tool_call_id="tool-previous",
+        expected_page=3,
+        answer="已返回上一页。",
+    )
+    await run_tool_round(
+        connection,
+        expected_text="这一页在讲什么",
+        tool_name="delegate_deepseek",
+        tool_call_id="tool-explain",
+        expected_page=2,
+        answer="当前未配置在线 LLM；已使用本地降级说明。",
     )
     await asyncio.sleep(0.5)
 
@@ -121,12 +150,12 @@ async def run_dynamic_round(
 ) -> tuple[int, int]:
     request = await receive_type(connection, "user_message")
     payload = request["payload"]
-    if payload.get("allowed_tools") != [tool_name]:
-        raise RuntimeError(f"unexpected tool authorization: {payload}")
+    require_authorized_tool(payload, tool_name)
     context = payload.get("context", {})
     if "speaker_peer_id" in context:
         raise RuntimeError("speaker_peer_id leaked into the Gateway context")
-    source_page = int(context.get("page_index", 0))
+    task_context = context.get("task_guide", context)
+    source_page = int(task_context.get("page_index", 0))
     if source_page <= 0:
         raise RuntimeError(f"missing task page context: {context}")
     request_id = request["request_id"]
@@ -195,8 +224,7 @@ async def run_open_round(
 ) -> dict[str, Any]:
     request = await receive_type(connection, "user_message")
     payload = request["payload"]
-    if payload.get("allowed_tools") != [tool_name]:
-        raise RuntimeError(f"unexpected open tool authorization: {payload}")
+    require_authorized_tool(payload, tool_name)
     if "speaker_peer_id" in payload.get("context", {}):
         raise RuntimeError("speaker_peer_id leaked into the Gateway context")
     request_id = request["request_id"]
@@ -264,6 +292,7 @@ async def main() -> None:
     completed = asyncio.get_running_loop().create_future()
     quiet_logger = logging.getLogger("mock-task-agent-gateway")
     quiet_logger.disabled = True
+    port = int(os.environ.get("TASK_AGENT_GATEWAY_PORT", "7861"))
 
     async def tracked_handle(connection: ServerConnection) -> None:
         try:
@@ -282,9 +311,12 @@ async def main() -> None:
             if not completed.done():
                 completed.set_result(None)
 
-    async with serve(tracked_handle, "127.0.0.1", 7861, logger=quiet_logger):
+    async with serve(tracked_handle, "127.0.0.1", port, logger=quiet_logger):
         scenario = os.environ.get("TASK_AGENT_SCENARIO", "single")
-        print(f"Mock task Agent Gateway ({scenario}) listening on ws://127.0.0.1:7861")
+        print(
+            f"Mock task Agent Gateway ({scenario}) listening on "
+            f"ws://127.0.0.1:{port}"
+        )
         await completed
 
 

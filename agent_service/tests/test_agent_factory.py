@@ -58,7 +58,25 @@ class AgentFactoryTests(unittest.TestCase):
         self.assertEqual(config["api_key"], "test-key")
         self.assertEqual(config["generate_cfg"]["temperature"], 0.0)
         self.assertEqual(config["generate_cfg"]["fncall_prompt_type"], "nous")
+        self.assertFalse(config["generate_cfg"]["use_raw_api"])
         self.assertEqual(Settings().deepseek_tool_timeout_seconds, 120.0)
+
+    def test_llm_config_supports_text_models_and_native_tool_calls(self) -> None:
+        settings = Settings(
+            model_type="oai",
+            model_use_raw_api=True,
+            model_fncall_prompt_type="nous",
+            model_enable_thinking=False,
+        )
+
+        config = AgentFactory(settings, ConnectionManager())._llm_config()
+
+        self.assertEqual(config["model_type"], "oai")
+        self.assertTrue(config["generate_cfg"]["use_raw_api"])
+        self.assertEqual(
+            config["generate_cfg"]["extra_body"],
+            {"chat_template_kwargs": {"enable_thinking": False}},
+        )
 
     @unittest.skipUnless(
         importlib.util.find_spec("qwen_agent") is not None,

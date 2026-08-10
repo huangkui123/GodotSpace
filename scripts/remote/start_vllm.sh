@@ -13,10 +13,10 @@ exec "$install_dir/.venv/bin/vllm" serve "$model_dir" \
   --host 127.0.0.1 \
   --port "${REMOTE_VLLM_PORT:-18000}" \
   --dtype auto \
-  --gpu-memory-utilization "${GPU_MEMORY_UTILIZATION:-0.60}" \
-  --max-model-len "${MAX_MODEL_LEN:-4096}" \
+  --gpu-memory-utilization "${GPU_MEMORY_UTILIZATION:-0.30}" \
+  --max-model-len "${MAX_MODEL_LEN:-16384}" \
   --max-num-seqs 1 \
-  --max-num-batched-tokens "${MAX_MODEL_LEN:-4096}" \
+  --max-num-batched-tokens "${MAX_MODEL_LEN:-16384}" \
   --limit-mm-per-prompt '{"image": 1, "video": 0}' \
   --mm-processor-kwargs '{"max_pixels": 401408}' \
   --skip-mm-profiling \

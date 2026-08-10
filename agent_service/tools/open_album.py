@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from agent_service.tools.godot_rpc_tool import GodotRpcTool
+from agent_service.tools.page_number import parse_positive_page
 
 
 class OpenAlbumTool(GodotRpcTool):
@@ -28,12 +30,26 @@ class OpenAlbumTool(GodotRpcTool):
     }
 
     def call(self, params: str | dict[str, Any], **kwargs: Any) -> str:
-        arguments = self._verify_json_format_args(params, strict_json=True)
+        if isinstance(params, str):
+            try:
+                arguments = json.loads(params)
+            except json.JSONDecodeError as exc:
+                raise ValueError("Parameters must be formatted as valid JSON") from exc
+        else:
+            arguments = params
+        if not isinstance(arguments, dict):
+            raise ValueError("open_album parameters must be a JSON object")
         unknown = set(arguments) - {"page", "refresh"}
         if unknown:
             raise ValueError(f"Unknown open_album parameters: {sorted(unknown)}")
+        page = parse_positive_page(arguments.get("page", 1))
+        if page is None:
+            raise ValueError("page must identify a positive integer page")
+        refresh = arguments.get("refresh", True)
+        if not isinstance(refresh, bool):
+            raise ValueError("refresh must be a boolean")
         normalized = {
-            "page": int(arguments.get("page", 1)),
-            "refresh": bool(arguments.get("refresh", True)),
+            "page": page,
+            "refresh": refresh,
         }
         return self.call_godot(normalized)

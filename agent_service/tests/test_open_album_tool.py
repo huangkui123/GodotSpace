@@ -56,6 +56,48 @@ class OpenAlbumToolTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             tool.call('{"node_path": "/root/Global"}')
 
+    def test_open_album_normalizes_model_page_representations(self) -> None:
+        from agent_service.tools.open_album import OpenAlbumTool
+
+        manager = FakeConnectionManager()
+        tool = OpenAlbumTool(
+            manager,  # type: ignore[arg-type]
+            "session-1",
+            "request-1",
+            timeout_seconds=1.0,
+            max_calls=8,
+        )
+        for value in (5, 5.0, "5", "第五页"):
+            with self.subTest(value=value):
+                result = json.loads(tool.call({"page": value}))
+                self.assertTrue(result["ok"])
+                self.assertEqual(
+                    manager.calls[-1]["arguments"],
+                    {"page": 5, "refresh": True},
+                )
+
+    def test_open_album_rejects_non_integral_page_and_non_boolean_refresh(
+        self,
+    ) -> None:
+        from agent_service.tools.open_album import OpenAlbumTool
+
+        tool = OpenAlbumTool(
+            FakeConnectionManager(),  # type: ignore[arg-type]
+            "session-1",
+            "request-1",
+            timeout_seconds=1.0,
+            max_calls=2,
+        )
+        for arguments in (
+            {"page": 5.5},
+            {"page": True},
+            {"page": 0},
+            {"refresh": "true"},
+        ):
+            with self.subTest(arguments=arguments):
+                with self.assertRaises(ValueError):
+                    tool.call(arguments)
+
     def test_disconnected_godot_returns_structured_rpc_error(self) -> None:
         from agent_service.tools.open_album import OpenAlbumTool
 

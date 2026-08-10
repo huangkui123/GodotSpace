@@ -62,6 +62,13 @@ def _album_context(*, page: int = 2, page_count: int = 8) -> dict[str, Any]:
     }
 
 
+def _closed_ui_context() -> dict[str, Any]:
+    return {
+        "album": {"visible": False},
+        "task_guide": {"visible": False},
+    }
+
+
 def _cases() -> list[RoutingCase]:
     guide_tools = [
         "close_task_guide",
@@ -84,7 +91,24 @@ def _cases() -> list[RoutingCase]:
         "previous_album_page",
     ]
     both_tools = sorted(set(guide_tools + album_tools))
+    closed_ui_tools = ["delegate_deepseek", "open_album", "open_task_guide"]
     return [
+        RoutingCase(
+            "open work checklist alias",
+            "打开工作清单",
+            _closed_ui_context(),
+            closed_ui_tools,
+            "open_task_guide",
+            expected_arguments={"task_id": 1},
+        ),
+        RoutingCase(
+            "closed album direct page",
+            "翻到相册第5页",
+            _closed_ui_context(),
+            closed_ui_tools,
+            "open_album",
+            expected_arguments={"page": 5, "refresh": True},
+        ),
         RoutingCase(
             "guide previous page",
             "翻到上一页",

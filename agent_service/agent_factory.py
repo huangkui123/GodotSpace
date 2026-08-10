@@ -240,17 +240,25 @@ class AgentFactory:
         return tools
 
     def _llm_config(self) -> dict[str, Any]:
+        generate_cfg: dict[str, Any] = {
+            "temperature": 0.0,
+            "top_p": 1.0,
+            "max_tokens": 128,
+            "fncall_prompt_type": self._settings.model_fncall_prompt_type,
+            "use_raw_api": self._settings.model_use_raw_api,
+        }
+        if self._settings.model_enable_thinking is not None:
+            generate_cfg["extra_body"] = {
+                "chat_template_kwargs": {
+                    "enable_thinking": self._settings.model_enable_thinking,
+                }
+            }
         return {
-            "model_type": "qwenvl_oai",
+            "model_type": self._settings.model_type,
             "model": self._settings.model_name,
             "model_server": self._settings.model_server,
             "api_key": self._settings.api_key,
-            "generate_cfg": {
-                "temperature": 0.0,
-                "top_p": 1.0,
-                "max_tokens": 128,
-                "fncall_prompt_type": "nous",
-            },
+            "generate_cfg": generate_cfg,
         }
 
 

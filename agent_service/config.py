@@ -26,6 +26,22 @@ def _env_float(name: str, default: float, *, minimum: float = 0.0) -> float:
     return value
 
 
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.getenv(name, str(default)).strip().lower()
+    if raw in {"1", "true", "yes", "on"}:
+        return True
+    if raw in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(f"{name} must be a boolean, got {raw!r}")
+
+
+def _env_optional_bool(name: str) -> bool | None:
+    raw = os.getenv(name, "").strip()
+    if not raw:
+        return None
+    return _env_bool(name, False)
+
+
 @dataclass(frozen=True, slots=True)
 class Settings:
     host: str = "127.0.0.1"
@@ -33,6 +49,10 @@ class Settings:
     model_name: str = "Qwen/Qwen3-VL-2B-Instruct"
     model_server: str = "http://127.0.0.1:8000/v1"
     api_key: str = "EMPTY"
+    model_type: str = "qwenvl_oai"
+    model_use_raw_api: bool = False
+    model_fncall_prompt_type: str = "nous"
+    model_enable_thinking: bool | None = None
     tool_timeout_seconds: float = 5.0
     deepseek_tool_timeout_seconds: float = 120.0
     vllm_health_timeout_seconds: float = 2.0
@@ -47,6 +67,12 @@ class Settings:
             model_name=os.getenv("MODEL_NAME", "Qwen/Qwen3-VL-2B-Instruct").strip(),
             model_server=os.getenv("MODEL_SERVER", "http://127.0.0.1:8000/v1").rstrip("/"),
             api_key=os.getenv("API_KEY", "EMPTY"),
+            model_type=os.getenv("MODEL_TYPE", "qwenvl_oai").strip() or "qwenvl_oai",
+            model_use_raw_api=_env_bool("MODEL_USE_RAW_API", False),
+            model_fncall_prompt_type=(
+                os.getenv("MODEL_FNCALL_PROMPT_TYPE", "nous").strip() or "nous"
+            ),
+            model_enable_thinking=_env_optional_bool("MODEL_ENABLE_THINKING"),
             tool_timeout_seconds=_env_float("AGENT_TOOL_TIMEOUT", 5.0, minimum=0.1),
             deepseek_tool_timeout_seconds=_env_float(
                 "AGENT_DEEPSEEK_TOOL_TIMEOUT",

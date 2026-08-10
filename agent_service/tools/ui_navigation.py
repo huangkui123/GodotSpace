@@ -72,21 +72,21 @@ class GetAlbumStateTool(_EmptyArgumentsTool):
 
 class CloseTaskGuideTool(_EmptyArgumentsTool):
     name = "close_task_guide"
-    description = "关闭当前可见的实验指导书，不影响相册。"
+    description = "关闭当前可见的工作清单（也称指导书），不影响相册。"
 
 
 class PreviousTaskStepTool(_EmptyArgumentsTool):
     name = "previous_task_step"
     description = (
-        "将当前可见的实验指导书向前返回上一步或上一页，不影响相册，也不负责"
-        "知识问答。多个分页界面同时可见时，只有用户明确指向任务、步骤或指导书"
+        "将当前可见的工作清单向前返回上一步或上一页，不影响相册，也不负责"
+        "知识问答。多个分页界面同时可见时，只有用户明确指向工作清单、任务、步骤或指导书"
         "才能选择它。"
     )
 
 
 class ReplayCurrentTaskStepTool(_EmptyArgumentsTool):
     name = "replay_current_task_step"
-    description = "重新播放当前实验指导步骤的动画，不改变指导书页码。"
+    description = "重新播放当前工作清单步骤的动画，不改变工作清单页码。"
 
 
 class DelegateDeepSeekTool(_EmptyArgumentsTool):
