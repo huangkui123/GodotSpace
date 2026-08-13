@@ -282,7 +282,7 @@ def _requested_parameter_types(question: str) -> set[str]:
         requested.add("torque")
     if re.search(r"(?:编号|代号|平台号).*(?:什么|多少|哪个)|(?:什么|哪个).*(?:编号|代号|平台号)", question):
         requested.add("identifier")
-    if re.search(r"多少|几(?:颗|名|个)|数量", question):
+    if re.search(r"几(?:颗|名|个)|多少(?:颗|名|个)|数量", question):
         requested.add("count")
     if re.search(r"日期|哪一天|何时|什么时候|发射任务", question):
         requested.add("date")
@@ -349,12 +349,18 @@ def find_evidence_conflicts(
         "identifier",
         "date",
     }:
-        values: set[str] = set()
+        values_by_entry: dict[str, set[str]] = {}
         for entry in entries:
+            values: set[str] = set()
             for match in VALUE_PATTERNS[parameter_type].finditer(entry.content):
                 values.add(normalize_for_matching(match.group(0)))
-        if len(values) > 1:
-            conflicts[parameter_type] = sorted(values)
+            if values:
+                values_by_entry[entry.id] = values
+        distinct_sets = {tuple(sorted(values)) for values in values_by_entry.values()}
+        if len(distinct_sets) > 1:
+            conflicts[parameter_type] = sorted(
+                {value for values in values_by_entry.values() for value in values}
+            )
     return conflicts
 
 
@@ -443,6 +449,8 @@ def parse_and_validate_selection(
     if decision not in {"answer", "abstain"} or not isinstance(evidence_ids, list):
         return "abstain", (), "model_schema_invalid"
     if decision == "abstain":
+        if evidence_ids:
+            return "abstain", (), "abstain_selection_not_empty"
         return "abstain", (), "model_abstained"
     if not evidence_ids or len(evidence_ids) > 4 or len(evidence_ids) != len(set(evidence_ids)):
         return "abstain", (), "selection_count_invalid"

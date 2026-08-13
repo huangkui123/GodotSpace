@@ -240,6 +240,20 @@ class KnowledgeHarnessTests(unittest.TestCase):
         self.assertEqual(result.decision, "abstain")
         self.assertEqual(result.reason, "evidence_conflict")
 
+    def test_temperature_range_in_one_entry_is_not_a_conflict(self) -> None:
+        temperature_range = EvidenceEntry(
+            "temp-range",
+            "工作温度",
+            "受控手册",
+            "正常工作温度范围为20°C至25°C。",
+        )
+        result = KnowledgeHarness(RecordingModel("unused")).answer(
+            "正常工作温度范围是多少？",
+            [temperature_range],
+        )
+        self.assertEqual(result.decision, "answer")
+        self.assertEqual(result.reason, "deterministic_evidence")
+
     def test_runtime_request_cannot_spoof_source_or_trust(self) -> None:
         for forbidden in ("source", "trust", "priority"):
             with self.subTest(forbidden=forbidden), self.assertRaises(ValueError):
