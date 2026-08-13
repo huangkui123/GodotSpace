@@ -592,7 +592,7 @@ async def _run(args: argparse.Namespace) -> int:
             "top_p": 1.0,
             "max_tokens": 128,
             "enable_thinking": False,
-            "max_model_len": 16384,
+            "max_model_len": args.max_model_len,
         },
         **_summarize(records),
     }
@@ -616,6 +616,12 @@ def main() -> int:
     parser.add_argument("--direct-perf-repeats", type=int, default=3)
     parser.add_argument("--long-4k-repeats", type=int, default=110)
     parser.add_argument("--long-8k-repeats", type=int, default=280)
+    parser.add_argument(
+        "--max-model-len",
+        type=int,
+        default=16384,
+        help="Deployed model context limit, recorded in the summary for reproducibility",
+    )
     parser.add_argument("--timeout", type=float, default=120.0)
     parser.add_argument("--case", default="")
     return asyncio.run(_run(parser.parse_args()))

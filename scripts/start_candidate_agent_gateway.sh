@@ -3,7 +3,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-candidate="${1:?usage: start_candidate_agent_gateway.sh qwen25|minicpm5|qwen3vl}"
+candidate="${1:?usage: start_candidate_agent_gateway.sh qwen25|minicpm5|qwen3vl|qwen3vl8b}"
 case "$candidate" in
   qwen25)
     model_port=18100
@@ -21,6 +21,13 @@ case "$candidate" in
     model_port=18300
     gateway_port=7864
     model_name="Qwen/Qwen3-VL-2B-Instruct"
+    model_type="qwenvl_oai"
+    use_raw_api=false
+    ;;
+  qwen3vl8b)
+    model_port=18400
+    gateway_port=7865
+    model_name="Qwen/Qwen3-VL-8B-Instruct-FP8"
     model_type="qwenvl_oai"
     use_raw_api=false
     ;;

@@ -3,11 +3,12 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-candidate="${1:?usage: start_candidate_model_tunnel.sh qwen25|minicpm5|qwen3vl}"
+candidate="${1:?usage: start_candidate_model_tunnel.sh qwen25|minicpm5|qwen3vl|qwen3vl8b}"
 case "$candidate" in
   qwen25) local_port=18100; remote_port=18100 ;;
   minicpm5) local_port=18200; remote_port=18200 ;;
   qwen3vl) local_port=18300; remote_port=18300 ;;
+  qwen3vl8b) local_port=18400; remote_port=18400 ;;
   *) echo "Unknown candidate: $candidate" >&2; exit 2 ;;
 esac
 

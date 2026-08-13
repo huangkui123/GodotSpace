@@ -174,6 +174,23 @@ source .venv/bin/activate
 python -m unittest discover -s agent_service/tests -v
 ```
 
+Evaluate the deployed Qwen model against the fixed local knowledge-answering
+suite (oracle evidence versus the current lexical retriever):
+
+```bash
+python scripts/benchmark_local_knowledge_qa.py \
+  --endpoint http://127.0.0.1:18000/v1 \
+  --mode both \
+  --repeats 3
+```
+
+See `QWEN3_VL_DEEPSEEK_REPLACEMENT_EVAL.md` for the test design, acceptance
+gates, and the first Qwen3-VL-2B result.
+
+See `QWEN3_VL_8B_FP8_EVAL.md` for the single-RTX-4090 deployment, native and
+Qwen-Agent tool-call results, knowledge-QA comparison with 2B and DeepSeek, and
+the recommended evidence-gated replacement architecture.
+
 Check readiness from WSL:
 
 ```bash
