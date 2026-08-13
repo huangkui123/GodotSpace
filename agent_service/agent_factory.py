@@ -204,7 +204,9 @@ class AgentFactory:
         function_result = _extract_last_function_result(serialized)
         if tool_name in {"respond_directly", "clarify_ui_target"}:
             answer = _answer_from_tool_result(tool_name, function_result)
-        elif tool_name == "delegate_deepseek" and self._knowledge_harness is not None:
+        elif tool_name == "delegate_deepseek":
+            if self._knowledge_harness is None:
+                raise RuntimeError("local knowledge harness is not configured")
             answer = self._answer_from_local_knowledge(messages, function_result)
         elif not answer:
             answer = _answer_from_tool_result(
@@ -504,7 +506,6 @@ def _answer_from_tool_result(tool_name: str, raw_result: str) -> str:
         return "操作未完成：工具执行失败。"
     data = result.get("data", {})
     if tool_name in {
-        "delegate_deepseek",
         "respond_directly",
         "clarify_ui_target",
     } and isinstance(data, dict):

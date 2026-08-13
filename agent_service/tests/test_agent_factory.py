@@ -12,6 +12,7 @@ from agent_service.agent_factory import (
     _extract_selected_tool,
     _explicit_page_tool,
     _is_negated_action,
+    _answer_from_tool_result,
     _tool_catalog,
 )
 from agent_service.config import Settings
@@ -48,6 +49,10 @@ class AgentFactoryTests(unittest.TestCase):
             _explicit_page_tool("翻到第三页", ["go_to_album_page"]),
             ("go_to_album_page", 3),
         )
+
+    def test_legacy_deepseek_answer_is_never_extracted(self) -> None:
+        raw = '{"ok":true,"data":{"answer":"未经验证的在线答案"},"error":null}'
+        self.assertEqual(_answer_from_tool_result("delegate_deepseek", raw), "工具执行完成。")
         self.assertEqual(
             _explicit_page_tool(
                 "相册翻到第三页",

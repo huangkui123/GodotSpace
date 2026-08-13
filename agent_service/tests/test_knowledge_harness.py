@@ -82,6 +82,16 @@ class KnowledgeHarnessTests(unittest.TestCase):
         self.assertEqual(result.decision, "abstain")
         self.assertEqual(result.model_attempts, 0)
 
+    def test_unknown_connector_variants_all_abstain_without_model(self) -> None:
+        model = RecordingModel("should not be called")
+        harness = KnowledgeHarness(model)
+        for number in range(3, 50):
+            with self.subTest(connector=number):
+                result = harness.answer(f"连接器X{number:02d}应该怎么拆？", [self.connectors])
+                self.assertEqual(result.decision, "abstain")
+                self.assertEqual(result.model_attempts, 0)
+        self.assertEqual(model.calls, [])
+
     def test_verbatim_quote_is_rendered_by_code(self) -> None:
         quote = "使用2.5N·m力矩按对角线原则锁紧6颗M6螺钉，并进行第二遍逐个力矩检查。"
         model = RecordingModel(
@@ -174,6 +184,24 @@ class KnowledgeHarnessTests(unittest.TestCase):
         )
         self.assertEqual(decision, "abstain")
         self.assertEqual(reason, "selection_reference_invalid")
+
+    def test_malformed_model_outputs_all_fail_closed(self) -> None:
+        invalid_outputs = (
+            "",
+            "[]",
+            '{"decision":"answer","evidence_ids":["step-17","step-17"]}',
+            '{"decision":"answer","evidence_ids":["step-17"],"answer":"5N·m"}',
+            '{"decision":"abstain","evidence_ids":["step-17"]}',
+            '{"decision":"answer","evidence_ids":[]}',
+        )
+        for raw in invalid_outputs:
+            with self.subTest(raw=raw):
+                decision, _, _ = parse_and_validate_selection(
+                    raw,
+                    "六颗M6螺钉的力矩是多少？",
+                    [self.torque],
+                )
+                self.assertEqual(decision, "abstain")
 
     def test_model_json_failure_fails_closed(self) -> None:
         decision, _, reason = parse_and_validate_selection(
