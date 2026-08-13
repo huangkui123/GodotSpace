@@ -92,8 +92,8 @@ class ReplayCurrentTaskStepTool(_EmptyArgumentsTool):
 class DelegateDeepSeekTool(_EmptyArgumentsTool):
     name = "delegate_deepseek"
     description = (
-        "查询实验手册、当前步骤怎样操作、步骤含义或专业知识时，使用这个唯一的"
-        "知识来源交给 DeepSeek 回答；不要由路由模型自行编造专业答案。该工具只"
-        "回答知识问题，不打开、关闭或翻动任何 UI。“这一步在讲什么”属于当前"
-        "步骤含义查询，应调用本工具。"
+        "查询实验手册、当前步骤怎样操作、步骤含义或专业知识时，读取当前任务的"
+        "本地证据快照；不要由路由模型自行回答专业内容。本工具只返回证据，不返回"
+        "可直接展示的答案；Gateway 会用本地知识 harness 校验证据并生成答案。"
+        "“这一步在讲什么”属于当前步骤含义查询，应调用本工具。"
     )

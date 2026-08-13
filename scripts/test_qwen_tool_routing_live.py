@@ -294,7 +294,13 @@ async def _run_case(
             actual_arguments = arguments if isinstance(arguments, dict) else {}
             tool_data: dict[str, Any] = {"acknowledged_tool": actual_call}
             if actual_call == "delegate_deepseek":
-                tool_data["answer"] = "模拟的手册回答。"
+                tool_data["entries"] = [
+                    {
+                        "id": "live-current-step",
+                        "title": "当前步骤",
+                        "content": "当前步骤要求先确认设备状态，再按任务单执行。",
+                    }
+                ]
             await websocket.send(
                 json.dumps(
                     make_envelope(

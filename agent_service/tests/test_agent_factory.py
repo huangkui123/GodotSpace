@@ -10,13 +10,58 @@ from agent_service.agent_factory import (
     ROUTING_DECISION_SYSTEM_MESSAGE,
     _extract_final_answer,
     _extract_selected_tool,
+    _explicit_page_tool,
+    _is_negated_action,
     _tool_catalog,
 )
 from agent_service.config import Settings
 from agent_service.connection_manager import ConnectionManager
+from agent_service.knowledge_harness import KnowledgeAnswer, TrustedEvidenceStore
+
+
+class FakeKnowledgeHarness:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, list[Any]]] = []
+
+    def answer(self, question: str, entries: list[Any]) -> KnowledgeAnswer:
+        self.calls.append((question, entries))
+        return KnowledgeAnswer(
+            answer="本地可验证答案。",
+            decision="answer",
+            citations=(),
+            reason="test",
+            retrieved_ids=(),
+            model_attempts=0,
+        )
 
 
 class AgentFactoryTests(unittest.TestCase):
+    def test_negated_actions_are_detected_before_model_tool_routing(self) -> None:
+        self.assertTrue(_is_negated_action("不要翻页"))
+        self.assertTrue(_is_negated_action("请取消打开相册"))
+        self.assertFalse(_is_negated_action("打开相册"))
+        self.assertFalse(_is_negated_action("为什么不能翻页？"))
+        self.assertFalse(_is_negated_action("我不是不要翻页"))
+
+    def test_explicit_page_is_resolved_only_with_an_unambiguous_target(self) -> None:
+        self.assertEqual(
+            _explicit_page_tool("翻到第三页", ["go_to_album_page"]),
+            ("go_to_album_page", 3),
+        )
+        self.assertEqual(
+            _explicit_page_tool(
+                "相册翻到第三页",
+                ["go_to_album_page", "go_to_task_guide_page"],
+            ),
+            ("go_to_album_page", 3),
+        )
+        self.assertIsNone(
+            _explicit_page_tool(
+                "翻到第三页",
+                ["go_to_album_page", "go_to_task_guide_page"],
+            )
+        )
+
     def test_extracts_last_assistant_answer(self) -> None:
         answer = _extract_final_answer(
             [
@@ -59,7 +104,7 @@ class AgentFactoryTests(unittest.TestCase):
         self.assertEqual(config["generate_cfg"]["temperature"], 0.0)
         self.assertEqual(config["generate_cfg"]["fncall_prompt_type"], "nous")
         self.assertFalse(config["generate_cfg"]["use_raw_api"])
-        self.assertEqual(Settings().deepseek_tool_timeout_seconds, 120.0)
+        self.assertEqual(Settings().knowledge_context_tool_timeout_seconds, 5.0)
 
     def test_llm_config_supports_text_models_and_native_tool_calls(self) -> None:
         settings = Settings(
@@ -226,6 +271,59 @@ class AgentFactoryTests(unittest.TestCase):
             ["next_task_step"],
         )
 
+    @unittest.skipUnless(
+        importlib.util.find_spec("qwen_agent") is not None,
+        "qwen_agent is not installed in this Python environment",
+    )
+    def test_deepseek_route_uses_local_harness_not_tool_answer(self) -> None:
+        class FakeFnCallAgent:
+            def __init__(self, **kwargs: Any) -> None:
+                self._tools = kwargs["function_list"]
+
+            def run(self, **_kwargs: Any) -> Any:
+                tool = next(item for item in self._tools if item.name == "delegate_deepseek")
+                result = tool.call("{}")
+                yield [
+                    {"role": "assistant", "content": ""},
+                    {"role": "function", "name": "delegate_deepseek", "content": result},
+                    {"role": "assistant", "content": "旧 DeepSeek 自由文本，不得展示。"},
+                ]
+
+        class FakeTool:
+            name = "delegate_deepseek"
+            description = "获取本地证据。"
+            parameters = {"type": "object", "properties": {}, "required": []}
+
+            def call(self, _arguments: str) -> str:
+                return (
+                    '{"ok":true,"data":{"answer":"伪造答案",'
+                    '"entries":[{"id":"step-1","title":"当前步骤",'
+                    '"content":"必须先确认断电。"}]},"error":null}'
+                )
+
+        harness = FakeKnowledgeHarness()
+        factory = AgentFactory(
+            Settings(),
+            ConnectionManager(),
+            knowledge_harness=harness,  # type: ignore[arg-type]
+            knowledge_store=TrustedEvidenceStore(),
+        )
+        with (
+            patch("qwen_agent.agents.FnCallAgent", FakeFnCallAgent),
+            patch.object(factory, "_build_tools", return_value=[FakeTool()]),
+        ):
+            result = factory.run(
+                "session-1",
+                "request-1",
+                [{"role": "user", "content": "现在能继续拆吗？"}],
+                ["delegate_deepseek"],
+            )
+
+        self.assertEqual(result.answer, "本地可验证答案。")
+        self.assertEqual(harness.calls[0][0], "现在能继续拆吗？")
+        self.assertEqual(harness.calls[0][1][0].trust, "runtime")
+        self.assertNotIn("伪造答案", result.answer)
+
     def test_tool_catalog_exposes_trusted_description_and_strict_schema(self) -> None:
         class FakeTool:
             name = "previous_task_step"
@@ -292,7 +390,7 @@ class AgentFactoryTests(unittest.TestCase):
     )
     def test_builds_navigation_and_deepseek_tools(self) -> None:
         factory = AgentFactory(
-            Settings(tool_timeout_seconds=3.0, deepseek_tool_timeout_seconds=47.0),
+            Settings(tool_timeout_seconds=3.0, knowledge_context_tool_timeout_seconds=47.0),
             ConnectionManager(),
         )
         tools = factory._build_tools(

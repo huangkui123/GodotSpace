@@ -64,6 +64,15 @@ def parse_positive_page(value: Any) -> int | None:
     return page if page is not None and page > 0 else None
 
 
+def extract_explicit_page(text: str) -> int | None:
+    match = re.search(r"第([0-9]+|[零〇一二两三四五六七八九十百千]+)(?:页面|页)", text)
+    if not match:
+        match = re.search(r"(?<![上下前后])([0-9]+)(?:页面|页)", text)
+    if not match:
+        return None
+    return parse_positive_page(match.group(1))
+
+
 def _parse_chinese_integer(text: str) -> int | None:
     if not text or any(
         character not in _CHINESE_DIGITS and character not in _CHINESE_UNITS

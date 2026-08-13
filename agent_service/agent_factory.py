@@ -2,12 +2,19 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 from importlib import metadata
 from dataclasses import dataclass
 from typing import Any
 
 from agent_service.config import Settings
 from agent_service.connection_manager import ConnectionManager
+from agent_service.knowledge_harness import (
+    KnowledgeHarness,
+    TrustedEvidenceStore,
+    runtime_evidence_entry_from_request,
+)
+from agent_service.tools.page_number import extract_explicit_page
 
 ROUTING_DECISION_SYSTEM_MESSAGE = """你是 GodotSpace 的语音助手。
 
@@ -56,9 +63,18 @@ class AgentRunResult:
 
 
 class AgentFactory:
-    def __init__(self, settings: Settings, connection_manager: ConnectionManager) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        connection_manager: ConnectionManager,
+        *,
+        knowledge_harness: KnowledgeHarness | None = None,
+        knowledge_store: TrustedEvidenceStore | None = None,
+    ) -> None:
         self._settings = settings
         self._connection_manager = connection_manager
+        self._knowledge_harness = knowledge_harness
+        self._knowledge_store = knowledge_store
 
     @staticmethod
     def is_available() -> bool:
@@ -83,6 +99,42 @@ class AgentFactory:
         from qwen_agent.agents import FnCallAgent
 
         authorized_tool_names = ["open_album"] if allowed_tools is None else allowed_tools
+        original_question = _extract_last_user_text(messages)
+        if _is_negated_action(original_question):
+            return AgentRunResult(
+                answer="好的，我会保持当前状态，不执行该操作。",
+                messages=[
+                    *messages,
+                    {
+                        "role": "assistant",
+                        "content": "好的，我会保持当前状态，不执行该操作。",
+                    },
+                ],
+                route="direct_answer",
+                tool_name="respond_directly",
+            )
+        direct_page_tool = _explicit_page_tool(original_question, authorized_tool_names)
+        if direct_page_tool is not None:
+            tool_name, page = direct_page_tool
+            tool = self._build_tools(session_id, request_id, [tool_name])[0]
+            raw_result = str(tool.call({"page": page}))
+            return AgentRunResult(
+                answer=_answer_from_tool_result(tool_name, raw_result),
+                messages=[
+                    *messages,
+                    {
+                        "role": "assistant",
+                        "content": "",
+                        "function_call": {
+                            "name": tool_name,
+                            "arguments": json.dumps({"page": page}),
+                        },
+                    },
+                    {"role": "function", "name": tool_name, "content": raw_result},
+                ],
+                route="tool",
+                tool_name=tool_name,
+            )
         authorized_tools = self._build_tools(
             session_id,
             request_id,
@@ -152,6 +204,8 @@ class AgentFactory:
         function_result = _extract_last_function_result(serialized)
         if tool_name in {"respond_directly", "clarify_ui_target"}:
             answer = _answer_from_tool_result(tool_name, function_result)
+        elif tool_name == "delegate_deepseek" and self._knowledge_harness is not None:
+            answer = self._answer_from_local_knowledge(messages, function_result)
         elif not answer:
             answer = _answer_from_tool_result(
                 tool_name,
@@ -176,6 +230,24 @@ class AgentFactory:
             route=route,
             tool_name=tool_name,
         )
+
+    def _answer_from_local_knowledge(
+        self,
+        messages: list[dict[str, Any]],
+        raw_result: str,
+    ) -> str:
+        question = _extract_last_user_text(messages)
+        runtime_values = _extract_knowledge_entries_from_tool_result(raw_result)
+        runtime = [
+            runtime_evidence_entry_from_request(
+                item,
+                index,
+                self._settings.knowledge_runtime_source,
+            )
+            for index, item in enumerate(runtime_values)
+        ]
+        registered = self._knowledge_store.select() if self._knowledge_store else []
+        return self._knowledge_harness.answer(question, [*runtime, *registered]).answer
 
     def _build_tools(
         self,
@@ -223,7 +295,7 @@ class AgentFactory:
         for tool_name in allowed_tools:
             tool_type, state_changing = tool_types[tool_name]
             timeout_seconds = (
-                self._settings.deepseek_tool_timeout_seconds
+                self._settings.knowledge_context_tool_timeout_seconds
                 if tool_name == "delegate_deepseek"
                 else self._settings.tool_timeout_seconds
             )
@@ -297,6 +369,63 @@ def _extract_final_answer(messages: list[dict[str, Any]]) -> str:
             if answer:
                 return answer
     return ""
+
+
+def _extract_last_user_text(messages: list[dict[str, Any]]) -> str:
+    for message in reversed(messages):
+        if message.get("role") == "user" and isinstance(message.get("content"), str):
+            content = str(message["content"])
+            if content.startswith("用户语音："):
+                return content.partition("\n")[0].removeprefix("用户语音：").strip()
+            return content.strip()
+    raise ValueError("knowledge routing requires the original user question")
+
+
+def _is_negated_action(text: str) -> bool:
+    if re.search(r"(?:不是|并非).{0,2}(?:不要|别|无需|不用|不必|取消)", text):
+        return False
+    return bool(
+        re.search(r"(?:不要|别|无需|不用|不必|取消).{0,12}(?:打开|关闭|翻|切换|跳转|播放|执行)", text)
+        or re.search(r"(?:打开|关闭|翻|切换|跳转|播放|执行).{0,8}(?:不要|别|取消)", text)
+    )
+
+
+def _explicit_page_tool(text: str, allowed_tools: list[str]) -> tuple[str, int] | None:
+    page = extract_explicit_page(text)
+    if page is None:
+        return None
+    if any(term in text for term in ("相册", "照片")):
+        return ("go_to_album_page", page) if "go_to_album_page" in allowed_tools else None
+    if any(term in text for term in ("任务", "步骤", "指导书", "工作清单")):
+        return (
+            ("go_to_task_guide_page", page)
+            if "go_to_task_guide_page" in allowed_tools
+            else None
+        )
+    candidates = [
+        name
+        for name in ("go_to_album_page", "go_to_task_guide_page")
+        if name in allowed_tools
+    ]
+    return (candidates[0], page) if len(candidates) == 1 else None
+
+
+def _extract_knowledge_entries_from_tool_result(raw_result: str) -> list[dict[str, Any]]:
+    try:
+        result = json.loads(raw_result)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("knowledge context tool returned invalid JSON") from exc
+    if not isinstance(result, dict) or result.get("ok") is not True:
+        raise RuntimeError("knowledge context tool did not complete successfully")
+    data = result.get("data")
+    if not isinstance(data, dict):
+        raise RuntimeError("knowledge context tool returned no data")
+    entries = data.get("entries", [])
+    if not isinstance(entries, list) or len(entries) > 20:
+        raise RuntimeError("knowledge context tool returned invalid entries")
+    if any(not isinstance(item, dict) for item in entries):
+        raise RuntimeError("knowledge context entries must be objects")
+    return [dict(item) for item in entries]
 
 
 def _tool_catalog(tools: list[Any]) -> list[dict[str, Any]]:
