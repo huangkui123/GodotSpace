@@ -54,6 +54,28 @@ class KnowledgeHarnessTests(unittest.TestCase):
         self.assertEqual(result.model_attempts, 0)
         self.assertEqual(model.calls, [])
 
+    def test_inverted_torque_question_does_not_borrow_a_generic_value(self) -> None:
+        current_step = EvidenceEntry(
+            "step-14",
+            "当前步骤14",
+            "当前专家任务步骤 / 本地客户端",
+            "当前步骤是安装新样品盒，将样品盒插入安装口。",
+            "runtime",
+            5,
+        )
+        generic = EvidenceEntry(
+            "torque-rule",
+            "螺钉力矩复核",
+            "受控手册",
+            "锁紧时应核对螺钉编号、工具规格和目标力矩，并进行第二遍检查。",
+        )
+        result = KnowledgeHarness(RecordingModel("unused")).answer(
+            "这一步需要打多少力矩？",
+            [current_step, generic],
+        )
+        self.assertEqual(result.decision, "abstain")
+        self.assertNotIn("2.5N·m", result.answer)
+
     def test_untrusted_prompt_injection_is_never_retrieved(self) -> None:
         poisoned = EvidenceEntry(
             "note",

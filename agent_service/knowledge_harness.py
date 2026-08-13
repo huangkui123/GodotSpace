@@ -278,7 +278,11 @@ def _requested_parameter_types(question: str) -> set[str]:
     requested: set[str] = set()
     if re.search(r"温度.*(?:多少|几|范围|值)|(?:多少|几|范围|值).*温度", question):
         requested.add("temperature")
-    if re.search(r"(?:力矩|扭矩).*(?:多少|几|目标|应该用|是不是用|是否用)", question):
+    if re.search(
+        r"(?:力矩|扭矩).*(?:多少|几|目标|应该用|是不是用|是否用)"
+        r"|(?:多少|几|目标|应该用|是不是用|是否用).*(?:力矩|扭矩)",
+        question,
+    ):
         requested.add("torque")
     if re.search(r"(?:编号|代号|平台号).*(?:什么|多少|哪个)|(?:什么|哪个).*(?:编号|代号|平台号)", question):
         requested.add("identifier")
