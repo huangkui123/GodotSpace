@@ -1,8 +1,9 @@
 # Local Agent Gateway
 
 This package is the Python side of the GodotSpace local Qwen-Agent integration.
-It keeps the existing DeepSeek assistant path untouched and provides a separate,
-opt-in websocket path for local Qwen tool calls.
+Qwen3-VL-2B routes UI tools and selects evidence IDs. Knowledge answers are
+rendered locally from registered evidence; model-written knowledge prose and the
+legacy DeepSeek answer field are never returned to the user.
 
 ## Run
 
@@ -30,8 +31,11 @@ Relevant environment variables:
 | `MODEL_NAME` | `Qwen/Qwen3-VL-2B-Instruct` |
 | `API_KEY` | `EMPTY` |
 | `AGENT_TOOL_TIMEOUT` | `5.0` |
+| `AGENT_KNOWLEDGE_CONTEXT_TOOL_TIMEOUT` | `5.0` |
 | `AGENT_MAX_TOOL_CALLS` | `6` |
 | `AGENT_MAX_MESSAGE_CHARS` | `8000` |
+| `KNOWLEDGE_CORPUS_PATH` | empty server-owned JSON corpus |
+| `KNOWLEDGE_MODEL_TIMEOUT` | `2.0` |
 
 ## Protocol
 
@@ -110,6 +114,34 @@ tool registration tests do not require a live vLLM or Godot instance.
 The Gateway rejects a Qwen final answer when an authorized tool was never called;
 this prevents a state-changing voice command from being reported as complete after
 the model merely repeats it.
+
+## Evidence-gated knowledge answers
+
+`POST /v1/knowledge/answer` accepts a question, optional server-registered
+`corpus_entry_ids`, and optional `runtime_entries`. Static source, trust, and
+priority fields are server-owned; runtime entries may contain only `id`, `title`,
+`content`, and optional `tags`. When `corpus_entry_ids` is omitted, the service
+searches the configured corpus.
+
+```json
+{
+  "question": "固定轴心机构的目标力矩是多少？",
+  "runtime_entries": [
+    {
+      "id": "step-17",
+      "title": "当前步骤17",
+      "content": "使用2.5N·m力矩按对角线原则锁紧6颗M6螺钉。"
+    }
+  ]
+}
+```
+
+The harness filters prompt injection, checks requested entities and values,
+rejects conflicting parameters, and abstains when evidence is insufficient.
+For multiple candidates Qwen may select evidence IDs under a strict JSON schema;
+the server copies the registered text itself, preserves safety directives, and
+falls back to deterministic evidence if the model times out or omits required
+safety evidence. See [KNOWLEDGE_HARNESS.md](KNOWLEDGE_HARNESS.md).
 
 To perform a live vLLM plus gateway smoke test and clean up both temporary
 processes automatically:

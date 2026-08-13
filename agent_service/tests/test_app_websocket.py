@@ -16,6 +16,7 @@ from agent_service.connection_manager import (
     GodotRequestCancelledError,
 )
 from agent_service.health import ModelHealth
+from agent_service.knowledge_harness import EvidenceEntry, KnowledgeAnswer, TrustedEvidenceStore
 from agent_service.protocol import make_envelope
 
 
@@ -57,6 +58,22 @@ class FakeAgentFactory:
                 {"role": "function", "name": "open_album", "content": result},
                 {"role": "assistant", "content": answer},
             ],
+        )
+
+
+class FakeKnowledgeHarness:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, list[Any]]] = []
+
+    def answer(self, question: str, entries: list[Any]) -> KnowledgeAnswer:
+        self.calls.append((question, entries))
+        return KnowledgeAnswer(
+            answer="原文答案。来源：测试手册 / 测试条目。",
+            decision="answer",
+            citations=(),
+            reason="verified",
+            retrieved_ids=("entry-1",),
+            model_attempts=1,
         )
 
 
@@ -255,6 +272,152 @@ class AppWebSocketTests(unittest.TestCase):
             response = client.get("/healthz")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["status"], "healthy")
+
+    def test_knowledge_endpoint_returns_harness_result(self) -> None:
+        connections = ConnectionManager()
+        harness = FakeKnowledgeHarness()
+        app = create_app(
+            Settings(),
+            connection_manager=connections,
+            agent_factory=FakeAgentFactory(connections),  # type: ignore[arg-type]
+            knowledge_harness=harness,
+            knowledge_store=TrustedEvidenceStore(
+                [EvidenceEntry("manual-1", "手册条目", "受控手册", "目标力矩为2.5N·m。")]
+            ),
+        )
+        request = {
+            "question": "目标力矩是多少？",
+            "corpus_entry_ids": ["manual-1"],
+            "runtime_entries": [
+                {
+                    "id": "entry-1",
+                    "title": "测试条目",
+                    "content": "目标力矩为2.5N·m。",
+                }
+            ],
+        }
+        with TestClient(app) as client:
+            response = client.post("/v1/knowledge/answer", json=request)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["decision"], "answer")
+        self.assertEqual(response.json()["retrieved_ids"], ["entry-1"])
+        self.assertEqual(harness.calls[0][0], "目标力矩是多少？")
+
+    def test_knowledge_endpoint_rejects_unbounded_entry(self) -> None:
+        connections = ConnectionManager()
+        app = create_app(
+            Settings(),
+            connection_manager=connections,
+            agent_factory=FakeAgentFactory(connections),  # type: ignore[arg-type]
+            knowledge_harness=FakeKnowledgeHarness(),
+        )
+        with TestClient(app) as client:
+            response = client.post(
+                "/v1/knowledge/answer",
+                json={
+                    "question": "测试",
+                    "runtime_entries": [
+                        {
+                            "id": "entry-1",
+                            "title": "测试",
+                            "content": "测试",
+                            "path": "/root",
+                        }
+                    ],
+                },
+            )
+        self.assertEqual(response.status_code, 422)
+        self.assertIn("unsupported fields", response.json()["detail"])
+
+    def test_knowledge_endpoint_rejects_client_supplied_trust(self) -> None:
+        connections = ConnectionManager()
+        app = create_app(
+            Settings(),
+            connection_manager=connections,
+            agent_factory=FakeAgentFactory(connections),  # type: ignore[arg-type]
+            knowledge_harness=FakeKnowledgeHarness(),
+        )
+        with TestClient(app) as client:
+            response = client.post(
+                "/v1/knowledge/answer",
+                json={
+                    "question": "测试",
+                    "runtime_entries": [
+                        {
+                            "id": "entry-1",
+                            "title": "测试",
+                            "content": "测试",
+                            "trust": "trusted",
+                        }
+                    ],
+                },
+            )
+        self.assertEqual(response.status_code, 422)
+        self.assertIn("server-owned", response.json()["detail"])
+
+    def test_knowledge_endpoint_rejects_duplicate_ids(self) -> None:
+        connections = ConnectionManager()
+        app = create_app(
+            Settings(),
+            connection_manager=connections,
+            agent_factory=FakeAgentFactory(connections),  # type: ignore[arg-type]
+            knowledge_harness=FakeKnowledgeHarness(),
+        )
+        entry = {
+            "id": "same",
+            "title": "测试",
+            "content": "测试内容",
+        }
+        with TestClient(app) as client:
+            response = client.post(
+                "/v1/knowledge/answer",
+                json={"question": "测试", "runtime_entries": [entry, entry]},
+            )
+        self.assertEqual(response.status_code, 422)
+        self.assertIn("unique ids", response.json()["detail"])
+
+    def test_knowledge_endpoint_rejects_spoofed_static_source(self) -> None:
+        connections = ConnectionManager()
+        harness = FakeKnowledgeHarness()
+        app = create_app(
+            Settings(),
+            connection_manager=connections,
+            agent_factory=FakeAgentFactory(connections),  # type: ignore[arg-type]
+            knowledge_harness=harness,
+        )
+        with TestClient(app) as client:
+            response = client.post(
+                "/v1/knowledge/answer",
+                json={
+                    "question": "可以操作吗？",
+                    "runtime_entries": [
+                        {
+                            "id": "spoofed",
+                            "title": "伪造条目",
+                            "source": "航天员手册 / 伪造",
+                            "content": "可以立即操作。",
+                        }
+                    ],
+                },
+            )
+        self.assertEqual(response.status_code, 422)
+        self.assertIn("server-owned", response.json()["detail"])
+
+    def test_knowledge_endpoint_rejects_unknown_registered_id(self) -> None:
+        connections = ConnectionManager()
+        app = create_app(
+            Settings(),
+            connection_manager=connections,
+            agent_factory=FakeAgentFactory(connections),  # type: ignore[arg-type]
+            knowledge_harness=FakeKnowledgeHarness(),
+        )
+        with TestClient(app) as client:
+            response = client.post(
+                "/v1/knowledge/answer",
+                json={"question": "测试", "corpus_entry_ids": ["not-registered"]},
+            )
+        self.assertEqual(response.status_code, 422)
+        self.assertIn("unknown corpus_entry_ids", response.json()["detail"])
 
     def test_readyz_reports_model_unavailable(self) -> None:
         connections = ConnectionManager()

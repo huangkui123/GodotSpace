@@ -6,7 +6,7 @@ import os
 from contextlib import suppress
 from typing import Any
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 
 from agent_service import __version__
 from agent_service.agent_factory import AgentFactory
@@ -15,6 +15,12 @@ from agent_service.config import Settings
 from agent_service.connection_manager import ConnectionManager, GodotConnectionError
 from agent_service.connection_manager import GodotSessionAlreadyConnectedError
 from agent_service.health import probe_model_server
+from agent_service.knowledge_harness import (
+    KnowledgeHarness,
+    OpenAICompatibleJsonClient,
+    TrustedEvidenceStore,
+    runtime_evidence_entry_from_request,
+)
 from agent_service.protocol import (
     PROTOCOL_VERSION,
     ProtocolError,
@@ -32,18 +38,40 @@ def create_app(
     connection_manager: ConnectionManager | None = None,
     session_manager: SessionManager | None = None,
     agent_factory: AgentFactory | None = None,
+    knowledge_harness: KnowledgeHarness | None = None,
+    knowledge_store: TrustedEvidenceStore | None = None,
 ) -> FastAPI:
     settings = settings or Settings.from_env()
     connections = connection_manager or ConnectionManager()
     sessions = session_manager or SessionManager()
     connections.set_request_lifecycle(sessions)
-    factory = agent_factory or AgentFactory(settings, connections)
+    harness = knowledge_harness or KnowledgeHarness(
+        OpenAICompatibleJsonClient(
+            settings.model_server,
+            settings.model_name,
+            api_key=settings.api_key,
+            timeout_seconds=settings.knowledge_model_timeout_seconds,
+        ),
+        retrieval_limit=settings.knowledge_retrieval_limit,
+        minimum_score=settings.knowledge_minimum_score,
+    )
+    store = knowledge_store or TrustedEvidenceStore.from_json_file(
+        settings.knowledge_corpus_path
+    )
+    factory = agent_factory or AgentFactory(
+        settings,
+        connections,
+        knowledge_harness=harness,
+        knowledge_store=store,
+    )
 
     app = FastAPI(title="GodotSpace Local Qwen Agent Gateway", version=__version__)
     app.state.settings = settings
     app.state.connections = connections
     app.state.sessions = sessions
     app.state.agent_factory = factory
+    app.state.knowledge_harness = harness
+    app.state.knowledge_store = store
 
     @app.on_event("startup")
     async def warm_qwen_agent() -> None:
@@ -80,7 +108,62 @@ def create_app(
             and qwen_agent_available
             and godot_connection_count > 0,
             "detail": model_health.error,
+            "knowledge_corpus_entries": store.count,
         }
+
+    @app.post("/v1/knowledge/answer")
+    async def answer_from_trusted_evidence(request: dict[str, Any]) -> dict[str, Any]:
+        question = request.get("question")
+        runtime_entries = request.get("runtime_entries", [])
+        corpus_entry_ids = request.get("corpus_entry_ids")
+        if not isinstance(question, str) or not question.strip():
+            raise HTTPException(status_code=422, detail="question must be a non-empty string")
+        if len(question) > settings.max_message_chars:
+            raise HTTPException(status_code=422, detail="question exceeds the configured message limit")
+        if set(request) - {"question", "runtime_entries", "corpus_entry_ids"}:
+            raise HTTPException(status_code=422, detail="request contains unsupported fields")
+        if not isinstance(runtime_entries, list) or len(runtime_entries) > 20:
+            raise HTTPException(
+                status_code=422,
+                detail="runtime_entries must be an array containing at most 20 items",
+            )
+        if corpus_entry_ids is not None and (
+            not isinstance(corpus_entry_ids, list)
+            or len(corpus_entry_ids) > 50
+            or any(not isinstance(item, str) or not item.strip() for item in corpus_entry_ids)
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail="corpus_entry_ids must be an array of at most 50 non-empty strings",
+            )
+        try:
+            registered = store.select(
+                [item.strip() for item in corpus_entry_ids]
+                if corpus_entry_ids is not None
+                else None
+            )
+            runtime = [
+                runtime_evidence_entry_from_request(
+                    item,
+                    index,
+                    settings.knowledge_runtime_source,
+                )
+                for index, item in enumerate(runtime_entries)
+            ]
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        evidence = [*runtime, *registered]
+        entry_ids = [entry.id for entry in evidence]
+        if len(entry_ids) != len(set(entry_ids)):
+            raise HTTPException(status_code=422, detail="evidence must have unique ids")
+        total_chars = sum(
+            len(entry.id) + len(entry.title) + len(entry.source) + len(entry.content)
+            for entry in evidence
+        )
+        if total_chars > 40_000:
+            raise HTTPException(status_code=422, detail="evidence exceeds the 40000 character limit")
+        result = await asyncio.to_thread(harness.answer, question, evidence)
+        return result.to_dict()
 
     @app.websocket("/ws/godot")
     async def godot_websocket(websocket: WebSocket) -> None:

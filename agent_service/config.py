@@ -4,6 +4,9 @@ import os
 from dataclasses import dataclass
 
 
+DEFAULT_KNOWLEDGE_RUNTIME_SOURCE = "当前专家任务步骤 / 本地客户端"
+
+
 def _env_int(name: str, default: int, *, minimum: int = 1) -> int:
     raw = os.getenv(name, str(default)).strip()
     try:
@@ -54,10 +57,15 @@ class Settings:
     model_fncall_prompt_type: str = "nous"
     model_enable_thinking: bool | None = None
     tool_timeout_seconds: float = 5.0
-    deepseek_tool_timeout_seconds: float = 120.0
+    knowledge_context_tool_timeout_seconds: float = 5.0
     vllm_health_timeout_seconds: float = 2.0
     max_tool_calls_per_run: int = 6
     max_message_chars: int = 8_000
+    knowledge_retrieval_limit: int = 5
+    knowledge_minimum_score: float = 2.0
+    knowledge_model_timeout_seconds: float = 2.0
+    knowledge_corpus_path: str = ""
+    knowledge_runtime_source: str = DEFAULT_KNOWLEDGE_RUNTIME_SOURCE
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -74,14 +82,29 @@ class Settings:
             ),
             model_enable_thinking=_env_optional_bool("MODEL_ENABLE_THINKING"),
             tool_timeout_seconds=_env_float("AGENT_TOOL_TIMEOUT", 5.0, minimum=0.1),
-            deepseek_tool_timeout_seconds=_env_float(
-                "AGENT_DEEPSEEK_TOOL_TIMEOUT",
-                120.0,
+            knowledge_context_tool_timeout_seconds=_env_float(
+                "AGENT_KNOWLEDGE_CONTEXT_TOOL_TIMEOUT",
+                5.0,
                 minimum=0.1,
             ),
             vllm_health_timeout_seconds=_env_float("VLLM_HEALTH_TIMEOUT", 2.0, minimum=0.1),
             max_tool_calls_per_run=_env_int("AGENT_MAX_TOOL_CALLS", 6),
             max_message_chars=_env_int("AGENT_MAX_MESSAGE_CHARS", 8_000),
+            knowledge_retrieval_limit=_env_int("KNOWLEDGE_RETRIEVAL_LIMIT", 5),
+            knowledge_minimum_score=_env_float("KNOWLEDGE_MINIMUM_SCORE", 2.0),
+            knowledge_model_timeout_seconds=_env_float(
+                "KNOWLEDGE_MODEL_TIMEOUT",
+                2.0,
+                minimum=0.1,
+            ),
+            knowledge_corpus_path=os.getenv("KNOWLEDGE_CORPUS_PATH", "").strip(),
+            knowledge_runtime_source=(
+                os.getenv(
+                    "KNOWLEDGE_RUNTIME_SOURCE",
+                    DEFAULT_KNOWLEDGE_RUNTIME_SOURCE,
+                ).strip()
+                or DEFAULT_KNOWLEDGE_RUNTIME_SOURCE
+            ),
         )
 
     @property
