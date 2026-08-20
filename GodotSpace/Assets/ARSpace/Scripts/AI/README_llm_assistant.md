@@ -11,6 +11,11 @@
 
 `LLMAssistantService` 是全局 autoload，启动后会连接现有 `VoiceChat.voice_transcript_received(data)` 信号，不单独录音或调用 ASR。最终转写数据中 `is_final=true` 且文本包含唤醒词时，会触发问答；不需要打开智能助手页面。助手会保留最近几轮语音问题和助手回答，用于理解连续追问；保留轮数由 `llm_assistant/max_conversation_turns` 控制。
 
+`VoiceChat` 默认使用本机 `ws://127.0.0.1:8765/ws/asr` 上的 FunASR
+Paraformer 流式服务。可以用 `LOCAL_ASR_ENDPOINT` 覆盖地址；需要临时回退腾讯时，
+设置 `GODOT_ASR_PROVIDER=tencent` 并提供原有三个腾讯凭证环境变量。Client 仍只向
+Godot Server 上传 16 kHz PCM，ASR 后端切换不会改变转写 UI、多人隔离或助手协议。
+
 语音通话面板会显示助手的临时状态，例如“正在分析问题”，最终回复会作为 `智能助手` 的转写行写入同一个转写框和转写历史。
 
 ## 入口
@@ -37,7 +42,8 @@
 - `llm_assistant/knowledge_base_path`
 - `llm_assistant/knowledge_directories`
 
-默认在线 LLM 使用 DeepSeek OpenAI-compatible Chat Completions：
+`LLMAssistantService` 的独立在线聊天能力默认使用 DeepSeek
+OpenAI-compatible Chat Completions：
 
 - endpoint: `https://api.deepseek.com/chat/completions`
 - model: `deepseek-v4-pro`
@@ -48,9 +54,14 @@
 
 在线 LLM 调用日志会写入 `user://llm_assistant_logs/deepseek_calls.jsonl`。日志为 JSONL 格式，每次调用包含一条 `request` 和一条 `response` 记录；不会记录 API key。
 
-委派给 DeepSeek 的当前任务步骤会优先于普通检索结果写入提示词。知识与对话上下文受
-`max_prompt_context_chars` 统一限制，输出长度由 `max_tokens` 限制，避免长时间使用后超过模型上下文窗口。
-DeepSeek HTTP 请求默认允许 90 秒；Gateway 的 `delegate_deepseek` 应设置为更长的 120 秒，避免传输层先行截断。
+这套在线聊天配置不属于 Local Agent 的任务知识链路。任务知识请求由
+`AssistantCommandRouter.query_task_knowledge` 将当前目标 Client 的步骤快照作为
+`entries` 返回给 Gateway，再由 Knowledge Harness 校验并生成最终回答；该路径不会
+读取 DeepSeek endpoint、model 或 API key，也不会调用 `LLMAssistantService` 生成答案。
+
+独立在线聊天的知识与对话上下文受 `max_prompt_context_chars` 统一限制，输出长度由
+`max_tokens` 限制，避免长时间使用后超过模型上下文窗口。DeepSeek HTTP 请求默认允许
+90 秒。
 如确实需要复杂推理，可将 `llm_assistant/thinking_enabled` 设为 `true`；普通指导书
 解释保持关闭，避免 V4 默认思考模式长时间占用输出预算并触发超时。
 
@@ -79,4 +90,6 @@ $env:LLM_ASSISTANT_RUN_ONLINE_TEST = '1'
 & $godot --headless --path $PROJECT --script 'res://Assets/ARSpace/Scripts/AI/llm_assistant_online_self_test.gd'
 ```
 
-现场联调时，详细状态可通过 `/root/LLMAssistantService.get_debug_state()` 查看；其中 `voice_debug.transcription_last_error` 会带出最近一次腾讯 ASR 错误。
+现场联调时，详细状态可通过 `/root/LLMAssistantService.get_debug_state()` 查看；其中
+`voice_debug.transcription_last_error` 会带出最近一次本地 FunASR 或腾讯 ASR 错误，
+`VoiceChat.get_debug_state().asr_provider` 会显示当前后端。

@@ -23,7 +23,8 @@ func _run_server() -> void:
 	var network := root.get_node_or_null("NetworkHandler")
 	var agent := root.get_node_or_null("LocalAgentClient")
 	var voice_chat := root.get_node_or_null("VoiceChat")
-	if network == null or agent == null or voice_chat == null:
+	var router := root.get_node_or_null("AssistantCommandRouter")
+	if network == null or agent == null or voice_chat == null or router == null:
 		_fail("Server autoloads are missing.")
 		return
 	if not network.start_server():
@@ -54,12 +55,19 @@ func _run_server() -> void:
 		_fail("Remote E2E Client did not connect.")
 		return
 	var target_peer_id := int(root.multiplayer.get_peers()[0])
+	var wake_deadline := Time.get_ticks_msec() + 5000
+	while not (router.get("_wake_sessions") as Dictionary).has(target_peer_id) and Time.get_ticks_msec() < wake_deadline:
+		await process_frame
+	if not (router.get("_wake_sessions") as Dictionary).has(target_peer_id):
+		_fail("Remote Client manual wake request did not reach the Server router.")
+		return
 
 	voice_chat.voice_transcript_received.emit({
 		"speaker_peer_id": target_peer_id,
 		"speaker_name": "远端航天员",
-		"text": "助手，打开相册",
+		"text": "打开相册",
 		"is_final": true,
+		"utterance_id": 1,
 		"source": "asr",
 	})
 	if not await _wait_for_answers(1):
@@ -102,8 +110,18 @@ func _run_server() -> void:
 
 func _run_client() -> void:
 	var network := root.get_node_or_null("NetworkHandler")
-	if network == null or not network.start_client("127.0.0.1"):
+	var voice_chat := root.get_node_or_null("VoiceChat")
+	if network == null or voice_chat == null or not network.start_client("127.0.0.1"):
 		_fail("Unable to start the remote E2E Client.")
+		return
+	var connection_deadline := Time.get_ticks_msec() + 5000
+	while (
+		root.multiplayer.multiplayer_peer.get_connection_status() != MultiplayerPeer.CONNECTION_CONNECTED
+		and Time.get_ticks_msec() < connection_deadline
+	):
+		await process_frame
+	if not bool(voice_chat.call("request_assistant_wake")):
+		_fail("Remote Client could not send the manual assistant wake request.")
 		return
 	var detail_scene: PackedScene = load("res://Assets/ARSpace/Prefabs/UI/WorkListInfoCanvas.tscn")
 	var list_scene: PackedScene = load("res://Assets/ARSpace/Prefabs/UI/WorkListCanvas/WorkListView.tscn")
@@ -117,7 +135,8 @@ func _run_client() -> void:
 	await process_frame
 	var detail_view := detail_root.get_node_or_null("Canvas")
 	var album_view := album_root.get_node_or_null("Canvas")
-	var deadline := Time.get_ticks_msec() + 15_000
+	# Four routed commands each observe the production 5-second silence window.
+	var deadline := Time.get_ticks_msec() + 35_000
 	while (int(detail_view.page_index) != 2 or not album_view.visible) and Time.get_ticks_msec() < deadline:
 		await process_frame
 	if int(detail_view.page_index) != 2:

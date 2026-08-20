@@ -4,6 +4,7 @@ signal voice_enabled_changed(enabled: bool)
 signal remote_speaking_changed(peer_id: int, is_speaking: bool)
 signal voice_level_changed(peer_id: int, state: Dictionary)
 signal voice_transcript_received(data: Dictionary)
+signal assistant_wake_requested(speaker_peer_id: int)
 signal assistant_interaction_state_changed(data: Dictionary)
 signal transcription_enabled_changed(enabled: bool)
 signal dictation_state_changed(session_id: String, state: String, detail: String)
@@ -13,6 +14,7 @@ signal dictation_failed(session_id: String, code: int, message: String)
 
 const SERVER_PEER_ID := 1
 const SERVER_SOURCE_ID := 1
+const ASSISTANT_WAKE_WORD := "助手"
 const XR_CLIENT_ARG := "--xr-client"
 const GROUND_VR_ARG := "--ground-vr"
 const XR_MODE_ARG := "--xr-mode"
@@ -28,9 +30,11 @@ const VOICE_LEVEL_MIN_DB := -60.0
 const VOICE_LEVEL_MAX_DB := 0.0
 const TRANSCRIPTION_TARGET_SAMPLE_RATE := 16000
 const TRANSCRIPTION_BYTES_PER_SAMPLE := 2
-const TRANSCRIPTION_UPLOAD_CHUNK_MSEC := 200
+const TRANSCRIPTION_UPLOAD_CHUNK_MSEC := 100
 const DICTATION_MAX_DURATION_MSEC := 15000
 const DICTATION_FINALIZE_TIMEOUT_MSEC := 3000
+const ASR_PROVIDER_FUNASR := "funasr"
+const ASR_PROVIDER_TENCENT := "tencent"
 const TENCENT_ASR_ENV_VARS := [
 	"TENCENT_ASR_APP_ID",
 	"TENCENT_ASR_SECRET_ID",
@@ -40,22 +44,25 @@ const VoiceCaptureScript := preload("res://Assets/ARSpace/Scripts/Network/voice_
 const VoiceTransportScript := preload("res://Assets/ARSpace/Scripts/Network/voice_transport_enet.gd")
 const VoicePlaybackScript := preload("res://Assets/ARSpace/Scripts/Network/voice_playback.gd")
 const TencentAsrTranscriberScript := preload("res://Assets/ARSpace/Scripts/Network/tencent_asr_transcriber.gd")
+const LocalFunAsrTranscriberScript := preload("res://Assets/ARSpace/Scripts/Network/local_funasr_transcriber.gd")
 const RuntimeProfileScript := preload("res://Assets/ARSpace/Scripts/runtime_profile.gd")
-const TENCENT_ASR_CONFIG_PROPERTIES := [
-	"engine_model_type",
+const COMMON_ASR_CONFIG_PROPERTIES := [
 	"hotword_list",
 	"need_vad",
 	"vad_silence_time",
 	"max_speak_time",
+	"packet_duration_msec",
+	"max_buffered_audio_msec",
+	"connect_timeout_msec",
+	"debug_logs",
+]
+const TENCENT_ASR_CONFIG_PROPERTIES := [
+	"engine_model_type",
 	"filter_dirty",
 	"filter_modal",
 	"filter_punc",
 	"convert_num_mode",
 	"word_info",
-	"packet_duration_msec",
-	"max_buffered_audio_msec",
-	"connect_timeout_msec",
-	"debug_logs",
 ]
 const VR_INPUT_DEVICE_HINTS := [
 	"PicoStreamingMicrophone",
@@ -99,6 +106,12 @@ var transcription_config: Node
 
 var selected_input_device: String = "Default"
 var selected_output_device: String = "Default"
+@export_enum("funasr", "tencent") var asr_provider: String = ASR_PROVIDER_FUNASR
+@export var local_asr_endpoint: String = "ws://127.0.0.1:8765/ws/asr"
+@export_range(0.001, 0.5, 0.001) var local_asr_speech_threshold: float = 0.012
+@export var local_asr_hotwords: String = "智能助手 30"
+@export_range(400, 2000, 100) var local_asr_vad_silence_time: int = 600
+@export_range(40, 200, 20) var local_asr_packet_duration_msec: int = 100
 @export var voice_debug_enabled: bool = false
 @export var voice_debug_controls_enabled: bool = false
 @export var voice_debug_shortcuts_enabled: bool = false
@@ -124,6 +137,7 @@ var voice_level_states: Dictionary = {}
 var _voice_level_send_accum: float = 0.0
 var voice_transcript_history: Array = []
 var _transcript_utterance_ids: Dictionary = {}
+var _assistant_command_capture_peers: Dictionary = {}
 var transcription_enabled: bool = true
 var _peer_transcribers: Dictionary = {}
 var _client_transcription_source_sample_rate: int = 48000
@@ -246,22 +260,36 @@ func get_dictation_readiness() -> Dictionary:
 			"message": "麦克风采集尚未就绪。",
 			"state": _dictation_state,
 		}
-	var missing: Array[String] = []
-	for environment_name in TENCENT_ASR_ENV_VARS:
-		if OS.get_environment(environment_name).strip_edges().is_empty():
-			missing.append(environment_name)
-	if not missing.is_empty():
-		return {
-			"available": false,
-			"reason": "credentials_missing",
-			"message": "腾讯 ASR 环境变量未配置完整。",
-			"missing_environment_variables": missing,
-			"state": _dictation_state,
-		}
+	var provider := get_asr_provider()
+	if provider == ASR_PROVIDER_TENCENT:
+		var missing: Array[String] = []
+		for environment_name in TENCENT_ASR_ENV_VARS:
+			if OS.get_environment(environment_name).strip_edges().is_empty():
+				missing.append(environment_name)
+		if not missing.is_empty():
+			return {
+				"available": false,
+				"reason": "credentials_missing",
+				"message": "腾讯 ASR 环境变量未配置完整。",
+				"missing_environment_variables": missing,
+				"provider": provider,
+				"state": _dictation_state,
+			}
+	else:
+		var endpoint := _get_local_asr_endpoint()
+		if endpoint.is_empty() or not endpoint.begins_with("ws://"):
+			return {
+				"available": false,
+				"reason": "endpoint_invalid",
+				"message": "本地 FunASR 地址未配置或格式无效。",
+				"provider": provider,
+				"state": _dictation_state,
+			}
 	return {
 		"available": true,
 		"reason": "ready",
 		"message": "听写已就绪。",
+		"provider": provider,
 		"state": _dictation_state,
 	}
 
@@ -283,13 +311,12 @@ func begin_local_dictation(session_id: String, purpose: String = "annotation") -
 	_dictation_last_text = ""
 	_dictation_final_emitted = false
 	_dictation_failure_reported = false
-	_stop_peer_transcription(_get_local_voice_peer_id())
+	_finish_peer_transcription(_get_local_voice_peer_id())
 	if capture != null:
 		capture.set_voice_active(false)
 	_publish_local_speaking_state(false)
 
-	_dictation_transcriber = TencentAsrTranscriberScript.new()
-	_dictation_transcriber.name = "TencentAsrDictation"
+	_dictation_transcriber = _create_asr_transcriber("AsrDictation")
 	_configure_peer_transcriber(_dictation_transcriber)
 	_dictation_transcriber.set("need_vad", false)
 	_dictation_transcriber.set("max_speak_time", DICTATION_MAX_DURATION_MSEC)
@@ -307,7 +334,7 @@ func begin_local_dictation(session_id: String, purpose: String = "annotation") -
 	_dictation_state_changed_for(clean_session_id, "connecting", purpose.strip_edges())
 	if not bool(_dictation_transcriber.call("start_transcription")):
 		if _dictation_session_id == clean_session_id:
-			_fail_dictation(ERR_CANT_CONNECT, "无法启动腾讯 ASR 听写。")
+			_fail_dictation(ERR_CANT_CONNECT, "无法启动语音识别听写。")
 		return false
 	return true
 
@@ -480,6 +507,7 @@ func get_debug_state() -> Dictionary:
 		"packets_sent": packets_sent,
 		"packets_received": packets_received,
 		"transcription_enabled": transcription_enabled,
+		"asr_provider": get_asr_provider(),
 		"transcription": _get_transcription_debug_state(),
 		"dictation": {
 			"state": _dictation_state,
@@ -568,6 +596,7 @@ func _setup_components() -> void:
 	transport.voice_level_received.connect(_on_voice_level_received)
 	transport.transcription_pcm_received.connect(_on_transcription_pcm_received)
 	transport.transcript_received.connect(_on_transport_transcript_received)
+	transport.assistant_wake_requested.connect(_on_transport_assistant_wake_requested)
 	transport.assistant_interaction_state_received.connect(_on_assistant_interaction_state_received)
 	transport.transcription_enabled_received.connect(_on_transport_transcription_enabled_received)
 
@@ -677,8 +706,26 @@ func _on_transport_transcript_received(data: Dictionary) -> void:
 	voice_transcript_received.emit(data.duplicate(true))
 
 
+func _on_transport_assistant_wake_requested(speaker_peer_id: int) -> void:
+	if not multiplayer.is_server() or speaker_peer_id <= 0:
+		return
+	assistant_wake_requested.emit(speaker_peer_id)
+
+
 func _on_assistant_interaction_state_received(data: Dictionary) -> void:
+	var target_peer_id := int(data.get("target_peer_id", 0))
+	var state := str(data.get("state", "idle"))
+	_update_assistant_command_capture_state(target_peer_id, state)
 	assistant_interaction_state_changed.emit(data.duplicate(true))
+
+
+func _update_assistant_command_capture_state(target_peer_id: int, state: String) -> void:
+	if target_peer_id <= 0:
+		return
+	if state == "listening":
+		_assistant_command_capture_peers[target_peer_id] = true
+	else:
+		_assistant_command_capture_peers.erase(target_peer_id)
 
 
 func _on_transport_transcription_enabled_received(enabled: bool) -> void:
@@ -800,6 +847,27 @@ func _set_voice_level_mic_state(peer_id: int, mic_open: bool) -> void:
 func get_transcript_history() -> Array:
 	return voice_transcript_history.duplicate(true)
 
+
+func is_assistant_command_capture_active(peer_id: int) -> bool:
+	return _assistant_command_capture_peers.has(peer_id)
+
+
+func request_assistant_wake() -> bool:
+	if not transcription_enabled:
+		return false
+	if not voice_enabled and voice_endpoint_selected:
+		set_voice_enabled(true)
+	if multiplayer.has_multiplayer_peer() and not multiplayer.is_server():
+		if transport == null or not transport.has_method("send_assistant_wake_request"):
+			return false
+		return bool(transport.call("send_assistant_wake_request"))
+	var speaker_peer_id := _get_local_voice_peer_id()
+	if speaker_peer_id <= 0:
+		speaker_peer_id = SERVER_PEER_ID
+	assistant_wake_requested.emit(speaker_peer_id)
+	return true
+
+
 func publish_assistant_transcript(text: String, speaker_name: String = "智能助手") -> void:
 	var clean_text := text.strip_edges()
 	if clean_text.is_empty():
@@ -819,13 +887,22 @@ func publish_assistant_transcript(text: String, speaker_name: String = "智能�
 		_on_transport_transcript_received(data)
 
 
-func publish_assistant_interaction_state(target_peer_id: int, state: String, text: String = "") -> void:
+func publish_assistant_interaction_state(
+	target_peer_id: int,
+	state: String,
+	text: String = "",
+	details: Dictionary = {}
+) -> void:
 	var data := {
 		"target_peer_id": target_peer_id,
 		"state": state.strip_edges(),
 		"text": text.strip_edges(),
 		"timestamp_msec": Time.get_ticks_msec(),
 	}
+	for key in details:
+		if not data.has(key):
+			data[key] = details[key]
+	_update_assistant_command_capture_state(target_peer_id, str(data.get("state", "idle")))
 	if multiplayer.has_multiplayer_peer() and multiplayer.is_server():
 		if transport != null and transport.has_method("send_assistant_interaction_state"):
 			transport.send_assistant_interaction_state(target_peer_id, data)
@@ -846,7 +923,29 @@ func _set_peer_transcription_active(peer_id: int, active: bool) -> void:
 		if transcriber != null and transcriber.has_method("set_input_active"):
 			transcriber.set_input_active(true)
 	else:
-		_stop_peer_transcription(peer_id)
+		_finish_peer_transcription(peer_id)
+
+
+func get_asr_provider() -> String:
+	var environment_provider := OS.get_environment("GODOT_ASR_PROVIDER").strip_edges().to_lower()
+	var selected := environment_provider if not environment_provider.is_empty() else asr_provider.strip_edges().to_lower()
+	return ASR_PROVIDER_TENCENT if selected == ASR_PROVIDER_TENCENT else ASR_PROVIDER_FUNASR
+
+
+func _get_local_asr_endpoint() -> String:
+	var environment_endpoint := OS.get_environment("LOCAL_ASR_ENDPOINT").strip_edges()
+	return environment_endpoint if not environment_endpoint.is_empty() else local_asr_endpoint.strip_edges()
+
+
+func _create_asr_transcriber(node_name: String) -> Node:
+	var transcriber: Node
+	if get_asr_provider() == ASR_PROVIDER_TENCENT:
+		transcriber = TencentAsrTranscriberScript.new()
+	else:
+		transcriber = LocalFunAsrTranscriberScript.new()
+	transcriber.name = node_name
+	return transcriber
+
 
 func _get_peer_transcriber(peer_id: int) -> Node:
 	if _peer_transcribers.has(peer_id):
@@ -855,13 +954,15 @@ func _get_peer_transcriber(peer_id: int) -> Node:
 			return existing
 		_peer_transcribers.erase(peer_id)
 
-	var transcriber := TencentAsrTranscriberScript.new()
-	transcriber.name = "TencentAsrPeer_%d" % peer_id
+	var transcriber := _create_asr_transcriber("AsrPeer_%d" % peer_id)
+	var utterance_id := int(_transcript_utterance_ids.get(peer_id, 1))
+	_transcript_utterance_ids[peer_id] = utterance_id + 1
+	transcriber.set_meta("transcript_utterance_id", utterance_id)
 	_configure_peer_transcriber(transcriber)
 	add_child(transcriber)
-	transcriber.transcribed_msg.connect(Callable(self, "_on_peer_transcribed_msg").bind(peer_id))
-	transcriber.connection_state_changed.connect(Callable(self, "_on_peer_transcription_state_changed").bind(peer_id))
-	transcriber.error_occurred.connect(Callable(self, "_on_peer_transcription_error").bind(peer_id))
+	transcriber.transcribed_msg.connect(Callable(self, "_on_peer_transcribed_msg").bind(peer_id, transcriber))
+	transcriber.connection_state_changed.connect(Callable(self, "_on_peer_transcription_state_changed").bind(peer_id, transcriber))
+	transcriber.error_occurred.connect(Callable(self, "_on_peer_transcription_error").bind(peer_id, transcriber))
 	_peer_transcribers[peer_id] = transcriber
 	return transcriber
 
@@ -871,8 +972,18 @@ func _configure_peer_transcriber(transcriber: Node) -> void:
 	if transcription_config == null:
 		return
 
-	for property_name in TENCENT_ASR_CONFIG_PROPERTIES:
+	for property_name in COMMON_ASR_CONFIG_PROPERTIES:
 		transcriber.set(property_name, transcription_config.get(property_name))
+	if get_asr_provider() == ASR_PROVIDER_TENCENT:
+		for property_name in TENCENT_ASR_CONFIG_PROPERTIES:
+			transcriber.set(property_name, transcription_config.get(property_name))
+	else:
+		transcriber.set("endpoint_url", _get_local_asr_endpoint())
+		transcriber.set("speech_threshold", local_asr_speech_threshold)
+		transcriber.set("vad_silence_time", local_asr_vad_silence_time)
+		transcriber.set("packet_duration_msec", local_asr_packet_duration_msec)
+		if not local_asr_hotwords.strip_edges().is_empty():
+			transcriber.set("hotword_list", local_asr_hotwords)
 
 
 func _on_dictation_transcribed_msg(is_final: bool, new_text: String, session_id: String, source: Node) -> void:
@@ -1000,7 +1111,7 @@ func _matches_active_dictation(session_id: String) -> bool:
 func _is_dictation_active() -> bool:
 	return not _dictation_session_id.is_empty()
 
-func _stop_peer_transcription(peer_id: int) -> void:
+func _finish_peer_transcription(peer_id: int) -> void:
 	if not _peer_transcribers.has(peer_id):
 		return
 
@@ -1008,13 +1119,32 @@ func _stop_peer_transcription(peer_id: int) -> void:
 	_peer_transcribers.erase(peer_id)
 	if transcriber == null or not is_instance_valid(transcriber):
 		return
-	if transcriber.has_method("stop_transcription"):
-		transcriber.stop_transcription()
+	if transcriber.has_method("finish_transcription"):
+		transcriber.call("finish_transcription")
+		return
+	_cancel_peer_transcriber(transcriber)
+
+
+func _stop_peer_transcription(peer_id: int) -> void:
+	if not _peer_transcribers.has(peer_id):
+		return
+	var transcriber := _peer_transcribers[peer_id] as Node
+	_peer_transcribers.erase(peer_id)
+	_cancel_peer_transcriber(transcriber)
+
+
+func _cancel_peer_transcriber(transcriber: Node) -> void:
+	if transcriber == null or not is_instance_valid(transcriber):
+		return
+	if transcriber.has_method("cancel_transcription"):
+		transcriber.call("cancel_transcription")
+	elif transcriber.has_method("stop_transcription"):
+		transcriber.call("stop_transcription")
 	transcriber.queue_free()
 
 func _stop_all_transcription() -> void:
 	for peer_id in _peer_transcribers.keys().duplicate():
-		_stop_peer_transcription(int(peer_id))
+		_finish_peer_transcription(int(peer_id))
 
 func _feed_transcription_frames(peer_id: int, frames: PackedVector2Array) -> void:
 	var transcriber := _get_peer_transcriber(peer_id)
@@ -1032,12 +1162,14 @@ func _feed_transcription_pcm(peer_id: int, pcm: PackedByteArray) -> void:
 		transcriber.set_input_active(true)
 	transcriber.push_pcm16_audio(pcm)
 
-func _on_peer_transcribed_msg(is_final: bool, new_text: String, peer_id: int) -> void:
+func _on_peer_transcribed_msg(is_final: bool, new_text: String, peer_id: int, source: Node = null) -> void:
 	var text := new_text.strip_edges()
 	if text.is_empty() or not multiplayer.is_server():
 		return
 
-	var utterance_id := int(_transcript_utterance_ids.get(peer_id, 1))
+	var utterance_id := int(source.get_meta("transcript_utterance_id", 0)) if source != null else 0
+	if utterance_id <= 0:
+		utterance_id = int(_transcript_utterance_ids.get(peer_id, 1))
 	var data := {
 		"speaker_peer_id": peer_id,
 		"speaker_name": _get_transcript_speaker_name(peer_id),
@@ -1047,19 +1179,29 @@ func _on_peer_transcribed_msg(is_final: bool, new_text: String, peer_id: int) ->
 		"timestamp_msec": Time.get_ticks_msec(),
 	}
 	_broadcast_transcript(data)
-	if is_final:
+	if is_final and source == null:
 		_transcript_utterance_ids[peer_id] = utterance_id + 1
 
-func _on_peer_transcription_state_changed(state: String, detail: String, peer_id: int) -> void:
+func _on_peer_transcription_state_changed(state: String, detail: String, peer_id: int, source: Node = null) -> void:
 	if state == "error" or state == "closed":
-		_log("Tencent ASR peer=%d state=%s detail=%s" % [peer_id, state, detail])
+		_log("ASR provider=%s peer=%d state=%s detail=%s" % [get_asr_provider(), peer_id, state, detail])
 	if state == "error" and not detail.strip_edges().is_empty():
 		_broadcast_transcription_system_message("%s转写错误：%s" % [_get_transcript_speaker_name(peer_id), detail])
+	if state in ["finished", "error", "closed"]:
+		_release_peer_transcriber(peer_id, source)
 
-func _on_peer_transcription_error(code: int, message: String, peer_id: int) -> void:
-	_log("Tencent ASR peer=%d error=%d message=%s" % [peer_id, code, message])
+func _on_peer_transcription_error(code: int, message: String, peer_id: int, _source: Node = null) -> void:
+	_log("ASR provider=%s peer=%d error=%d message=%s" % [get_asr_provider(), peer_id, code, message])
 	if message.strip_edges() != "":
 		_broadcast_transcription_system_message("%s转写错误：%s" % [_get_transcript_speaker_name(peer_id), message])
+
+
+func _release_peer_transcriber(peer_id: int, source: Node) -> void:
+	if source == null or not is_instance_valid(source):
+		return
+	if _peer_transcribers.get(peer_id) == source:
+		_peer_transcribers.erase(peer_id)
+	source.queue_free()
 
 func _broadcast_transcript(data: Dictionary) -> void:
 	if not multiplayer.is_server():
@@ -1088,10 +1230,19 @@ func _broadcast_transcription_enabled() -> void:
 		transport.broadcast_transcription_enabled(transcription_enabled)
 
 func _store_transcript_data(data: Dictionary) -> void:
-	if bool(data.get("is_final", false)):
+	if bool(data.get("is_final", false)) and not _is_assistant_command_transcript(data):
 		voice_transcript_history.append(data.duplicate(true))
 		while voice_transcript_history.size() > 80:
 			voice_transcript_history.pop_front()
+
+
+func _is_assistant_command_transcript(data: Dictionary) -> bool:
+	var speaker_peer_id := int(data.get("speaker_peer_id", 0))
+	if speaker_peer_id <= 0:
+		return false
+	if _assistant_command_capture_peers.has(speaker_peer_id):
+		return true
+	return str(data.get("text", "")).find(ASSISTANT_WAKE_WORD) >= 0
 
 func _get_transcript_speaker_name(peer_id: int) -> String:
 	return "服务端" if peer_id == SERVER_PEER_ID else "客户端%d" % peer_id

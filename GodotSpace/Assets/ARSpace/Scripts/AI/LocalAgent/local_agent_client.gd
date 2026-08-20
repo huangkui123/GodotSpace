@@ -109,9 +109,10 @@ func submit_user_message(
 	request_id: String,
 	text: String,
 	context: Dictionary,
-	allowed_tools: PackedStringArray
+	allowed_tools: PackedStringArray,
+	conversation_id: String
 ) -> bool:
-	if not _connected or request_id.strip_edges().is_empty() or text.strip_edges().is_empty():
+	if not _connected or request_id.strip_edges().is_empty() or text.strip_edges().is_empty() or conversation_id.strip_edges().is_empty():
 		return false
 	var tools: Array[String] = []
 	for tool_name in allowed_tools:
@@ -122,6 +123,7 @@ func submit_user_message(
 			"text": text.strip_edges(),
 			"context": context.duplicate(true),
 			"allowed_tools": tools,
+			"conversation_id": conversation_id.strip_edges(),
 		},
 		request_id
 	)

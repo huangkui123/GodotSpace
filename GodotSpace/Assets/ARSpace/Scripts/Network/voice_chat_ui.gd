@@ -9,6 +9,7 @@ const VOICE_LEVEL_MAX_DB := 0.0
 const GROUND_COLOR := "#65D8FF"
 const ASTRONAUT_COLOR := "#FFD166"
 const PARTIAL_CURSOR_COLOR := "#D7DEE8"
+const ASSISTANT_WAKE_WORD := "助手"
 
 @export var is_3d_panel: bool = false
 
@@ -16,8 +17,12 @@ const PARTIAL_CURSOR_COLOR := "#D7DEE8"
 @onready var status_label: Label = _get_voice_ui_node("Header/StatusLabel") as Label
 @onready var transcribe_button: Button = _get_voice_ui_node("TranscribeSection/TranscribeHeader/TranscribeButton") as Button
 @onready var transcript_label: RichTextLabel = _get_voice_ui_node("TranscribeSection/TranscriptBox/TranscriptLabel") as RichTextLabel
+@onready var assistant_wake_button: Button = _get_voice_ui_node("TranscribeSection/AssistantWakeButton") as Button
 @onready var assistant_interaction_panel: Control = _get_voice_ui_node("TranscribeSection/AssistantInteraction") as Control
-@onready var assistant_interaction_label: Label = _get_voice_ui_node("TranscribeSection/AssistantInteraction/Label") as Label
+@onready var assistant_interaction_label: Label = _get_voice_ui_node("TranscribeSection/AssistantInteraction/Content/StatusLabel") as Label
+@onready var assistant_command_box: Control = _get_voice_ui_node("TranscribeSection/AssistantInteraction/Content/CommandBox") as Control
+@onready var assistant_command_label: Label = _get_voice_ui_node("TranscribeSection/AssistantInteraction/Content/CommandBox/CommandText") as Label
+@onready var assistant_countdown_bar: ProgressBar = _get_voice_ui_node("TranscribeSection/AssistantInteraction/Content/CountdownBar") as ProgressBar
 @onready var server_voice_levels: VBoxContainer = _get_voice_ui_node("ServerVoiceLevels") as VBoxContainer
 @onready var rows_container: VBoxContainer = _get_voice_ui_node("ServerVoiceLevels/Rows") as VBoxContainer
 
@@ -30,6 +35,9 @@ var partial_transcripts: Dictionary = {}
 var assistant_pending_line := ""
 var assistant_interaction_state := "idle"
 var assistant_interaction_text := ""
+var assistant_command_text := ""
+var assistant_countdown_seconds := 0.0
+var assistant_countdown_started_msec := 0
 
 
 func _ready() -> void:
@@ -43,6 +51,7 @@ func _ready() -> void:
 	voice_button.pressed.connect(_on_voice_button_pressed)
 	transcribe_button.toggled.connect(_on_transcribe_button_toggled)
 	transcribe_button.toggle_mode = true
+	assistant_wake_button.pressed.connect(_on_assistant_wake_button_pressed)
 
 	if voice_chat != null and voice_chat.has_signal("voice_enabled_changed"):
 		voice_chat.connect("voice_enabled_changed", _on_voice_enabled_changed)
@@ -142,6 +151,14 @@ func _on_transcribe_button_toggled(enabled: bool) -> void:
 		voice_chat.call("set_transcription_enabled", enabled)
 
 
+func _on_assistant_wake_button_pressed() -> void:
+	if voice_chat == null or not voice_chat.has_method("request_assistant_wake"):
+		return
+	var requested := bool(voice_chat.call("request_assistant_wake"))
+	if not requested:
+		assistant_wake_button.tooltip_text = "请先连接语音服务并开启转写。"
+
+
 func _on_voice_enabled_changed(_enabled: bool) -> void:
 	_update_ui()
 
@@ -170,22 +187,35 @@ func _on_peer_changed(_peer_id: int) -> void:
 
 func _on_voice_transcript_received(data: Dictionary) -> void:
 	var peer_id := int(data.get("speaker_peer_id", 0))
+	var utterance_id := int(data.get("utterance_id", 0))
+	var transcript_key := _transcript_entry_key(peer_id, utterance_id)
 	var speaker := str(data.get("speaker_name", _get_voice_panel_peer_label(peer_id)))
 	var text := str(data.get("text", "")).strip_edges()
 	if text.is_empty():
+		return
+	if _is_assistant_command_transcript(data):
+		partial_transcripts.erase(transcript_key)
+		_update_transcript_text()
 		return
 
 	if bool(data.get("is_final", false)):
 		if completed_transcript != "":
 			completed_transcript += "\n"
 		completed_transcript += _format_transcript_line(speaker, text, false)
-		partial_transcripts.erase(peer_id)
+		partial_transcripts.erase(transcript_key)
 	else:
-		partial_transcripts[peer_id] = {
+		partial_transcripts[transcript_key] = {
+			"peer_id": peer_id,
+			"utterance_id": utterance_id,
 			"speaker": speaker,
 			"text": text,
+			"timestamp_msec": int(data.get("timestamp_msec", Time.get_ticks_msec())),
 		}
 	_update_transcript_text()
+
+
+func _transcript_entry_key(peer_id: int, utterance_id: int) -> String:
+	return "%d:%d" % [peer_id, utterance_id]
 
 
 func _on_assistant_answer_started(question: String) -> void:
@@ -209,6 +239,9 @@ func _on_assistant_interaction_state_changed(data: Dictionary) -> void:
 		return
 	assistant_interaction_state = str(data.get("state", "idle"))
 	assistant_interaction_text = str(data.get("text", "")).strip_edges()
+	assistant_command_text = str(data.get("command_text", "")).strip_edges()
+	assistant_countdown_seconds = maxf(float(data.get("countdown_seconds", 0.0)), 0.0)
+	assistant_countdown_started_msec = Time.get_ticks_msec()
 	_update_assistant_interaction()
 
 
@@ -218,6 +251,9 @@ func _load_transcript_history() -> void:
 	assistant_pending_line = ""
 	assistant_interaction_state = "idle"
 	assistant_interaction_text = ""
+	assistant_command_text = ""
+	assistant_countdown_seconds = 0.0
+	assistant_countdown_started_msec = 0
 	if voice_chat == null or not voice_chat.has_method("get_transcript_history"):
 		return
 
@@ -253,7 +289,14 @@ func _update_transcript_text() -> void:
 
 
 func _update_assistant_interaction() -> void:
-	if assistant_interaction_panel == null or assistant_interaction_label == null:
+	_update_assistant_wake_button()
+	if (
+		assistant_interaction_panel == null
+		or assistant_interaction_label == null
+		or assistant_command_box == null
+		or assistant_command_label == null
+		or assistant_countdown_bar == null
+	):
 		return
 	var visible_state := assistant_interaction_state not in ["", "idle"]
 	assistant_interaction_panel.visible = visible_state
@@ -267,6 +310,50 @@ func _update_assistant_interaction() -> void:
 		"failed": "请求未完成。",
 	}.get(assistant_interaction_state, "助手正在处理。"))
 	assistant_interaction_label.text = assistant_interaction_text if not assistant_interaction_text.is_empty() else fallback
+	var is_listening := assistant_interaction_state == "listening"
+	assistant_command_box.visible = is_listening
+	assistant_countdown_bar.visible = is_listening
+	if not is_listening:
+		return
+	assistant_command_label.text = assistant_command_text if not assistant_command_text.is_empty() else "等待指令…"
+	var elapsed_seconds := float(Time.get_ticks_msec() - assistant_countdown_started_msec) / 1000.0
+	var remaining_ratio := 0.0
+	if assistant_countdown_seconds > 0.0:
+		remaining_ratio = clampf(1.0 - elapsed_seconds / assistant_countdown_seconds, 0.0, 1.0)
+	assistant_countdown_bar.value = remaining_ratio * assistant_countdown_bar.max_value
+
+
+func _update_assistant_wake_button() -> void:
+	if assistant_wake_button == null:
+		return
+	var has_wake_service := voice_chat != null and voice_chat.has_method("request_assistant_wake")
+	var transcription_available := _get_voice_bool("transcription_enabled")
+	var assistant_busy := assistant_interaction_state in ["processing", "executing"]
+	assistant_wake_button.disabled = not has_wake_service or not transcription_available or assistant_busy
+	assistant_wake_button.text = "重新开始聆听" if assistant_interaction_state == "listening" else "唤醒智能助手"
+	if not transcription_available:
+		assistant_wake_button.tooltip_text = "请先开启语音转写。"
+	elif assistant_busy:
+		assistant_wake_button.tooltip_text = "智能助手正在处理当前请求。"
+	else:
+		assistant_wake_button.tooltip_text = "点击后，智能助手将在 10 秒内等待你的指令。"
+
+
+func _is_assistant_command_transcript(data: Dictionary) -> bool:
+	var peer_id := int(data.get("speaker_peer_id", 0))
+	if peer_id <= 0:
+		return false
+	if (
+		voice_chat != null
+		and voice_chat.has_method("is_assistant_command_capture_active")
+		and bool(voice_chat.call("is_assistant_command_capture_active", peer_id))
+	):
+		return true
+	if peer_id != _get_local_peer_id():
+		return false
+	if assistant_interaction_state == "listening":
+		return true
+	return str(data.get("text", "")).find(ASSISTANT_WAKE_WORD) >= 0
 
 
 func _get_local_peer_id() -> int:

@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3 uid="uid://c4jfrx0af71vx"]
+[gd_scene load_steps=11 format=3 uid="uid://c4jfrx0af71vx"]
 
 [ext_resource type="Script" uid="uid://bbh8uiiah3wtw" path="res://Assets/ARSpace/Scripts/Network/voice_chat_ui.gd" id="1_script"]
 [ext_resource type="Texture2D" uid="uid://dr7y3pi3l4njr" path="res://Assets/ARSpace/Textures/UIWindow/Rectangle 1385.png" id="2_bg"]
@@ -20,6 +20,25 @@ corner_radius_top_left = 4
 corner_radius_top_right = 4
 corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_countdown_background"]
+bg_color = Color(0.025, 0.045, 0.1, 0.95)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.28, 0.54, 0.95, 0.6)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_countdown_fill"]
+bg_color = Color(0.22, 0.78, 1, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
 
 [node name="VoiceChatUI3D" type="Control"]
 layout_mode = 3
@@ -152,7 +171,7 @@ text = "开启转写"
 flat = true
 
 [node name="TranscriptBox" type="PanelContainer" parent="Canvas/PanelContainer/MarginContainer/Layout/TranscribeSection"]
-custom_minimum_size = Vector2(0, 220)
+custom_minimum_size = Vector2(0, 150)
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_styles/panel = SubResource("StyleBoxFlat_transcript")
@@ -166,13 +185,27 @@ bbcode_enabled = true
 text = "等待语音输入..."
 scroll_following = true
 
+[node name="AssistantWakeButton" type="Button" parent="Canvas/PanelContainer/MarginContainer/Layout/TranscribeSection"]
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.576471, 0.666667, 0.952941, 1)
+theme_override_fonts/font = ExtResource("4_font")
+theme_override_font_sizes/font_size = 17
+text = "唤醒智能助手"
+tooltip_text = "点击后，智能助手将在 10 秒内等待你的指令。"
+flat = true
+
 [node name="AssistantInteraction" type="PanelContainer" parent="Canvas/PanelContainer/MarginContainer/Layout/TranscribeSection"]
 visible = false
-custom_minimum_size = Vector2(0, 34)
+custom_minimum_size = Vector2(0, 118)
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_transcript")
 
-[node name="Label" type="Label" parent="Canvas/PanelContainer/MarginContainer/Layout/TranscribeSection/AssistantInteraction"]
+[node name="Content" type="VBoxContainer" parent="Canvas/PanelContainer/MarginContainer/Layout/TranscribeSection/AssistantInteraction"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="StatusLabel" type="Label" parent="Canvas/PanelContainer/MarginContainer/Layout/TranscribeSection/AssistantInteraction/Content"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.576471, 0.666667, 0.952941, 1)
 theme_override_fonts/font = ExtResource("4_font")
@@ -180,6 +213,28 @@ theme_override_font_sizes/font_size = 16
 text = "我在，请说。"
 horizontal_alignment = 1
 vertical_alignment = 1
+
+[node name="CommandBox" type="PanelContainer" parent="Canvas/PanelContainer/MarginContainer/Layout/TranscribeSection/AssistantInteraction/Content"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+
+[node name="CommandText" type="Label" parent="Canvas/PanelContainer/MarginContainer/Layout/TranscribeSection/AssistantInteraction/Content/CommandBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.93, 1, 1)
+theme_override_fonts/font = ExtResource("4_font")
+theme_override_font_sizes/font_size = 17
+text = "等待指令…"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+
+[node name="CountdownBar" type="ProgressBar" parent="Canvas/PanelContainer/MarginContainer/Layout/TranscribeSection/AssistantInteraction/Content"]
+custom_minimum_size = Vector2(0, 12)
+layout_mode = 2
+theme_override_styles/background = SubResource("StyleBoxFlat_countdown_background")
+theme_override_styles/fill = SubResource("StyleBoxFlat_countdown_fill")
+value = 100.0
+show_percentage = false
 
 [node name="ServerVoiceLevels" type="VBoxContainer" parent="Canvas/PanelContainer/MarginContainer/Layout"]
 layout_mode = 2

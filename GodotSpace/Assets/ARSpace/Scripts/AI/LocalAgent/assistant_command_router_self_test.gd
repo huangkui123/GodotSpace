@@ -15,6 +15,8 @@ func _run() -> void:
 		return
 	if not _check(router.call("_strip_required_wake_word", "我想问一下，助手，打开相册") == "打开相册", "Mid-utterance wake word did not preserve the command suffix."):
 		return
+	if not _check(router.call("_strip_required_wake_word", "智能助手。").is_empty(), "Wake-only final punctuation was treated as a command."):
+		return
 	var interaction_states: Array[String] = []
 	router.assistant_interaction_state_changed.connect(func(_peer_id: int, state: String, _text: String) -> void:
 		interaction_states.append(state)
@@ -25,7 +27,57 @@ func _run() -> void:
 	router.call("_handle_wake_transcript", {"speaker_peer_id": 1, "utterance_id": 91, "text": "我先说一句，助手，取消", "is_final": true})
 	if not _check((router.get_debug_state() as Dictionary).get("wake_session_count", 0) == 0, "Local wake-session cancellation did not clear the listening state."):
 		return
+	router.call("_handle_wake_transcript", {"speaker_peer_id": 1, "utterance_id": 92, "text": "智能助手。", "is_final": true})
+	if not _check((router.get_debug_state() as Dictionary).get("wake_session_count", 0) == 1, "Wake-only final transcript did not keep listening for the next utterance."):
+		return
+	router.call("_handle_wake_transcript", {"speaker_peer_id": 1, "utterance_id": 93, "text": "取消", "is_final": true})
+	if not _check((router.get_debug_state() as Dictionary).get("wake_session_count", 0) == 0, "The utterance after a wake-only final transcript was ignored."):
+		return
+	router.call("_handle_wake_transcript", {"speaker_peer_id": 1, "utterance_id": 94, "text": "智能助手。", "is_final": true})
+	router.call("_handle_wake_transcript", {"speaker_peer_id": 1, "utterance_id": 95, "text": "打开工作", "is_final": false})
+	router.call("_handle_wake_transcript", {"speaker_peer_id": 1, "utterance_id": 95, "text": "打开工作清单", "is_final": true})
+	router.call("_handle_wake_transcript", {"speaker_peer_id": 1, "utterance_id": 96, "text": "第二项", "is_final": false})
+	var wake_sessions := router.get("_wake_sessions") as Dictionary
+	var accumulated_session := wake_sessions.get(1, {}) as Dictionary
+	if not _check(str(accumulated_session.get("command", "")) == "打开工作清单 第二项", "Command capture did not retain multiple ASR utterances."):
+		return
+	router.call("_handle_wake_transcript", {"speaker_peer_id": 1, "utterance_id": 97, "text": "取消", "is_final": true})
+	if not _check((router.get_debug_state() as Dictionary).get("wake_session_count", 0) == 0, "Cancellation did not stop an accumulated command."):
+		return
 	if not _check(interaction_states.has("listening") and interaction_states.has("idle"), "Wake interaction states were not published."):
+		return
+	var voice_chat := root.get_node_or_null("VoiceChat")
+	if not _check(voice_chat != null and voice_chat.has_signal("assistant_wake_requested"), "VoiceChat manual wake signal is missing."):
+		return
+	voice_chat.assistant_wake_requested.emit(1)
+	var manual_wake_sessions := router.get("_wake_sessions") as Dictionary
+	if not _check(manual_wake_sessions.has(1), "Manual wake did not create a peer-scoped listening session."):
+		return
+	router.call("_handle_wake_transcript", {"speaker_peer_id": 1, "utterance_id": 1, "text": "取消", "is_final": true})
+	if not _check(not (router.get("_wake_sessions") as Dictionary).has(1), "Manual wake session did not accept the next utterance."):
+		return
+	var confirmation_routes: Array[String] = []
+	router.command_routed.connect(func(request_id: String, _intent: String, _peer_id: int) -> void:
+		confirmation_routes.append(request_id)
+	)
+	var confirmation_requests := router.get("_requests") as Dictionary
+	confirmation_requests["confirmation-prompt"] = {
+		"speaker_peer_id": 1,
+		"status": "agent_running",
+		"text": "打开工作文档",
+		"snapshot": {},
+		"allowed_tools": PackedStringArray(["open_task_guide"]),
+		"created_msec": Time.get_ticks_msec(),
+	}
+	router.call("_on_agent_routing_decision", "confirmation-prompt", "confirm_action", "clarify_ui_target")
+	router.call("_on_agent_answer", "confirmation-prompt", "当前最接近的是打开工作清单，你是想执行它吗？")
+	var confirmation_session := (router.get("_wake_sessions") as Dictionary).get(1, {}) as Dictionary
+	if not _check(bool(confirmation_session.get("confirmation", false)), "A confirmable suggestion did not reopen peer-scoped listening."):
+		return
+	router.call("_handle_wake_transcript", {"speaker_peer_id": 1, "utterance_id": 2, "text": "是的", "is_final": true})
+	if not _check(confirmation_routes.size() == 1, "A final confirmation was not routed immediately without another wake word."):
+		return
+	if not _check(not (router.get("_wake_sessions") as Dictionary).has(1), "Confirmation listening remained open after submission."):
 		return
 	var assistant := root.get_node_or_null("LLMAssistantService")
 	if not _check(assistant != null and assistant.has_method("record_external_qa"), "LLMAssistant external history API is missing."):
@@ -181,6 +233,46 @@ func _run() -> void:
 		"verified_ui_result": {"operation": "guide_advance", "result": {"ok": false, "data": {}, "error": {"code": "already_last_step", "message": "Already at last step."}}},
 	}, "已完成")
 	if not _check(verified_failure.find("操作未完成") == 0, "Failed UI result was reported as success."):
+		return
+	requests["knowledge-evidence-request"] = {
+		"speaker_peer_id": 1,
+		"status": "agent_running",
+		"text": "这一页我要用的力矩有多大",
+		"snapshot": {
+			"task_guide": {
+				"visible": true,
+				"task_title": "无容器样品实验流程",
+				"page_index": 17,
+				"page_count": 20,
+				"current_step": {
+					"title": "17.固定机构",
+					"info": "使用2.5N·m的力矩锁紧6颗M6螺钉。",
+				},
+			},
+		},
+		"allowed_tools": PackedStringArray(["query_task_knowledge"]),
+	}
+	var evidence_result: Dictionary = router.call(
+		"_tool_query_task_knowledge",
+		{},
+		{"request_id": "knowledge-evidence-request", "tool_call_id": "knowledge-evidence-tool"}
+	)
+	var evidence_entries := (evidence_result.get("data", {}) as Dictionary).get("entries", []) as Array
+	var evidence_entry := evidence_entries[0] as Dictionary if evidence_entries.size() == 1 else {}
+	if not _check(
+		bool(evidence_result.get("ok", false))
+		and evidence_entries.size() == 1
+		and str(evidence_entry.get("content", "")).find("2.5N·m") >= 0
+		and not evidence_entry.has("source")
+		and not evidence_entry.has("trust")
+		and not evidence_entry.has("priority"),
+		"Knowledge tool did not return the current page as synchronous evidence."
+	):
+		return
+	if not _check(
+		str((requests["knowledge-evidence-request"] as Dictionary).get("last_operation", "")) == "query_task_knowledge",
+		"Knowledge request did not record the renamed protocol operation."
+	):
 		return
 
 	var router_debug: Dictionary = router.get_debug_state()
