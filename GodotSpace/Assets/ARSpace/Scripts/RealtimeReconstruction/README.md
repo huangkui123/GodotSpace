@@ -129,7 +129,7 @@ python tools/realtime_reconstruction/gsmap_to_ply.py `
 
 导入会先完成包校验和配准校验，再原子替换并发布；失败时回滚旧地图。导入地图没有可恢复的 LingBot 在线状态，因此确认后不能“重新配准”；需要继续采集时应清空并开始一次新的实时重建。
 
-PC 接收端以 `0.01` LingBot model unit 的体素网格保留每个空间单元的首个点，重复单元不会进入缓存或下发；append-only 地图上限为 200 万点。最终物理体素尺寸仍受自动尺度估计影响，可在 PointCloud runtime 的 `voxel_size_model_units` 调整。XR 点云使用显式不受光照影响的顶点色 shader，默认点尺寸为 4 像素；渲染尾批次限制为 1 万点，避免连续追加时反复上传过大的网格。
+PC 接收端以 `0.01` LingBot model unit 的体素网格保留每个空间单元的首个点，重复单元不会进入缓存或下发；append-only 地图上限为 200 万点。最终物理体素尺寸仍受自动尺度估计影响，可在 PointCloud runtime 的 `voxel_size_model_units` 调整。XR 点云使用显式不受光照影响的顶点色 shader；PCCH/PLY 中的相机颜色按非线性 sRGB8 保存，构建 GPU 批次时一次性转换为 Godot Mobile 3D 管线需要的线性 RGB。默认点尺寸为 4 像素；渲染尾批次限制为 1 万点，避免连续追加时反复上传过大的网格。
 
 ## 端口
 
