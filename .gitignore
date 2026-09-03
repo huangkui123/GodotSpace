@@ -1,2 +1,7 @@
 GodotSpace/unidot_asset_database.res
 GodotSpace/.godot
+converted_maps/
+**/__pycache__/
+**/*.py[cod]
+GodotSpace/**/~*.TMP
+GodotSpace/**/*.txt.uid

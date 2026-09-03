@@ -7,11 +7,11 @@
 - `examples/` holds standalone Qwen-Agent demonstrations; `web_demo/` is the browser testbench.
 - `scripts/` contains WSL bootstrap, service lifecycle, health-check, and smoke-test commands.
 - `models/`, `generated/`, and `logs/` are local runtime artifacts and must remain untracked.
-- `PLAN.md` tracks integration. Make Godot Agent changes only on `feature/local-agent-voice-tools`; never develop them on `codex/unity-to-godot`.
+- `PLAN.md` tracks integration. Model and Godot Agent changes belong on `feature/local-agent-voice-tools`; do not develop them directly on `main` or the legacy `codex/unity-to-godot` branch.
 
 ## WSL Environment
 
-The supported runtime is WSL2 `Ubuntu-20.04` with Python 3.12 and CUDA on the RTX 4060. Windows path `C:\Users\94580\Desktop\cxy\Model` maps to `/mnt/c/Users/94580/Desktop/cxy/Model`. Its `.venv` contains Linux executables; do not use Windows `python.exe`. Check with `wsl.exe --list --verbose`, then run `wsl.exe -d Ubuntu-20.04 --cd /mnt/c/Users/94580/Desktop/cxy/Model -- ...`. Registrations are per Windows user, so sandbox accounts may report no distributions. Ports `8000`, `7860`, and `7861` normally use localhost forwarding.
+The supported runtime is WSL2 `Ubuntu-20.04` with Python 3.12 and CUDA on the RTX 4060. In the current monorepo checkout, Windows path `F:\GodotSpace\Model` maps to `/mnt/f/GodotSpace/Model`. Its `.venv` contains Linux executables; do not use Windows `python.exe`. Check with `wsl.exe --list --verbose`, then run `wsl.exe -d Ubuntu-20.04 --cd /mnt/f/GodotSpace/Model -- ...`. The PowerShell service wrappers derive this path from their own location, so they also work when the monorepo is checked out elsewhere. Registrations are per Windows user, so sandbox accounts may report no distributions. Ports `8000`, `7860`, and `7861` normally use localhost forwarding.
 
 ## Build, Test, and Development Commands
 

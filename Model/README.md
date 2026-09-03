@@ -1,7 +1,9 @@
-# Qwen3-VL-2B vLLM + Qwen-Agent Tool Call Demo
+# GodotSpace Local Agent and ASR Services
 
-This project runs `Qwen/Qwen3-VL-2B-Instruct` behind a vLLM OpenAI-compatible
-server, then drives it with a Qwen-Agent style tool-calling demo.
+This directory contains the local Qwen model gateway, evidence-gated knowledge
+and tool-call harnesses, benchmarks, and the FunASR streaming service used by
+GodotSpace. It is maintained as the `Model/` subtree of the GodotSpace
+monorepo.
 
 ## Current target
 
@@ -35,8 +37,8 @@ native Windows.
 
 ## Run
 
-From WSL, inside this project directory. If this repo is on Windows `C:`, the
-WSL path will usually be `/mnt/c/Users/94580/Desktop/cxy/Model`.
+From WSL, run these commands inside this directory. In the current monorepo
+checkout the path is `/mnt/f/GodotSpace/Model`.
 
 ```bash
 bash scripts/bootstrap_wsl.sh
@@ -101,7 +103,7 @@ python scripts/check_vllm.py
 Web demo from WSL:
 
 ```bash
-cd /mnt/c/Users/94580/Desktop/cxy/Model
+cd /mnt/f/GodotSpace/Model
 source .venv/bin/activate
 source scripts/env.sh
 bash scripts/start_web_demo.sh
