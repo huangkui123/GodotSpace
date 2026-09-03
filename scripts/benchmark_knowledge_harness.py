@@ -94,6 +94,7 @@ def main() -> int:
                         "reason": result.get("reason", ""),
                         "retrieved_ids": result.get("retrieved_ids", []),
                         "model_attempts": result.get("model_attempts", 0),
+                        "harness_trace": result.get("harness_trace", {}),
                         "latency_ms": latency_ms,
                         "error": error,
                         "evaluation": evaluation,
@@ -110,6 +111,12 @@ def main() -> int:
 
     completed = [record for record in records if record["error"] is None]
     latencies = [float(record["latency_ms"]) for record in completed]
+    stages = [
+        stage
+        for record in completed
+        for stage in record.get("harness_trace", {}).get("stages", [])
+        if isinstance(stage, dict)
+    ]
     summary = {
         "requests": len(records),
         "completed": len(completed),
@@ -120,6 +127,17 @@ def main() -> int:
         ),
         "model_calls": sum(int(record["model_attempts"]) for record in completed),
         "abstentions": sum(record["decision"] == "abstain" for record in completed),
+        "harness_fallbacks": sum(stage.get("fallback_used") is True for stage in stages),
+        "harness_outcomes": {
+            outcome: sum(stage.get("outcome") == outcome for stage in stages)
+            for outcome in sorted(
+                {
+                    str(stage.get("outcome"))
+                    for stage in stages
+                    if stage.get("outcome")
+                }
+            )
+        },
         "p50_latency_ms": statistics.median(latencies) if latencies else None,
         "p95_latency_ms": percentile(latencies, 0.95),
     }

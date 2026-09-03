@@ -141,9 +141,10 @@ bash scripts/stop_web_demo.sh
 
 ## GodotSpace Agent Gateway
 
-The Agent Gateway is separate from the existing web demo. It preserves the
-current DeepSeek path in GodotSpace and provides an opt-in websocket endpoint for
-local Qwen tool calls.
+The Agent Gateway is separate from the existing web demo. It provides the Qwen
+tool-routing websocket and an evidence-gated task-knowledge path. Godot returns
+current task evidence through `query_task_knowledge`; the Gateway knowledge
+Harness validates that evidence before producing the user-visible answer.
 
 Start vLLM, then start the gateway:
 

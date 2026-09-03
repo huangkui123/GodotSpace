@@ -1,9 +1,11 @@
 # Local Agent Gateway
 
 This package is the Python side of the GodotSpace local Qwen-Agent integration.
-Qwen3-VL-2B routes UI tools and selects evidence IDs. Knowledge answers are
-rendered locally from registered evidence; model-written knowledge prose and the
-legacy DeepSeek answer field are never returned to the user.
+Qwen routes UI tools and may select evidence IDs. Knowledge answers are rendered
+locally from registered evidence; untrusted model-written knowledge prose is
+never returned to the user. Godot exposes task evidence through
+`query_task_knowledge`, and the Gateway publishes the semantic route
+`knowledge_qa`.
 
 ## Run
 
@@ -32,6 +34,7 @@ Relevant environment variables:
 | `API_KEY` | `EMPTY` |
 | `AGENT_TOOL_TIMEOUT` | `5.0` |
 | `AGENT_KNOWLEDGE_CONTEXT_TOOL_TIMEOUT` | `5.0` |
+| `TOOL_SEMANTIC_TIMEOUT` | `10.0` |
 | `AGENT_MAX_TOOL_CALLS` | `6` |
 | `AGENT_MAX_MESSAGE_CHARS` | `8000` |
 | `KNOWLEDGE_CORPUS_PATH` | empty server-owned JSON corpus |
@@ -69,10 +72,11 @@ read-only task query sends:
 }
 ```
 
-Supported tools are `open_album`, `open_task_guide`,
-`get_current_task_step`, and `next_task_step`; at most three may be authorized
-for one run. When Qwen-Agent calls one, the gateway sends `tool_call`. Godot must
-answer with the same `session_id`, `request_id`, and `tool_call_id`:
+Supported tools cover album navigation, work-checklist navigation and state,
+plus the read-only `query_task_knowledge` evidence tool. Godot dynamically
+authorizes only tools valid for the current UI snapshot. When Qwen-Agent calls
+one, the gateway sends `tool_call`. Godot must answer with the same `session_id`,
+`request_id`, and `tool_call_id`:
 
 ```json
 {
@@ -89,6 +93,29 @@ answer with the same `session_id`, `request_id`, and `tool_call_id`:
   }
 }
 ```
+
+For `query_task_knowledge`, `payload.data` must contain bounded evidence entries
+instead of a model-written answer:
+
+```json
+{
+  "ok": true,
+  "data": {
+    "entries": [
+      {
+        "id": "voice-current-task-step",
+        "title": "无容器样品实验流程",
+        "tags": ["当前任务", "当前步骤", "17.固定机构"],
+        "content": "当前页：17/20\n当前步骤：17.固定机构\n要求：使用2.5N·m的力矩锁紧6颗M6螺钉。"
+      }
+    ]
+  },
+  "error": null
+}
+```
+
+The Gateway owns evidence filtering and final answer rendering. An `answer`
+field returned by this Godot tool is not a supported knowledge contract.
 
 The run ends with `assistant_final` or `run_error`. Tool calls are correlated by
 ID, timeout independently, and fail when the owning Godot connection disconnects.
@@ -114,6 +141,31 @@ tool registration tests do not require a live vLLM or Godot instance.
 The Gateway rejects a Qwen final answer when an authorized tool was never called;
 this prevents a state-changing voice command from being reported as complete after
 the model merely repeats it.
+
+Qwen now calls selection-only proxy tools and supplies a structured semantic
+frame. State changes additionally require an independent action-entailment
+verdict. Code checks UI state, strict arguments, and `allowed_tools` before the
+real Godot RPC is dispatched.
+
+Tool routing and knowledge answering publish one versioned audit envelope in
+`assistant_final.payload.harness_trace`. An ordinary UI request has one
+`tool_call` stage; a knowledge request has ordered `tool_call` and `knowledge_qa`
+stages. Each stage shares outcome, reason, model-attempt, fallback, and latency
+fields while keeping domain data under `details`. The former
+`assistant_final.payload.tool_harness` field remains as a compatibility view.
+See [HARNESS_PROTOCOL.md](HARNESS_PROTOCOL.md),
+[TOOL_CALL_HARNESS.md](TOOL_CALL_HARNESS.md), and
+[KNOWLEDGE_HARNESS.md](KNOWLEDGE_HARNESS.md).
+
+With live vLLM and the gateway running, the fixed tool-routing benchmark can run
+without opening Godot:
+
+```bash
+python scripts/benchmark_tool_call_harness.py --repeats 3
+```
+
+It reports raw Qwen selection accuracy separately from harness-protected dispatch
+accuracy and fails on every forbidden or unauthorized state mutation.
 
 ## Evidence-gated knowledge answers
 

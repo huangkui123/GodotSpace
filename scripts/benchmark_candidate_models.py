@@ -91,7 +91,7 @@ def _both_tools() -> list[str]:
         {
             "close_album",
             "close_task_guide",
-            "delegate_deepseek",
+            "query_task_knowledge",
             "get_album_state",
             "go_to_album_page",
             "go_to_task_guide_page",
@@ -109,7 +109,7 @@ def _both_tools() -> list[str]:
 def _extended_cases(long_4k_repeats: int, long_8k_repeats: int) -> list[CaseSpec]:
     guide_tools = [
         "close_task_guide",
-        "delegate_deepseek",
+        "query_task_knowledge",
         "go_to_task_guide_page",
         "next_task_step",
         "open_album",
@@ -119,7 +119,7 @@ def _extended_cases(long_4k_repeats: int, long_8k_repeats: int) -> list[CaseSpec
     ]
     album_tools = [
         "close_album",
-        "delegate_deepseek",
+        "query_task_knowledge",
         "get_album_state",
         "go_to_album_page",
         "next_album_page",
@@ -127,7 +127,7 @@ def _extended_cases(long_4k_repeats: int, long_8k_repeats: int) -> list[CaseSpec
         "open_task_guide",
         "previous_album_page",
     ]
-    closed_tools = ["delegate_deepseek", "open_album", "open_task_guide"]
+    closed_tools = ["query_task_knowledge", "open_album", "open_task_guide"]
     long_suffix = "当前唯一请求：请把指导书翻到下一页。"
     return [
         CaseSpec(
@@ -315,7 +315,7 @@ async def _execute_case(
                 arguments = arguments if isinstance(arguments, dict) else {}
                 calls.append({"name": name, "arguments": arguments})
                 tool_data: dict[str, Any] = {"acknowledged_tool": name}
-                if name == "delegate_deepseek":
+                if name == "query_task_knowledge":
                     tool_data["entries"] = [
                         {
                             "id": "benchmark-current-step",

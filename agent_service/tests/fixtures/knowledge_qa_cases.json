@@ -89,6 +89,14 @@
       "rubric": {"required_any": [["2.5Nm", "2.5牛米", "二点五牛米"], ["第二遍", "逐个力矩检查"]], "forbidden": ["5Nm", "4Nm"], "citation_any": ["当前步骤17", "固定机构"], "critical": true}
     },
     {
+      "id": "regression-current-page-torque",
+      "category": "current_step",
+      "question": "这一页我要用的力矩有多大？",
+      "runtime_context": [{"id": "step-17-deictic", "title": "无容器样品实验流程 / 当前步骤17", "source": "当前专家任务步骤 / 目标客户端", "tags": ["固定机构", "力矩"], "content": "当前页：17/20。当前步骤：17.固定机构。使用M6内六角套头、150mm加长杆和力矩扳手1，使用2.5N·m的力矩按对角线原则锁紧6颗螺钉，并进行第二遍逐个力矩检查。"}],
+      "oracle_entry_ids": ["torque-rule"],
+      "rubric": {"required_any": [["2.5Nm", "2.5牛米", "二点五牛米"], ["力矩扳手1"], ["第二遍", "逐个力矩检查"]], "forbidden": ["无法判断", "资料未提供", "5Nm"], "citation_any": ["当前步骤17", "固定机构"], "critical": true}
+    },
+    {
       "id": "fact-old-box-two-people",
       "category": "fact",
       "question": "取出旧样品盒需要几名航天员，分别做什么？",

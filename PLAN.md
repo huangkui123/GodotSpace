@@ -6,7 +6,7 @@
 - Godot Bridge、`open_album` 原型和 headless 自测位于 `feature/local-agent-voice-tools`。该分支是唯一 Agent 开发基线；不在 `codex/unity-to-godot` 上开发。
 - 两个 WorkList View 的公开 API、`AssistantCommandRouter`、三项任务工具、查询/写入门控和原子页码前置条件已实现。本机目标与真实 Server + 远端 Client 双进程 mock E2E 均已通过；后者验证了 snapshot 和推进只落到说话者 Client。
 - 两名远端 Client 交替请求隔离、100 条 `task_intent_v1`（未授权推进 0/100）以及最终提示版本下连续 3 次真实 Qwen/vLLM 语音到工具 smoke 已通过。获授权请求若没有真实 tool call，Gateway 会失败关闭，不能把模型复述当成执行成功。
-- 当前产品不使用视觉输入，不完全替换 DeepSeek，也不接入虚拟标注、视频、邮件、天气、3D、网络控制等扩展工具。
+- 当前产品不使用视觉输入；任务知识问答统一走 Gateway 的证据 Harness，不接入虚拟标注、视频、邮件、天气、3D、网络控制等扩展工具。
 
 ## 1. MVP 范围
 
@@ -26,7 +26,7 @@ MVP 只完成四件事：
 | “调出无容器样品实验指导书” | `OPEN_GUIDE` | 调用 `open_task_guide` | 设为第 1 步 |
 | “下一步是什么？” | `READ_ONLY` | 返回下一步预览 | 不变 |
 | “下一步应该做什么？” | `READ_ONLY` | 返回下一步预览 | 不变 |
-| “这一步怎么做？” | `READ_ONLY` | 返回当前步骤，必要时交给 DeepSeek 解释 | 不变 |
+| “这一步怎么做？” | `READ_ONLY` | 返回当前步骤证据，由知识 Harness 校验并回答 | 不变 |
 | “进入下一步” | `ADVANCE_STEP` | 调用 `next_task_step` | 加 1 |
 | “这一步做完了，继续” | `ADVANCE_STEP` | 调用 `next_task_step` | 加 1 |
 | “我还没做完，不要继续” | `NONE` | 不调用状态变更工具 | 不变 |
@@ -50,7 +50,7 @@ MVP 只完成四件事：
 
 - `WorkListData.id/title/info_data_result` 和逐步 `step/title/info` 数据。
 - `WorkListInfoUIView.next_click()`、`pre_click()`、`replay_current_step_animation()`、`play_current_step_voice()`。
-- `get_current_task_context_entries()`，可向 DeepSeek 提供当前步骤和完整指导内容。
+- `get_current_task_context_entries()`，可向 Gateway 提供当前步骤和完整指导证据。
 - 步骤切换会刷新 UI、工作模型动画和助手上下文。
 
 不能直接把现有 View 私有字段当成跨模块 API。应按现有职责增加最小公开方法，不新建任务控制器：
@@ -83,7 +83,7 @@ AssistantCommandRouter（PC Server 唯一消费者）
         v
 向目标 Client 请求最新 task snapshot（固定 RPC）
         |
-        +-- 知识/步骤解释 --> DeepSeek + 该 snapshot
+        +-- 知识/步骤解释 --> query_task_knowledge + 该 snapshot --> Knowledge Harness
         |
         +-- 操作命令 --> 无状态 Qwen 请求
                            输入：当前文本 + 脱敏 snapshot + 本请求允许的工具
@@ -188,7 +188,7 @@ expected_page_index   snapshot.page_index
 
 所有 RPC 名称和参数固定；不接受模型指定 peer、NodePath、Callable 或任意方法名。目标离线、场景不匹配或响应超时必须失败，不能转到其他 Client 执行。
 
-“这一步怎么做”也先取得目标 Client snapshot，再将当前步骤作为运行时知识传给 DeepSeek，避免 Server 使用错误用户的步骤上下文。
+“这一步怎么做”也先取得目标 Client snapshot，再将当前步骤作为运行时证据传给 Gateway，避免 Server 使用错误用户的步骤上下文。
 
 ## 7. 取消状态机
 
@@ -279,7 +279,7 @@ MVP 明确只信任本机进程：服务绑定 `127.0.0.1`，`session_id` 是路
 2. Godot 保存 `request_id -> speaker_peer_id`，Gateway/模型不可见 speaker。
 3. 实现目标 Client snapshot 请求和固定操作 RPC。
 4. 实现 `NONE/READ_ONLY/OPEN_GUIDE/ADVANCE_STEP` 权限门控。
-5. DeepSeek 改由 Router 调用，并接收目标 Client 的当前步骤上下文。
+5. `query_task_knowledge` 由 Router 调用，并返回目标 Client 的当前步骤证据。
 6. 已通过 Server 本地目标以及一台 Server + 一台远端 Client 的 mock Agent E2E，读写目标一致。
 
 阶段门槛：同一说话者的 snapshot、工具执行和结果必须来自同一 Client；目标离线不得执行。
@@ -290,7 +290,7 @@ MVP 明确只信任本机进程：服务绑定 `127.0.0.1`，`session_id` 是路
 2. 工具 Schema 只包含任务 ID 1 及其标题/受控别名。
 3. “下一步是什么”返回预览但不翻页。
 4. “进入下一步”“本步完成，继续”使用前置条件原子推进。
-5. Qwen、DeepSeek 和 VoiceChat 最终只发布一个回答。
+5. Qwen Router、Knowledge Harness 和 VoiceChat 最终只发布一个回答。
 
 阶段门槛：查询零写入、显式推进一次只加一页、重复/结果丢失不二次推进。
 
@@ -299,7 +299,7 @@ MVP 明确只信任本机进程：服务绑定 `127.0.0.1`，`session_id` 是路
 1. 两个 Client 交替/同时说话，验证无历史、snapshot 和目标串线。
 2. 覆盖断线、超时、Gateway 重启、取消竞态和晚到 Agent 线程。
 3. 增加脱敏指标：路由权限、目标、工具、耗时、取消阶段和错误码。
-4. 保留 `disabled/debug/enabled` 开关以及 DeepSeek 独立回退路径。
+4. 保留 `disabled/debug/enabled` 开关；知识问答失败时必须显式拒答，不旁路到未经核验的在线答案。
 
 已完成两 Client 交替请求、取消/`too_late` 屏障、伪造 snapshot 拒绝、snapshot 超时、目标 Client RPC、脱敏调试事件和真实模型 smoke。核心软件开发无剩余工期；仍需在实际 VR 设备和正式网络环境中做现场验收，该工作不包含新任务内容制作和任何非任务工具。
 
@@ -331,7 +331,7 @@ MVP 明确只信任本机进程：服务绑定 `127.0.0.1`，`session_id` 是路
 - Gateway 重启后使用旧前置条件重试，返回 `stale_state` 而非再次推进。
 - queued/model_running/tool_pending/tool_dispatched 四个取消窗口。
 - Qwen 不可用、Godot 未 ready、目标离线和 RPC 超时。
-- 现有 27 项 Python 测试、Godot Bridge 自测和 DeepSeek 离线回归全部继续通过。
+- Python 测试、Godot Bridge 自测和知识 Harness 回归全部继续通过。
 
 ## 11. MVP 验收标准
 
@@ -341,14 +341,14 @@ MVP 明确只信任本机进程：服务绑定 `127.0.0.1`，`session_id` 是路
 4. 否定、条件和疑问表达没有写权限，即使模型生成写工具也被拒绝。
 5. 重试、结果丢失和 Gateway 重启不会造成连续推进。
 6. 不同说话者不共享 Qwen 历史、UI snapshot 或工具目标。
-7. “这一步怎么做”使用目标 Client 当前步骤交给 DeepSeek 回答。
+7. “这一步怎么做”使用目标 Client 当前步骤证据交给 Knowledge Harness 回答。
 8. 取消后不会产生晚到工具副作用；已派发操作明确返回 `too_late`。
-9. Qwen/vLLM/Gateway 不可用时不阻塞 VoiceChat、Godot 和 DeepSeek 主链路。
+9. Qwen/vLLM/Gateway 不可用时不阻塞 VoiceChat 和 Godot 的非助手功能，并明确报告知识服务不可用。
 10. 模型不能指定 peer、NodePath、文件路径、脚本、方法或任意 RPC。
 
 ## 12. 交付后现场验收
 
 1. 在实际 PC Server + VR Client 上复跑相册、指导书、查询和推进四条语音链路，观察 ASR 文本和 UI 延迟。
 2. 使用正式麦克风采集的误识别样本扩充 `task_intent_v1`，保持所有未授权样本真实页码变化为 `0/N`。
-3. 做一次 Gateway/vLLM 中途重启和 VR Client 断网演练，确认 UI 不二次推进、DeepSeek 仍可独立使用。
+3. 做一次 Gateway/vLLM 中途重启和 VR Client 断网演练，确认 UI 不二次推进，知识查询安全失败。
 4. 现场验收不通过时优先补 fixture 和固定 Router 规则，不放宽模型写权限，也不增加任意 NodePath/RPC 工具。

@@ -5,8 +5,9 @@ cd "$(dirname "$0")/.."
 mkdir -p logs
 
 remote_host="${REMOTE_HOST:-lab_4090}"
-local_port="${LOCAL_MODEL_PORT:-18000}"
-remote_port="${REMOTE_VLLM_PORT:-18000}"
+local_port="${LOCAL_MODEL_PORT:-18400}"
+remote_port="${REMOTE_VLLM_PORT:-18400}"
+identity_file="${SSH_IDENTITY_FILE:-/tmp/lab_4090_codex_key}"
 pid_file="logs/remote_vllm_tunnel.pid"
 log_file="logs/remote_vllm_tunnel.log"
 
@@ -19,11 +20,18 @@ if [[ -f "$pid_file" ]]; then
   rm -f "$pid_file"
 fi
 
-nohup ssh \
-  -o BatchMode=yes \
-  -o ExitOnForwardFailure=yes \
-  -o ServerAliveInterval=15 \
-  -o ServerAliveCountMax=3 \
+ssh_args=(
+  -o BatchMode=yes
+  -o ExitOnForwardFailure=yes
+  -o ServerAliveInterval=15
+  -o ServerAliveCountMax=3
+)
+if [[ -f "$identity_file" ]]; then
+  ssh_args+=( -i "$identity_file" -o IdentitiesOnly=yes )
+fi
+
+nohup setsid ssh \
+  "${ssh_args[@]}" \
   -N \
   -L "127.0.0.1:$local_port:127.0.0.1:$remote_port" \
   "$remote_host" >"$log_file" 2>&1 &

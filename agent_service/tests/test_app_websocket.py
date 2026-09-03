@@ -143,6 +143,72 @@ class RecordingAgentFactory:
         )
 
 
+class PendingConfirmationAgentFactory:
+    def __init__(self) -> None:
+        self.confirmed: list[tuple[str, str, dict[str, Any]]] = []
+
+    @staticmethod
+    def is_available() -> bool:
+        return True
+
+    @staticmethod
+    def installed_version() -> str:
+        return "test"
+
+    def run(
+        self,
+        session_id: str,
+        request_id: str,
+        messages: list[dict[str, Any]],
+        allowed_tools: list[str] | None = None,
+    ) -> AgentRunResult:
+        text = str(messages[-1].get("content", ""))
+        if "工作文档" in text:
+            answer = "当前最接近的是“打开工作清单”，你是想执行它吗？"
+            return AgentRunResult(
+                answer=answer,
+                messages=[*messages, {"role": "assistant", "content": answer}],
+                route="confirm_action",
+                tool_name="clarify_ui_target",
+                tool_harness={
+                    "action": "clarify",
+                    "reason": "candidate_action_not_entailed",
+                    "suggested_tool": "open_task_guide",
+                    "suggested_arguments": {"task_id": 1},
+                    "suggested_action_text": "打开工作清单",
+                },
+            )
+        answer = f"new:{request_id}"
+        return AgentRunResult(
+            answer=answer,
+            messages=[*messages, {"role": "assistant", "content": answer}],
+        )
+
+    def run_confirmed_action(
+        self,
+        session_id: str,
+        request_id: str,
+        messages: list[dict[str, Any]],
+        allowed_tools: list[str],
+        tool_name: str,
+        arguments: dict[str, Any],
+    ) -> AgentRunResult:
+        self.confirmed.append((request_id, tool_name, dict(arguments)))
+        answer = "工作清单已打开。"
+        return AgentRunResult(
+            answer=answer,
+            messages=[*messages, {"role": "assistant", "content": answer}],
+            route="tool",
+            tool_name=tool_name,
+            tool_harness={
+                "action": "execute",
+                "reason": "confirmed_pending_action",
+                "tool_name": tool_name,
+                "arguments": dict(arguments),
+            },
+        )
+
+
 class LateToolAgentFactory:
     def __init__(self, connections: ConnectionManager) -> None:
         self._connections = connections
@@ -225,6 +291,99 @@ class AppWebSocketTests(unittest.TestCase):
             ],
         )
 
+    def test_pending_confirmation_is_understood_only_for_same_speaker(self) -> None:
+        connections = ConnectionManager()
+        factory = PendingConfirmationAgentFactory()
+        app = create_app(
+            Settings(),
+            connection_manager=connections,
+            agent_factory=factory,  # type: ignore[arg-type]
+        )
+        with TestClient(app) as client:
+            with client.websocket_connect("/ws/godot") as websocket:
+                websocket.send_json(
+                    make_envelope(
+                        "hello", {"client_id": "mock"}, session_id="session-confirm"
+                    )
+                )
+                websocket.receive_json()
+
+                def request(request_id: str, text: str, speaker: str) -> dict[str, Any]:
+                    websocket.send_json(
+                        make_envelope(
+                            "user_message",
+                            {
+                                "text": text,
+                                "allowed_tools": ["open_task_guide"],
+                                "conversation_id": speaker,
+                            },
+                            session_id="session-confirm",
+                            request_id=request_id,
+                        )
+                    )
+                    self.assertEqual(websocket.receive_json()["type"], "run_started")
+                    final = websocket.receive_json()
+                    self.assertEqual(final["type"], "assistant_final")
+                    return final
+
+                suggestion = request("request-1", "打开工作文档", "speaker-1")
+                other_speaker = request("request-2", "是的", "speaker-2")
+                confirmation = request("request-3", "是的", "speaker-1")
+
+        self.assertEqual(suggestion["payload"]["route"], "confirm_action")
+        self.assertEqual(other_speaker["payload"]["answer"], "new:request-2")
+        self.assertEqual(confirmation["payload"]["answer"], "工作清单已打开。")
+        self.assertEqual(
+            factory.confirmed,
+            [("request-3", "open_task_guide", {"task_id": 1})],
+        )
+
+    def test_pending_confirmation_can_be_rejected_without_tool_execution(self) -> None:
+        connections = ConnectionManager()
+        factory = PendingConfirmationAgentFactory()
+        app = create_app(
+            Settings(),
+            connection_manager=connections,
+            agent_factory=factory,  # type: ignore[arg-type]
+        )
+        with TestClient(app) as client:
+            with client.websocket_connect("/ws/godot") as websocket:
+                websocket.send_json(
+                    make_envelope(
+                        "hello", {"client_id": "mock"}, session_id="session-reject"
+                    )
+                )
+                websocket.receive_json()
+
+                def request(request_id: str, text: str) -> dict[str, Any]:
+                    websocket.send_json(
+                        make_envelope(
+                            "user_message",
+                            {
+                                "text": text,
+                                "allowed_tools": ["open_task_guide"],
+                                "conversation_id": "speaker-1",
+                            },
+                            session_id="session-reject",
+                            request_id=request_id,
+                        )
+                    )
+                    self.assertEqual(websocket.receive_json()["type"], "run_started")
+                    final = websocket.receive_json()
+                    self.assertEqual(final["type"], "assistant_final")
+                    return final
+
+                suggestion = request("request-1", "打开工作文档")
+                rejection = request("request-2", "不是")
+
+        self.assertEqual(suggestion["payload"]["route"], "confirm_action")
+        self.assertEqual(rejection["payload"]["route"], "direct_answer")
+        self.assertEqual(
+            rejection["payload"]["answer"],
+            "好的，已取消，不执行任何操作。",
+        )
+        self.assertEqual(factory.confirmed, [])
+
     def test_duplicate_active_session_is_rejected_without_replacing_first(self) -> None:
         connections = ConnectionManager()
         factory = RecordingAgentFactory()
@@ -301,6 +460,12 @@ class AppWebSocketTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["decision"], "answer")
         self.assertEqual(response.json()["retrieved_ids"], ["entry-1"])
+        trace = response.json()["harness_trace"]
+        self.assertEqual(trace["version"], 1)
+        self.assertEqual(len(trace["stages"]), 1)
+        self.assertEqual(trace["stages"][0]["type"], "knowledge_qa")
+        self.assertEqual(trace["stages"][0]["outcome"], "answered")
+        self.assertEqual(trace["stages"][0]["reason"], "verified")
         self.assertEqual(harness.calls[0][0], "目标力矩是多少？")
 
     def test_knowledge_endpoint_rejects_unbounded_entry(self) -> None:
@@ -489,6 +654,10 @@ class AppWebSocketTests(unittest.TestCase):
                 final = websocket.receive_json()
                 self.assertEqual(final["type"], "assistant_final")
                 self.assertEqual(final["payload"]["answer"], "相册已打开。")
+                self.assertEqual(
+                    final["payload"]["harness_trace"],
+                    {"version": 1, "stages": []},
+                )
 
     def test_completed_request_id_is_not_executed_twice(self) -> None:
         connections = ConnectionManager()

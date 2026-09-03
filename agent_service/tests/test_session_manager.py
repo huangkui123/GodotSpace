@@ -115,6 +115,38 @@ class SessionManagerTests(unittest.IsolatedAsyncioTestCase):
             task.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
 
+    async def test_pending_actions_are_isolated_by_conversation(self) -> None:
+        manager = SessionManager()
+        await manager.set_pending_action(
+            "session-1",
+            "speaker-1",
+            tool_name="open_task_guide",
+            arguments={"task_id": 1},
+            action_text="打开工作清单",
+        )
+
+        self.assertIsNone(
+            await manager.get_pending_action("session-1", "speaker-2")
+        )
+        pending = await manager.get_pending_action("session-1", "speaker-1")
+        self.assertIsNotNone(pending)
+        self.assertEqual(pending.tool_name, "open_task_guide")
+
+    async def test_pending_action_expires(self) -> None:
+        manager = SessionManager()
+        await manager.set_pending_action(
+            "session-1",
+            "speaker-1",
+            tool_name="open_task_guide",
+            arguments={"task_id": 1},
+            action_text="打开工作清单",
+            ttl_seconds=0,
+        )
+
+        self.assertIsNone(
+            await manager.get_pending_action("session-1", "speaker-1")
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

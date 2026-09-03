@@ -89,11 +89,12 @@ class ReplayCurrentTaskStepTool(_EmptyArgumentsTool):
     description = "重新播放当前工作清单步骤的动画，不改变工作清单页码。"
 
 
-class DelegateDeepSeekTool(_EmptyArgumentsTool):
-    name = "delegate_deepseek"
+class QueryTaskKnowledgeTool(_EmptyArgumentsTool):
+    name = "query_task_knowledge"
     description = (
         "查询实验手册、当前步骤怎样操作、步骤含义或专业知识时，读取当前任务的"
         "本地证据快照；不要由路由模型自行回答专业内容。本工具只返回证据，不返回"
         "可直接展示的答案；Gateway 会用本地知识 harness 校验证据并生成答案。"
-        "“这一步在讲什么”属于当前步骤含义查询，应调用本工具。"
+        "询问是否满足继续操作、拆卸或执行下一步的条件，也属于知识与安全依据查询，"
+        "而不是立即推进步骤。"
     )

@@ -40,7 +40,8 @@ class GetCurrentTaskStepTool(GodotRpcTool):
     name = "get_current_task_step"
     description = (
         "读取并返回当前工作清单正在显示的步骤及其内容，不改变工作清单页码；"
-        "它不负责解释操作方法。"
+        "它只适合询问当前处于哪一步，不负责解释操作方法，也不判断是否满足继续"
+        "操作或拆卸的条件。"
     )
     parameters = {"type": "object", "properties": {}, "required": []}
 

@@ -1,6 +1,10 @@
 $ErrorActionPreference = "Stop"
 
 $ProjectRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
+$WslProjectRoot = (& wsl.exe -d Ubuntu-20.04 -- wslpath -a -u $ProjectRoot.Replace('\', '/') | Select-Object -First 1).Trim()
+if (-not $WslProjectRoot) {
+  throw "Could not translate the project root to a WSL path: $ProjectRoot"
+}
 $Stdout = Join-Path $ProjectRoot "logs\agent_gateway.out"
 $Stderr = Join-Path $ProjectRoot "logs\agent_gateway.err"
 
@@ -10,7 +14,7 @@ Start-Process `
   -FilePath "wsl.exe" `
   -ArgumentList @(
     "-d", "Ubuntu-20.04",
-    "--cd", "/mnt/c/Users/94580/Desktop/cxy/Model",
+    "--cd", $WslProjectRoot,
     "--",
     "bash", "scripts/start_agent_gateway.sh"
   ) `

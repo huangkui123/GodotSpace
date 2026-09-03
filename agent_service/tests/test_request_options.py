@@ -11,12 +11,13 @@ from agent_service.protocol import ProtocolError
 
 class RequestOptionsTests(unittest.TestCase):
     def test_defaults_to_album_only_without_context(self) -> None:
-        context, allowed_tools = _parse_agent_request_options({}, 100)
+        context, allowed_tools, conversation_id = _parse_agent_request_options({}, 100)
         self.assertEqual(context, {})
         self.assertEqual(allowed_tools, ["open_album"])
+        self.assertEqual(conversation_id, "default")
 
     def test_accepts_task_context_and_bounded_tool_authorization(self) -> None:
-        context, allowed_tools = _parse_agent_request_options(
+        context, allowed_tools, conversation_id = _parse_agent_request_options(
             {
                 "context": {"task_id": 1, "page_index": 2},
                 "allowed_tools": [
@@ -24,11 +25,13 @@ class RequestOptionsTests(unittest.TestCase):
                     "get_current_task_step",
                     "next_task_step",
                 ],
+                "conversation_id": "speaker-7",
             },
             200,
         )
         self.assertEqual(context["page_index"], 2)
         self.assertEqual(allowed_tools[-1], "next_task_step")
+        self.assertEqual(conversation_id, "speaker-7")
 
     def test_rejects_unknown_or_duplicate_authorization(self) -> None:
         for allowed_tools in (["call_node"], ["open_album", "open_album"]):

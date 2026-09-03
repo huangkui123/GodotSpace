@@ -77,7 +77,7 @@ record_external_qa(request_id, question, answer, success, metadata)
 
 - `tool`
 - `direct_answer`
-- `delegate_deepseek`
+- `knowledge_qa`
 - `clarify`
 
 实现原则：

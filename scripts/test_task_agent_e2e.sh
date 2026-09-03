@@ -4,9 +4,11 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 godot_exe="/mnt/d/godot_modding/bin/godot.windows.editor.x86_64.llvm.console.exe"
 mock_log="/tmp/godotspace_task_agent_gateway.log"
+mock_port="${TASK_AGENT_GATEWAY_PORT:-17862}"
 
 source "$repo_root/.venv/bin/activate"
-python "$repo_root/scripts/mock_task_agent_gateway.py" >"$mock_log" 2>&1 &
+TASK_AGENT_GATEWAY_PORT="$mock_port" \
+    python "$repo_root/scripts/mock_task_agent_gateway.py" >"$mock_log" 2>&1 &
 server_pid=$!
 
 cleanup() {
@@ -21,7 +23,7 @@ set +e
     --headless \
     --path 'F:\GodotSpace\GodotSpace' \
     --script 'res://Assets/ARSpace/Scripts/AI/LocalAgent/task_agent_e2e_self_test.gd' \
-    -- --local-agent-testmode
+    -- --local-agent-testmode "--mock-gateway-port=$mock_port"
 godot_status=$?
 wait "$server_pid"
 gateway_status=$?

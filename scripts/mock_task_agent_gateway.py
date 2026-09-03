@@ -83,6 +83,15 @@ async def run_tool_round(
     if not result["payload"].get("ok"):
         raise RuntimeError(f"{tool_name} failed: {result['payload']}")
     result_data = result["payload"].get("data", {})
+    final_answer = answer
+    if tool_name == "query_task_knowledge":
+        entries = result_data.get("entries", [])
+        if not isinstance(entries, list) or not entries:
+            raise RuntimeError(f"knowledge tool returned no evidence entries: {result_data}")
+        if "answer" in result_data:
+            raise RuntimeError(f"knowledge tool returned a model answer instead of evidence: {result_data}")
+        first_entry = entries[0] if isinstance(entries[0], dict) else {}
+        final_answer = f"根据当前步骤证据：{first_entry.get('content', '')}"
     result_snapshot = result_data.get("snapshot", result_data)
     target_page = expected_page
     if tool_name == "next_task_step":
@@ -90,14 +99,23 @@ async def run_tool_round(
     elif tool_name == "previous_task_step":
         target_page -= 1
     if (
-        tool_name != "delegate_deepseek"
+        tool_name != "query_task_knowledge"
         and result_snapshot.get("page_index") != target_page
     ):
         raise RuntimeError(f"{tool_name} returned the wrong page: {result_snapshot}")
     await connection.send(
         envelope(
             "assistant_final",
-            {"answer": answer, "messages": []},
+            {
+                "answer": final_answer,
+                "messages": [],
+                "route": (
+                    "knowledge_qa"
+                    if tool_name == "query_task_knowledge"
+                    else "tool"
+                ),
+                "tool_name": tool_name,
+            },
             request_id=request_id,
         )
     )
@@ -116,7 +134,7 @@ async def handle(connection: ServerConnection) -> None:
     )
     await run_tool_round(
         connection,
-        expected_text="下一步该做什么",
+        expected_text="工作清单翻到下一页",
         tool_name="next_task_step",
         tool_call_id="tool-advance",
         expected_page=2,
@@ -132,11 +150,11 @@ async def handle(connection: ServerConnection) -> None:
     )
     await run_tool_round(
         connection,
-        expected_text="这一页在讲什么",
-        tool_name="delegate_deepseek",
+        expected_text="这一页要用多大力矩",
+        tool_name="query_task_knowledge",
         tool_call_id="tool-explain",
-        expected_page=2,
-        answer="当前未配置在线 LLM；已使用本地降级说明。",
+        expected_page=17,
+        answer="根据当前步骤证据回答：请按工作清单当前页执行。",
     )
     await asyncio.sleep(0.5)
 

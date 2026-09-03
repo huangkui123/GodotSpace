@@ -72,7 +72,7 @@ def _closed_ui_context() -> dict[str, Any]:
 def _cases() -> list[RoutingCase]:
     guide_tools = [
         "close_task_guide",
-        "delegate_deepseek",
+        "query_task_knowledge",
         "go_to_task_guide_page",
         "next_task_step",
         "open_album",
@@ -82,7 +82,7 @@ def _cases() -> list[RoutingCase]:
     ]
     album_tools = [
         "close_album",
-        "delegate_deepseek",
+        "query_task_knowledge",
         "get_album_state",
         "go_to_album_page",
         "next_album_page",
@@ -91,7 +91,7 @@ def _cases() -> list[RoutingCase]:
         "previous_album_page",
     ]
     both_tools = sorted(set(guide_tools + album_tools))
-    closed_ui_tools = ["delegate_deepseek", "open_album", "open_task_guide"]
+    closed_ui_tools = ["query_task_knowledge", "open_album", "open_task_guide"]
     return [
         RoutingCase(
             "open work checklist alias",
@@ -224,16 +224,16 @@ def _cases() -> list[RoutingCase]:
             "当前这一步具体应该怎么操作",
             _guide_context(),
             guide_tools,
-            "delegate_deepseek",
-            expected_routes=("delegate_deepseek",),
+            "query_task_knowledge",
+            expected_routes=("knowledge_qa",),
         ),
         RoutingCase(
             "current step explanation",
             "这一步在讲什么",
             _guide_context(),
             guide_tools,
-            "delegate_deepseek",
-            expected_routes=("delegate_deepseek",),
+            "query_task_knowledge",
+            expected_routes=("knowledge_qa",),
         ),
         RoutingCase(
             "direct greeting",
@@ -293,7 +293,7 @@ async def _run_case(
             arguments = payload.get("arguments", {})
             actual_arguments = arguments if isinstance(arguments, dict) else {}
             tool_data: dict[str, Any] = {"acknowledged_tool": actual_call}
-            if actual_call == "delegate_deepseek":
+            if actual_call == "query_task_knowledge":
                 tool_data["entries"] = [
                     {
                         "id": "live-current-step",

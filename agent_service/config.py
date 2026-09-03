@@ -64,6 +64,7 @@ class Settings:
     knowledge_retrieval_limit: int = 5
     knowledge_minimum_score: float = 2.0
     knowledge_model_timeout_seconds: float = 2.0
+    tool_semantic_timeout_seconds: float = 10.0
     knowledge_corpus_path: str = ""
     knowledge_runtime_source: str = DEFAULT_KNOWLEDGE_RUNTIME_SOURCE
 
@@ -95,6 +96,11 @@ class Settings:
             knowledge_model_timeout_seconds=_env_float(
                 "KNOWLEDGE_MODEL_TIMEOUT",
                 2.0,
+                minimum=0.1,
+            ),
+            tool_semantic_timeout_seconds=_env_float(
+                "TOOL_SEMANTIC_TIMEOUT",
+                10.0,
                 minimum=0.1,
             ),
             knowledge_corpus_path=os.getenv("KNOWLEDGE_CORPUS_PATH", "").strip(),

@@ -36,6 +36,14 @@ class RequestRecord:
     state_changing_tool_dispatched: bool = False
 
 
+@dataclass(frozen=True, slots=True)
+class PendingAction:
+    tool_name: str
+    arguments: dict[str, Any]
+    action_text: str
+    expires_at_monotonic: float
+
+
 @dataclass(slots=True)
 class SessionState:
     session_id: str
@@ -43,6 +51,7 @@ class SessionState:
     active_tasks: dict[str, asyncio.Task[Any]] = field(default_factory=dict)
     seen_request_ids: dict[str, None] = field(default_factory=dict)
     requests: dict[str, RequestRecord] = field(default_factory=dict)
+    pending_actions: dict[str, PendingAction] = field(default_factory=dict)
     last_access_monotonic: float = field(default_factory=time.monotonic)
 
 
@@ -175,6 +184,51 @@ class SessionManager:
     async def has_seen_request(self, session_id: str, request_id: str) -> bool:
         state = await self.get(session_id)
         return request_id in state.seen_request_ids
+
+    async def set_pending_action(
+        self,
+        session_id: str,
+        conversation_id: str,
+        *,
+        tool_name: str,
+        arguments: dict[str, Any],
+        action_text: str,
+        ttl_seconds: float = 30.0,
+    ) -> None:
+        async with self._lock:
+            state = self._get_or_create_locked(session_id)
+            state.pending_actions[conversation_id] = PendingAction(
+                tool_name=tool_name,
+                arguments=dict(arguments),
+                action_text=action_text,
+                expires_at_monotonic=time.monotonic() + max(0.0, ttl_seconds),
+            )
+
+    async def get_pending_action(
+        self, session_id: str, conversation_id: str
+    ) -> PendingAction | None:
+        async with self._lock:
+            state = self._sessions.get(session_id)
+            if state is None:
+                return None
+            pending = state.pending_actions.get(conversation_id)
+            if pending is None:
+                return None
+            if pending.expires_at_monotonic <= time.monotonic():
+                state.pending_actions.pop(conversation_id, None)
+                return None
+            state.last_access_monotonic = time.monotonic()
+            return pending
+
+    async def clear_pending_action(
+        self, session_id: str, conversation_id: str
+    ) -> PendingAction | None:
+        async with self._lock:
+            state = self._sessions.get(session_id)
+            if state is None:
+                return None
+            state.last_access_monotonic = time.monotonic()
+            return state.pending_actions.pop(conversation_id, None)
 
     async def finish_task(self, session_id: str, request_id: str) -> None:
         async with self._lock:

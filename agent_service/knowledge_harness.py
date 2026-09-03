@@ -7,6 +7,8 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
+from agent_service.harness_protocol import HarnessStageTrace
+
 
 ABSTAIN_ANSWER = "现有可信资料未提供足够依据，请查阅对应手册或请专家席确认。"
 INJECTION_MARKERS = (
@@ -139,6 +141,22 @@ class KnowledgeAnswer:
         value["citations"] = [asdict(item) for item in self.citations]
         value["retrieved_ids"] = list(self.retrieved_ids)
         return value
+
+    def to_stage_trace(self, *, latency_ms: float | None = None) -> HarnessStageTrace:
+        citation_ids = [item.evidence_id for item in self.citations]
+        return HarnessStageTrace(
+            stage_type="knowledge_qa",
+            outcome="answered" if self.decision == "answer" else "abstained",
+            reason=self.reason,
+            model_attempts=self.model_attempts,
+            fallback_used=self.reason.startswith("deterministic_fallback:"),
+            latency_ms=latency_ms,
+            details={
+                "retrieved_ids": list(self.retrieved_ids),
+                "citation_ids": citation_ids,
+                "citation_count": len(citation_ids),
+            },
+        )
 
 
 class TrustedEvidenceStore:

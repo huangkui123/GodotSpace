@@ -10,7 +10,7 @@ from agent_service.tools.task_guide import (
 from agent_service.tools.ui_navigation import (
     CloseAlbumTool,
     CloseTaskGuideTool,
-    DelegateDeepSeekTool,
+    QueryTaskKnowledgeTool,
     GetAlbumStateTool,
     GoToAlbumPageTool,
     NextAlbumPageTool,
@@ -22,7 +22,7 @@ from agent_service.tools.ui_navigation import (
 __all__ = [
     "CloseAlbumTool",
     "CloseTaskGuideTool",
-    "DelegateDeepSeekTool",
+    "QueryTaskKnowledgeTool",
     "GetAlbumStateTool",
     "GoToAlbumPageTool",
     "GoToTaskGuidePageTool",

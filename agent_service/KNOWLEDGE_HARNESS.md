@@ -4,8 +4,8 @@
 
 Qwen3-VL-2B is not treated as a source of facts. It has two bounded roles:
 
-1. route a knowledge request to the existing compatibility tool name
-   `delegate_deepseek`;
+1. route a knowledge request to `query_task_knowledge`, which reads the current
+   Godot task snapshot as evidence;
 2. optionally select up to four IDs from evidence already retrieved by the
    server.
 
@@ -28,6 +28,14 @@ a source, quote, number, procedure, or state assertion.
 6. Validate selected IDs and required values. If the model fails or drops any
    safety directive, use the already validated deterministic candidate set.
 7. Render verbatim evidence and source metadata in code.
+
+## Audit metadata
+
+The direct knowledge endpoint emits one `knowledge_qa` stage under
+`harness_trace`. A routed Agent request emits `tool_call -> knowledge_qa` in the
+same envelope. The knowledge stage records its outcome, reason, model attempts,
+fallback use, latency, retrieved IDs, and citation IDs without duplicating quote
+text. The versioned common shape is documented in `HARNESS_PROTOCOL.md`.
 
 ## Threat boundary
 

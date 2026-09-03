@@ -131,6 +131,17 @@ class KnowledgeHarnessTests(unittest.TestCase):
         self.assertIn("当前专家任务步骤", result.answer)
         self.assertEqual(result.reason, "deterministic_evidence")
 
+    def test_deictic_page_torque_question_uses_runtime_step_17(self) -> None:
+        result = KnowledgeHarness(RecordingModel("unused")).answer(
+            "这一页我要用的力矩有多大？",
+            [self.torque],
+        )
+
+        self.assertEqual(result.decision, "answer")
+        self.assertIn("2.5N·m", result.answer)
+        self.assertIn("第二遍逐个力矩检查", result.answer)
+        self.assertNotIn("未提供足够依据", result.answer)
+
     def test_multi_evidence_model_selects_ids_and_code_copies_text(self) -> None:
         second = EvidenceEntry(
             "power-rule",
@@ -167,6 +178,16 @@ class KnowledgeHarnessTests(unittest.TestCase):
         self.assertEqual(result.decision, "answer")
         self.assertTrue(result.reason.startswith("deterministic_fallback:model_error"))
         self.assertIn(second.content, result.answer)
+        trace = result.to_stage_trace(latency_ms=9.94).to_dict()
+        self.assertEqual(trace["type"], "knowledge_qa")
+        self.assertEqual(trace["outcome"], "answered")
+        self.assertTrue(trace["fallback_used"])
+        self.assertEqual(trace["model_attempts"], 1)
+        self.assertEqual(trace["latency_ms"], 9.9)
+        self.assertEqual(
+            trace["details"]["citation_ids"],
+            [item.evidence_id for item in result.citations],
+        )
 
     def test_model_cannot_drop_a_retrieved_safety_directive(self) -> None:
         safety = EvidenceEntry(

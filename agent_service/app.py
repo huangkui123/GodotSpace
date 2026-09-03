@@ -3,18 +3,21 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
+import time
 from contextlib import suppress
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 
 from agent_service import __version__
-from agent_service.agent_factory import AgentFactory
+from agent_service.agent_factory import AgentFactory, AgentRunResult
 from agent_service.agent_factory import SUPPORTED_TOOL_NAMES
 from agent_service.config import Settings
 from agent_service.connection_manager import ConnectionManager, GodotConnectionError
 from agent_service.connection_manager import GodotSessionAlreadyConnectedError
 from agent_service.health import probe_model_server
+from agent_service.harness_protocol import HarnessTrace
 from agent_service.knowledge_harness import (
     KnowledgeHarness,
     OpenAICompatibleJsonClient,
@@ -136,6 +139,7 @@ def create_app(
                 status_code=422,
                 detail="corpus_entry_ids must be an array of at most 50 non-empty strings",
             )
+        knowledge_started = time.perf_counter()
         try:
             registered = store.select(
                 [item.strip() for item in corpus_entry_ids]
@@ -163,7 +167,12 @@ def create_app(
         if total_chars > 40_000:
             raise HTTPException(status_code=422, detail="evidence exceeds the 40000 character limit")
         result = await asyncio.to_thread(harness.answer, question, evidence)
-        return result.to_dict()
+        latency_ms = max(0.0, (time.perf_counter() - knowledge_started) * 1000.0)
+        payload = result.to_dict()
+        payload["harness_trace"] = HarnessTrace(
+            stages=(result.to_stage_trace(latency_ms=latency_ms),)
+        ).to_dict()
+        return payload
 
     @app.websocket("/ws/godot")
     async def godot_websocket(websocket: WebSocket) -> None:
@@ -219,7 +228,7 @@ def create_app(
                     text = require_payload_string(
                         envelope, "text", max_chars=settings.max_message_chars
                     )
-                    context, allowed_tools = _parse_agent_request_options(
+                    context, allowed_tools, conversation_id = _parse_agent_request_options(
                         envelope["payload"], settings.max_message_chars
                     )
                     request_id = envelope["request_id"] or new_id("request")
@@ -235,6 +244,7 @@ def create_app(
                             factory=factory,
                             context=context,
                             allowed_tools=allowed_tools,
+                            conversation_id=conversation_id,
                         ),
                     )
                     if task is None:
@@ -342,6 +352,7 @@ async def _run_agent_request(
     factory: AgentFactory,
     context: dict[str, Any],
     allowed_tools: list[str],
+    conversation_id: str,
 ) -> None:
     state = await sessions.get(session_id)
     try:
@@ -355,13 +366,51 @@ async def _run_agent_request(
                 request_id=request_id,
             )
             messages = [_build_stateless_user_message(user_text, context)]
-            result = await asyncio.to_thread(
-                factory.run,
-                session_id,
-                request_id,
-                messages,
-                allowed_tools,
-            )
+            pending = await sessions.get_pending_action(session_id, conversation_id)
+            follow_up = _classify_pending_follow_up(user_text) if pending else "new"
+            if pending is not None and follow_up == "confirm":
+                await sessions.clear_pending_action(session_id, conversation_id)
+                result = await asyncio.to_thread(
+                    factory.run_confirmed_action,
+                    session_id,
+                    request_id,
+                    messages,
+                    allowed_tools,
+                    pending.tool_name,
+                    pending.arguments,
+                )
+            elif pending is not None and follow_up == "reject":
+                await sessions.clear_pending_action(session_id, conversation_id)
+                result = _pending_action_cancelled_result(messages)
+            else:
+                if pending is not None:
+                    await sessions.clear_pending_action(session_id, conversation_id)
+                result = await asyncio.to_thread(
+                    factory.run,
+                    session_id,
+                    request_id,
+                    messages,
+                    allowed_tools,
+                )
+                harness = result.tool_harness or {}
+                suggested_tool = harness.get("suggested_tool")
+                suggested_arguments = harness.get("suggested_arguments")
+                suggested_action_text = harness.get("suggested_action_text")
+                if (
+                    result.route == "confirm_action"
+                    and isinstance(suggested_tool, str)
+                    and suggested_tool
+                    and isinstance(suggested_arguments, dict)
+                    and isinstance(suggested_action_text, str)
+                    and suggested_action_text
+                ):
+                    await sessions.set_pending_action(
+                        session_id,
+                        conversation_id,
+                        tool_name=suggested_tool,
+                        arguments=suggested_arguments,
+                        action_text=suggested_action_text,
+                    )
             if not await sessions.can_publish(session_id, request_id):
                 return
             await connections.send_event(
@@ -372,6 +421,12 @@ async def _run_agent_request(
                     "messages": result.messages,
                     "route": result.route,
                     "tool_name": result.tool_name,
+                    "tool_harness": result.tool_harness or {},
+                    "harness_trace": (
+                        result.harness_trace.to_dict()
+                        if result.harness_trace is not None
+                        else HarnessTrace().to_dict()
+                    ),
                 },
                 request_id=request_id,
             )
@@ -390,7 +445,7 @@ async def _run_agent_request(
 
 def _parse_agent_request_options(
     payload: dict[str, Any], max_chars: int
-) -> tuple[dict[str, Any], list[str]]:
+) -> tuple[dict[str, Any], list[str], str]:
     context_value = payload.get("context", {})
     if not isinstance(context_value, dict):
         raise ProtocolError("payload.context must be a JSON object")
@@ -413,7 +468,48 @@ def _parse_agent_request_options(
         if tool_name in allowed_tools:
             raise ProtocolError(f"Duplicate allowed tool: {tool_name}")
         allowed_tools.append(tool_name)
-    return dict(context_value), allowed_tools
+    conversation_value = payload.get("conversation_id", "default")
+    if not isinstance(conversation_value, str) or not conversation_value.strip():
+        raise ProtocolError("payload.conversation_id must be a non-empty string")
+    conversation_id = conversation_value.strip()
+    if len(conversation_id) > 128:
+        raise ProtocolError("payload.conversation_id exceeds the 128 character limit")
+    return dict(context_value), allowed_tools, conversation_id
+
+
+_PENDING_CONFIRMATIONS = frozenset(
+    {"是", "是的", "对", "对的", "没错", "好的", "好", "可以", "确认", "就这个", "就是它"}
+)
+_PENDING_REJECTIONS = frozenset(
+    {"不是", "不对", "取消", "算了", "不要", "不用", "不用了", "不需要"}
+)
+
+
+def _classify_pending_follow_up(text: str) -> str:
+    normalized = re.sub(r"[\s，。！？、,.!?；;：:]+", "", text).strip()
+    if normalized in _PENDING_CONFIRMATIONS:
+        return "confirm"
+    if normalized in _PENDING_REJECTIONS:
+        return "reject"
+    return "new"
+
+
+def _pending_action_cancelled_result(
+    messages: list[dict[str, Any]],
+) -> AgentRunResult:
+    answer = "好的，已取消，不执行任何操作。"
+    return AgentRunResult(
+        answer=answer,
+        messages=[*messages, {"role": "assistant", "content": answer}],
+        route="direct_answer",
+        tool_name="respond_directly",
+        tool_harness={
+            "action": "respond",
+            "reason": "pending_action_rejected",
+            "tool_name": "",
+            "arguments": {},
+        },
+    )
 
 
 def _build_stateless_user_message(

@@ -16,7 +16,7 @@ if [[ -f "$pid_file" ]]; then
   rm -f "$pid_file"
 fi
 
-nohup bash scripts/start_agent_gateway_remote_model.sh >"$log_file" 2>&1 &
+nohup setsid bash scripts/start_agent_gateway_remote_model.sh >"$log_file" 2>&1 &
 gateway_pid="$!"
 echo "$gateway_pid" >"$pid_file"
 echo "Remote-model Gateway started with PID $gateway_pid."
