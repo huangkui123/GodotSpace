@@ -63,7 +63,7 @@ func _run() -> void:
 		return
 	wake_button.pressed.emit()
 	await process_frame
-	if not interaction_panel.visible or interaction_label.text != "我在，请说。":
+	if not interaction_panel.visible or interaction_label.text != "我在，请说。" or wake_button.text != "重新听写":
 		_fail("Manual wake button did not enter the shared assistant listening state.")
 		return
 	router.call("_handle_wake_transcript", {"speaker_peer_id": 1, "utterance_id": 1, "text": "取消", "is_final": true})
@@ -138,6 +138,15 @@ func _run() -> void:
 	if transcript_label.text.find("普通转写第一句") == -1 or transcript_label.text.find("普通转写第二句") == -1:
 		_fail("Final ordinary utterances must remain as separate transcript rows.")
 		return
+	voice_chat.call("_on_transport_transcript_received", {
+		"speaker_peer_id": 1,
+		"speaker_name": "服务端",
+		"text": "普通转写仍在识别",
+		"is_final": false,
+		"utterance_id": 1003,
+		"timestamp_msec": 1003,
+	})
+	await process_frame
 
 	assistant.answer_started.emit("当前步骤需要做什么")
 	await process_frame
@@ -153,6 +162,21 @@ func _run() -> void:
 		return
 	if transcript_label.text.find("智能助手") == -1 or transcript_label.text.find("保持防静电接地") == -1:
 		_fail("VoiceChatUI did not show assistant reply in transcript box.")
+		return
+	if transcript_label.text.find("保持防静电接地") < transcript_label.text.find("普通转写仍在识别"):
+		_fail("A newer assistant reply must render below an older partial transcript.")
+		return
+	voice_chat.call("_on_transport_transcript_received", {
+		"speaker_peer_id": 1,
+		"speaker_name": "服务端",
+		"text": "普通转写仍在识别完成",
+		"is_final": true,
+		"utterance_id": 1003,
+		"timestamp_msec": 1004,
+	})
+	await process_frame
+	if transcript_label.text.find("保持防静电接地") < transcript_label.text.find("普通转写仍在识别完成"):
+		_fail("Finalizing an older partial must not move it below a newer assistant reply.")
 		return
 
 	print("LLM assistant voice panel self test passed.")

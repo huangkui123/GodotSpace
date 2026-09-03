@@ -90,7 +90,18 @@ func _check_local_transcriber_lifecycle_api() -> void:
 	_expect(str(state.get("provider", "")) == "funasr", "Local transcriber debug state must identify FunASR.")
 	_expect(str(state.get("endpoint", "")).begins_with("ws://"), "Local FunASR endpoint must be a WebSocket URL.")
 	_expect(transcriber.vad_silence_time == 600, "Local FunASR must use the stable 600 ms silence window.")
+	_expect(transcriber.stable_partial_msec == 1800, "Local FunASR must bound a stalled partial transcript at 1800 ms.")
 	_expect(transcriber.packet_duration_msec == 100, "Local FunASR must use stable 100 ms audio packets.")
+	var transcript_events: Array[Dictionary] = []
+	var transcript_callback := func(is_final: bool, text: String) -> void:
+		transcript_events.append({"is_final": is_final, "text": text})
+	transcriber.transcribed_msg.connect(transcript_callback)
+	transcriber.call("_handle_message", {"type": "transcript", "text": "智能助", "is_final": false})
+	transcriber.call("_handle_message", {"type": "finished"})
+	_expect(transcript_events.size() == 2, "A finished Local FunASR stream must close a dangling partial transcript.")
+	if transcript_events.size() == 2:
+		_expect(bool(transcript_events[-1].get("is_final", false)), "The fallback transcript must be final.")
+		_expect(str(transcript_events[-1].get("text", "")) == "智能助", "The fallback final must preserve the latest partial text.")
 	transcriber.finish_transcription()
 	transcriber.cancel_transcription()
 	transcriber.free()

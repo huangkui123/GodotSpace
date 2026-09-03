@@ -30,9 +30,9 @@ var voice_chat: Node
 var llm_assistant: Node
 var network_handler: Node
 var volume_rows: Dictionary = {}
-var completed_transcript := ""
-var partial_transcripts: Dictionary = {}
-var assistant_pending_line := ""
+var transcript_entries: Dictionary = {}
+var transcript_sequence := 0
+var assistant_pending_key := ""
 var assistant_interaction_state := "idle"
 var assistant_interaction_text := ""
 var assistant_command_text := ""
@@ -188,48 +188,93 @@ func _on_peer_changed(_peer_id: int) -> void:
 func _on_voice_transcript_received(data: Dictionary) -> void:
 	var peer_id := int(data.get("speaker_peer_id", 0))
 	var utterance_id := int(data.get("utterance_id", 0))
-	var transcript_key := _transcript_entry_key(peer_id, utterance_id)
+	var transcript_key := _transcript_entry_key(data)
 	var speaker := str(data.get("speaker_name", _get_voice_panel_peer_label(peer_id)))
 	var text := str(data.get("text", "")).strip_edges()
 	if text.is_empty():
 		return
 	if _is_assistant_command_transcript(data):
-		partial_transcripts.erase(transcript_key)
+		transcript_entries.erase(transcript_key)
 		_update_transcript_text()
 		return
 
-	if bool(data.get("is_final", false)):
-		if completed_transcript != "":
-			completed_transcript += "\n"
-		completed_transcript += _format_transcript_line(speaker, text, false)
-		partial_transcripts.erase(transcript_key)
-	else:
-		partial_transcripts[transcript_key] = {
-			"peer_id": peer_id,
-			"utterance_id": utterance_id,
-			"speaker": speaker,
-			"text": text,
-			"timestamp_msec": int(data.get("timestamp_msec", Time.get_ticks_msec())),
-		}
+	_upsert_transcript_entry(
+		transcript_key,
+		speaker,
+		text,
+		not bool(data.get("is_final", false)),
+		int(data.get("timestamp_msec", Time.get_ticks_msec())),
+		peer_id,
+		utterance_id
+	)
 	_update_transcript_text()
 
 
-func _transcript_entry_key(peer_id: int, utterance_id: int) -> String:
-	return "%d:%d" % [peer_id, utterance_id]
+func _transcript_entry_key(data: Dictionary) -> String:
+	var source := str(data.get("source", "voice"))
+	var message_id := str(data.get("message_id", "")).strip_edges()
+	if not message_id.is_empty():
+		return "%s:%s" % [source, message_id]
+	var peer_id := int(data.get("speaker_peer_id", 0))
+	var utterance_id := int(data.get("utterance_id", 0))
+	if utterance_id > 0:
+		return "voice:%d:%d" % [peer_id, utterance_id]
+	if not bool(data.get("is_final", false)):
+		return "%s:partial:%d" % [source, peer_id]
+	return "%s:event:%d:%d" % [
+		source,
+		int(data.get("timestamp_msec", Time.get_ticks_msec())),
+		transcript_sequence + 1,
+	]
+
+
+func _upsert_transcript_entry(
+	key: String,
+	speaker: String,
+	text: String,
+	is_partial: bool,
+	timestamp_msec: int,
+	peer_id: int = 0,
+	utterance_id: int = 0
+) -> void:
+	var entry := transcript_entries.get(key, {}) as Dictionary
+	if entry.is_empty():
+		transcript_sequence += 1
+		entry = {
+			"sequence": transcript_sequence,
+			"timestamp_msec": timestamp_msec,
+		}
+	entry["speaker"] = speaker
+	entry["text"] = text
+	entry["is_partial"] = is_partial
+	entry["peer_id"] = peer_id
+	entry["utterance_id"] = utterance_id
+	transcript_entries[key] = entry
 
 
 func _on_assistant_answer_started(question: String) -> void:
-	assistant_pending_line = _format_transcript_line("智能助手", "正在分析问题，等待回复：%s" % question, true)
+	if not assistant_pending_key.is_empty():
+		transcript_entries.erase(assistant_pending_key)
+	assistant_pending_key = "assistant_pending:%d" % (transcript_sequence + 1)
+	_upsert_transcript_entry(
+		assistant_pending_key,
+		"智能助手",
+		"正在分析问题，等待回复：%s" % question,
+		true,
+		Time.get_ticks_msec()
+	)
 	_update_transcript_text()
 
 
 func _on_assistant_answer_completed(_question: String, _answer: String, _sources: Array) -> void:
-	assistant_pending_line = ""
+	transcript_entries.erase(assistant_pending_key)
+	assistant_pending_key = ""
 	_update_transcript_text()
 
 
 func _on_assistant_answer_failed(_question: String, _message: String) -> void:
-	assistant_pending_line = ""
+	transcript_entries.erase(assistant_pending_key)
+	assistant_pending_key = ""
 	_update_transcript_text()
 
 
@@ -246,9 +291,9 @@ func _on_assistant_interaction_state_changed(data: Dictionary) -> void:
 
 
 func _load_transcript_history() -> void:
-	completed_transcript = ""
-	partial_transcripts.clear()
-	assistant_pending_line = ""
+	transcript_entries.clear()
+	transcript_sequence = 0
+	assistant_pending_key = ""
 	assistant_interaction_state = "idle"
 	assistant_interaction_text = ""
 	assistant_command_text = ""
@@ -265,27 +310,42 @@ func _load_transcript_history() -> void:
 		var text := str(data.get("text", "")).strip_edges()
 		if text.is_empty():
 			continue
-		if completed_transcript != "":
-			completed_transcript += "\n"
-		completed_transcript += _format_transcript_line(speaker, text, false)
+		_upsert_transcript_entry(
+			_transcript_entry_key(data),
+			speaker,
+			text,
+			false,
+			int(data.get("timestamp_msec", Time.get_ticks_msec())),
+			int(data.get("speaker_peer_id", 0)),
+			int(data.get("utterance_id", 0))
+		)
 
 
 func _update_transcript_text() -> void:
-	var body := completed_transcript
-	var partial_peer_ids := partial_transcripts.keys()
-	partial_peer_ids.sort()
-	for peer_id in partial_peer_ids:
-		var state: Dictionary = partial_transcripts[peer_id]
-		if body != "":
-			body += "\n"
-		body += _format_transcript_line(str(state.get("speaker", "")), str(state.get("text", "")), true)
-	if assistant_pending_line != "":
-		if body != "":
-			body += "\n"
-		body += assistant_pending_line
+	var ordered_entries: Array = transcript_entries.values()
+	ordered_entries.sort_custom(_sort_transcript_entries)
+	var lines: Array[String] = []
+	for state in ordered_entries:
+		if typeof(state) != TYPE_DICTIONARY:
+			continue
+		var entry := state as Dictionary
+		lines.append(_format_transcript_line(
+			str(entry.get("speaker", "")),
+			str(entry.get("text", "")),
+			bool(entry.get("is_partial", false))
+		))
+	var body := "\n".join(lines)
 	if body == "":
 		body = "等待开麦语音..."
 	transcript_label.text = body
+
+
+func _sort_transcript_entries(left: Dictionary, right: Dictionary) -> bool:
+	var left_sequence := int(left.get("sequence", 0))
+	var right_sequence := int(right.get("sequence", 0))
+	if left_sequence != right_sequence:
+		return left_sequence < right_sequence
+	return int(left.get("timestamp_msec", 0)) < int(right.get("timestamp_msec", 0))
 
 
 func _update_assistant_interaction() -> void:
@@ -330,7 +390,7 @@ func _update_assistant_wake_button() -> void:
 	var transcription_available := _get_voice_bool("transcription_enabled")
 	var assistant_busy := assistant_interaction_state in ["processing", "executing"]
 	assistant_wake_button.disabled = not has_wake_service or not transcription_available or assistant_busy
-	assistant_wake_button.text = "重新开始聆听" if assistant_interaction_state == "listening" else "唤醒智能助手"
+	assistant_wake_button.text = "重新听写" if assistant_interaction_state == "listening" else "唤醒智能助手"
 	if not transcription_available:
 		assistant_wake_button.tooltip_text = "请先开启语音转写。"
 	elif assistant_busy:

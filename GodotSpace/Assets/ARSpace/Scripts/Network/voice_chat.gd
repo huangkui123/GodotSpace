@@ -111,6 +111,7 @@ var selected_output_device: String = "Default"
 @export_range(0.001, 0.5, 0.001) var local_asr_speech_threshold: float = 0.012
 @export var local_asr_hotwords: String = "智能助手 30"
 @export_range(400, 2000, 100) var local_asr_vad_silence_time: int = 600
+@export_range(1000, 5000, 100) var local_asr_stable_partial_msec: int = 1800
 @export_range(40, 200, 20) var local_asr_packet_duration_msec: int = 100
 @export var voice_debug_enabled: bool = false
 @export var voice_debug_controls_enabled: bool = false
@@ -137,6 +138,7 @@ var voice_level_states: Dictionary = {}
 var _voice_level_send_accum: float = 0.0
 var voice_transcript_history: Array = []
 var _transcript_utterance_ids: Dictionary = {}
+var _assistant_transcript_sequence := 0
 var _assistant_command_capture_peers: Dictionary = {}
 var transcription_enabled: bool = true
 var _peer_transcribers: Dictionary = {}
@@ -873,6 +875,7 @@ func publish_assistant_transcript(text: String, speaker_name: String = "智能�
 	if clean_text.is_empty():
 		return
 
+	_assistant_transcript_sequence += 1
 	var data := {
 		"speaker_peer_id": 0,
 		"speaker_name": speaker_name,
@@ -880,6 +883,7 @@ func publish_assistant_transcript(text: String, speaker_name: String = "智能�
 		"is_final": true,
 		"timestamp_msec": Time.get_ticks_msec(),
 		"source": "llm_assistant",
+		"message_id": "assistant-%d" % _assistant_transcript_sequence,
 	}
 	if multiplayer.has_multiplayer_peer() and multiplayer.is_server():
 		_broadcast_transcript(data)
@@ -981,6 +985,7 @@ func _configure_peer_transcriber(transcriber: Node) -> void:
 		transcriber.set("endpoint_url", _get_local_asr_endpoint())
 		transcriber.set("speech_threshold", local_asr_speech_threshold)
 		transcriber.set("vad_silence_time", local_asr_vad_silence_time)
+		transcriber.set("stable_partial_msec", local_asr_stable_partial_msec)
 		transcriber.set("packet_duration_msec", local_asr_packet_duration_msec)
 		if not local_asr_hotwords.strip_edges().is_empty():
 			transcriber.set("hotword_list", local_asr_hotwords)

@@ -9,7 +9,8 @@ const SNAPSHOT_TIMEOUT_SECONDS := 3.0
 const MAX_DEBUG_EVENTS := 64
 const REQUIRED_WAKE_WORD := "助手"
 const WAKE_COMMAND_TIMEOUT_SECONDS := 10.0
-const COMMAND_SETTLE_SECONDS := 5.0
+const PARTIAL_COMMAND_SETTLE_SECONDS := 5.0
+const FINAL_COMMAND_SETTLE_SECONDS := 1.2
 const WAKE_COMMAND_SEPARATORS := ",，:：。.!！?？;；、…"
 const OpenAlbumAdapterScript := preload("res://Assets/ARSpace/Scripts/AI/LocalAgent/open_album_tool_adapter.gd")
 
@@ -85,6 +86,15 @@ func _on_assistant_wake_requested(speaker_peer_id: int) -> void:
 		return
 	if speaker_peer_id <= 0:
 		return
+	var existing := _wake_sessions.get(speaker_peer_id, {}) as Dictionary
+	if bool(existing.get("confirmation", false)):
+		_start_wake_session(
+			speaker_peer_id,
+			-1,
+			true,
+			(existing.get("history_interaction", {}) as Dictionary).duplicate(true)
+		)
+		return
 	_start_wake_session(speaker_peer_id, -1)
 
 
@@ -100,12 +110,16 @@ func _route_final_transcript(data: Dictionary) -> String:
 	return _route_command(text, speaker_peer_id)
 
 
-func _route_command(text: String, speaker_peer_id: int) -> String:
+func _route_command(
+	text: String,
+	speaker_peer_id: int,
+	history_interaction: Dictionary = {}
+) -> String:
 	var clean_text := text.strip_edges()
 	if clean_text.is_empty():
 		return ""
 	var request_id := _new_id("request")
-	_requests[request_id] = {
+	var request_record := {
 		"speaker_peer_id": speaker_peer_id,
 		"intent": ROUTE_QWEN_FIRST,
 		"text": clean_text,
@@ -114,6 +128,9 @@ func _route_command(text: String, speaker_peer_id: int) -> String:
 		"allowed_tools": [],
 		"created_msec": Time.get_ticks_msec(),
 	}
+	if not history_interaction.is_empty():
+		request_record["history_interaction"] = history_interaction.duplicate(true)
+	_requests[request_id] = request_record
 	_record_event("routed", request_id, {"target": "local" if _is_local_target(speaker_peer_id) else "remote"})
 	command_routed.emit(request_id, ROUTE_QWEN_FIRST, speaker_peer_id)
 	_publish_interaction_state(speaker_peer_id, "processing", "正在理解你的请求…")
@@ -164,7 +181,7 @@ func _handle_wake_transcript(data: Dictionary) -> void:
 	_wake_sessions[speaker_peer_id] = session
 
 	var command_text := str(session.get("command", "")).strip_edges()
-	var countdown_seconds := COMMAND_SETTLE_SECONDS if not command_text.is_empty() else WAKE_COMMAND_TIMEOUT_SECONDS
+	var countdown_seconds := _command_settle_seconds(is_final) if not command_text.is_empty() else WAKE_COMMAND_TIMEOUT_SECONDS
 	_publish_interaction_state(speaker_peer_id, "listening", "我在，请说。", {
 		"command_text": command_text,
 		"countdown_seconds": countdown_seconds,
@@ -173,17 +190,26 @@ func _handle_wake_transcript(data: Dictionary) -> void:
 	if command_text.is_empty():
 		return
 	if bool(session.get("confirmation", false)) and is_final:
+		var history_interaction := (session.get("history_interaction", {}) as Dictionary).duplicate(true)
+		if not history_interaction.is_empty():
+			history_interaction["confirmation_reply"] = command_text
 		_wake_sessions.erase(speaker_peer_id)
-		_route_command(command_text, speaker_peer_id)
+		_route_command(command_text, speaker_peer_id, history_interaction)
 		return
 	_submit_wake_session_after_silence(
 		speaker_peer_id,
 		str(session.get("id", "")),
-		int(session.get("revision", 0))
+		int(session.get("revision", 0)),
+		countdown_seconds
 	)
 
 
-func _start_wake_session(speaker_peer_id: int, wake_utterance_id: int, confirmation: bool = false) -> Dictionary:
+func _start_wake_session(
+	speaker_peer_id: int,
+	wake_utterance_id: int,
+	confirmation: bool = false,
+	history_interaction: Dictionary = {}
+) -> Dictionary:
 	var session := {
 		"id": _new_id("wake"),
 		"wake_utterance_id": wake_utterance_id,
@@ -192,6 +218,7 @@ func _start_wake_session(speaker_peer_id: int, wake_utterance_id: int, confirmat
 		"command": "",
 		"revision": 0,
 		"confirmation": confirmation,
+		"history_interaction": history_interaction.duplicate(true),
 	}
 	_wake_sessions[speaker_peer_id] = session
 	var prompt := "请直接回答是或不是。" if confirmation else "我在，请说。"
@@ -213,8 +240,17 @@ func _join_wake_session_command(session: Dictionary) -> String:
 	return " ".join(parts).strip_edges()
 
 
-func _submit_wake_session_after_silence(speaker_peer_id: int, session_id: String, revision: int) -> void:
-	await get_tree().create_timer(COMMAND_SETTLE_SECONDS).timeout
+func _command_settle_seconds(is_final_segment: bool) -> float:
+	return FINAL_COMMAND_SETTLE_SECONDS if is_final_segment else PARTIAL_COMMAND_SETTLE_SECONDS
+
+
+func _submit_wake_session_after_silence(
+	speaker_peer_id: int,
+	session_id: String,
+	revision: int,
+	settle_seconds: float
+) -> void:
+	await get_tree().create_timer(settle_seconds).timeout
 	var session := _wake_sessions.get(speaker_peer_id, {}) as Dictionary
 	if session.is_empty() or str(session.get("id", "")) != session_id:
 		return
@@ -223,8 +259,11 @@ func _submit_wake_session_after_silence(speaker_peer_id: int, session_id: String
 	var command_text := str(session.get("command", "")).strip_edges()
 	if command_text.is_empty():
 		return
+	var history_interaction := (session.get("history_interaction", {}) as Dictionary).duplicate(true)
+	if bool(session.get("confirmation", false)) and not history_interaction.is_empty():
+		history_interaction["confirmation_reply"] = command_text
 	_wake_sessions.erase(speaker_peer_id)
-	_route_command(command_text, speaker_peer_id)
+	_route_command(command_text, speaker_peer_id, history_interaction)
 
 
 func _expire_wake_session(speaker_peer_id: int, session_id: String) -> void:
@@ -640,16 +679,42 @@ func _on_agent_answer(request_id: String, answer: String) -> void:
 	record["status"] = "completed"
 	_requests[request_id] = record
 	_record_event("completed", request_id, {"elapsed_msec": Time.get_ticks_msec() - int(record.get("created_msec", Time.get_ticks_msec()))})
-	_record_request_history(request_id, record, final_answer, _is_successful_final_result(record))
 	var speaker_peer_id := int(record.get("speaker_peer_id", SERVER_PEER_ID))
 	var needs_confirmation := str(record.get("qwen_route", "")) == "confirm_action"
+	if not needs_confirmation:
+		_record_request_history(request_id, record, final_answer, _is_successful_final_result(record))
 	if not needs_confirmation:
 		_publish_interaction_state(speaker_peer_id, "idle")
 	_publish_answer(final_answer)
 	_clear_operations_for_request(request_id)
 	_requests.erase(request_id)
 	if needs_confirmation:
-		_start_wake_session(speaker_peer_id, -1, true)
+		_start_wake_session(
+			speaker_peer_id,
+			-1,
+			true,
+			_confirmation_history_interaction(request_id, record, final_answer)
+		)
+
+
+func _confirmation_history_interaction(
+	request_id: String,
+	record: Dictionary,
+	clarification_answer: String
+) -> Dictionary:
+	var interaction := (record.get("history_interaction", {}) as Dictionary).duplicate(true)
+	if interaction.is_empty():
+		interaction = {
+			"id": request_id,
+			"question": str(record.get("text", "")).strip_edges(),
+			"clarification_prompts": [],
+		}
+	var prompts := interaction.get("clarification_prompts", []) as Array
+	var clean_prompt := clarification_answer.strip_edges()
+	if not clean_prompt.is_empty():
+		prompts.append(clean_prompt)
+	interaction["clarification_prompts"] = prompts
+	return interaction
 
 
 func _on_agent_routing_decision(request_id: String, route: String, tool_name: String) -> void:
@@ -723,15 +788,22 @@ func _record_request_history(
 		"tool_name": str(record.get("qwen_tool_name", record.get("last_operation", ""))),
 		"error_code": error_code,
 	}
+	var history_interaction := record.get("history_interaction", {}) as Dictionary
+	var history_request_id := str(history_interaction.get("id", request_id)).strip_edges()
+	var history_question := str(history_interaction.get("question", record.get("text", ""))).strip_edges()
+	if not history_interaction.is_empty():
+		metadata["interaction_id"] = history_request_id
+		metadata["clarification_prompts"] = (history_interaction.get("clarification_prompts", []) as Array).duplicate(true)
+		metadata["confirmation_reply"] = str(history_interaction.get("confirmation_reply", "")).strip_edges()
 	var speaker_peer_id := int(record.get("speaker_peer_id", SERVER_PEER_ID))
 	if _is_local_target(speaker_peer_id):
-		_apply_history_entry(request_id, str(record.get("text", "")), answer, success, metadata)
+		_apply_history_entry(history_request_id, history_question, answer, success, metadata)
 	elif _is_peer_connected(speaker_peer_id):
 		rpc_id(
 			speaker_peer_id,
 			"_client_record_assistant_history",
-			request_id,
-			str(record.get("text", "")),
+			history_request_id,
+			history_question,
 			answer,
 			success,
 			metadata

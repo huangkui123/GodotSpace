@@ -17,6 +17,10 @@ func _run() -> void:
 		return
 	if not _check(router.call("_strip_required_wake_word", "智能助手。").is_empty(), "Wake-only final punctuation was treated as a command."):
 		return
+	if not _check(is_equal_approx(float(router.call("_command_settle_seconds", true)), 1.2), "A final ASR segment must use the short submit delay."):
+		return
+	if not _check(is_equal_approx(float(router.call("_command_settle_seconds", false)), 5.0), "A partial ASR segment must retain the stalled-stream fallback delay."):
+		return
 	var interaction_states: Array[String] = []
 	router.assistant_interaction_state_changed.connect(func(_peer_id: int, state: String, _text: String) -> void:
 		interaction_states.append(state)
@@ -61,6 +65,10 @@ func _run() -> void:
 		confirmation_routes.append(request_id)
 	)
 	var confirmation_requests := router.get("_requests") as Dictionary
+	var assistant := root.get_node_or_null("LLMAssistantService")
+	if not _check(assistant != null and assistant.has_method("record_external_qa"), "LLMAssistant external history API is missing."):
+		return
+	var confirmation_history_before := (assistant.call("get_qa_history") as Array).size()
 	confirmation_requests["confirmation-prompt"] = {
 		"speaker_peer_id": 1,
 		"status": "agent_running",
@@ -74,13 +82,40 @@ func _run() -> void:
 	var confirmation_session := (router.get("_wake_sessions") as Dictionary).get(1, {}) as Dictionary
 	if not _check(bool(confirmation_session.get("confirmation", false)), "A confirmable suggestion did not reopen peer-scoped listening."):
 		return
+	if not _check((assistant.call("get_qa_history") as Array).size() == confirmation_history_before, "A clarification prompt must not create a separate history entry."):
+		return
+	var interaction_before_retry := (confirmation_session.get("history_interaction", {}) as Dictionary).duplicate(true)
+	router.call("_on_assistant_wake_requested", 1)
+	confirmation_session = (router.get("_wake_sessions") as Dictionary).get(1, {}) as Dictionary
+	if not _check(bool(confirmation_session.get("confirmation", false)), "Retry listening lost the pending confirmation mode."):
+		return
+	if not _check(str((confirmation_session.get("history_interaction", {}) as Dictionary).get("id", "")) == str(interaction_before_retry.get("id", "")), "Retry listening lost the confirmation interaction id."):
+		return
+	var merged_record := {
+		"speaker_peer_id": 1,
+		"text": "是的",
+		"qwen_route": "tool_executed",
+		"qwen_tool_name": "open_task_guide",
+		"history_interaction": {
+			"id": str(interaction_before_retry.get("id", "")),
+			"question": "打开工作文档",
+			"clarification_prompts": ["当前最接近的是打开工作清单，你是想执行它吗？"],
+			"confirmation_reply": "是的",
+		},
+	}
+	router.call("_record_request_history", "confirmation-follow-up", merged_record, "工作清单已打开。", true)
+	var merged_history := assistant.call("get_qa_history") as Array
+	if not _check(merged_history.size() == confirmation_history_before + 1, "A confirmed clarification must create exactly one merged history entry."):
+		return
+	var merged_item := merged_history[-1] as Dictionary
+	if not _check(str(merged_item.get("question", "")) == "打开工作文档" and str(merged_item.get("answer", "")) == "工作清单已打开。", "Merged confirmation history did not preserve the original question and final answer."):
+		return
 	router.call("_handle_wake_transcript", {"speaker_peer_id": 1, "utterance_id": 2, "text": "是的", "is_final": true})
 	if not _check(confirmation_routes.size() == 1, "A final confirmation was not routed immediately without another wake word."):
 		return
 	if not _check(not (router.get("_wake_sessions") as Dictionary).has(1), "Confirmation listening remained open after submission."):
 		return
-	var assistant := root.get_node_or_null("LLMAssistantService")
-	if not _check(assistant != null and assistant.has_method("record_external_qa"), "LLMAssistant external history API is missing."):
+	if not _check((assistant.call("get_qa_history") as Array).size() == confirmation_history_before + 1, "The confirmation follow-up created a second history entry."):
 		return
 	var history_before := (assistant.call("get_qa_history") as Array).size()
 	if not _check(bool(assistant.call("record_external_qa", "history-self-test", "测试问题", "测试答案", true, {"provider": "test"})), "External Qwen history was not recorded."):

@@ -18,6 +18,7 @@ const DEFAULT_ENDPOINT := "ws://127.0.0.1:8765/ws/asr"
 @export var need_vad: bool = true
 @export_range(400, 5000, 100) var vad_silence_time: int = 600
 @export_range(1000, 90000, 1000) var max_speak_time: int = 15000
+@export_range(1000, 5000, 100) var stable_partial_msec: int = 1800
 
 @export_group("Streaming")
 @export_range(40, 200, 20) var packet_duration_msec: int = 100
@@ -39,8 +40,11 @@ var _mono_buffer := PackedFloat32Array()
 var _pcm_buffer := PackedByteArray()
 var _last_error_message := ""
 var _last_close_detail := ""
+var _last_transcript_text := ""
+var _final_transcript_received := false
 var _packets_sent := 0
 var _bytes_sent := 0
+var _last_endpoint_reason := ""
 
 
 func _ready() -> void:
@@ -79,8 +83,11 @@ func start_transcription() -> bool:
 	_source_sample_rate = max(1, int(AudioServer.get_mix_rate()))
 	_last_error_message = ""
 	_last_close_detail = ""
+	_last_transcript_text = ""
+	_final_transcript_received = false
 	_packets_sent = 0
 	_bytes_sent = 0
+	_last_endpoint_reason = ""
 	_clear_audio_buffers()
 	set_process(true)
 	connection_state_changed.emit("connecting", endpoint)
@@ -137,10 +144,13 @@ func get_debug_state() -> Dictionary:
 		"connection_state": _connection_state_name(),
 		"last_error_message": _last_error_message,
 		"last_close_detail": _last_close_detail,
+		"last_transcript_text": _last_transcript_text,
+		"final_transcript_received": _final_transcript_received,
 		"packets_sent": _packets_sent,
 		"bytes_sent": _bytes_sent,
 		"finish_requested": _finish_requested,
 		"finish_sent": _finish_sent,
+		"last_endpoint_reason": _last_endpoint_reason,
 	}
 
 
@@ -165,6 +175,7 @@ func _process(_delta: float) -> void:
 	elif state == WebSocketPeer.STATE_CLOSED:
 		_last_close_detail = "%d %s" % [_peer.get_close_code(), _peer.get_close_reason()]
 		if not _finished_received and not _last_error_message:
+			_emit_fallback_final_if_needed()
 			connection_state_changed.emit("closed", _last_close_detail)
 		_reset_connection(false)
 	elif Time.get_ticks_msec() - _connection_started_msec > connect_timeout_msec:
@@ -182,6 +193,7 @@ func _send_start() -> void:
 		"need_vad": need_vad,
 		"vad_silence_msec": vad_silence_time,
 		"max_speak_msec": max_speak_time,
+		"stable_partial_msec": stable_partial_msec,
 		"speech_threshold": speech_threshold,
 		"hotwords": hotword_list,
 	}
@@ -214,14 +226,27 @@ func _handle_message(message: Dictionary) -> void:
 		"transcript":
 			var text := str(message.get("text", "")).strip_edges()
 			if not text.is_empty():
-				transcribed_msg.emit(bool(message.get("is_final", false)), text)
+				var is_final := bool(message.get("is_final", false))
+				_last_transcript_text = text
+				if is_final:
+					_final_transcript_received = true
+					_last_endpoint_reason = str(message.get("endpoint_reason", ""))
+				transcribed_msg.emit(is_final, text)
 		"finished":
 			_finished_received = true
+			_emit_fallback_final_if_needed()
 			connection_state_changed.emit("finished", "Local FunASR")
 			_reset_connection(false)
 		"error":
 			_emit_error(ERR_CANT_CONNECT, str(message.get("message", "Local FunASR error.")))
 			_reset_connection(false)
+
+
+func _emit_fallback_final_if_needed() -> void:
+	if _final_transcript_received or _last_transcript_text.is_empty():
+		return
+	_final_transcript_received = true
+	transcribed_msg.emit(true, _last_transcript_text)
 
 
 func _send_finish_if_ready() -> void:
