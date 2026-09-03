@@ -1,0 +1,13 @@
+[Unit]
+Description=Qwen3-VL FP8 vLLM service for GodotSpace
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=%h/local-agent-qwen/bin/start_vllm.sh
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+
+[Install]
+WantedBy=default.target
