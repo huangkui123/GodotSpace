@@ -35,3 +35,6 @@ python -m unittest discover -s asr_service/tests -v
 
 See `GodotSpace/Assets/ARSpace/Scripts/RealtimeReconstruction/README.md` and
 `Model/README.md` for subsystem-specific setup and validation.
+
+Local Agent 的部署步骤和功能清单见
+[`docs/LOCAL_AGENT_DEPLOYMENT.md`](docs/LOCAL_AGENT_DEPLOYMENT.md)。
