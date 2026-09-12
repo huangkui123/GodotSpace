@@ -14,7 +14,7 @@ TTS_PY -m unittest discover -s tts_service/tests -v
 
 MODEL_PY/ASR_PY/TTS_PY 为本次绝对路径。导入成功不证明 GPU 推理。
 
-运行 `deployment_check.py services --model-id EXACT_ID`。要求：
+运行 `deployment_check.py services --model-id EXACT_ID`，默认 EXACT_ID 为 Qwen/Qwen3-VL-8B-Instruct（省略参数也是此值）。要求：
 - vLLM /v1/models 正好包含部署选定 ID。
 - Gateway /healthz 为 godotspace-local-agent，/readyz.status=ready、model=EXACT_ID、vllm/model_found/qwen_agent 均 true。
 - ASR /health.status=ready、vad_loaded=true、warmed_up=true；核对实际模型/设备与计划一致。
@@ -51,7 +51,7 @@ ASR 另做真实模型识别：
    非默认 Gateway 端口可附加 `--mock-gateway-port=PORT`；参数名历史上带 mock，但它只是覆盖 endpoint。核对该端口运行的确实是真实 Gateway，不是 mock。
    测试应实际推进/回退页码，并验证第17页问题得到当前步骤证据及 2.5N·m。检查退出码和明确 passed 标记，不能只看模型输出一段文字。
 4. 需要完整多人验收时，读取 `test_task_agent_multi_client_e2e.sh`、`test_assistant_history_multi_client.sh` 的底层命令，替换动态路径并使用独立空闲 mock 端口运行；它们测 peer 隔离，不是模型质量。
-5. 可运行现有 benchmark 作额外回归，但报告实际 model ID、上下文、配置和用例数。不能将 mock/旧8B分数套在本次2B部署上。失败时查 harness trace、Godot状态、模型选择，不能用提高超时掩盖语义失败。
+5. 可运行现有 benchmark 作额外回归，但报告实际 model ID、上下文、精度、GPU/运行库和用例数。不能将 mock、旧2B或远程8B/FP8分数套在本次5090的8B/BF16部署上。失败时查 harness trace、Godot状态、模型选择，不能用提高超时掩盖语义失败。
 
 ## D. 真实交互验收（需要用户/硬件）
 

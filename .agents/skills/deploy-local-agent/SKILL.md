@@ -11,7 +11,7 @@ description: 在新电脑部署、迁移或恢复本仓库 GodotSpace Local Agen
 
 1. **定位与盘点**：从本文件向上找到同时包含 `Model/agent_service` 和 `GodotSpace/project.godot` 的仓库根目录，阅读适用的 AGENTS.md。记录分支、commit、已有修改；遵守当前开发分支约定，不自动切分支、stash、合并或初始化嵌套 Git。
 2. **理解链路**：完整读取 [architecture.md](references/architecture.md)，再完整读取 [deployment.md](references/deployment.md)。执行 `scripts/deployment_check.py inventory --repo REPO`（系统 Python 即可）；Windows 还需检查当前用户的 WSL2 注册和 Windows 端口。
-3. **宣布部署方案并执行**：说明选用的模型 ID/精度、上下文、ASR 设备、运行目录和下载范围。沿用明确指定的模型；未指定时，披露使用仓库本地脚本基线 **Qwen3-VL-2B-Instruct**，不能把 2B 说成原来的 8B。用户指定 8B 而显存不足时，不静默降级。按 deployment.md 建立隔离环境、下载权重、逐个启动服务；已有兼容且健康的服务直接复用。
+3. **宣布部署方案并执行**：说明选用的模型 ID/精度、上下文、ASR 设备、运行目录和下载范围。默认目标为 **RTX 5090 32GB**，模型 **Qwen/Qwen3-VL-8B-Instruct（原版 BF16）**，上下文 8192，vLLM 显存比例 0.75；不是 FP8。沿用用户后续明确指定的其他配置；显存不足时不静默降为 2B、量化或改远程。按 deployment.md 的 CUDA 12.8 配方建立隔离环境、下载权重、逐个启动服务；已有兼容且健康的服务直接复用。
 4. **验证**：完整读取 [verification.md](references/verification.md)，先自动化单测、服务身份/就绪和真实推理，再 Godot→Gateway→模型→工具往返，最后引导硬件验收。服务检查返回成功不等于任务完成。
 5. **交付**：在忽略的 `Model/generated/local-agent-deploy/` 下保存本机启动/停止入口和部署报告。报告记录版本、权重 revision/hash、设备、端口、PID 所有权、各层 PASS/FAIL/未验证、日志位置及恢复命令。只记录部署技术信息，不保存用户录音、真实对话或密钥。重启后应能用交付入口恢复，不重新下载模型。
 
@@ -31,7 +31,7 @@ description: 在新电脑部署、迁移或恢复本仓库 GodotSpace Local Agen
 - `inventory --repo REPO`：路径、版本、GPU、磁盘、端口、LFS pointer 盘点；只是盘点，不承诺部署就绪。
 - `services --model-id ID`：检查四服务响应内容和模型名，任一失败退出非零。
 - `smoke --model-id ID`：在服务检查后发起一次真实文本推理和 TTS 合成；不调用云服务，不触发 Godot 工具操作。
-- 后两项可传 `--model-port`、`--gateway-port`、`--asr-port`、`--tts-port`。只访问 127.0.0.1。在 WSL 和 Windows 各检查一次，不能只验证 WSL 内部互通。
+- 后两项默认检查 Qwen/Qwen3-VL-8B-Instruct；使用其他模型必须显式传 --model-id。可传 `--model-port`、`--gateway-port`、`--asr-port`、`--tts-port`。只访问 127.0.0.1。在 WSL 和 Windows 各检查一次，不能只验证 WSL 内部互通。
 - 无 Python 时先用系统只读命令检查 WSL/GPU，再按部署参考安装运行时，不为盘点单独装一套 Windows Python。
 
 在目标机器的 Codex 中可直接提出：

@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | Godot 交互 | GodotSpace/Assets/ARSpace/Scripts/Network/voice_chat.gd、voice_chat_ui.gd | 采集/转写、普通语音历史、唤醒按钮、命令输入框和倒计时 |
 | 命令与会话 | GodotSpace/Assets/ARSpace/Scripts/AI/LocalAgent/assistant_command_router.gd、local_agent_client.gd | 唤醒/确认状态、目标 peer、请求关联、Gateway WebSocket |
-| Qwen 推理 | Model/scripts/start_vllm.sh | vLLM；127.0.0.1:8000/v1；本地脚本默认 Qwen/Qwen3-VL-2B-Instruct |
+| Qwen 推理 | 本 skill 的 scripts/launch_service.py | vLLM；127.0.0.1:8000/v1；迁移默认 Qwen/Qwen3-VL-8B-Instruct BF16，RTX 5090 32GB |
 | Gateway/harness | Model/agent_service/app.py、agent_factory.py、knowledge_harness.py、tools/ | 7861/ws/godot；工具语义选择、执行意图判定、澄清确认、参数/证据验证与 Godot RPC |
 | 流式 ASR | Model/asr_service/app.py、funasr_engine.py、session.py | 8765/ws/asr；paraformer-zh-streaming + fsmn-vad；16kHz 单声道 PCM16 |
 | 轻量 TTS | Model/tts_service/、GodotSpace/Assets/ARSpace/Scripts/AI/LocalAgent/assistant_speech.gd | 8767/v1/speech；sherpa-onnx CPU + vits-icefall-zh-aishell3；约 30MB ONNX，8kHz PCM16，由目标 Client 播放到 PICO |
@@ -35,6 +35,7 @@
 ## 已发现的迁移陷阱
 
 - 旧 bootstrap 会 clear .venv；旧 ASR 启动脚本使用 .venv，而已有机器实际可能用 .venv-asr。
+- Model/scripts/start_vllm.sh 和 Gateway 原始 config.py 仍有旧 2B 默认；本 skill 启动器统一显式传入 8B ID，不调用这些旧默认。旧电脑的实际服务和业务配置不因更新 skill 而改变。
 - 部分 Godot smoke shell 写死旧盘符和引擎路径；先解析底层测试，再用新路径运行，不能把旧脚本无修改直接作为部署总入口。
 - scripts/env.sh 会激活旧 .venv 并默认设 HF 镜像。隔离环境不要 source 它；按实际 venv 的 NVIDIA 库目录处理动态链接问题。
 - 模型物理目录、served-model-name、Gateway MODEL_NAME 必须一致对应。远程旧脚本还有 8B/FP8/GPU 编号设置，不是新电脑默认。

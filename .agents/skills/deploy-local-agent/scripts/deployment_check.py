@@ -13,6 +13,7 @@ import time
 import urllib.request
 
 PORTS = {"model": 8000, "gateway": 7861, "asr": 8765, "tts": 8767}
+DEFAULT_MODEL_ID = "Qwen/Qwen3-VL-8B-Instruct"
 REQUIRED = ("Model/agent_service/app.py", "GodotSpace/project.godot")
 
 
@@ -169,7 +170,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=("inventory", "services", "smoke"))
     parser.add_argument("--repo")
-    parser.add_argument("--model-id")
+    parser.add_argument("--model-id", default=DEFAULT_MODEL_ID)
     for name, default in PORTS.items():
         parser.add_argument(f"--{name}-port", type=port_number, default=default)
     args = parser.parse_args()
@@ -177,7 +178,7 @@ def main() -> int:
     if len(set(ports.values())) != len(ports):
         parser.error("Service ports must be distinct.")
     if args.action != "inventory" and not args.model_id:
-        parser.error("--model-id is required; do not silently assume 2B or 8B.")
+        parser.error("--model-id must not be empty.")
     try:
         if args.action == "inventory":
             result = inventory(repository(args.repo), ports)

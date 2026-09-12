@@ -65,11 +65,20 @@ class CheckTests(unittest.TestCase):
         self.assertFalse(result["ok"])
         self.assertEqual(len(result["errors"]), 5)
 
-    def test_missing_model_id_is_cli_error(self):
-        with patch("sys.argv", ["check", "services"]), contextlib.redirect_stderr(io.StringIO()):
-            with self.assertRaises(SystemExit) as error:
-                check.main()
-        self.assertEqual(error.exception.code, 2)
+    def test_services_default_to_8b(self):
+        with patch("sys.argv", ["check", "services"]), \
+                patch.object(check, "services", return_value={"ok": True}) as probe, \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(check.main(), 0)
+        probe.assert_called_once_with(check.PORTS, "Qwen/Qwen3-VL-8B-Instruct")
+
+    def test_default_identity_rejects_running_2b(self):
+        data = payloads()
+        data["model"]["data"] = [{"id": "Qwen/Qwen3-VL-2B-Instruct"}]
+        data["gateway"]["model"] = "Qwen/Qwen3-VL-2B-Instruct"
+        result = check.assess(data, check.DEFAULT_MODEL_ID)
+        self.assertFalse(result["model"])
+        self.assertFalse(result["gateway"])
 
     def test_duplicate_ports_are_cli_error(self):
         with patch("sys.argv", ["check", "inventory", "--asr-port", "8000"]), \
@@ -123,11 +132,36 @@ class PathAndLaunchTests(unittest.TestCase):
         self.args = argparse.Namespace(
             repo=str(self.root), env_dir=str(self.env_dir), service="gateway",
             model_id="chosen-8B", model_path=str(self.model), port=None,
-            model_port=18000, max_model_len=2048, gpu_memory_utilization=0.60,
+            model_port=18000, dtype="auto", max_model_len=2048, gpu_memory_utilization=0.60,
             asr_device="cpu", asr_model="local asr", vad_model="local vad")
 
     def test_repository_with_spaces_and_unicode(self):
         self.assertEqual(check.repository(str(self.root)), self.root.resolve())
+
+    def test_default_5090_profile_reaches_vllm_and_gateway(self):
+        for service in ("vllm", "gateway"):
+            args = launch.parse_args([service, "--repo", str(self.root),
+                                      "--env-dir", str(self.env_dir),
+                                      "--model-path", str(self.model)])
+            argv, env = launch.build(args, {"MODEL_NAME": "stale-2B"})
+            if service == "vllm":
+                for flag, expected in (("--served-model-name", "Qwen/Qwen3-VL-8B-Instruct"),
+                                       ("--dtype", "bfloat16"), ("--max-model-len", "8192"),
+                                       ("--gpu-memory-utilization", "0.75")):
+                    self.assertEqual(argv[argv.index(flag) + 1], expected)
+                self.assertNotIn("--quantization", argv)
+            else:
+                self.assertEqual(env["MODEL_NAME"], "Qwen/Qwen3-VL-8B-Instruct")
+
+    def test_explicit_profile_overrides_are_preserved(self):
+        args = launch.parse_args(["vllm", "--repo", str(self.root),
+                                  "--env-dir", str(self.env_dir), "--model-path", str(self.model),
+                                  "--model-id", "chosen-model", "--dtype", "float16",
+                                  "--max-model-len", "4096", "--gpu-memory-utilization", "0.65"])
+        argv, _ = launch.build(args, {})
+        for flag, expected in (("--served-model-name", "chosen-model"), ("--dtype", "float16"),
+                               ("--max-model-len", "4096"), ("--gpu-memory-utilization", "0.65")):
+            self.assertEqual(argv[argv.index(flag) + 1], expected)
 
     def test_backend_only_is_rejected(self):
         with self.assertRaises(ValueError):

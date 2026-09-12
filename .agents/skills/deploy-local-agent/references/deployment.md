@@ -8,8 +8,9 @@
 - Windows 用 `wsl.exe --list --verbose`；在实际用户权限下选择已有 WSL2 发行版，优先已有 Ubuntu-20.04。沙箱“无发行版/拒绝访问”先走工具授权，不能据此重装 WSL。
 - 缺 WSL2/驱动，先解释安装和重启需求，通过授权执行系统安装；不要静默更换已有发行版或在 WSL 安装 Linux NVIDIA 内核驱动。可用 `wsl.exe --list --online` 确认可安装名称。
 - 用 `wsl.exe -d DISTRO -- wslpath -u WINDOWS_MODEL_PATH` 转换路径，不假定 C/F 盘。所有路径作为独立参数引用；Windows 启动 WSL 后端，不用 python.exe 操作 Linux venv。
-- Windows 和 WSL 分别检查 `nvidia-smi`、磁盘与端口。WSL 在 Windows 大型工作树上的 git status 可能超时；此时用 Windows Git 补查，不把超时当干净工作树。为环境和下载留足空间（建议先有 30GiB 以上可用；这不是 8B 的固定容量保证）。
-- NVIDIA 8GB 机器可尝试仓库 2B/2048/0.60 基线，但空闲显存、其他进程和上下文均会影响成功；不是仅按显卡名称保证可运行。8B 必须明确具体普通/FP8 模型 ID 和可用显存。不满足用户指定模型时停止该阶段，不擅自降模型/量化/改远程。
+- Windows 和 WSL 分别检查 `nvidia-smi`、磁盘与端口。WSL 在 Windows 大型工作树上的 git status 可能超时；此时用 Windows Git 补查，不把超时当干净工作树。为 8B 权重、环境和下载缓存预留空间，建议至少 50GiB 可用，并按实际下载清单复核。
+- 默认目标是 RTX 5090 32GB：Qwen/Qwen3-VL-8B-Instruct 原版、BF16、8192 tokens、单并发、vLLM 显存比例 0.75（约 24GiB 预算，余量给 Windows/Godot/OpenXR）。这不是显存硬隔离或运行保证；完整启动 Godot 后仍需检查峰值。OOM 时先查其他占用与日志，在保留 8B 的前提下评估上下文/显存预算，不自动降为 2B、FP8 或改远程。非 32GB 机器重新评估，不照搬旧 4060 配方。
+- 5090 属于 compute capability 12.0。不要沿用旧环境 cu126；新 model 环境使用 vLLM 0.11.0 默认 CUDA 12.8 二进制及匹配的 PyTorch cu128，并安装支持该 GPU/runtime 的 Windows 驱动。不能只把 torch 升级、却保留另一套 CUDA 构建的 vLLM。依据：[NVIDIA GPU 表](https://developer.nvidia.com/cuda/gpus)、[vLLM 0.11.0 安装文档](https://docs.vllm.ai/en/v0.11.0/getting_started/installation/gpu.html)。本配方尚未在目标 5090 上实测，必须做 CUDA 运算和真实模型 smoke。
 - 确认 git-lfs 可用；完整 clone 后运行 `git lfs pull` 和 `git lfs fsck`。复制来的目录仍需检查 pointer。不要覆盖用户修改来“修复”资产。
 - 匹配定制 Godot 可执行文件从用户的可信迁移包/现有安装定位；检查 `--version`。不能保证从公共 Godot 下载普通 4.4 就能满足项目定制 API。
 
@@ -22,6 +23,7 @@
 ```bash
 # Codex 将这里的目录变量填成从当前仓库解析的绝对路径。
 BACKEND="$PWD"
+MODEL_ID="Qwen/Qwen3-VL-8B-Instruct"
 RUNTIME="$BACKEND/.cache/local-agent-deploy"
 mkdir -p "$RUNTIME/envs" "$BACKEND/generated/local-agent-deploy" "$BACKEND/logs/local-agent-deploy"
 ```
@@ -31,12 +33,12 @@ mkdir -p "$RUNTIME/envs" "$BACKEND/generated/local-agent-deploy" "$BACKEND/logs/
 **不要 --clear**。已存在且来源不明的环境先检查，不安装进去；选一个新的明确路径。对本 skill 上次创建的环境，按已保存部署记录检查 pip check/版本后复用，安装失败可续装该环境，不删目录重来。
 
 ```bash
-uv pip install --python "$RUNTIME/envs/model/bin/python" "vllm==0.11.0" --torch-backend=cu126
+uv pip install --python "$RUNTIME/envs/model/bin/python" "vllm==0.11.0" --torch-backend=cu128
 uv pip install --python "$RUNTIME/envs/model/bin/python" \
   -r "$BACKEND/requirements-agent.txt" "transformers==4.57.1" \
   "qwen-vl-utils==0.0.14" "huggingface-hub<1" "requests>=2.31" "python-dateutil>=2.8"
 
-# 默认给 ASR 使用 CPU，避免和 vLLM 争抢小显存；必须测真实识别时延。
+# ASR 仍默认使用独立 CPU 环境；必须测真实识别时延。
 # 用户要求 GPU ASR 时在它自己的环境选匹配 CUDA 的 torch，不污染 model 环境。
 uv pip install --python "$RUNTIME/envs/asr/bin/python" torch --torch-backend=cpu
 uv pip install --python "$RUNTIME/envs/asr/bin/python" \
@@ -46,9 +48,9 @@ uv pip install --python "$RUNTIME/envs/asr/bin/python" \
 uv pip install --python "$RUNTIME/envs/tts/bin/python" -r "$BACKEND/requirements-tts.txt"
 ```
 
-分别运行三环境 `python -m pip check`，导出 `pip freeze` 到忽略的部署报告目录。model 环境还检查 torch.cuda.is_available()、设备、torch/CUDA/vLLM/transformers 版本；不通过不进入模型启动。
+分别运行三环境 `python -m pip check`，导出 `pip freeze` 到忽略的部署报告目录。model 环境还检查 torch.cuda.is_available()、torch.version.cuda（本配方应为 12.8）、get_device_capability()（5090 应为 12.0）、get_arch_list() 及 torch/vLLM/transformers 版本。实际运行小型 CUDA BF16 矩阵乘法并 synchronize，确认没有 no kernel image / unsupported architecture 等错误；只看到显卡名字不算通过。不通过不进入模型启动。
 
-这里复用了仓库验证过的 vLLM/transformers、FunASR 和 TTS 主版本，**不是所有传递依赖的跨平台锁文件**。ASR CPU 配方与旧电脑 CUDA 环境不同，必须通过后面的真实音频 smoke；若未来包源版本变化导致安装/导入失败，定位具体依赖、记录实际版本，不盲目升级整套 vLLM。
+这里保留了已有 vLLM/transformers、FunASR 和 TTS 主版本，但将 model CUDA 配方从旧 cu126 改为 cu128；**不是已在 5090 验证过的锁文件**。ASR CPU 配方与旧电脑 CUDA 环境不同，必须通过后面的真实音频 smoke；若包源/内核兼容性导致失败，定位具体依赖、记录实际版本，不盲目升级整套 vLLM 或静默降模型。
 
 ## 3. 权重下载和缓存
 
@@ -69,7 +71,7 @@ uv pip install --python "$RUNTIME/envs/tts/bin/python" -r "$BACKEND/requirements
 ```bash
 python3 "$SKILL/scripts/launch_service.py" vllm --repo "$REPO" \
   --env-dir "$RUNTIME/envs/model" --model-id "$MODEL_ID" --model-path "$MODEL_DIR" \
-  --max-model-len 2048 --gpu-memory-utilization 0.60
+  --dtype bfloat16 --max-model-len 8192 --gpu-memory-utilization 0.75
 python3 "$SKILL/scripts/launch_service.py" gateway --repo "$REPO" \
   --env-dir "$RUNTIME/envs/model" --model-id "$MODEL_ID"
 python3 "$SKILL/scripts/launch_service.py" asr --repo "$REPO" \

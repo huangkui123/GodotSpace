@@ -7,7 +7,7 @@ from pathlib import Path
 import socket
 import sys
 
-from deployment_check import PORTS, port_number, repository
+from deployment_check import DEFAULT_MODEL_ID, PORTS, port_number, repository
 
 
 def build(args: argparse.Namespace, inherited: dict[str, str]) -> tuple[list[str], dict[str, str]]:
@@ -34,7 +34,7 @@ def build(args: argparse.Namespace, inherited: dict[str, str]) -> tuple[list[str
             raise ValueError("vLLM executable missing in selected environment.")
         argv = [str(executable), "serve", str(Path(args.model_path).resolve()),
                 "--served-model-name", args.model_id, "--host", "127.0.0.1",
-                "--port", str(port), "--dtype", "auto",
+                "--port", str(port), "--dtype", args.dtype,
                 "--gpu-memory-utilization", str(args.gpu_memory_utilization),
                 "--max-model-len", str(args.max_model_len), "--max-num-seqs", "1",
                 "--max-num-batched-tokens", str(args.max_model_len),
@@ -63,23 +63,29 @@ def build(args: argparse.Namespace, inherited: dict[str, str]) -> tuple[list[str
     return argv, env
 
 
-def main() -> int:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("service", choices=("vllm", "gateway", "asr", "tts"))
     parser.add_argument("--repo")
     parser.add_argument("--env-dir", required=True)
     parser.add_argument("--port", type=port_number)
     parser.add_argument("--model-port", type=port_number, default=8000)
-    parser.add_argument("--model-id")
+    parser.add_argument("--model-id", default=DEFAULT_MODEL_ID)
     parser.add_argument("--model-path")
-    parser.add_argument("--max-model-len", type=int, default=2048)
-    parser.add_argument("--gpu-memory-utilization", type=float, default=0.60)
+    parser.add_argument("--dtype", choices=("auto", "bfloat16", "float16"), default="bfloat16")
+    parser.add_argument("--max-model-len", type=int, default=8192)
+    parser.add_argument("--gpu-memory-utilization", type=float, default=0.75)
     parser.add_argument("--asr-device", choices=("cpu", "cuda"), default="cpu")
     parser.add_argument("--asr-model", default="paraformer-zh-streaming")
     parser.add_argument("--vad-model", default="fsmn-vad")
-    args = parser.parse_args()
+    return parser.parse_args(argv)
+
+
+def main() -> int:
+    args = parse_args()
     if sys.platform != "linux":
-        parser.error("Run this launcher inside Linux/WSL, not Windows Python.")
+        print("Run this launcher inside Linux/WSL, not Windows Python.", file=sys.stderr)
+        return 2
     try:
         argv, env = build(args, dict(os.environ))
         port = args.port or PORTS["model" if args.service == "vllm" else args.service]
