@@ -1,0 +1,4 @@
+interface:
+  display_name: "部署 Local Agent"
+  short_description: "将本仓库的模型、语音服务和 Godot 智能助手迁移部署到新电脑"
+  default_prompt: "使用 $deploy-local-agent 在这台机器部署当前仓库的 Local Agent，建立可重复启动入口，并完成真实模型、语音服务和 Godot 联通验证。"
