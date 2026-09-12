@@ -140,6 +140,7 @@ var voice_transcript_history: Array = []
 var _transcript_utterance_ids: Dictionary = {}
 var _assistant_transcript_sequence := 0
 var _assistant_command_capture_peers: Dictionary = {}
+var _assistant_speech_peers: Dictionary = {}
 var transcription_enabled: bool = true
 var _peer_transcribers: Dictionary = {}
 var _client_transcription_source_sample_rate: int = 48000
@@ -650,6 +651,9 @@ func _on_downlink_voice_packet_received(packet: PackedByteArray) -> void:
 func _on_local_pcm_frames_captured(frames: PackedVector2Array) -> void:
 	if frames.is_empty():
 		return
+	if is_assistant_speech_active(_get_local_voice_peer_id()):
+		_reset_client_transcription_upload()
+		return
 	if _is_dictation_active():
 		if _dictation_transcriber != null and is_instance_valid(_dictation_transcriber):
 			_dictation_transcriber.call("push_audio_frames", frames)
@@ -854,6 +858,23 @@ func is_assistant_command_capture_active(peer_id: int) -> bool:
 	return _assistant_command_capture_peers.has(peer_id)
 
 
+func is_assistant_speech_active(peer_id: int) -> bool:
+	return _assistant_speech_peers.has(peer_id)
+
+
+func set_assistant_speech_active(peer_id: int, active: bool) -> void:
+	if active:
+		_assistant_speech_peers[peer_id] = true
+		var transcriber := _peer_transcribers.get(peer_id) as Node
+		if is_instance_valid(transcriber):
+			transcriber.set_meta("speech_cancelled", true)
+		_stop_peer_transcription(peer_id)
+	else:
+		_assistant_speech_peers.erase(peer_id)
+	if peer_id == _get_local_voice_peer_id():
+		_reset_client_transcription_upload()
+
+
 func request_assistant_wake() -> bool:
 	if not transcription_enabled:
 		return false
@@ -917,6 +938,8 @@ func publish_assistant_interaction_state(
 
 
 func _set_peer_transcription_active(peer_id: int, active: bool) -> void:
+	if is_assistant_speech_active(peer_id):
+		return
 	if not multiplayer.is_server() or peer_id <= 0:
 		return
 	if not transcription_enabled:
@@ -1152,6 +1175,8 @@ func _stop_all_transcription() -> void:
 		_finish_peer_transcription(int(peer_id))
 
 func _feed_transcription_frames(peer_id: int, frames: PackedVector2Array) -> void:
+	if is_assistant_speech_active(peer_id):
+		return
 	var transcriber := _get_peer_transcriber(peer_id)
 	if transcriber == null or not transcriber.has_method("push_audio_frames"):
 		return
@@ -1160,6 +1185,8 @@ func _feed_transcription_frames(peer_id: int, frames: PackedVector2Array) -> voi
 	transcriber.push_audio_frames(frames)
 
 func _feed_transcription_pcm(peer_id: int, pcm: PackedByteArray) -> void:
+	if is_assistant_speech_active(peer_id):
+		return
 	var transcriber := _get_peer_transcriber(peer_id)
 	if transcriber == null or not transcriber.has_method("push_pcm16_audio"):
 		return
@@ -1168,6 +1195,8 @@ func _feed_transcription_pcm(peer_id: int, pcm: PackedByteArray) -> void:
 	transcriber.push_pcm16_audio(pcm)
 
 func _on_peer_transcribed_msg(is_final: bool, new_text: String, peer_id: int, source: Node = null) -> void:
+	if is_assistant_speech_active(peer_id) or (is_instance_valid(source) and bool(source.get_meta("speech_cancelled", false))):
+		return
 	var text := new_text.strip_edges()
 	if text.is_empty() or not multiplayer.is_server():
 		return

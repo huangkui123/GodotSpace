@@ -366,6 +366,7 @@ func _update_assistant_interaction() -> void:
 		"listening": "我在，请说。",
 		"processing": "正在理解你的请求…",
 		"executing": "正在执行操作…",
+		"speaking": "正在播报，点击按钮可停止并开始听写。",
 		"timeout": "等待命令超时。",
 		"failed": "请求未完成。",
 	}.get(assistant_interaction_state, "助手正在处理。"))
@@ -391,6 +392,8 @@ func _update_assistant_wake_button() -> void:
 	var assistant_busy := assistant_interaction_state in ["processing", "executing"]
 	assistant_wake_button.disabled = not has_wake_service or not transcription_available or assistant_busy
 	assistant_wake_button.text = "重新听写" if assistant_interaction_state == "listening" else "唤醒智能助手"
+	if assistant_interaction_state == "speaking":
+		assistant_wake_button.text = "停止播报并听写"
 	if not transcription_available:
 		assistant_wake_button.tooltip_text = "请先开启语音转写。"
 	elif assistant_busy:

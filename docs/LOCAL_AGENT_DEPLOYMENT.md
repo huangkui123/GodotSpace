@@ -1,5 +1,7 @@
 # Local Agent 部署与功能简介
 
+轻量 CPU 语音播报是独立可选组件，安装与 Pico 播放说明见 [LOCAL_AGENT_SPEECH.md](LOCAL_AGENT_SPEECH.md)。
+
 GodotSpace 的 Local Agent 由 Godot、Agent Gateway、本地 Qwen 模型和本地 FunASR 组成，所有组件都在本机运行。
 
 ## 1. 服务结构

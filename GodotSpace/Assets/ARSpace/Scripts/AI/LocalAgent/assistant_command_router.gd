@@ -18,9 +18,12 @@ var _requests: Dictionary = {}
 var _operation_to_request: Dictionary = {}
 var _recent_events: Array[Dictionary] = []
 var _wake_sessions: Dictionary = {}
+var _spoken_requests: Dictionary = {}
 
 
 func _ready() -> void:
+	_connect_speech.call_deferred()
+	multiplayer.peer_disconnected.connect(_on_speaker_disconnected)
 	var voice_chat := get_node_or_null("/root/VoiceChat")
 	if voice_chat != null and voice_chat.has_signal("voice_transcript_received"):
 		voice_chat.voice_transcript_received.connect(_on_voice_transcript_received)
@@ -87,6 +90,10 @@ func _on_assistant_wake_requested(speaker_peer_id: int) -> void:
 	if speaker_peer_id <= 0:
 		return
 	var existing := _wake_sessions.get(speaker_peer_id, {}) as Dictionary
+	_spoken_requests.erase(speaker_peer_id)
+	var speech := get_node_or_null("/root/AssistantSpeech")
+	if speech != null:
+		speech.call("cancel_for_peer", speaker_peer_id)
 	if bool(existing.get("confirmation", false)):
 		_start_wake_session(
 			speaker_peer_id,
@@ -158,6 +165,8 @@ func _handle_wake_transcript(data: Dictionary) -> void:
 	var utterance_id := int(data.get("utterance_id", 0))
 	var is_final := bool(data.get("is_final", false))
 	var session := _wake_sessions.get(speaker_peer_id, {}) as Dictionary
+	if not str(session.get("speech_id", "")).is_empty():
+		return
 	if session.is_empty():
 		if text.find(REQUIRED_WAKE_WORD) < 0:
 			return
@@ -230,6 +239,37 @@ func _start_wake_session(
 	return session
 
 
+func _connect_speech() -> void:
+	var speech := get_node_or_null("/root/AssistantSpeech")
+	if speech != null and not speech.speech_finished.is_connected(_on_speech_finished):
+		speech.speech_finished.connect(_on_speech_finished)
+
+
+func _on_speaker_disconnected(peer_id: int) -> void:
+	_spoken_requests.erase(peer_id)
+	_wake_sessions.erase(peer_id)
+
+
+func _speak_answer(peer_id: int, request_id: String, answer: String) -> bool:
+	var speech := get_node_or_null("/root/AssistantSpeech")
+	if speech == null or not bool(speech.call("speak_for_peer", peer_id, request_id, answer)):
+		return false
+	_spoken_requests[peer_id] = request_id
+	_publish_interaction_state(peer_id, "speaking", "正在播报，点击按钮可停止并开始听写。")
+	return true
+
+
+func _on_speech_finished(peer_id: int, request_id: String, _success: bool) -> void:
+	if str(_spoken_requests.get(peer_id, "")) != request_id:
+		return
+	_spoken_requests.erase(peer_id)
+	var session := _wake_sessions.get(peer_id, {}) as Dictionary
+	if str(session.get("speech_id", "")) == request_id:
+		_start_wake_session(peer_id, -1, true, session.get("history_interaction", {}) as Dictionary)
+	elif session.is_empty():
+		_publish_interaction_state(peer_id, "idle")
+
+
 func _join_wake_session_command(session: Dictionary) -> String:
 	var parts: Array[String] = []
 	var utterances := session.get("utterances", {}) as Dictionary
@@ -270,6 +310,8 @@ func _expire_wake_session(speaker_peer_id: int, session_id: String) -> void:
 	await get_tree().create_timer(WAKE_COMMAND_TIMEOUT_SECONDS).timeout
 	var session := _wake_sessions.get(speaker_peer_id, {}) as Dictionary
 	if session.is_empty() or str(session.get("id", "")) != session_id:
+		return
+	if not str(session.get("speech_id", "")).is_empty():
 		return
 	if not str(session.get("command", "")).strip_edges().is_empty():
 		return
@@ -686,6 +728,7 @@ func _on_agent_answer(request_id: String, answer: String) -> void:
 	if not needs_confirmation:
 		_publish_interaction_state(speaker_peer_id, "idle")
 	_publish_answer(final_answer)
+	var speech_started := _speak_answer(speaker_peer_id, request_id, final_answer)
 	_clear_operations_for_request(request_id)
 	_requests.erase(request_id)
 	if needs_confirmation:
@@ -695,6 +738,9 @@ func _on_agent_answer(request_id: String, answer: String) -> void:
 			true,
 			_confirmation_history_interaction(request_id, record, final_answer)
 		)
+		if speech_started:
+			_wake_sessions[speaker_peer_id]["speech_id"] = request_id
+			_publish_interaction_state(speaker_peer_id, "speaking", "正在播报确认问题；播报结束后请回答是或不是。")
 
 
 func _confirmation_history_interaction(
@@ -745,6 +791,8 @@ func _fail_request(request_id: String, code: String, message: String) -> void:
 		_publish_interaction_state(int(record.get("speaker_peer_id", SERVER_PEER_ID)), "failed", final_answer)
 	_publish_answer(final_answer)
 	var agent := get_node_or_null("/root/LocalAgentClient")
+	if not record.is_empty():
+		_speak_answer(int(record.get("speaker_peer_id", SERVER_PEER_ID)), request_id, final_answer)
 	if agent != null and agent.has_method("abandon_deferred_tool_calls_for_request"):
 		agent.call("abandon_deferred_tool_calls_for_request", request_id)
 	_clear_operations_for_request(request_id)
