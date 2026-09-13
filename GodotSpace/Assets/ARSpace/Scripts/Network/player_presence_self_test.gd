@@ -185,15 +185,10 @@ func _check_player_scene_contract(player: Node) -> void:
 				int(gravity_override.get("order")) > int(movement_direct.get("order")),
 				"ghost stop provider must run after direct movement input is sampled"
 			)
-		xr_player_body.gravity = Vector3.DOWN * 9.8
-		gravity_override.call("physics_pre_movement", 1.0 / 60.0, xr_player_body)
-		_check(
-			xr_player_body.gravity.is_zero_approx(),
-			"ghost gravity provider should prevent a non-colliding player from falling"
-		)
 		xr_player_body.up_player = Vector3.UP
 		xr_player_body.ground_control_velocity = Vector2.ZERO
-		xr_player_body.velocity = Vector3(1.2, 0.4, -0.8)
+		xr_player_body.gravity = Vector3.DOWN * 9.8
+		xr_player_body.velocity = Vector3(1.2, -0.4, -0.8)
 		gravity_override.call(
 			"physics_movement",
 			1.0 / 60.0,
@@ -201,11 +196,16 @@ func _check_player_scene_contract(player: Node) -> void:
 			false
 		)
 		_check(
-			xr_player_body.velocity.is_equal_approx(Vector3(0.0, 0.4, 0.0)),
-			"right-stick release should stop horizontal velocity in the same physics frame"
+			xr_player_body.gravity.is_zero_approx(),
+			"ghost movement provider should clear gravity on its active physics path"
+		)
+		_check(
+			xr_player_body.velocity.is_zero_approx(),
+			"right-stick release should stop horizontal and vertical drift in the same physics frame"
 		)
 		xr_player_body.ground_control_velocity = Vector2(0.0, 0.5)
-		xr_player_body.velocity = Vector3(1.2, 0.4, -0.8)
+		xr_player_body.gravity = Vector3.DOWN * 9.8
+		xr_player_body.velocity = Vector3(1.2, -0.4, -0.8)
 		gravity_override.call(
 			"physics_movement",
 			1.0 / 60.0,
@@ -213,8 +213,12 @@ func _check_player_scene_contract(player: Node) -> void:
 			false
 		)
 		_check(
-			xr_player_body.velocity.is_equal_approx(Vector3(1.2, 0.4, -0.8)),
-			"active right-stick input must not be canceled by the stop provider"
+			xr_player_body.gravity.is_zero_approx(),
+			"active right-stick input should still run without gravity"
+		)
+		_check(
+			xr_player_body.velocity.is_equal_approx(Vector3(1.2, 0.0, -0.8)),
+			"active right-stick input should preserve horizontal motion without vertical drift"
 		)
 
 func _check(condition: bool, message: String) -> void:

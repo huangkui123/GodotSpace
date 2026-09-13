@@ -42,7 +42,10 @@ func _run() -> void:
 		WorkListInfoData.new(1, 1, "", "拆装前确认", "复述专家口令，确认实验柜断电、防静电手环有效，并核对工具规格和目标力矩。"),
 		WorkListInfoData.new(2, 1, "", "拆下样品盒", "当前步骤需要保持防静电接地，使用指定工具按目标力矩松开固定螺钉，发现卡滞应暂停并请求专家席确认。"),
 	])
-	canvas.call("on_refresh_data_change_view", task_result)
+	var opened: Dictionary = canvas.call("open_task", 1, task_result)
+	if not bool(opened.get("ok", false)):
+		_fail("Task guide did not open through its public API.")
+		return
 
 	var assistant: Node = root.get_node_or_null("LLMAssistantService")
 	if assistant == null:
@@ -54,6 +57,9 @@ func _run() -> void:
 	assistant.require_wake_word = true
 	assistant.wake_words = PackedStringArray(["助手"])
 	assistant.use_local_fallback_when_unconfigured = true
+	assistant.max_tokens = 384
+	assistant.max_prompt_context_chars = 1200
+	assistant.request_timeout_seconds = 90.0
 	assistant.answer_completed.connect(func(_question: String, answer: String, sources: Array) -> void:
 		_answer_completed = not answer.strip_edges().is_empty()
 		_task_source_seen = _has_source(sources, "当前专家任务指导")
@@ -67,6 +73,30 @@ func _run() -> void:
 	if not bool(state.get("listening", false)):
 		_fail("Assistant service is not listening without opening the assistant panel.")
 		return
+	var http_request := assistant.get("_http_request") as HTTPRequest
+	if http_request == null or not is_equal_approx(http_request.timeout, 90.0):
+		_fail("DeepSeek HTTP timeout does not preserve the Gateway timeout margin.")
+		return
+	var bounded_request := assistant.call("_build_chat_completion_request", "这一步在讲什么", [{
+		"source": "当前专家任务步骤",
+		"title": "当前步骤优先",
+		"content": "当前步骤关键内容。" + "长".repeat(3000),
+	}, {
+		"source": "普通知识库",
+		"title": "低优先级条目",
+		"content": "低优先级内容。" + "长".repeat(3000),
+	}], "历史".repeat(1000)) as Dictionary
+	var bounded_messages := bounded_request.get("messages", []) as Array
+	var bounded_user_message := str((bounded_messages[2] as Dictionary).get("content", ""))
+	if int(bounded_request.get("max_tokens", 0)) != 384 \
+			or bounded_user_message.length() > 1400 \
+			or bounded_user_message.find("当前步骤关键内容") == -1:
+		_fail("DeepSeek prompt did not enforce its context budget or prioritize current task context.")
+		return
+	var thinking := bounded_request.get("thinking", {}) as Dictionary
+	if str(thinking.get("type", "")) != "disabled":
+		_fail("DeepSeek voice guidance must disable long thinking by default.")
+		return
 
 	var voice_chat := root.get_node_or_null("VoiceChat")
 	if voice_chat == null or not voice_chat.has_signal("voice_transcript_received"):
@@ -75,6 +105,14 @@ func _run() -> void:
 	if not voice_chat.has_method("publish_assistant_transcript"):
 		_fail("VoiceChat does not expose assistant transcript publishing.")
 		return
+	# This UI test exercises the legacy assistant panel in isolation. Production
+	# transcripts are owned by AssistantCommandRouter and covered by its own tests.
+	assistant.call("set_external_transcript_router_enabled", false)
+	var router := root.get_node_or_null("AssistantCommandRouter")
+	if router != null:
+		var router_callback := Callable(router, "_on_voice_transcript_received")
+		if voice_chat.is_connected("voice_transcript_received", router_callback):
+			voice_chat.disconnect("voice_transcript_received", router_callback)
 
 	voice_chat.voice_transcript_received.emit({
 		"speaker_peer_id": 1,
@@ -97,6 +135,19 @@ func _run() -> void:
 	var history: Array = assistant.call("get_qa_history")
 	if history.is_empty():
 		_fail("Assistant history panel has no question/answer history to display.")
+		return
+	var history_count := history.size()
+	if not bool(assistant.call("record_external_qa", "external-history-ui-test", "Qwen 工具调用是否完成", "已完成并记录到历史窗口。", true, {"provider": "local_qwen_agent"})):
+		_fail("Qwen external history entry was not accepted.")
+		return
+	await process_frame
+	history = assistant.call("get_qa_history")
+	if history.size() != history_count + 1:
+		_fail("Qwen external history entry was not appended exactly once.")
+		return
+	var history_transcript := assistant_view.get_node_or_null("Transcript") as RichTextLabel
+	if history_transcript == null or history_transcript.get_parsed_text().find("已完成并记录到历史窗口") == -1:
+		_fail("Assistant history window did not refresh for the Qwen external entry.")
 		return
 
 	_answer_completed = false

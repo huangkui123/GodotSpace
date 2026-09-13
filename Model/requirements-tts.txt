@@ -1,0 +1,6 @@
+# Isolated CPU-only service: no torch, CUDA, or OS speech packages.
+sherpa-onnx==1.13.8
+fastapi==0.116.1
+uvicorn==0.35.0
+numpy==2.2.6
+httpx==0.28.1
