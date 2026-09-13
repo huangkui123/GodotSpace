@@ -467,6 +467,7 @@ class AgentFactory:
             "temperature": 0.0,
             "top_p": 1.0,
             "max_tokens": 192,
+            "request_timeout": self._settings.model_request_timeout_seconds,
             "fncall_prompt_type": self._settings.model_fncall_prompt_type,
             "use_raw_api": self._settings.model_use_raw_api,
         }

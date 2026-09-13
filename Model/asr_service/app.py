@@ -103,13 +103,14 @@ def create_app(engine: Any | None = None) -> FastAPI:
                     )
                 except TimeoutError:
                     event = await asyncio.to_thread(session.poll_timeout)
-                    if event is None:
+                    if not session.finished:
                         continue
                     LOGGER.info(
                         "Local ASR watchdog finalized utterance (%s)",
-                        event.endpoint_reason,
+                        event.endpoint_reason if event else "input_idle_empty",
                     )
-                    await _send_transcript(websocket, event)
+                    if event is not None:
+                        await _send_transcript(websocket, event)
                     await websocket.send_json({"type": "finished"})
                     await _let_client_close(websocket)
                     return
@@ -187,10 +188,18 @@ async def _let_client_close(websocket: WebSocket) -> None:
     queued immediately before a server close frame.  Let the client close after
     it consumes the explicit ``finished`` event, with a bounded server fallback.
     """
+    deadline = asyncio.get_running_loop().time() + 2.0
     try:
-        message = await asyncio.wait_for(websocket.receive(), timeout=2.0)
-        if message.get("type") == "websocket.disconnect":
-            return
+        # Microphones keep sending until Godot consumes `finished`. Those
+        # in-flight PCM frames are NOT acknowledgement of the final result.
+        # Discard them until the client closes, under one absolute deadline.
+        while True:
+            remaining = deadline - asyncio.get_running_loop().time()
+            if remaining <= 0:
+                break
+            message = await asyncio.wait_for(websocket.receive(), timeout=remaining)
+            if message.get("type") == "websocket.disconnect":
+                return
     except (TimeoutError, WebSocketDisconnect):
         pass
     try:

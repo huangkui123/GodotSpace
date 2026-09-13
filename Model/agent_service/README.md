@@ -127,6 +127,33 @@ active or recently completed ID returns `duplicate_request_id` without rerunning
 the Agent. Recent IDs and idle sessions are retained in bounded in-memory caches.
 An already connected `session_id` cannot be replaced by a second websocket.
 
+### Request deadlines and confirmation leases
+
+- `AGENT_MODEL_TIMEOUT` defaults to 20 seconds per model HTTP request;
+  `AGENT_RUN_TIMEOUT` defaults to 45 seconds for the complete queued/running request.
+  The Godot router has a 90-second fallback and fails in-flight requests immediately
+  on Gateway disconnect. It never automatically replays a possibly executed tool.
+- Synchronous workers retain their per-session slot after cancellation/timeout
+  until they actually exit. The completed/cancelled request cannot dispatch late tools.
+- `assistant_final.payload.confirmation_id` identifies a pending suggestion.
+  Godot includes it in a confirmation `user_message`; a missing/expired/mismatched
+  suggestion produces an explicit error, not a new interpretation of a bare “yes”.
+  Legacy callers may omit this optional field.
+- Godot sends `confirmation_update` with `conversation_id`, `confirmation_id`,
+  and `phase` (`speaking`, `listening`, or `cancel`). Gateway responds with
+  `confirmation_state` containing the same IDs, `active`, and `ttl_seconds`.
+  Speaking has a 180-second lease; listening/ASR activity renews a 20-second lease
+  covering the visible 10-second first-reply window plus transport/finalization.
+  Every suggestion has an absolute five-minute limit; expired IDs cannot revive.
+  UI timeout, disconnect and peer departure invalidate the corresponding state.
+- Natural replies are classified against the exact pending action. Common complete
+  affirmations take a conservative fast path; other replies use one bounded model
+  assessment (`confirm/reject/new/unclear`). Unclear/model failure preserves the
+  suggestion and asks again; confirmation never invents new tool arguments.
+
+Restart both Gateway and Godot to load these lifecycle/protocol changes. Restarting
+only the backend does not replace scripts in an already running Godot process.
+
 ## Test
 
 ```bash

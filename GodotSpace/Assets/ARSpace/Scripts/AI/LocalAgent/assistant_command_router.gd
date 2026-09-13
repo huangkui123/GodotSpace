@@ -6,6 +6,7 @@ signal assistant_interaction_state_changed(speaker_peer_id: int, state: String, 
 const ROUTE_QWEN_FIRST := "QWEN_FIRST"
 const SERVER_PEER_ID := 1
 const SNAPSHOT_TIMEOUT_SECONDS := 3.0
+const REQUEST_TIMEOUT_MSEC := 90_000
 const MAX_DEBUG_EVENTS := 64
 const REQUIRED_WAKE_WORD := "助手"
 const WAKE_COMMAND_TIMEOUT_SECONDS := 10.0
@@ -52,6 +53,84 @@ func _ready() -> void:
 		agent.assistant_routing_decision_received.connect(_on_agent_routing_decision)
 		agent.assistant_final_received.connect(_on_agent_answer)
 		agent.run_error_received.connect(_on_agent_error)
+		agent.connection_state_changed.connect(_on_gateway_connection_changed)
+		agent.confirmation_received.connect(_on_confirmation_received)
+		agent.confirmation_state_received.connect(_on_confirmation_state)
+
+
+func _process(_delta: float) -> void:
+	_expire_agent_requests(Time.get_ticks_msec())
+	_expire_confirmation_leases(Time.get_ticks_msec())
+
+
+func _expire_confirmation_leases(now_msec: int) -> void:
+	for peer_id in _wake_sessions.keys().duplicate():
+		var session := _wake_sessions[peer_id] as Dictionary
+		var deadline := int(session.get("confirmation_deadline_msec", 0))
+		if deadline > 0 and now_msec >= deadline:
+			var history := session.get("history_interaction", {}) as Dictionary
+			_on_confirmation_state(str(history.get("confirmation_id", "")), false)
+
+
+func _expire_agent_requests(now_msec: int) -> void:
+	for request_id in _requests.keys().duplicate():
+		var record := _requests[request_id] as Dictionary
+		if now_msec - int(record.get("created_msec", now_msec)) < REQUEST_TIMEOUT_MSEC:
+			continue
+		var agent := get_node_or_null("/root/LocalAgentClient")
+		if agent != null:
+			agent.cancel_request(str(request_id))
+		_fail_request(str(request_id), "request_timeout", "等待助手超时；已发出的操作可能已执行，请检查当前界面。")
+
+
+func _on_gateway_connection_changed(connected: bool) -> void:
+	if connected or not is_inside_tree():
+		return
+	for peer_id in _wake_sessions.keys().duplicate():
+		_spoken_requests.erase(peer_id)
+		var speech := get_node_or_null("/root/AssistantSpeech")
+		if speech != null:
+			speech.cancel_for_peer(int(peer_id))
+		_publish_interaction_state(int(peer_id), "failed", "助手连接中断，请恢复连接后重新唤醒。")
+	_wake_sessions.clear()
+	for request_id in _requests.keys().duplicate():
+		_fail_request(str(request_id), "gateway_disconnected", "助手连接中断；已发出的操作结果可能未知，请检查当前界面。")
+
+
+func _on_confirmation_received(request_id: String, confirmation_id: String) -> void:
+	if _requests.has(request_id):
+		_requests[request_id]["confirmation_id"] = confirmation_id
+
+
+func _sync_confirmation(peer_id: int, phase: String) -> void:
+	var session := _wake_sessions.get(peer_id, {}) as Dictionary
+	var history := session.get("history_interaction", {}) as Dictionary
+	var confirmation_id := str(history.get("confirmation_id", ""))
+	var agent := get_node_or_null("/root/LocalAgentClient")
+	if not confirmation_id.is_empty() and agent != null:
+		agent.update_confirmation("speaker-%d" % peer_id, confirmation_id, phase)
+
+
+func _on_confirmation_state(confirmation_id: String, active: bool, ttl_seconds: float = -1.0) -> void:
+	if confirmation_id.is_empty():
+		return
+	for peer_id in _wake_sessions.keys().duplicate():
+		var history := (_wake_sessions[peer_id] as Dictionary).get("history_interaction", {}) as Dictionary
+		if str(history.get("confirmation_id", "")) != confirmation_id:
+			continue
+		if active and ttl_seconds > 0.0:
+			_wake_sessions[peer_id]["confirmation_deadline_msec"] = Time.get_ticks_msec() + int(ttl_seconds * 1000.0)
+			if ttl_seconds < WAKE_COMMAND_TIMEOUT_SECONDS and str(_wake_sessions[peer_id].get("speech_id", "")).is_empty():
+				_publish_interaction_state(int(peer_id), "listening", "请在确认有效期内回答。", {
+					"command_text": str(_wake_sessions[peer_id].get("command", "")), "countdown_seconds": ttl_seconds,
+				})
+			continue
+		_wake_sessions.erase(peer_id)
+		_spoken_requests.erase(peer_id)
+		var speech := get_node_or_null("/root/AssistantSpeech")
+		if speech != null:
+			speech.cancel_for_peer(int(peer_id))
+		_publish_interaction_state(int(peer_id), "timeout", "确认已失效，请重新说明要执行的操作。")
 
 
 func classify_text(_text: String) -> String:
@@ -190,6 +269,8 @@ func _handle_wake_transcript(data: Dictionary) -> void:
 	_wake_sessions[speaker_peer_id] = session
 
 	var command_text := str(session.get("command", "")).strip_edges()
+	if bool(session.get("confirmation", false)):
+		_sync_confirmation(speaker_peer_id, "listening")
 	var countdown_seconds := _command_settle_seconds(is_final) if not command_text.is_empty() else WAKE_COMMAND_TIMEOUT_SECONDS
 	_publish_interaction_state(speaker_peer_id, "listening", "我在，请说。", {
 		"command_text": command_text,
@@ -236,6 +317,8 @@ func _start_wake_session(
 		"countdown_seconds": WAKE_COMMAND_TIMEOUT_SECONDS,
 	})
 	_expire_wake_session(speaker_peer_id, str(session.get("id", "")))
+	if confirmation:
+		_sync_confirmation(speaker_peer_id, "listening")
 	return session
 
 
@@ -246,8 +329,15 @@ func _connect_speech() -> void:
 
 
 func _on_speaker_disconnected(peer_id: int) -> void:
+	_sync_confirmation(peer_id, "cancel")
 	_spoken_requests.erase(peer_id)
 	_wake_sessions.erase(peer_id)
+	for request_id in _requests.keys().duplicate():
+		if int((_requests[request_id] as Dictionary).get("speaker_peer_id", 0)) == peer_id:
+			var agent := get_node_or_null("/root/LocalAgentClient")
+			if agent != null:
+				agent.cancel_request(str(request_id))
+			_fail_request(str(request_id), "target_offline", "请求所属客户端已断开；已发出操作的结果可能未知。")
 
 
 func _speak_answer(peer_id: int, request_id: String, answer: String) -> bool:
@@ -315,6 +405,7 @@ func _expire_wake_session(speaker_peer_id: int, session_id: String) -> void:
 		return
 	if not str(session.get("command", "")).strip_edges().is_empty():
 		return
+	_sync_confirmation(speaker_peer_id, "cancel")
 	_wake_sessions.erase(speaker_peer_id)
 	_publish_interaction_state(speaker_peer_id, "timeout", "等待命令超时，请再次呼叫助手。")
 
@@ -427,7 +518,8 @@ func _submit_agent_request(request_id: String) -> void:
 		str(record.get("text", "")),
 		(record.get("snapshot", {}) as Dictionary).duplicate(true),
 		record.get("allowed_tools", PackedStringArray()),
-		"speaker-%d" % int(record.get("speaker_peer_id", SERVER_PEER_ID))
+		"speaker-%d" % int(record.get("speaker_peer_id", SERVER_PEER_ID)),
+		str((record.get("history_interaction", {}) as Dictionary).get("confirmation_id", ""))
 	):
 		_fail_request(request_id, "target_offline", "The Local Agent Gateway is not connected.")
 		return
@@ -740,6 +832,7 @@ func _on_agent_answer(request_id: String, answer: String) -> void:
 		)
 		if speech_started:
 			_wake_sessions[speaker_peer_id]["speech_id"] = request_id
+			_sync_confirmation(speaker_peer_id, "speaking")
 			_publish_interaction_state(speaker_peer_id, "speaking", "正在播报确认问题；播报结束后请回答是或不是。")
 
 
@@ -755,6 +848,7 @@ func _confirmation_history_interaction(
 			"question": str(record.get("text", "")).strip_edges(),
 			"clarification_prompts": [],
 		}
+	interaction["confirmation_id"] = str(record.get("confirmation_id", ""))
 	var prompts := interaction.get("clarification_prompts", []) as Array
 	var clean_prompt := clarification_answer.strip_edges()
 	if not clean_prompt.is_empty():
@@ -777,6 +871,8 @@ func _on_agent_routing_decision(request_id: String, route: String, tool_name: St
 
 
 func _on_agent_error(request_id: String, code: String, message: String) -> void:
+	if not _requests.has(request_id):
+		return
 	if code == "too_late" and _requests.has(request_id):
 		return
 	_fail_request(request_id, code, message)

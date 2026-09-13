@@ -57,8 +57,10 @@ def build(args: argparse.Namespace, inherited: dict[str, str]) -> tuple[list[str
                    FUNASR_MODEL=args.asr_model, FUNASR_VAD_MODEL=args.vad_model,
                    MODELSCOPE_CACHE=str(backend / "models/funasr"))
     elif args.service == "tts":
-        env.update(LOCAL_TTS_MODEL_DIR=str(backend / "models/tts/vits-icefall-zh-aishell3"),
-                   LOCAL_TTS_THREADS="2")
+        # The backend owns the default model/path; preserve explicit local overrides.
+        env.setdefault("LOCAL_TTS_THREADS", "2")
+        if args.tts_device is not None:
+            env["LOCAL_TTS_DEVICE"] = args.tts_device
         argv.append("--no-access-log")
     return argv, env
 
@@ -78,6 +80,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--asr-device", choices=("cpu", "cuda"), default="cpu")
     parser.add_argument("--asr-model", default="paraformer-zh-streaming")
     parser.add_argument("--vad-model", default="fsmn-vad")
+    parser.add_argument("--tts-device", choices=("cpu", "cuda"))
     return parser.parse_args(argv)
 
 
@@ -91,6 +94,9 @@ def main() -> int:
         port = args.port or PORTS["model" if args.service == "vllm" else args.service]
         # A later race is handled by the actual server bind; never evict the listener.
         with socket.socket() as probe:
+            # Match uvicorn: a stopped listener may leave TIME_WAIT connections.
+            # This does not permit taking over an active listening socket.
+            probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             probe.bind(("127.0.0.1", port))
         os.chdir(repository(args.repo) / "Model")
         os.execve(argv[0], argv, env)

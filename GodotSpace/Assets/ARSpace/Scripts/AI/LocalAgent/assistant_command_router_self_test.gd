@@ -315,6 +315,40 @@ func _run() -> void:
 		var event := event_value as Dictionary
 		if not _check(not event.has("speaker_peer_id") and not event.has("text"), "Router debug event leaked speaker or transcript data."):
 			return
+	# Confirmation identity survives dictation restart and speech completion.
+	var lease_history := {"id": "lease-history", "question": "打开工作文档", "confirmation_id": "lease-1"}
+	router.call("_start_wake_session", 1, -1, true, lease_history)
+	router.call("_on_assistant_wake_requested", 1)
+	var lease_sessions := router.get("_wake_sessions") as Dictionary
+	if not _check(str((lease_sessions[1]["history_interaction"] as Dictionary).get("confirmation_id")) == "lease-1", "Dictation restart lost confirmation identity."):
+		return
+	lease_sessions[1]["speech_id"] = "speech-lease"
+	(router.get("_spoken_requests") as Dictionary)[1] = "speech-lease"
+	router.call("_on_speech_finished", 1, "speech-lease", true)
+	if not _check(str((lease_sessions[1]["history_interaction"] as Dictionary).get("confirmation_id")) == "lease-1", "Speech completion lost confirmation identity."):
+		return
+	router.call("_on_confirmation_state", "stale-lease", false)
+	if not _check(lease_sessions.has(1), "Stale acknowledgement cleared a new confirmation."):
+		return
+	router.call("_on_confirmation_state", "lease-1", true, 0.01)
+	router.call("_expire_confirmation_leases", Time.get_ticks_msec() + 100)
+	if not _check(not lease_sessions.has(1), "Expired backend confirmation left the UI listening."):
+		return
+	# Gateway loss must end requests, and late errors must not resurrect them.
+	requests.clear()
+	requests["disconnect-test"] = {"speaker_peer_id": 1, "text": "测试", "status": "agent_running", "created_msec": Time.get_ticks_msec()}
+	var agent_client := root.get_node("LocalAgentClient")
+	agent_client.connection_state_changed.emit(false)
+	if not _check(requests.is_empty(), "Gateway disconnect retained in-flight requests."):
+		return
+	var event_count := (router.get_debug_state()["recent_events"] as Array).size()
+	router.call("_on_agent_error", "disconnect-test", "cancelled", "late")
+	if not _check((router.get_debug_state()["recent_events"] as Array).size() == event_count, "Late error republished a finished request."):
+		return
+	requests["timeout-test"] = {"speaker_peer_id": 1, "text": "测试", "status": "agent_running", "created_msec": 0}
+	router.call("_expire_agent_requests", 90001)
+	if not _check(requests.is_empty(), "Agent total deadline did not clear the request."):
+		return
 	print("Assistant command Router self test passed.")
 	quit(0)
 

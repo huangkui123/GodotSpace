@@ -9,7 +9,7 @@
 | Qwen 推理 | 本 skill 的 scripts/launch_service.py | vLLM；127.0.0.1:8000/v1；迁移默认 Qwen/Qwen3-VL-8B-Instruct BF16，RTX 5090 32GB |
 | Gateway/harness | Model/agent_service/app.py、agent_factory.py、knowledge_harness.py、tools/ | 7861/ws/godot；工具语义选择、执行意图判定、澄清确认、参数/证据验证与 Godot RPC |
 | 流式 ASR | Model/asr_service/app.py、funasr_engine.py、session.py | 8765/ws/asr；paraformer-zh-streaming + fsmn-vad；16kHz 单声道 PCM16 |
-| 轻量 TTS | Model/tts_service/、GodotSpace/Assets/ARSpace/Scripts/AI/LocalAgent/assistant_speech.gd | 8767/v1/speech；sherpa-onnx CPU + vits-icefall-zh-aishell3；约 30MB ONNX，8kHz PCM16，由目标 Client 播放到 PICO |
+| 轻量 TTS | Model/tts_service/、GodotSpace/Assets/ARSpace/Scripts/AI/LocalAgent/assistant_speech.gd | 8767/v1/speech；sherpa-onnx + Kokoro v1.1；CPU INT8 或独立 CUDA FP32；24kHz PCM16，由目标 Client 播放到 PICO；可显式回退 CPU/VITS |
 
 完整交互是：
 
@@ -21,6 +21,8 @@
 - 工作清单、相册等允许窗口的打开/关闭，工作清单翻页、步骤操作、当前页上下文与知识问答。最终能力集合以 Gateway 的 SUPPORTED_TOOL_NAMES 和 Godot 工具适配器为准，不能执行任意节点路径/方法。
 - “工作手册”等不精确目标通过模型辅助澄清；待确认状态由 harness/Godot 维护，用户可续答“是/不是”。这不等同于无限制的模型聊天记忆。
 - 唤醒等第一句话 10 秒；final 后静默提交 1.2 秒；partial 兜底 5 秒。它们是当前 router 常量，不是 ASR 网络延迟。
+- ASR 正常由 FSMN-VAD 600ms 静默收尾；旧协议参数 stable_partial_msec 现在仅用于断流/接近数字静音的 watchdog，不因文字暂时不变结束。final 追加 300ms 静音供模型读完尾音，不再仅补足总长度；空结果也发送 finished，避免客户端永久等待。
+- 发送 final/finished 后等待客户端关闭；仍在途中的麦克风 PCM 不能当作确认，否则 Godot 可能丢掉最后几个字。服务端等待有 2 秒绝对上限，不额外延迟客户端显示结果。
 - 当前页问答使用 Godot 运行时 entries 和服务端可信证据；不能让客户端写 server-owned 字段，不能因部署缺资产而退回“工具执行完毕”。
 - TTS 在请求所属 Client 播放；播报期间暂停该端 ASR 输入以降低自触发，播报后恢复确认窗口；按钮可打断。尚不是全双工语音打断或完整声学回声消除。
 
@@ -43,4 +45,4 @@
 - localhost 是各进程所在机器。Windows→WSL 转发必须实际验证；跨 PC 的 Client 不能自动使用另一台机器的 localhost TTS。多机方案需另行明确受保护的连接方式或在各 Client 主机部署 TTS。
 - /readyz 的 model_found 不代表 Godot 已连接，更不证明真实工具执行。无模型/无资源时通过的 mock tests 也不代表真实部署通过。
 - Git LFS 的 .bin/.mp4 必须是真文件，不是 pointer。虚拟环境、驱动和 native DLL 不可跨平台照搬。
-- TTS 下载包未附独立模型许可文本；部署从上游下载，分发离线权重包前另行核对各模型许可，不推定代码许可证覆盖权重。
+- Kokoro 下载器保留包内 LICENSE；分发离线包前核对模型、音色及发音数据的许可，不推定主仓库许可证覆盖全部权重。旧 VITS 包仍需独立核对许可。

@@ -17,6 +17,8 @@ MESSAGE_TYPES: Final = frozenset(
         "assistant_final",
         "run_error",
         "cancel_run",
+        "confirmation_update",
+        "confirmation_state",
         "ping",
         "pong",
     }

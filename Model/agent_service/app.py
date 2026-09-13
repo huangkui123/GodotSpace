@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import json
 import os
-import re
 import time
 from contextlib import suppress
 from typing import Any
@@ -14,6 +13,7 @@ from agent_service import __version__
 from agent_service.agent_factory import AgentFactory, AgentRunResult
 from agent_service.agent_factory import SUPPORTED_TOOL_NAMES
 from agent_service.config import Settings
+from agent_service.confirmation import classify_reply
 from agent_service.connection_manager import ConnectionManager, GodotConnectionError
 from agent_service.connection_manager import GodotSessionAlreadyConnectedError
 from agent_service.health import probe_model_server
@@ -32,7 +32,7 @@ from agent_service.protocol import (
     parse_envelope,
     require_payload_string,
 )
-from agent_service.session_manager import CancelOutcome, SessionManager
+from agent_service.session_manager import CancelOutcome, SessionManager, SessionState
 
 
 def create_app(
@@ -232,6 +232,9 @@ def create_app(
                         envelope["payload"], settings.max_message_chars
                     )
                     request_id = envelope["request_id"] or new_id("request")
+                    confirmation_id = envelope["payload"].get("confirmation_id", "")
+                    if not isinstance(confirmation_id, str) or len(confirmation_id) > 128:
+                        raise ProtocolError("Invalid confirmation_id")
                     task = await sessions.start_task(
                         session_id,
                         request_id,
@@ -245,6 +248,8 @@ def create_app(
                             context=context,
                             allowed_tools=allowed_tools,
                             conversation_id=conversation_id,
+                            confirmation_id=confirmation_id,
+                            settings=settings,
                         ),
                     )
                     if task is None:
@@ -260,6 +265,18 @@ def create_app(
                         continue
                     spawned_tasks.add(task)
                     task.add_done_callback(spawned_tasks.discard)
+                elif message_type == "confirmation_update":
+                    conversation_id = require_payload_string(envelope, "conversation_id", max_chars=128)
+                    confirmation_id = require_payload_string(envelope, "confirmation_id", max_chars=128)
+                    phase = envelope["payload"].get("phase")
+                    if phase not in ("speaking", "listening", "cancel"):
+                        raise ProtocolError("Invalid confirmation phase")
+                    pending = await sessions.update_confirmation(session_id, conversation_id, confirmation_id, phase)
+                    await connections.send_event(session_id, "confirmation_state", {
+                        "conversation_id": conversation_id, "confirmation_id": confirmation_id,
+                        "active": pending is not None,
+                        "ttl_seconds": max(0.0, pending.expires_at_monotonic - time.monotonic()) if pending else 0.0,
+                    })
                 elif message_type == "cancel_run":
                     request_id = envelope["request_id"]
                     if not request_id:
@@ -321,6 +338,9 @@ def create_app(
                 await asyncio.gather(*spawned_tasks, return_exceptions=True)
             if session_id:
                 await connections.unregister(session_id, websocket)
+                # A rejected duplicate connection must not clear its owner's state.
+                if not await connections.is_connected(session_id):
+                    await sessions.clear_confirmations(session_id)
                 await sessions.remove_if_idle(session_id)
 
     return app
@@ -342,7 +362,29 @@ async def _warm_agent(factory: AgentFactory) -> None:
         return
 
 
-async def _run_agent_request(
+async def _run_agent_request(*, settings: Settings, **kwargs: Any) -> None:
+    try:
+        await asyncio.wait_for(_execute_agent_request(settings=settings, **kwargs), settings.run_timeout_seconds)
+    except TimeoutError:
+        with suppress(GodotConnectionError):
+            await kwargs["connections"].send_event(kwargs["session_id"], "run_error", {
+                "code": "run_timeout",
+                "message": "请求超时，已停止等待；若操作已经发出，执行结果可能未知，请检查当前界面。",
+            }, request_id=kwargs["request_id"])
+
+
+async def _call_worker(state: SessionState, function: Any, *args: Any) -> Any:
+    # Cancelling an await cannot stop a synchronous native/HTTP worker. Keep its
+    # slot until it really exits; late RPCs are rejected by the request lifecycle.
+    if state.worker_task is not None and not state.worker_task.done():
+        raise RuntimeError("上一请求仍在结束，请稍后重试。")
+    task = asyncio.create_task(asyncio.to_thread(function, *args))
+    state.worker_task = task
+    task.add_done_callback(lambda done: done.exception() if not done.cancelled() else None)
+    return await asyncio.shield(task)
+
+
+async def _execute_agent_request(
     *,
     session_id: str,
     request_id: str,
@@ -353,6 +395,8 @@ async def _run_agent_request(
     context: dict[str, Any],
     allowed_tools: list[str],
     conversation_id: str,
+    confirmation_id: str,
+    settings: Settings,
 ) -> None:
     state = await sessions.get(session_id)
     try:
@@ -367,10 +411,17 @@ async def _run_agent_request(
             )
             messages = [_build_stateless_user_message(user_text, context)]
             pending = await sessions.get_pending_action(session_id, conversation_id)
-            follow_up = _classify_pending_follow_up(user_text) if pending else "new"
+            if confirmation_id and (pending is None or pending.confirmation_id != confirmation_id):
+                raise RuntimeError("确认已过期或已取消，请重新说明要执行的操作。")
+            follow_up = await _call_worker(state, classify_reply, user_text, pending.action_text, settings) if pending else "new"
+            if pending is not None:
+                latest = await sessions.get_pending_action(session_id, conversation_id)
+                if latest is None or latest.confirmation_id != pending.confirmation_id:
+                    raise RuntimeError("确认已过期或已取消，请重新说明要执行的操作。")
+                pending = latest
             if pending is not None and follow_up == "confirm":
                 await sessions.clear_pending_action(session_id, conversation_id)
-                result = await asyncio.to_thread(
+                result = await _call_worker(state,
                     factory.run_confirmed_action,
                     session_id,
                     request_id,
@@ -382,10 +433,18 @@ async def _run_agent_request(
             elif pending is not None and follow_up == "reject":
                 await sessions.clear_pending_action(session_id, conversation_id)
                 result = _pending_action_cancelled_result(messages)
+            elif pending is not None and follow_up == "unclear":
+                result = AgentRunResult(
+                    answer=f"我还在等待确认：是否要{pending.action_text}？你也可以说取消，或完整说明新的操作。",
+                    messages=messages, route="confirm_action", tool_name="clarify_ui_target",
+                    tool_harness={"suggested_tool": pending.tool_name, "suggested_arguments": pending.arguments,
+                                  "suggested_action_text": pending.action_text},
+                )
+                await sessions.update_confirmation(session_id, conversation_id, pending.confirmation_id, "speaking")
             else:
                 if pending is not None:
                     await sessions.clear_pending_action(session_id, conversation_id)
-                result = await asyncio.to_thread(
+                result = await _call_worker(state,
                     factory.run,
                     session_id,
                     request_id,
@@ -410,9 +469,12 @@ async def _run_agent_request(
                         tool_name=suggested_tool,
                         arguments=suggested_arguments,
                         action_text=suggested_action_text,
+                        confirmation_id=request_id,
+                        ttl_seconds=180.0,
                     )
             if not await sessions.can_publish(session_id, request_id):
                 return
+            active_confirmation = await sessions.get_pending_action(session_id, conversation_id)
             await connections.send_event(
                 session_id,
                 "assistant_final",
@@ -422,6 +484,7 @@ async def _run_agent_request(
                     "route": result.route,
                     "tool_name": result.tool_name,
                     "tool_harness": result.tool_harness or {},
+                    "confirmation_id": active_confirmation.confirmation_id if result.route == "confirm_action" and active_confirmation else "",
                     "harness_trace": (
                         result.harness_trace.to_dict()
                         if result.harness_trace is not None
@@ -475,23 +538,6 @@ def _parse_agent_request_options(
     if len(conversation_id) > 128:
         raise ProtocolError("payload.conversation_id exceeds the 128 character limit")
     return dict(context_value), allowed_tools, conversation_id
-
-
-_PENDING_CONFIRMATIONS = frozenset(
-    {"是", "是的", "对", "对的", "没错", "好的", "好", "可以", "确认", "就这个", "就是它"}
-)
-_PENDING_REJECTIONS = frozenset(
-    {"不是", "不对", "取消", "算了", "不要", "不用", "不用了", "不需要"}
-)
-
-
-def _classify_pending_follow_up(text: str) -> str:
-    normalized = re.sub(r"[\s，。！？、,.!?；;：:]+", "", text).strip()
-    if normalized in _PENDING_CONFIRMATIONS:
-        return "confirm"
-    if normalized in _PENDING_REJECTIONS:
-        return "reject"
-    return "new"
 
 
 def _pending_action_cancelled_result(

@@ -6,6 +6,7 @@ signal local_speech_changed(active: bool)
 const MAX_TEXT := 4000
 const MAX_AUDIO_BYTES := 4 * 1024 * 1024
 const REQUEST_TIMEOUT := 180_000
+const TARGET_SEGMENT_CHARS := 64
 var enabled := true
 var endpoint := "http://127.0.0.1:8767/v1/speech"
 var last_error := ""
@@ -19,6 +20,9 @@ var _player: AudioStreamPlayer
 var _retries := 0
 var _deadline := 0
 var _stopping := false
+var _fetching := false
+var _playing_segment := false
+var _next_stream: AudioStreamWAV
 
 
 func _ready() -> void:
@@ -106,7 +110,7 @@ func _client_speak(request_id: String, text: String) -> void:
 		_finish_local(false)
 		return
 	_http = HTTPRequest.new()
-	_http.timeout = 12.0
+	_http.timeout = 30.0
 	_http.body_size_limit = MAX_AUDIO_BYTES
 	add_child(_http)
 	_http.request_completed.connect(_on_audio_received.bind(request_id))
@@ -117,25 +121,66 @@ func _client_speak(request_id: String, text: String) -> void:
 static func split_text(text: String) -> Array[String]:
 	var result: Array[String] = []
 	var part := ""
-	for character in text:
+	var index := 0
+	while index < text.length():
+		var character := text[index]
 		part += character
-		if character in ["。", "！", "？", "\n", "；"] or part.length() >= 160:
-			if not part.strip_edges().is_empty():
-				result.append(part.strip_edges())
+		index += 1
+		var boundary := character in ["。", "！", "？", "\n", "；", "!", "?", ";"]
+		# An English full stop is a boundary only at end/whitespace, not in 2.5.
+		boundary = boundary or (character == "." and (index == text.length() or text[index] in [" ", "\n", "\t"]))
+		if boundary:
+			while index < text.length() and text[index] in ["”", "’", "）", ")", "\"", "！", "？", "!", "?"]:
+				part += text[index]
+				index += 1
+			_append_chunks(result, part)
 			part = ""
-	if not part.strip_edges().is_empty():
-		result.append(part.strip_edges())
+	_append_chunks(result, part)
 	return result
+
+
+static func _append_chunks(result: Array[String], sentence: String) -> void:
+	var remaining := sentence.strip_edges()
+	while remaining.length() > TARGET_SEGMENT_CHARS:
+		var cut := -1
+		var space_cut := -1
+		for index in range(24, TARGET_SEGMENT_CHARS):
+			if remaining[index] in ["，", ",", "、", "：", ":"]:
+				if remaining[index] in [",", ":"] and remaining[index - 1].is_valid_int() and remaining[index + 1].is_valid_int():
+					continue
+				cut = index + 1
+			elif remaining[index] in [" ", "\t"] and not remaining[index - 1].is_valid_int():
+				space_cut = index + 1
+		if cut < 0:
+			cut = space_cut
+		if cut < 0:
+			cut = TARGET_SEGMENT_CHARS
+			# Don't cut a numeric/Latin token or separate its following unit.
+			while cut < mini(remaining.length(), 500) and _token_character(remaining[cut - 1]) and _token_character(remaining[cut]):
+				cut += 1
+		result.append(remaining.left(cut))
+		remaining = remaining.substr(cut).strip_edges()
+	if not remaining.is_empty():
+		result.append(remaining)
+
+
+static func _token_character(character: String) -> bool:
+	return character in "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ.,:_+-·%/ "
 
 
 func _request_segment() -> void:
 	if _local_id.is_empty() or _stopping:
 		return
-	if _parts.is_empty():
-		_finish_local(true)
+	if _fetching or _next_stream != null:
 		return
+	if _parts.is_empty():
+		if not _playing_segment:
+			_finish_local(true)
+		return
+	_fetching = true
 	var error := _http.request(endpoint, PackedStringArray(["Content-Type: application/json"]), HTTPClient.METHOD_POST, JSON.stringify({"text": _parts[0]}))
 	if error != OK:
+		_fetching = false
 		last_error = "Cannot reach local speech service"
 		_finish_local(false)
 
@@ -143,12 +188,15 @@ func _request_segment() -> void:
 func _on_audio_received(result: int, code: int, headers: PackedStringArray, body: PackedByteArray, request_id: String) -> void:
 	if request_id != _local_id or _stopping:
 		return
-	if code == 429 and _retries < 12:
+	# A cancelled HTTP request does not stop an in-flight native CPU synthesis.
+	if code == 429 and _retries < 60:
 		_retries += 1
-		await get_tree().create_timer(0.3).timeout
-		if request_id == _local_id:
+		await get_tree().create_timer(0.5).timeout
+		if request_id == _local_id and not _stopping:
+			_fetching = false
 			_request_segment()
 		return
+	_fetching = false
 	var rate := 0
 	var format_ok := false
 	for header in headers:
@@ -166,16 +214,31 @@ func _on_audio_received(result: int, code: int, headers: PackedStringArray, body
 	stream.mix_rate = rate
 	stream.stereo = false
 	stream.data = body
-	_player.stream = stream
+	_parts.pop_front()
+	_retries = 0
+	_next_stream = stream
+	_play_buffered_segment()
+
+
+func _play_buffered_segment() -> void:
+	if _playing_segment or _next_stream == null or _stopping or _local_id.is_empty():
+		return
+	_player.stream = _next_stream
+	_next_stream = null
+	_playing_segment = true
 	_player.play()
+	# At most one segment ahead; no second simultaneous inference request.
+	_request_segment.call_deferred()
 
 
 func _on_segment_finished() -> void:
 	if _local_id.is_empty() or _stopping:
 		return
-	_parts.pop_front()
-	_retries = 0
-	_request_segment()
+	_playing_segment = false
+	if _next_stream != null:
+		_play_buffered_segment()
+	else:
+		_request_segment()
 
 
 func _finish_local(success: bool) -> void:
@@ -206,6 +269,9 @@ func _abort_local() -> void:
 		_player.stop()
 		_player.stream = null
 	_parts.clear()
+	_next_stream = null
+	_fetching = false
+	_playing_segment = false
 	_local_id = ""
 	_stopping = false
 	if _suppressed_local_peer > 0:

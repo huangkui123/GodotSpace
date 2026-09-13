@@ -30,6 +30,13 @@ class CheckTests(unittest.TestCase):
     def test_ready_requires_all_four(self):
         self.assertTrue(all(check.assess(payloads(), "chosen-8B").values()))
 
+    def test_tts_supports_cuda_but_rejects_unknown_device(self):
+        for device, expected in (("cuda", True), (None, False), ("auto", False)):
+            data = payloads()
+            data["tts"]["device"] = device
+            self.assertEqual(check.assess(data, "chosen-8B")["tts"], expected)
+
+
     def test_model_mismatch(self):
         result = check.assess(payloads(), "other-2B")
         self.assertFalse(result["model"])
@@ -133,7 +140,7 @@ class PathAndLaunchTests(unittest.TestCase):
             repo=str(self.root), env_dir=str(self.env_dir), service="gateway",
             model_id="chosen-8B", model_path=str(self.model), port=None,
             model_port=18000, dtype="auto", max_model_len=2048, gpu_memory_utilization=0.60,
-            asr_device="cpu", asr_model="local asr", vad_model="local vad")
+            asr_device="cpu", asr_model="local asr", vad_model="local vad", tts_device=None)
 
     def test_repository_with_spaces_and_unicode(self):
         self.assertEqual(check.repository(str(self.root)), self.root.resolve())
@@ -215,8 +222,15 @@ class PathAndLaunchTests(unittest.TestCase):
         self.args.service = "tts"
         argv, env = launch.build(self.args, {})
         self.assertIn("tts_service.app:app", argv)
-        self.assertEqual(env["LOCAL_TTS_MODEL_DIR"],
-                         str(self.root / "Model/models/tts/vits-icefall-zh-aishell3"))
+        self.assertNotIn("LOCAL_TTS_MODEL_DIR", env)
+        _, overrides = launch.build(self.args, {"LOCAL_TTS_MODEL": "vits", "LOCAL_TTS_THREADS": "4"})
+        self.assertEqual(overrides["LOCAL_TTS_MODEL"], "vits")
+        self.assertEqual(overrides["LOCAL_TTS_THREADS"], "4")
+
+    def test_tts_device_is_explicit_and_portable(self):
+        args = launch.parse_args(["tts", "--repo", str(self.root), "--env-dir", str(self.env_dir), "--tts-device", "cuda"])
+        _, env = launch.build(args, {"LOCAL_TTS_DEVICE": "cpu"})
+        self.assertEqual(env["LOCAL_TTS_DEVICE"], "cuda")
 
     def test_busy_port_never_executes_or_kills(self):
         with socket.socket() as listener:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import math
 from dataclasses import dataclass
 
 
@@ -24,7 +25,7 @@ def _env_float(name: str, default: float, *, minimum: float = 0.0) -> float:
         value = float(raw)
     except ValueError as exc:
         raise ValueError(f"{name} must be a number, got {raw!r}") from exc
-    if value < minimum:
+    if not math.isfinite(value) or value < minimum:
         raise ValueError(f"{name} must be >= {minimum}, got {value}")
     return value
 
@@ -65,6 +66,8 @@ class Settings:
     knowledge_minimum_score: float = 2.0
     knowledge_model_timeout_seconds: float = 2.0
     tool_semantic_timeout_seconds: float = 10.0
+    model_request_timeout_seconds: float = 20.0
+    run_timeout_seconds: float = 45.0
     knowledge_corpus_path: str = ""
     knowledge_runtime_source: str = DEFAULT_KNOWLEDGE_RUNTIME_SOURCE
 
@@ -103,6 +106,8 @@ class Settings:
                 10.0,
                 minimum=0.1,
             ),
+            model_request_timeout_seconds=_env_float("AGENT_MODEL_TIMEOUT", 20.0, minimum=0.1),
+            run_timeout_seconds=_env_float("AGENT_RUN_TIMEOUT", 45.0, minimum=0.1),
             knowledge_corpus_path=os.getenv("KNOWLEDGE_CORPUS_PATH", "").strip(),
             knowledge_runtime_source=(
                 os.getenv(

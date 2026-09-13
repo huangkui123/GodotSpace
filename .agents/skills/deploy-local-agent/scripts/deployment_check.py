@@ -113,7 +113,7 @@ def assess(payloads: dict, model_id: str) -> dict[str, bool]:
         "asr": asr.get("service") == "local-funasr" and asr.get("status") == "ready"
         and asr.get("vad_loaded") is True and asr.get("warmed_up") is True,
         "tts": tts.get("service") == "local-tts" and tts.get("status") == "ready"
-        and tts.get("device") == "cpu",
+        and tts.get("device") in ("cpu", "cuda"),
     }
 
 

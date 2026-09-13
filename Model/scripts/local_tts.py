@@ -66,7 +66,7 @@ def main() -> None:
     for _ in range(100):
         current = health()
         if current.get("instance") == instance and current.get("status") == "ready":
-            print(f"Local CPU TTS ready on 127.0.0.1:{PORT}, PID {process.pid}")
+            print(f"Local {current.get('device')} TTS ready on 127.0.0.1:{PORT}, PID {process.pid}")
             return
         if process.poll() is not None:
             STATE.unlink(missing_ok=True)

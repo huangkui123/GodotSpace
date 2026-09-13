@@ -27,7 +27,7 @@ def create_app(engine: Any | None = None) -> FastAPI:
         if task is not None:
             await asyncio.gather(asyncio.shield(task), return_exceptions=True)
 
-    app = FastAPI(title="GodotSpace Local CPU TTS", lifespan=lifespan)
+    app = FastAPI(title="GodotSpace Local TTS", lifespan=lifespan)
     app.state.engine = speech
     app.state.busy = False
     app.state.active_task = None
@@ -35,7 +35,8 @@ def create_app(engine: Any | None = None) -> FastAPI:
     @app.get("/health")
     async def health() -> dict[str, Any]:
         return {"status": "ready" if speech.loaded else "not_loaded",
-                "service": "local-tts", "model": MODEL_NAME, "device": "cpu",
+                "service": "local-tts", "model": getattr(speech, "model_name", MODEL_NAME), "device": getattr(speech, "device", "cpu"),
+                "speaker": getattr(speech, "speaker", None), "speed": getattr(speech, "speed", None),
                 "busy": app.state.busy, "pid": os.getpid(),
                 "instance": os.getenv("LOCAL_TTS_INSTANCE", "")}
 
@@ -75,7 +76,7 @@ def create_app(engine: Any | None = None) -> FastAPI:
         task = asyncio.create_task(generate(text))
         app.state.active_task = task
         # A cancelled HTTP request must not release the inference slot while
-        # its non-cancellable native CPU worker is still running.
+        # its non-cancellable native inference worker is still running.
         task.add_done_callback(lambda done: done.exception() if not done.cancelled() else None)
         try:
             pcm, sample_rate = await asyncio.wait_for(asyncio.shield(task), timeout=25)

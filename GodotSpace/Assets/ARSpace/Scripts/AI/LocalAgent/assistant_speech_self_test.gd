@@ -40,6 +40,17 @@ func _run() -> void:
 	router.assistant_interaction_state_changed.connect(func(_peer, state, _text): states.append(state))
 	_check(SpeechScript.split_text("第一句。第二句！").size() == 2, "Sentence splitting failed")
 	_check(SpeechScript.split_text("字".repeat(400))[0].length() <= 160, "Segment size unbounded")
+	_check(SpeechScript.split_text("力矩为 2.5 N·m。请勿超过。") == ["力矩为 2.5 N·m。", "请勿超过。"], "Decimal or unit split")
+	_check(SpeechScript.split_text("他说：“不要超过。”接下来确认。") == ["他说：“不要超过。”", "接下来确认。"], "Closing quote detached")
+	var long_sentence := "说明".repeat(24) + "，" + "要求".repeat(25) + "。"
+	_check(SpeechScript.split_text(long_sentence)[0].ends_with("，"), "Long sentence ignored clause boundary")
+	var numeric_boundary := "字".repeat(63) + "2.5 N·m" + "字".repeat(20)
+	_check(SpeechScript.split_text(numeric_boundary)[0].ends_with("2.5 N·m"), "Length limit split numeric token")
+	var thousands := "字".repeat(30) + "12,500" + "字".repeat(70)
+	_check(SpeechScript.split_text(thousands)[0].contains("12,500"), "Thousands separator treated as clause boundary")
+	_check(SpeechScript.split_text("字".repeat(62) + "12,500" + "字".repeat(20))[0].ends_with("12,500"), "Hard limit split thousands token")
+	var english := "Please check the installation instructions before proceeding with the next operation."
+	_check(SpeechScript.split_text(english)[0].length() <= 64, "English spaces did not bound segment length")
 	_check(not speech.speak_for_peer(1, "bad", "字".repeat(4001)), "Oversized text accepted")
 	var records := router.get("_requests") as Dictionary
 	records["confirm-test"] = {"speaker_peer_id": 1, "text": "打开工作手册", "qwen_route": "confirm_action", "created_msec": Time.get_ticks_msec()}
@@ -83,6 +94,29 @@ func _run() -> void:
 	voice.set_assistant_speech_active(12345, true)
 	speech.call("_on_server_disconnected")
 	_check(not voice.is_assistant_speech_active(12345), "Disconnect leaked old peer suppression")
+	# Buffered audio must not survive cancellation or a stale response.
+	speech.set("_next_stream", AudioStreamWAV.new())
+	speech.set("_fetching", true)
+	speech.set("_playing_segment", true)
+	speech.call("_abort_local")
+	_check(speech.get("_next_stream") == null and not speech.get("_fetching") and not speech.get("_playing_segment"), "Prefetch state leaked on abort")
+	speech.call("_on_audio_received", HTTPRequest.RESULT_SUCCESS, 200, PackedStringArray(["X-Audio-Format: pcm_s16le", "X-Sample-Rate: 24000"]), PackedByteArray([1, 0]), "obsolete")
+	_check(speech.get("_next_stream") == null, "Stale response resurrected playback")
+	# A prefetched response must not replace the stream currently being played.
+	speech.set("_local_id", "buffer-test")
+	var queued: Array[String] = ["第一句。", "第二句。"]
+	speech.set("_parts", queued)
+	var pcm := PackedByteArray()
+	pcm.resize(96000)
+	var pcm_headers := PackedStringArray(["X-Audio-Format: pcm_s16le", "X-Sample-Rate: 24000"])
+	speech.call("_on_audio_received", HTTPRequest.RESULT_SUCCESS, 200, pcm_headers, pcm, "buffer-test")
+	var first_stream = speech.get("_player").stream
+	speech.call("_on_audio_received", HTTPRequest.RESULT_SUCCESS, 200, pcm_headers, pcm, "buffer-test")
+	_check(speech.get("_player").stream == first_stream and speech.get("_next_stream") != null, "Prefetch interrupted current sentence")
+	speech.get("_player").stop()
+	speech.call("_on_segment_finished")
+	_check(speech.get("_player").stream != first_stream and speech.get("_next_stream") == null, "Buffered sentence did not advance")
+	speech.call("_abort_local")
 	print("Assistant speech self test passed." if not _failed else "Assistant speech self test FAILED.")
 	quit(1 if _failed else 0)
 

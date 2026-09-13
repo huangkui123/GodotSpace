@@ -4,6 +4,8 @@ signal connection_state_changed(connected: bool)
 signal assistant_routing_decision_received(request_id: String, route: String, tool_name: String)
 signal assistant_final_received(request_id: String, answer: String)
 signal run_error_received(request_id: String, code: String, message: String)
+signal confirmation_received(request_id: String, confirmation_id: String)
+signal confirmation_state_received(confirmation_id: String, active: bool, ttl_seconds: float)
 
 const PROTOCOL_VERSION := "1.0"
 const DEFAULT_ENDPOINT := "ws://127.0.0.1:7861/ws/godot"
@@ -110,7 +112,8 @@ func submit_user_message(
 	text: String,
 	context: Dictionary,
 	allowed_tools: PackedStringArray,
-	conversation_id: String
+	conversation_id: String,
+	confirmation_id: String = ""
 ) -> bool:
 	if not _connected or request_id.strip_edges().is_empty() or text.strip_edges().is_empty() or conversation_id.strip_edges().is_empty():
 		return false
@@ -124,9 +127,20 @@ func submit_user_message(
 			"context": context.duplicate(true),
 			"allowed_tools": tools,
 			"conversation_id": conversation_id.strip_edges(),
+			"confirmation_id": confirmation_id,
 		},
 		request_id
 	)
+
+
+func cancel_request(request_id: String) -> bool:
+	return _connected and _send_envelope("cancel_run", {}, request_id)
+
+
+func update_confirmation(conversation_id: String, confirmation_id: String, phase: String) -> bool:
+	return _connected and _send_envelope("confirmation_update", {
+		"conversation_id": conversation_id, "confirmation_id": confirmation_id, "phase": phase,
+	})
 
 
 func complete_deferred_tool_call(tool_call_id: String, result: Dictionary) -> bool:
@@ -253,12 +267,16 @@ func _handle_envelope(envelope: Dictionary) -> void:
 	elif message_type == "assistant_final":
 		var payload := _dictionary(envelope.get("payload", {}))
 		var request_id := str(envelope.get("request_id", ""))
+		confirmation_received.emit(request_id, str(payload.get("confirmation_id", "")))
 		assistant_routing_decision_received.emit(
 			request_id,
 			str(payload.get("route", "")),
 			str(payload.get("tool_name", ""))
 		)
 		assistant_final_received.emit(request_id, str(payload.get("answer", "")))
+	elif message_type == "confirmation_state":
+		var payload := _dictionary(envelope.get("payload", {}))
+		confirmation_state_received.emit(str(payload.get("confirmation_id", "")), bool(payload.get("active", false)), float(payload.get("ttl_seconds", 0.0)))
 	elif message_type == "run_error":
 		var payload := _dictionary(envelope.get("payload", {}))
 		run_error_received.emit(

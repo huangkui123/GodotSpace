@@ -58,9 +58,15 @@ uv pip install --python "$RUNTIME/envs/tts/bin/python" -r "$BACKEND/requirements
 
 - **Qwen**：model 环境使用 huggingface_hub 的 `HfApi().model_info(model_id).sha` 取得具体 revision，再 `snapshot_download(repo_id=model_id, revision=sha, local_dir=...)` 下载到 `Model/models/local-agent/模型专属目录`。Codex 用 apply_patch 写本地下载脚本，参数传入完整 ID，不拼 shell 字符串。记录 ID/revision、配置和权重文件 SHA256；确认 config/tokenizer/processor 和 safetensors 分片齐全。默认官方 Hugging Face，不继承旧 HF_ENDPOINT 镜像；网络受限需要镜像时先说明来源并取得选择。
 - **FunASR/VAD**：asr 环境中以 `FUNASR_DEVICE=cpu`（或计划的 cuda）、`MODELSCOPE_CACHE=$BACKEND/models/funasr`，在 Model cwd 执行 `from asr_service.funasr_engine import FunAsrEngine; e=FunAsrEngine(); e.load(); assert e.loaded and e.vad_loaded and e.warmed_up`。它会下载 paraformer-zh-streaming 和 fsmn-vad 并预热。记录别名解析后的真实模型仓库、缓存目录/revision及权重 SHA256。随后将实际两个本地模型目录交给启动器的 --asr-model/--vad-model，避免启动依赖别名查询网络。不要把整个 cache 根目录误当模型目录。
-- **TTS**：tts 环境运行 `python scripts/download_tts_model.py`。该脚本使用固定上游 URL/SHA256，只保留推理必需文件；模型目录为 `Model/models/tts/vits-icefall-zh-aishell3`。不要用 Windows 系统朗读替代它。离线包也必须含 tokens/lexicon/FST，只有 model.onnx 不够。
+- **TTS**：tts 环境运行 `python scripts/download_tts_model.py --model kokoro`。默认下载官方 `kokoro-int8-multi-lang-v1_1`（压缩包约 147MB），固定 SHA256，位于 `Model/models/tts/`；保留 voices.bin、tokens、lexicon、dict、espeak-ng-data、FST 和 LICENSE，只有 ONNX 不够。运行默认中文女声 sid=17（用户试听选定，CPU/CUDA 相同）、CPU 两线程。`LOCAL_TTS_SPEAKER` 可覆盖默认音色，`LOCAL_TTS_SPEED` 范围 0.7–1.3；音色编号属于具体模型，不能照搬 VITS 的 66。旧模型回退：下载器 `--model vits`，启动时 `LOCAL_TTS_MODEL=vits` 并清除不匹配的 `LOCAL_TTS_MODEL_DIR/LOCAL_TTS_SPEAKER` 覆盖。不要用 Windows 系统朗读替代。以 /health 的实际 model/speaker 为准；既有启动入口若显式指定旧模型目录仍会保留旧模型，迁移时核对并更新该入口。
 
 有完整缓存后验证一次无需下载的重启。模型下载与本机硬件运行均失败时不能写“部署完成”。
+
+### 可选 GPU TTS（用户要求加速时）
+
+保留 CPU tts 环境；新增独立 `tts-gpu`，运行 `TTS_GPU_ENV="$RUNTIME/envs/tts-gpu" bash scripts/bootstrap_local_tts_gpu.sh`。目录已存在时先确认是本次创建的环境，再 `TTS_RESUME_INSTALL=1` 续装。脚本固定 sherpa/CUDA 依赖，下载 hash 校验的 `kokoro-multi-lang-v1_1` FP32 包；不使用 INT8 模型冒充 GPU 加速。Ubuntu20.04 glibc2.31 走固定官方源码构建，需已有 C/C++ 编译器；新 glibc 用官方 wheel，不升级系统库。详见 Model/tts_service/README.md。
+
+用 GPU 环境执行 `scripts/benchmark_local_tts.py --device cuda`，同时核对实际显存和无 CUDA fallback 错误；确认收益及 Godot/8B/ASR 显存余量后，启动器显式 `tts --env-dir "$RUNTIME/envs/tts-gpu" --tts-device cuda`。保存本机入口中该选择。失败时不静默回退：报告原因，用户选择 CPU 后用原环境及 `--tts-device cpu`。5090 上仍需实际验证 CUDA 与显存峰值，不能沿用 4060 的实测结论。
 
 ## 4. 逐服务启动
 

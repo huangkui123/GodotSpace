@@ -16,6 +16,9 @@ MODEL_CHUNK_BYTES = SAMPLE_RATE * BYTES_PER_SAMPLE * MODEL_CHUNK_MSEC // 1000
 MAX_BUFFERED_BYTES = SAMPLE_RATE * BYTES_PER_SAMPLE * 30
 PRE_ROLL_MSEC = 800
 DEFAULT_STABLE_PARTIAL_MSEC = 1800
+# Only near-digital silence may override a stuck neural VAD. Do not classify
+# quiet syllables using the much higher speech-start energy threshold.
+NEAR_SILENCE_RMS = 0.0001
 FINAL_FLUSH_PADDING_MSEC = 300
 FINAL_FLUSH_PADDING_BYTES = (
     SAMPLE_RATE * BYTES_PER_SAMPLE * FINAL_FLUSH_PADDING_MSEC // 1000
@@ -66,6 +69,8 @@ class StreamingAsrSession:
         self.vad_silence_msec = max(400, min(vad_silence_msec, 5000))
         self.max_speak_msec = max(1000, min(max_speak_msec, 90_000))
         self.speech_threshold = max(0.001, min(speech_threshold, 0.5))
+        # Protocol-compatible name: this is now the audio idle/silence watchdog,
+        # never a deadline on how often the recognizer must change its text.
         self.stable_partial_msec = max(1000, min(stable_partial_msec, 5000))
         self.hotwords = hotwords
         self._clock_msec = clock_msec or monotonic_msec
@@ -77,11 +82,9 @@ class StreamingAsrSession:
         self._speaking = not need_vad
         self._speech_msec = 0
         self._silence_msec = 0
-        self._input_msec = 0
         self._last_text = ""
-        self._last_text_change_msec = -1
         self._last_audio_wall_msec = -1
-        self._last_text_change_wall_msec = -1
+        self._near_silence_msec = 0
         self.finished = False
 
     def feed(self, pcm16: bytes) -> list[TranscriptEvent]:
@@ -93,7 +96,10 @@ class StreamingAsrSession:
             return []
         self._last_audio_wall_msec = self._clock_msec()
         chunk_msec = len(pcm16) * 1000 // (SAMPLE_RATE * BYTES_PER_SAMPLE)
-        self._input_msec += chunk_msec
+        if pcm16_rms(pcm16) <= NEAR_SILENCE_RMS:
+            self._near_silence_msec += chunk_msec
+        else:
+            self._near_silence_msec = 0
         speech_ended = False
         if self._uses_neural_vad:
             speech_started, speech_ended = self._detect_speech(
@@ -136,8 +142,8 @@ class StreamingAsrSession:
                 endpoint_reason = "neural_vad"
             elif not self._uses_neural_vad and self._silence_msec >= self.vad_silence_msec:
                 endpoint_reason = "energy_vad"
-            elif self._stable_partial_timed_out():
-                endpoint_reason = "stable_partial_timeout"
+            elif self._near_silence_msec >= max(self.stable_partial_msec, self.vad_silence_msec):
+                endpoint_reason = "silence_watchdog"
             elif self._speech_msec >= self.max_speak_msec:
                 endpoint_reason = "max_speak_timeout"
         if endpoint_reason:
@@ -151,12 +157,6 @@ class StreamingAsrSession:
         if self.finished or not self._speaking:
             return None
         now_msec = self._clock_msec()
-        if (
-            self._last_text_change_wall_msec >= 0
-            and now_msec - self._last_text_change_wall_msec
-            >= self.stable_partial_msec
-        ):
-            return self.finish("stable_partial_wall_timeout")
         if (
             self._last_audio_wall_msec >= 0
             and now_msec - self._last_audio_wall_msec >= self.stable_partial_msec
@@ -172,8 +172,9 @@ class StreamingAsrSession:
             return None
         remaining = bytes(self._model_buffer)
         self._model_buffer.clear()
-        if len(remaining) < FINAL_FLUSH_PADDING_BYTES:
-            remaining += bytes(FINAL_FLUSH_PADDING_BYTES - len(remaining))
+        # Append real lookahead silence after ALL remaining speech; merely
+        # padding a short buffer to 300 ms can leave its last syllable unflushed.
+        remaining += bytes(FINAL_FLUSH_PADDING_BYTES)
         text = self.engine.recognize(self._engine_session, remaining, is_final=True)
         self._last_text = text or self._last_text
         if not self._last_text:
@@ -188,8 +189,6 @@ class StreamingAsrSession:
             text = self.engine.recognize(self._engine_session, chunk, is_final=False)
             if text and text != self._last_text:
                 self._last_text = text
-                self._last_text_change_msec = self._input_msec
-                self._last_text_change_wall_msec = self._clock_msec()
                 events.append(TranscriptEvent(text, False))
         return events
 
@@ -198,10 +197,3 @@ class StreamingAsrSession:
         pre_roll_bytes = SAMPLE_RATE * BYTES_PER_SAMPLE * PRE_ROLL_MSEC // 1000
         if len(self._pre_roll) > pre_roll_bytes:
             del self._pre_roll[:-pre_roll_bytes]
-
-    def _stable_partial_timed_out(self) -> bool:
-        return (
-            self._last_text_change_msec >= 0
-            and self._input_msec - self._last_text_change_msec
-            >= self.stable_partial_msec
-        )

@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import struct
+import asyncio
 import unittest
 
 from fastapi.testclient import TestClient
 
-from asr_service.app import create_app
+from asr_service.app import create_app, _let_client_close
 
 
 class FakeEngine:
@@ -75,7 +76,7 @@ class LocalAsrAppTests(unittest.TestCase):
 
             final = websocket.receive_json()
             self.assertTrue(final["is_final"])
-            self.assertEqual(final["endpoint_reason"], "stable_partial_wall_timeout")
+            self.assertEqual(final["endpoint_reason"], "input_idle_timeout")
             self.assertEqual(websocket.receive_json()["type"], "finished")
 
     def test_rejects_wrong_audio_format(self) -> None:
@@ -85,6 +86,52 @@ class LocalAsrAppTests(unittest.TestCase):
             )
             error = websocket.receive_json()
             self.assertEqual(error["type"], "error")
+
+    def test_empty_watchdog_result_still_clears_client_cursor(self) -> None:
+        engine = FakeEngine()
+        engine.recognize = lambda *args, **kwargs: ""
+        client = TestClient(create_app(engine))
+        with client.websocket_connect("/ws/asr") as websocket:
+            websocket.send_json({"type": "start", "sample_rate": 16000,
+                                 "format": "pcm_s16le", "need_vad": False,
+                                 "stable_partial_msec": 1000})
+            self.assertEqual(websocket.receive_json()["type"], "ready")
+            websocket.send_bytes(pcm(4000, 100))
+            self.assertEqual(websocket.receive_json()["type"], "finished")
+
+
+class FinalHandshakeTests(unittest.IsolatedAsyncioTestCase):
+    async def test_inflight_audio_is_not_a_final_acknowledgement(self):
+        class Socket:
+            count = 0
+            closed = False
+
+            async def receive(self):
+                self.count += 1
+                await asyncio.sleep(0)
+                return {"type": "websocket.receive", "bytes": pcm(0)} if self.count < 4 else {"type": "websocket.disconnect"}
+
+            async def close(self, **kwargs):
+                self.closed = True
+
+        socket = Socket()
+        await _let_client_close(socket)
+        self.assertEqual(socket.count, 4)
+        self.assertFalse(socket.closed)
+
+    async def test_unresponsive_client_still_has_bounded_cleanup(self):
+        class Socket:
+            closed = False
+
+            async def receive(self):
+                await asyncio.Event().wait()
+
+            async def close(self, **kwargs):
+                self.closed = True
+
+        socket = Socket()
+        await asyncio.wait_for(_let_client_close(socket), timeout=3)
+        self.assertTrue(socket.closed)
 
 
 if __name__ == "__main__":

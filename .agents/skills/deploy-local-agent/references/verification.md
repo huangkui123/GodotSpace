@@ -18,7 +18,7 @@ MODEL_PY/ASR_PY/TTS_PY 为本次绝对路径。导入成功不证明 GPU 推理�
 - vLLM /v1/models 正好包含部署选定 ID。
 - Gateway /healthz 为 godotspace-local-agent，/readyz.status=ready、model=EXACT_ID、vllm/model_found/qwen_agent 均 true。
 - ASR /health.status=ready、vad_loaded=true、warmed_up=true；核对实际模型/设备与计划一致。
-- TTS /health.service=local-tts、status=ready、device=cpu。
+- TTS /health.service=local-tts、status=ready；CPU 为 device=cpu/model=kokoro-int8-multi-lang-v1_1，GPU 为 device=cuda/model=kokoro-multi-lang-v1_1；speaker 默认 17、speed 默认 1.0。健康检查接受两种设备，但 Codex 必须核对实际值和本次选择一致，不能仅凭配置标签证明 GPU 推理。
 - Godot 尚未连接时 godot_connected=false 合理，不能报告工具链已就绪。
 
 WSL 和 Windows 都检查 localhost；只有 Windows Python 可用时可复用检查脚本，否则 PowerShell Invoke-RestMethod 核对同样字段。WSL 可访问、Windows 不可访问属于转发失败，不通过改成 0.0.0.0 或禁用防火墙规避。
@@ -32,7 +32,10 @@ ASR 另做真实模型识别：
 2. 对 sample_2.wav（“你是否想打开工作清单？”）运行 asr 环境 `scripts/smoke_local_asr.py WAV --endpoint ws://127.0.0.1:ASR_PORT/ws/asr --auto-vad`，再运行一次不带 --auto-vad，分别覆盖静默和显式停止的 final。
 3. 同法用 /v1/speech 合成“智能助手”“智能助手打开工作清单”“关闭工作手册”，按响应 X-Sample-Rate 包装单声道16bit WAV，再送 ASR smoke。不是把 PCM 当现成 WAV。
 4. 检查 final 中的完整词尾（尤其“助手”）、无永久 partial、无重复/丢句。现有 ASR smoke 只要求非空 final，Codex 必须额外核对文本；合成音用例通过仍不代表真人麦克风通过。
+   对 16kHz 单声道 PCM16 WAV，还需运行 Godot `res://Assets/ARSpace/Scripts/Network/local_funasr_e2e_self_test.gd`，传 `--local-asr-test-wav=PATH --local-asr-expected=智能助手 --local-asr-auto-vad`，再不带 auto-vad 重跑。它验证 Godot 真正收到了完整 final/finished；仅 Python WebSocket 通过不能覆盖 Godot 的连接关闭竞争。
 5. 记录首 partial、final 等可测阶段及合成耗时，不把非实时快速喂音频脚本的耗时当用户端端到端时延。若 CPU ASR 太慢，报告测量结果后评估专属 CUDA ASR 环境，不抢占已运行模型显存。
+
+TTS 音色/性能验收使用 `python scripts/benchmark_local_tts.py --model kokoro --speakers 17 18 --threads 2`，在 generated/tts_audition 下得到固定测试文本 WAV 和首次/缓存命中耗时。缓存命中不能冒充首次合成时延。CPU 实时系数 RTF>1 时下一句预加载不保证连续播放；报告真实等待，不承诺 Siri 级延迟。真实 PICO 试听确认数字/单位、否定句、自然停顿和音色；Godot 重启后才加载切句/预加载新代码，服务重启本身不更新已运行客户端。
 
 ## C. Godot→Gateway→真实模型→Godot 工具
 

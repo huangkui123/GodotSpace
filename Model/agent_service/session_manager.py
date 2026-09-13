@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import time
 from collections.abc import Callable, Coroutine
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import Enum
 from typing import Any
 
@@ -42,12 +42,15 @@ class PendingAction:
     arguments: dict[str, Any]
     action_text: str
     expires_at_monotonic: float
+    confirmation_id: str = ""
+    hard_expires_at_monotonic: float = 0.0
 
 
 @dataclass(slots=True)
 class SessionState:
     session_id: str
     run_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+    worker_task: asyncio.Task[Any] | None = None
     active_tasks: dict[str, asyncio.Task[Any]] = field(default_factory=dict)
     seen_request_ids: dict[str, None] = field(default_factory=dict)
     requests: dict[str, RequestRecord] = field(default_factory=dict)
@@ -194,6 +197,7 @@ class SessionManager:
         arguments: dict[str, Any],
         action_text: str,
         ttl_seconds: float = 30.0,
+        confirmation_id: str = "",
     ) -> None:
         async with self._lock:
             state = self._get_or_create_locked(session_id)
@@ -202,7 +206,32 @@ class SessionManager:
                 arguments=dict(arguments),
                 action_text=action_text,
                 expires_at_monotonic=time.monotonic() + max(0.0, ttl_seconds),
+                confirmation_id=confirmation_id,
+                hard_expires_at_monotonic=time.monotonic() + 300.0,
             )
+
+    async def update_confirmation(
+        self, session_id: str, conversation_id: str, confirmation_id: str, phase: str,
+    ) -> PendingAction | None:
+        async with self._lock:
+            state = self._sessions.get(session_id)
+            pending = state.pending_actions.get(conversation_id) if state else None
+            if pending is None or pending.confirmation_id != confirmation_id:
+                return None
+            now = time.monotonic()
+            if phase == "cancel" or now >= min(pending.expires_at_monotonic, pending.hard_expires_at_monotonic):
+                state.pending_actions.pop(conversation_id, None)
+                return None
+            ttl = 180.0 if phase == "speaking" else 20.0
+            pending = replace(pending, expires_at_monotonic=min(now + ttl, pending.hard_expires_at_monotonic))
+            state.pending_actions[conversation_id] = pending
+            return pending
+
+    async def clear_confirmations(self, session_id: str) -> None:
+        async with self._lock:
+            state = self._sessions.get(session_id)
+            if state is not None:
+                state.pending_actions.clear()
 
     async def get_pending_action(
         self, session_id: str, conversation_id: str
@@ -286,6 +315,7 @@ class SessionManager:
                 state
                 for state in self._sessions.values()
                 if not state.active_tasks and not state.run_lock.locked()
+                and (state.worker_task is None or state.worker_task.done())
             ]
             if not idle:
                 return
