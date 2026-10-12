@@ -44,6 +44,8 @@ TTS 音色/性能验收使用 `python scripts/benchmark_local_tts.py --model kok
 1. 使用匹配引擎 `--headless --path PROJECT --import`。脚本解析、资源缺失、autoload、native extension 错误为失败；只可单独记录已知退出阶段噪声。
 2. 运行 AGENTS.md 的 7 项 LLM 离线自检，另运行：
    - res://Assets/ARSpace/Scripts/AI/LocalAgent/assistant_command_router_self_test.gd
+   - res://Assets/ARSpace/Scripts/AI/LocalAgent/local_endpoint_self_test.gd
+   - res://Assets/ARSpace/Scripts/AI/LocalAgent/local_agent_runtime_self_test.gd
    - res://Assets/ARSpace/Scripts/AI/LocalAgent/assistant_speech_self_test.gd
    - res://Assets/ARSpace/Scripts/AI/LocalAgent/assistant_speech_live_smoke.gd
    先确认路径实际存在；上游改名时搜索相应测试，不编造 PASS。
@@ -53,7 +55,7 @@ TTS 音色/性能验收使用 `python scripts/benchmark_local_tts.py --model kok
 ```
    非默认 Gateway 端口可附加 `--mock-gateway-port=PORT`；参数名历史上带 mock，但它只是覆盖 endpoint。核对该端口运行的确实是真实 Gateway，不是 mock。
    测试应实际推进/回退页码，并验证第17页问题得到当前步骤证据及 2.5N·m。检查退出码和明确 passed 标记，不能只看模型输出一段文字。
-4. 需要完整多人验收时，读取 `test_task_agent_multi_client_e2e.sh`、`test_assistant_history_multi_client.sh` 的底层命令，替换动态路径并使用独立空闲 mock 端口运行；它们测 peer 隔离，不是模型质量。
+4. 默认拓扑运行 `MODEL_PY scripts/test_server_hosted.py --godot GODOT_EXE --project WINDOWS_PROJECT`（Model cwd，WSL 启动 Windows 引擎时项目参数使用 `F:/.../GodotSpace` 形式）。使用独立端口 18761、42869，占用时不杀旧进程。验证一个 Server/两个 Client 只产生一个 Gateway 连接、四次目标端 UI 工具往返、旧 epoch 不进入模型、ready 前不开始倒计时、普通文本分发、答案不串端、Server 断开后助手不可用。测试隔离场景复制，不代表真实角色分配/XR/麦克风/模型质量已通过。旧 local endpoint 和 server_relay 测试只是显式兼容模式，不能当作默认部署验收。
 5. 可运行现有 benchmark 作额外回归，但报告实际 model ID、上下文、精度、GPU/运行库和用例数。不能将 mock、旧2B或远程8B/FP8分数套在本次5090的8B/BF16部署上。失败时查 harness trace、Godot状态、模型选择，不能用提高超时掩盖语义失败。
 
 ## D. 真实交互验收（需要用户/硬件）
@@ -67,6 +69,9 @@ TTS 音色/性能验收使用 `python scripts/benchmark_local_tts.py --model kok
 | 澄清后点击重新听写，再说“是” | 保留待确认上下文；问答历史合并为同一轮 |
 | “翻到工作手册第17页”，确认后问力矩 | 正确页面及有来源的力矩；不把旧页当当前页 |
 | 普通讲话后唤醒助手 | 历史按时间排列，不覆盖旧话或把蓝色回复插到中间 |
+| 先说 A，立刻点输入语音，再说 B；重复点击重新听写 | 旧 A 的迟到结果只进普通历史，指令只含 B；不丢待确认动作；连接期间不提前消耗倒计时 |
+| 天上 Server + Sky Client、地面 Client 同时运行 | 只有 Server 连接 Gateway；两 Client 的 ASR/TTS 各在本机，工具/确认/回复不串端 |
+| 关闭天上 Server | 地面 Client 助手不可用并返回菜单；不自动转到地面推理，共享后端不被退出动作停止 |
 | “智能助手”、含末尾短字的句子 | 词尾完整、光标最终结束；不是永久 partial |
 | TTS 播报、点击停止、继续确认 | 目标 PICO 扬声器发声；不重复播报；恢复 ASR/确认状态 |
 | 第二个 Client 发命令、断线重连 | 目标 peer 隔离，无串端操作或串音 |

@@ -13,6 +13,8 @@ var _failed := false
 
 
 func _init() -> void:
+	if OS.get_cmdline_user_args().has("--speech-server") or OS.get_cmdline_user_args().has("--speech-client"):
+		ProjectSettings.set_setting("arspace/local_agent/execution_mode", "server_relay")
 	call_deferred("_run")
 
 
@@ -92,8 +94,13 @@ func _run() -> void:
 	# Simulate network reset changing the local ID before the disconnect callback.
 	speech.set("_suppressed_local_peer", 12345)
 	voice.set_assistant_speech_active(12345, true)
+	ProjectSettings.set_setting("arspace/local_agent/execution_mode", "server_relay")
 	speech.call("_on_server_disconnected")
 	_check(not voice.is_assistant_speech_active(12345), "Disconnect leaked old peer suppression")
+	ProjectSettings.set_setting("arspace/local_agent/execution_mode", "local")
+	speech.set("_local_id", "local-survives-ground")
+	speech.call("_on_server_disconnected")
+	_check(str(speech.get("_local_id")) == "local-survives-ground", "Ground disconnect interrupted local TTS")
 	# Buffered audio must not survive cancellation or a stale response.
 	speech.set("_next_stream", AudioStreamWAV.new())
 	speech.set("_fetching", true)

@@ -316,7 +316,10 @@ func _append_pcm16(sample: float) -> void:
 func _trim_buffered_pcm() -> void:
 	var max_bytes := int(float(TARGET_SAMPLE_RATE * BYTES_PER_SAMPLE * max_buffered_audio_msec) / 1000.0)
 	if _pcm_buffer.size() > max_bytes:
-		_pcm_buffer = _pcm_buffer.slice(_pcm_buffer.size() - max_bytes)
+		# Dropping the beginning can change the meaning of a command (including
+		# losing a negation). Fail visibly instead of submitting truncated speech.
+		_emit_error(ERR_OUT_OF_MEMORY, "语音连接过慢，录音缓冲区已满，请重新听写。")
+		_reset_connection(false)
 
 
 func _packet_bytes() -> int:

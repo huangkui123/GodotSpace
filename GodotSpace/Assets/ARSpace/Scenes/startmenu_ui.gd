@@ -19,6 +19,9 @@ const RuntimeProfile = preload("res://Assets/ARSpace/Scripts/runtime_profile.gd"
 
 var _changing_scene: bool = false
 var _setting_runtime_mode: bool = false
+var _starting := false
+var _compute_selector: OptionButton
+var _agent_toggle: CheckBox
 
 func _ready():
 	_reset_presentation_viewport()
@@ -27,14 +30,33 @@ func _ready():
 	_update_runtime_ui()
 	_setup_network_controls()
 	_setup_audio_controls()
+	_setup_agent_controls()
 	var previous_error := NetworkHandler.get_last_start_error()
 	if not previous_error.is_empty():
 		_set_status(previous_error, true)
 
 func _on_start_pressed():
+	if _starting:
+		return
 	var profile = RuntimeProfile.current()
 	if not profile.is_valid():
 		_set_status(profile.validation_error, true)
+		return
+	_starting = true
+	start_button.disabled = true
+	mode_selector.disabled = true
+	_compute_selector.disabled = true
+	_agent_toggle.disabled = true
+	LocalAgentRuntime.enabled = _agent_toggle.button_pressed
+	ProjectSettings.set_setting("arspace/local_agent/enabled", LocalAgentRuntime.enabled)
+	var services_ready: bool = await LocalAgentRuntime.ensure_services(profile)
+	_starting = false
+	start_button.disabled = false
+	mode_selector.disabled = profile.selection_locked
+	_compute_selector.disabled = false
+	_agent_toggle.disabled = false
+	if not services_ready:
+		_set_status(LocalAgentRuntime.message, true)
 		return
 
 	_apply_audio_selection()
@@ -63,7 +85,7 @@ func _setup_runtime_mode_selector() -> void:
 
 	_setting_runtime_mode = true
 	mode_selector.clear()
-	mode_selector.add_item("PC 地面端 Server", RuntimeProfile.Preset.PC_GROUND_SERVER)
+	mode_selector.add_item("PC 协作 Server（可部署在天上端）", RuntimeProfile.Preset.PC_GROUND_SERVER)
 	mode_selector.add_item("VR 地面端 Client", RuntimeProfile.Preset.VR_GROUND_CLIENT)
 	mode_selector.add_item("天上端 XR Client", RuntimeProfile.Preset.SKY_XR_CLIENT)
 	mode_selector.add_item("VR 地面端 Server", RuntimeProfile.Preset.VR_GROUND_SERVER)
@@ -93,6 +115,25 @@ func _on_runtime_mode_selected(index: int) -> void:
 	_update_runtime_ui()
 	_setup_network_controls()
 	_setup_audio_controls()
+	if _compute_selector != null:
+		_compute_selector.visible = RuntimeProfile.current().is_server()
+
+
+func _setup_agent_controls() -> void:
+	_agent_toggle = CheckBox.new()
+	_agent_toggle.text = "启动智能助手服务"
+	_agent_toggle.button_pressed = true
+	$VBoxContainer.add_child(_agent_toggle)
+	$VBoxContainer.move_child(_agent_toggle, status_label.get_index())
+	_compute_selector = OptionButton.new()
+	_compute_selector.add_item("模型算力：本机（8B）")
+	_compute_selector.add_item("模型算力：远端（已配置 SSH）")
+	_compute_selector.select(1 if LocalAgentRuntime.compute_mode == "remote" else 0)
+	_compute_selector.visible = RuntimeProfile.current().is_server()
+	_compute_selector.item_selected.connect(func(index: int): LocalAgentRuntime.select_compute("local" if index == 0 else "remote"))
+	$VBoxContainer.add_child(_compute_selector)
+	$VBoxContainer.move_child(_compute_selector, status_label.get_index())
+	LocalAgentRuntime.status_changed.connect(func(next: String, detail: String): _set_status(detail, next == "failed"))
 
 
 func _update_runtime_ui() -> void:

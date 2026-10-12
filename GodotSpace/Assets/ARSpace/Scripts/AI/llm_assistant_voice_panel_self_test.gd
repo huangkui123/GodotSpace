@@ -2,6 +2,8 @@ extends SceneTree
 
 
 func _init() -> void:
+	# UI-only fixture; networked capture readiness has a separate ENet test.
+	ProjectSettings.set_setting("arspace/local_agent/execution_mode", "local")
 	call_deferred("_run")
 
 
@@ -61,7 +63,15 @@ func _run() -> void:
 	if router == null:
 		_fail("AssistantCommandRouter autoload is unavailable.")
 		return
+	# Headless has no microphone; fake only readiness and ASR ready notification.
+	voice_chat.capture.is_setup = true
 	wake_button.pressed.emit()
+	if str(ui.get("assistant_interaction_state")) != "connecting" or countdown_bar.visible:
+		_fail("Manual wake must wait for ASR readiness before counting down.")
+		return
+	voice_chat.set("_manual_wake_pending", false)
+	voice_chat.call("_stop_peer_transcription", 1)
+	voice_chat.assistant_capture_ready.emit(1)
 	await process_frame
 	if not interaction_panel.visible or interaction_label.text != "我在，请说。" or wake_button.text != "重新听写":
 		_fail("Manual wake button did not enter the shared assistant listening state.")

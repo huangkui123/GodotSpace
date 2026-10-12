@@ -30,7 +30,7 @@ fi
     --headless \
     --path 'F:\GodotSpace\GodotSpace' \
     --script 'res://Assets/ARSpace/Scripts/AI/LocalAgent/task_agent_remote_e2e_self_test.gd' \
-    -- --remote-e2e-server "--mock-gateway-port=$mock_port" >"$server_log" 2>&1 &
+    -- --local-agent-server-relay --remote-e2e-server "--mock-gateway-port=$mock_port" >"$server_log" 2>&1 &
 server_pid=$!
 
 cleanup() {
@@ -45,7 +45,7 @@ set +e
     --headless \
     --path 'F:\GodotSpace\GodotSpace' \
     --script 'res://Assets/ARSpace/Scripts/AI/LocalAgent/task_agent_remote_e2e_self_test.gd' \
-    -- --remote-e2e-client >"$client_log" 2>&1
+    -- --local-agent-server-relay --remote-e2e-client >"$client_log" 2>&1
 client_status=$?
 wait "$server_pid"
 server_status=$?

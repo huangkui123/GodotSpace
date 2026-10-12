@@ -403,6 +403,8 @@ func _update_assistant_wake_button() -> void:
 
 
 func _is_assistant_command_transcript(data: Dictionary) -> bool:
+	if bool(data.get("history_only", false)):
+		return false
 	var peer_id := int(data.get("speaker_peer_id", 0))
 	if peer_id <= 0:
 		return false
@@ -420,6 +422,8 @@ func _is_assistant_command_transcript(data: Dictionary) -> bool:
 
 
 func _get_local_peer_id() -> int:
+	if voice_chat != null and voice_chat.has_method("_get_local_voice_peer_id"):
+		return int(voice_chat.call("_get_local_voice_peer_id"))
 	return multiplayer.get_unique_id() if multiplayer.has_multiplayer_peer() else SERVER_PEER_ID
 
 

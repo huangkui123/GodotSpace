@@ -5,6 +5,23 @@ and tool-call harnesses, benchmarks, and the FunASR streaming service used by
 GodotSpace. It is maintained as the `Model/` subtree of the GodotSpace
 monorepo.
 
+Deployment uses **Server-hosted inference with endpoint-local speech**:
+the Sky PC hosts Godot Server + Sky Client + Gateway, with local or SSH-forwarded
+model compute. Ground Client sends commands to that Server. Each Client PC runs
+its own ASR/TTS; only Server connects to Gateway. Use the repository's
+[deployment skill](../.agents/skills/deploy-local-agent/SKILL.md) for the current
+8B/5090 deployment recipe; the 4060/2B demo commands below are legacy examples.
+`GODOTSPACE_AGENT_ENDPOINT`, `LOCAL_ASR_ENDPOINT` and `GODOTSPACE_TTS_ENDPOINT`
+override the Godot process's local service addresses. Both machines must use
+the same repository version; do not expose unauthenticated services to the LAN.
+
+After first deployment, Godot's start menu starts/checks the required services.
+Server remembers local/remote compute selection; Clients only prepare ASR/TTS.
+See [runtime profile](../.agents/skills/deploy-local-agent/references/runtime-profile.md)
+for the ignored machine-specific configuration. No silent fallback or process
+eviction; exiting Godot leaves shared services running. Server disconnect makes
+the assistant unavailable (offline XR is not implemented).
+
 ## Current target
 
 - Host OS: Windows 10

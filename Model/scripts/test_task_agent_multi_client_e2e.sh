@@ -13,7 +13,7 @@ TASK_AGENT_SCENARIO=multi python "$repo_root/scripts/mock_task_agent_gateway.py"
 gateway_pid=$!
 "$godot_exe" --headless --path 'F:\GodotSpace\GodotSpace' \
     --script 'res://Assets/ARSpace/Scripts/AI/LocalAgent/task_agent_multi_client_e2e_self_test.gd' \
-    -- --multi-e2e-server >"$server_log" 2>&1 &
+    -- --local-agent-server-relay --multi-e2e-server >"$server_log" 2>&1 &
 server_pid=$!
 
 cleanup() {
@@ -25,12 +25,12 @@ trap cleanup EXIT
 sleep 1
 "$godot_exe" --headless --path 'F:\GodotSpace\GodotSpace' \
     --script 'res://Assets/ARSpace/Scripts/AI/LocalAgent/task_agent_multi_client_e2e_self_test.gd' \
-    -- --multi-e2e-client-1 >"$client1_log" 2>&1 &
+    -- --local-agent-server-relay --multi-e2e-client-1 >"$client1_log" 2>&1 &
 client1_pid=$!
 sleep 0.5
 "$godot_exe" --headless --path 'F:\GodotSpace\GodotSpace' \
     --script 'res://Assets/ARSpace/Scripts/AI/LocalAgent/task_agent_multi_client_e2e_self_test.gd' \
-    -- --multi-e2e-client-2 >"$client2_log" 2>&1 &
+    -- --local-agent-server-relay --multi-e2e-client-2 >"$client2_log" 2>&1 &
 client2_pid=$!
 
 set +e

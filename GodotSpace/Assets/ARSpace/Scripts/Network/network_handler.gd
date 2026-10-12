@@ -514,6 +514,8 @@ func _emit_role_changes(previous_roles: Dictionary, current_roles: Dictionary) -
 func _get_safe_local_peer_id() -> int:
 	if not multiplayer.has_multiplayer_peer() or multiplayer.multiplayer_peer == null:
 		return SERVER_PEER_ID
+	if multiplayer.multiplayer_peer.get_connection_status() != MultiplayerPeer.CONNECTION_CONNECTED:
+		return 0
 	return multiplayer.get_unique_id()
 
 
