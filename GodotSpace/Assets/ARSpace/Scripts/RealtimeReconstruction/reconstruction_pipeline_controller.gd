@@ -927,8 +927,28 @@ func _build_server_snapshot() -> Dictionary:
 	}
 
 
+func prepare_on_demand() -> void:
+	if not multiplayer.has_multiplayer_peer() or multiplayer.is_server():
+		return
+	if multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED:
+		rpc_id(SERVER_PEER_ID, "_server_prepare_reconstruction")
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _server_prepare_reconstruction() -> void:
+	if not multiplayer.is_server() or not _dependencies_bound:
+		return
+	if _get_peer_role(multiplayer.get_remote_sender_id()) != ROLE_SKY:
+		return
+	if not bool(_lingbot_bridge.get("auto_connect")):
+		_lingbot_bridge.set("auto_connect", true)
+		_lingbot_bridge.call("connect_tunnel")
+
+
 func _request_pipeline_snapshot() -> void:
 	if multiplayer.is_server() or not multiplayer.has_multiplayer_peer():
+		return
+	if multiplayer.multiplayer_peer.get_connection_status() != MultiplayerPeer.CONNECTION_CONNECTED:
 		return
 	_last_status_request_msec = Time.get_ticks_msec()
 	rpc_id(SERVER_PEER_ID, "_server_request_pipeline_snapshot")

@@ -171,6 +171,8 @@ func _ready() -> void:
 
 	voice_log_path = _get_arg_value(VOICE_LOG_PATH_ARG)
 	if voice_log_path == "":
+		voice_log_path = OS.get_environment("GODOTSPACE_VOICE_LOG_PATH")
+	if voice_log_path == "":
 		voice_log_path = DEFAULT_VOICE_LOG_PATH
 
 	_request_runtime_audio_permissions()
@@ -221,6 +223,8 @@ func set_voice_enabled(enabled: bool) -> void:
 	if enabled and not voice_endpoint_selected:
 		_log("VoiceChat role is not selected yet. Start server or client before enabling voice.")
 		return
+	if enabled and capture != null:
+		capture.setup()
 
 	if voice_enabled == enabled:
 		if capture != null and not _is_dictation_active():
@@ -323,6 +327,7 @@ func begin_local_dictation(session_id: String, purpose: String = "annotation") -
 	_dictation_failure_reported = false
 	_begin_recognition_boundary()
 	if capture != null:
+		capture.setup()
 		capture.set_voice_active(false)
 	_publish_local_speaking_state(false)
 
@@ -583,7 +588,7 @@ func set_audio_devices(input_device: String, output_device: String) -> void:
 
 	if voice_endpoint_selected:
 		_apply_audio_device_profile()
-		if capture != null and capture.has_method("restart_for_device_change"):
+		if capture != null and capture.has_method("restart_for_device_change") and bool(capture.get("is_setup")):
 			capture.restart_for_device_change()
 
 func _setup_components() -> void:
@@ -1512,7 +1517,8 @@ func _set_voice_endpoint_role(is_server_role: bool) -> void:
 	is_server_endpoint = is_server_role
 	is_vr_mode = _is_vr_mode_requested()
 	_apply_audio_device_profile()
-	_setup_capture_after_device_selection()
+	if voice_enabled or bool(ProjectSettings.get_setting("arspace/local_agent/enabled", false)) or voice_debug_enabled:
+		_setup_capture_after_device_selection()
 	_ensure_debug_controls()
 	_update_debug_controls()
 	if voice_debug_enabled and _has_cmdline_arg(VOICE_TEST_TONE_ARG):

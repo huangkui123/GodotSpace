@@ -1,6 +1,7 @@
-[gd_scene load_steps=121 format=4 uid="uid://ca028g0q2kstx"]
+[gd_scene load_steps=122 format=4 uid="uid://ca028g0q2kstx"]
 
 [ext_resource type="Script" uid="uid://d1pt7mdt5llk4" path="res://XR_Main.gd" id="1_g432p"]
+[ext_resource type="PackedScene" path="res://Assets/ARSpace/Prefabs/CalibrationCabinet.tscn" id="90_calibration_cabinet"]
 [ext_resource type="Script" uid="uid://bt6aew4asx754" path="res://Assets/ARSpace/Scenes/SpaceBox.gd" id="2_wjh8v"]
 [ext_resource type="Material" uid="uid://d1mn1jn34yh3r" path="res://Assets/ARSpace/Materials/MeshMat/FrontDor.material" id="3_2envh"]
 [ext_resource type="Texture2D" uid="uid://bbhbakfdmrd25" path="res://Assets/ARSpace/Textures/6_200新副本-工作模式.png" id="4_swovu"]
@@ -336,6 +337,8 @@ script = ExtResource("88_reconstruction_registration")
 script = ExtResource("89_reconstruction_pipeline")
 
 [node name="SharedSpaceOrigin" type="Node3D" parent="." groups=["shared_space_origin"]]
+
+[node name="CalibrationCabinet" parent="SharedSpaceOrigin" instance=ExtResource("90_calibration_cabinet")]
 
 [node name="ReconstructionWorkspace" parent="SharedSpaceOrigin" instance=ExtResource("82_reconstruction_workspace")]
 

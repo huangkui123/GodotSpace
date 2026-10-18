@@ -5,3 +5,4 @@ converted_maps/
 **/*.py[cod]
 GodotSpace/**/~*.TMP
 GodotSpace/**/*.txt.uid
+GodotSpace/tools/startup/.runtime/

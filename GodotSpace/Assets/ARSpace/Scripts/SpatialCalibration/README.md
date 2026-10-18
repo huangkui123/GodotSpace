@@ -1,8 +1,18 @@
 # SpatialCalibration
 
-`SpatialCalibration` 用来把 PICO 4 UE端传回来的 2D 实时画面接入 GodotSpace，并在 server 端提供空间标定面板。
+`SpatialCalibration` 将 PICO 4 Ultra Enterprise 的相机画面接入 GodotSpace。柜体标定由天上端本地完成；下文旧有单点深度标注仍由 Server 操作。
 
-## 运行流程
+通过仓库根目录 `Start-GodotSpace.cmd` 启动时，采集和完整投屏默认使用 USB，不要求头显 Wi-Fi。启动器自动配置 SKY helper 的两个目标为 Android loopback `127.0.0.1:8789` / `127.0.0.1:8787`，再通过 ADB reverse 送到 SKY 接收端与 PC 转发服务；后者将相机帧和 ACK 转发到本机或远端 Server `8787`。两个发送队列及断线恢复互不阻塞，`PSA2/PAA1` 协议不变。完整虚实叠加投屏由独立 USB 编码通道提供，不占用相机帧协议。下文填写 IP、手动启动 helper 的步骤仅用于旧的手动入口；首次权限授权仍须在头显完成。
+
+## 大实验柜半自动标定
+
+天上端进入 ARSpace 后，在头显主面板点击「柜体标定」。Helper 目标为天上端电脑 IP、端口 **8789**。场景中已有一个固定落地的长方体柜子。不需要 CAD、深度预测或额外 Python 服务：输入柜体宽高深后，可以冻结 PICO 单眼画面并点选正面四角，或人工调整测量线框。确认后整体对齐虚拟世界，柜体与其他场景物体的相对位置保持不变。
+
+支持离线模拟、快照保存与回放、预览/确认/清除，全部状态、解算和 XR 原点更新均在本机完成，无标定 RPC 或 Server 确认。模拟与回放不能应用为现场标定，跨重启只记忆尺寸。详细操作、坐标约定、精度限制及测试命令见 [大实验柜部署说明](cabinet_calibration.md)。下文的单点深度标注流程仍保持原有行为。
+
+柜体四角标定默认使用 PICO 4 Ultra 的设备相机外参，需同步更新 Android Helper。新增 metadata 字段、官方 SDK 坐标转换和验证说明见 [相机参数说明](camera_model.md)。
+
+## 旧有单点深度标注（Server / 8787）
 
 1. 按常规方式启动 GodotSpace 的 server 和 client。
 2. server 进入 `ARSpace.tscn`。场景里的 `SpatialCalibrationPanel` 只会在 server 进程中显示。
@@ -31,7 +41,7 @@
 
 ## 说明
 
-- 当前版本使用 server 端虚拟相机位姿作为反投影依据。PICO metadata 仍会被解析并作为调试/参考信息保留，但不会作为最终标定坐标来源。
+- 本节的单点深度标注仍使用 server 端虚拟相机位姿作为反投影依据；柜体四角标定使用本地 XRCamera 头姿及直连相机 metadata，二者坐标来源不同。
 - 使用 `PSA2` 视频帧协议和 `PAA1` ACK 协议。
 - 深度预测是 best-effort 的辅助功能。如果 HTTP 服务没有启动、加载失败或预测失败，面板仍然可以使用手动深度流程。
 - 不建议把深度预测服务直接暴露到公网，除非你已经通过防火墙或反向代理做了访问控制。SSH 隧道方案可以让 HTTP 服务保持私有，同时让 Godot 继续使用 localhost 地址。

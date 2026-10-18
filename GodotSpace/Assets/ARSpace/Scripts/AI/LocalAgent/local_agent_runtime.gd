@@ -13,6 +13,7 @@ var _ready_key := ""
 
 
 func _ready() -> void:
+	enabled = bool(ProjectSettings.get_setting("arspace/local_agent/enabled", false))
 	var saved := ConfigFile.new()
 	if saved.load(PREFERENCE_PATH) == OK:
 		compute_mode = str(saved.get_value("runtime", "compute", "local"))

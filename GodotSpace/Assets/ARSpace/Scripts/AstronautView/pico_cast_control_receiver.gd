@@ -1,16 +1,15 @@
 class_name PicoCastControlReceiver
 extends Node
 
-## Receives short-lived PICO Cast RTMP session descriptors from the companion
-## app. This is intentionally independent from the PSA2 spatial-calibration
-## frame protocol and never persists or logs the RTMP URL.
+## Receives short-lived USB bridge or legacy RTMP session descriptors. This
+## channel is independent from PSA2 and never persists or logs the media URL.
 
 signal session_changed(rtmp_url: String, metadata: Dictionary)
 signal receiver_status_changed(message: String)
 
 const MESSAGE_TYPE := "pico_cast_session"
 const PROTOCOL_VERSION := 1
-const MAX_URL_LENGTH := 2048
+const Endpoint := preload("res://Assets/ARSpace/Scripts/AstronautView/pico_cast_endpoint.gd")
 
 @export_range(1, 65535, 1) var listen_port: int = 8788
 @export var token_environment_name := "GODOTSPACE_PICO_CAST_CONTROL_TOKEN"
@@ -172,16 +171,16 @@ func _accept_message(payload: String) -> bool:
 		_set_status("PICO 投屏控制状态无效：%s" % state)
 		return false
 
-	var rtmp_url := str(message.get("rtmp_url", "")).strip_edges()
-	if rtmp_url.length() > MAX_URL_LENGTH \
-			or not (rtmp_url.begins_with("rtmp://") or rtmp_url.begins_with("rtmps://")):
+	var rtmp_url := str(message.get("stream_url", message.get("rtmp_url", ""))).strip_edges()
+	if not Endpoint.is_valid(rtmp_url, message):
 		_set_status("PICO 投屏 URL 无效")
 		return false
 	message.erase("authorization")
 	message.erase("rtmp_url")
+	message.erase("stream_url")
 	_current_rtmp_url = rtmp_url
 	_current_metadata = message.duplicate(true)
-	_set_status("已收到 %s 的 PICO RTMP 投屏会话" % str(message.get("device_name", "头显")))
+	_set_status("已收到 %s 的 PICO 投屏会话" % str(message.get("device_name", "头显")))
 	session_changed.emit(_current_rtmp_url, get_current_metadata())
 	return true
 

@@ -56,6 +56,7 @@ func _initialize() -> void:
 			or not spacebox_source.contains("NodePath(\"SpaceBox/BackDor\")"):
 		failures.append("Sky XR must explicitly show DownPlane and BackDor")
 	_test_role_specific_scene_transparency(failures)
+	_test_pico_compositor_cleanup(failures)
 
 	var network_source := FileAccess.get_file_as_string("res://Assets/ARSpace/Scripts/Network/network_handler.gd")
 	if not network_source.contains("return _handle_start_failure("):
@@ -68,7 +69,8 @@ func _initialize() -> void:
 	if not menu_source.contains("RuntimeProfile.Preset.VR_GROUND_CLIENT"):
 		failures.append("StartMenu must expose the VR Ground Client mode")
 	var voice_source := FileAccess.get_file_as_string("res://Assets/ARSpace/Scripts/Network/voice_chat.gd")
-	if not voice_source.contains("NetworkHandler.peer == null or not multiplayer.has_multiplayer_peer()"):
+	if not voice_source.contains("NetworkHandler.peer == null or not multiplayer.has_multiplayer_peer()") \
+			and not voice_source.contains('network_handler.get("peer") == null or not multiplayer.has_multiplayer_peer()'):
 		failures.append("VoiceChat must wait for a real ENet peer before publishing levels")
 
 	if failures.is_empty():
@@ -78,6 +80,33 @@ func _initialize() -> void:
 	for failure in failures:
 		push_error(failure)
 	quit(1)
+
+
+func _test_pico_compositor_cleanup(failures: PackedStringArray) -> void:
+	var host := load("res://XR_Main.gd").new() as Node3D
+	var camera := XRCamera3D.new()
+	host.add_child(camera)
+	var original := Compositor.new()
+	var installed := Compositor.new()
+	camera.compositor = installed
+	host.set("_pico_alpha_camera", camera)
+	host.set("_pico_alpha_original_compositor", original)
+	host.set("_pico_alpha_compositor", installed)
+	host.call("_remove_pico_alpha_compositor")
+	if camera.compositor != original or host.get("_pico_alpha_compositor") != null:
+		failures.append("leaving PICO MR must restore the camera's authored compositor")
+	# Another owner may replace the compositor before XR teardown. Do not
+	# overwrite its newer resource when detaching our own effect.
+	var replacement := Compositor.new()
+	camera.compositor = replacement
+	host.set("_pico_alpha_camera", camera)
+	host.set("_pico_alpha_original_compositor", original)
+	host.set("_pico_alpha_compositor", installed)
+	host.call("_remove_pico_alpha_compositor")
+	if camera.compositor != replacement:
+		failures.append("PICO cleanup must preserve a compositor installed by another owner")
+	host.call("_remove_pico_alpha_compositor")
+	host.free()
 
 
 func _test_role_specific_scene_transparency(
@@ -95,12 +124,14 @@ func _test_role_specific_scene_transparency(
 	var primary_geometry := MeshInstance3D.new()
 	var original_material := StandardMaterial3D.new()
 	original_material.albedo_color = Color.WHITE
+	original_material.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
 	primary_geometry.material_override = original_material
 	xr_main.add_child(primary_geometry)
 	var surface_geometry := MeshInstance3D.new()
 	var surface_mesh := BoxMesh.new()
 	var surface_material := StandardMaterial3D.new()
 	surface_material.albedo_color = Color(0.8, 0.6, 0.4, 0.8)
+	surface_material.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
 	surface_mesh.material = surface_material
 	surface_geometry.mesh = surface_mesh
 	xr_main.add_child(surface_geometry)
@@ -165,6 +196,10 @@ func _test_role_specific_scene_transparency(
 			or sky_ui_material.albedo_texture != viewport_texture \
 			or not is_equal_approx(sky_ui_material.albedo_color.a, 0.8):
 		failures.append("Sky XR must preserve live ViewportTexture references")
+	for faded in [sky_primary_material, sky_surface_material, sky_ui_material]:
+		if faded.depth_draw_mode != BaseMaterial3D.DEPTH_DRAW_DISABLED \
+				or faded.no_depth_test:
+			failures.append("faded Sky materials must stop writing depth while preserving depth testing")
 	var sky_down_material := (
 		sky_down_geometry.material_override as StandardMaterial3D
 	)
@@ -180,6 +215,8 @@ func _test_role_specific_scene_transparency(
 		)
 	if original_material.transparency \
 			!= BaseMaterial3D.TRANSPARENCY_DISABLED \
+			or original_material.depth_draw_mode != BaseMaterial3D.DEPTH_DRAW_ALWAYS \
+			or surface_material.depth_draw_mode != BaseMaterial3D.DEPTH_DRAW_ALWAYS \
 			or surface_material.transparency \
 				!= BaseMaterial3D.TRANSPARENCY_DISABLED:
 		failures.append("Sky XR must not mutate shared source materials")
@@ -224,6 +261,48 @@ void fragment() {
 			or not is_equal_approx(sky_late_material.albedo_color.a, 0.5):
 		failures.append("Sky XR must make late-created geometry half transparent")
 
+	# Adjust repeatedly, including after late creation, and verify authored alpha
+	# and live viewport references survive every rebuild.
+	var sprite := Sprite3D.new()
+	sprite.modulate.a = 0.7
+	xr_main.add_child(sprite)
+	for opacity in [Vector3(0.9, 0.95, 0.1), Vector3(0.2, 0.3, 0), Vector3.ONE]:
+		if not bool(xr_main.call("set_sky_opacity", opacity)):
+			failures.append("valid live opacity adjustment rejected")
+		var adjusted := primary_geometry.material_override as StandardMaterial3D
+		var adjusted_ui := ui_geometry.material_override as StandardMaterial3D
+		var adjusted_boundary := sky_down_geometry.material_override as StandardMaterial3D
+		var adjusted_late := late_geometry.material_override as StandardMaterial3D
+		if is_equal_approx(opacity.x, 1.0) and (
+				adjusted.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED
+				or adjusted.depth_draw_mode != BaseMaterial3D.DEPTH_DRAW_ALWAYS):
+			failures.append("100% opacity must restore solid self-occlusion for authored opaque meshes")
+		if not is_equal_approx(adjusted.albedo_color.a, opacity.x) \
+				or not is_equal_approx(adjusted_late.albedo_color.a, opacity.x) \
+				or not is_equal_approx(label.modulate.a, opacity.x) \
+				or not is_equal_approx(label.outline_modulate.a, 0.8 * opacity.x) \
+				or not is_equal_approx(sprite.modulate.a, 0.7 * opacity.x):
+			failures.append("live opacity must rebuild meshes, text and sprites without cumulative fading")
+		if adjusted_ui.albedo_texture != viewport_texture \
+				or not is_equal_approx(adjusted_ui.albedo_color.a, opacity.y) \
+				or not is_equal_approx(adjusted_boundary.albedo_color.a, opacity.z):
+			failures.append("panel and boundary opacity must be independently adjustable")
+	if bool(xr_main.call("set_sky_opacity", Vector3(NAN, 1, 1))) \
+			or bool(xr_main.call("set_sky_opacity", Vector3(-1, 1, 1))):
+		failures.append("invalid opacity must be rejected")
+	if original_material.albedo_color != Color.WHITE or not is_equal_approx(ui_material.albedo_color.a, 1.0):
+		failures.append("live opacity must leave shared authored resources unchanged")
+	var main_menu := Node3D.new()
+	main_menu.name = "MainMenuCanvas"
+	xr_main.add_child(main_menu)
+	var menu_screen := MeshInstance3D.new()
+	menu_screen.material_override = ui_material
+	main_menu.add_child(menu_screen)
+	xr_main.call("set_sky_opacity", Vector3.ZERO)
+	if menu_screen.material_override != ui_material \
+			or not is_equal_approx((ui_geometry.material_override as StandardMaterial3D).albedo_color.a, 0):
+		failures.append("local display controls must remain readable when other panels are transparent")
+
 	var ground_profile = RuntimeProfile.select_session_mode(
 		RuntimeProfile.Preset.VR_GROUND_CLIENT,
 		false
@@ -243,6 +322,10 @@ void fragment() {
 			Color(0.1, 0.2, 0.3, 0.8)
 		):
 		failures.append("Ground VR must restore original Label3D colors")
+	xr_main.call("set_sky_opacity", Vector3(0.1, 0.2, 0.3))
+	if primary_geometry.material_override != original_material \
+			or not is_equal_approx(sprite.modulate.a, 0.7):
+		failures.append("opacity control must not fade Ground VR or desktop roles")
 	xr_main.free()
 
 	var spacebox_script := ResourceLoader.load(

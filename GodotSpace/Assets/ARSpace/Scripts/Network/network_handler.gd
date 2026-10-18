@@ -146,6 +146,7 @@ func _on_connection_failed() -> void:
 	if not _client_session_active:
 		return
 	push_warning("Unable to connect to the Ground Server. Returning to the start menu.")
+	_restore_offline_multiplayer_peer()
 	connection_failed.emit("Unable to connect to the Ground Server.")
 	call_deferred("_return_client_to_start_menu")
 
@@ -156,6 +157,7 @@ func _on_server_disconnected() -> void:
 	if _role_rejection_pending:
 		return
 	push_warning("Ground Server disconnected. Returning to the start menu.")
+	_restore_offline_multiplayer_peer()
 	server_connection_lost.emit()
 	call_deferred("_return_client_to_start_menu")
 
@@ -174,11 +176,13 @@ func _return_client_to_start_menu() -> void:
 
 func _close_network_peer() -> void:
 	_client_session_active = false
+	# Role-change listeners may query multiplayer immediately during teardown.
+	# Detach ENet before closing it so they never observe a closed active peer.
+	_restore_offline_multiplayer_peer()
 	if peer != null:
 		peer.close()
 	peer = null
 	_reset_peer_roles(false)
-	_restore_offline_multiplayer_peer()
 
 
 func _restore_offline_multiplayer_peer() -> void:
