@@ -50,8 +50,10 @@ def service_specs(config: dict, role: str, mode: str) -> list[dict]:
         result.append(dict(service="gateway", env_dir=config["gateway_env"],
                            model_id=model["model_id"], model_port=model["port"],
                            port=validate_port(model.get("gateway_port", 7861 if mode == "local" else 7862))))
-    if role in ("client", "server_voice"):
+    if role in ("client", "server_voice", "asr"):
         for name, port in (("asr", 8765), ("tts", 8767)):
+            if role == "asr" and name != "asr":
+                continue
             spec = dict(config[name], service=name)
             spec["port"] = validate_port(spec.get("port", port))
             result.append(spec)
@@ -210,7 +212,7 @@ def main() -> int:
     parser.add_argument("--repo", type=Path, required=True)
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--status", type=Path, required=True)
-    parser.add_argument("--role", choices=("server", "client", "server_voice"), required=True)
+    parser.add_argument("--role", choices=("server", "client", "server_voice", "asr"), required=True)
     parser.add_argument("--mode", choices=("local", "remote"), default="local")
     parser.add_argument("--require-windows-check", action="store_true")
     args = parser.parse_args()

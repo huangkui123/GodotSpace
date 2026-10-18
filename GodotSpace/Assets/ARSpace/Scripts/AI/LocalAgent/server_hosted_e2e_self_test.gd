@@ -12,6 +12,7 @@ func _init() -> void:
 
 
 func _run() -> void:
+	ProjectSettings.set_setting("arspace/local_agent/enabled", true)
 	var server := OS.get_cmdline_user_args().has("--endpoint-test-server")
 	var api := root.multiplayer
 	var network := root.get_node("NetworkHandler")

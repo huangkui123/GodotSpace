@@ -64,6 +64,7 @@ func _run() -> void:
 		_fail("AssistantCommandRouter autoload is unavailable.")
 		return
 	# Headless has no microphone; fake only readiness and ASR ready notification.
+	voice_chat.voice_endpoint_selected = true
 	voice_chat.capture.is_setup = true
 	wake_button.pressed.emit()
 	if str(ui.get("assistant_interaction_state")) != "connecting" or countdown_bar.visible:

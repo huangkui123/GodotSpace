@@ -6,7 +6,7 @@ const PREFERENCE_PATH := "user://startup/preferences.json"
 
 static func defaults() -> Dictionary:
 	return {"preset": "local_sky", "server_ip": "", "adb_path": "", "device_serial": "",
-		"streaming_path": "", "voice": false, "assistant": false, "capture": true,
+		"streaming_path": "", "voice": false, "assistant": true, "capture": true,
 		"cast": true, "transport": "usb", "input_device": "Default", "output_device": "Default"}
 
 

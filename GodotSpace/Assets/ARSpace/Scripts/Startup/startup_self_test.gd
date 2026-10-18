@@ -11,7 +11,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var options := Config.defaults()
-	_check(not options.voice and not options.assistant, "Voice and assistant must default off")
+	_check(not options.voice and options.assistant, "Assistant must prepare automatically; microphone remains opt-in")
 	_check(options.capture and options.cast, "Capture and casting must default on")
 	_check(options.transport == "usb", "Capture and casting must default to USB")
 	for preset in Config.PRESETS:
@@ -35,7 +35,15 @@ func _run() -> void:
 	_check(menu.get("mode_selector").item_count == 3, "Launcher must expose three topologies")
 	_check(menu.get("start_button").is_visible_in_tree(), "Start button must be visible")
 	_check(menu.size.x >= 600 and menu.size.y >= 600, "Launcher must fill the viewport")
-	_check(not root.get_node("LocalAgentRuntime").enabled, "Agent must stay disabled on launch")
+	var runtime := root.get_node("LocalAgentRuntime")
+	if runtime.automatic_start_allowed() and menu.get("_agent_toggle").button_pressed:
+		var deadline := Time.get_ticks_msec() + 45000
+		while runtime.state not in ["ready", "failed"] and Time.get_ticks_msec() < deadline:
+			await process_frame
+		_check(runtime.state == "ready", "Automatic service startup: " + str(runtime.message))
+		_check(runtime._managed_role == "server_voice", "Local launcher prepares model, Gateway, ASR and TTS")
+	else:
+		_check(not runtime.enabled, "Offline headless test must not launch services")
 	var voice := root.get_node("VoiceChat")
 	_check(not voice.voice_enabled, "No automatic voice call")
 	if DisplayServer.get_name() != "headless":

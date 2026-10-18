@@ -1,17 +1,18 @@
 param(
     [Parameter(Mandatory=$true)][string]$Config,
     [Parameter(Mandatory=$true)][string]$Status,
-    [ValidateSet('server','client','server_voice')][string]$Role = 'server',
+    [ValidateSet('server','client','server_voice','asr')][string]$Role = 'server',
     [ValidateSet('local','remote')][string]$Mode = 'local'
 )
 $ErrorActionPreference = 'Stop'
 try {
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $Status) | Out-Null
     $runtimeConfig = Get-Content -LiteralPath $Config -Raw | ConvertFrom-Json
     $distro = [string]$runtimeConfig.wsl_distro
     if ([string]::IsNullOrWhiteSpace($distro)) { throw 'Missing wsl_distro in runtime.json' }
     $repo = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '../..')).Path
     function Convert-RuntimePath([string]$value) {
-        $converted = & wsl.exe -d $distro -- wslpath -u $value
+        $converted = & wsl.exe -d $distro -- wslpath -u $value.Replace('\', '/')
         if ($LASTEXITCODE -ne 0) { throw 'WSL path conversion failed' }
         return ([string]$converted).Trim()
     }

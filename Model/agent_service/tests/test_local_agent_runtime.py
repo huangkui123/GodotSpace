@@ -36,6 +36,12 @@ class RuntimeTests(unittest.TestCase):
             self.assertEqual(runtime.ensure({"service": "gateway", "port": 19761}, Path("/repo"), Path("/status")), "reused")
             start.assert_not_called()
 
+    def test_asr_only_does_not_require_model_or_tts_configuration(self):
+        config = {"asr": self.config()["asr"]}
+        specs = runtime.service_specs(config, "asr", "local")
+        self.assertEqual([s["service"] for s in specs], ["asr"])
+        self.assertEqual(specs[0]["port"], 8765)
+
     def test_occupied_port_never_evicted(self):
         with patch.object(runtime, "ready", return_value=False), patch.object(runtime, "port_open", return_value=True), patch.object(runtime.subprocess, "Popen") as start:
             with self.assertRaisesRegex(RuntimeError, "no process stopped"):
@@ -77,7 +83,7 @@ class RuntimeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "Model").mkdir()
-            with patch.object(runtime, "ready", return_value=False), patch.object(runtime, "port_open", return_value=False), patch.object(runtime, "command", return_value=(["missing"], {})), patch.object(runtime.subprocess, "Popen", side_effect=OSError("missing executable")):
+            with patch.object(Path, "home", return_value=root), patch.object(runtime, "ready", return_value=False), patch.object(runtime, "port_open", return_value=False), patch.object(runtime, "command", return_value=(["missing"], {})), patch.object(runtime.subprocess, "Popen", side_effect=OSError("missing executable")):
                 with self.assertRaisesRegex(OSError, "missing executable"):
                     runtime.ensure({"service": "tts", "port": 8767}, root, root / "status.json")
 

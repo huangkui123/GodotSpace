@@ -41,6 +41,8 @@ class FakeVoice extends "res://Assets/ARSpace/Scripts/Network/voice_chat.gd":
 
 
 func _init() -> void:
+	# Exercise an enabled endpoint even when the launcher defaults to disabled.
+	ProjectSettings.set_setting("arspace/local_agent/enabled", true)
 	ProjectSettings.set_setting("arspace/local_agent/execution_mode", "local")
 	call_deferred("_run")
 

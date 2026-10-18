@@ -89,6 +89,7 @@ func _run() -> void:
 func _spawn(role: String, token: String) -> String:
 	var folder := base.path_join(role)
 	var options := Config.defaults()
+	options.assistant = false # This fixture owns its network mocks, not backend services.
 	options.version = 1
 	options.session_id = Crypto.new().generate_random_bytes(16).hex_encode()
 	options.ground_token = token

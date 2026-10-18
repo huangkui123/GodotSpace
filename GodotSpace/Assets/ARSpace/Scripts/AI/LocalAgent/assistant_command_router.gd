@@ -553,8 +553,20 @@ func _expire_snapshot_request(request_id: String, timeout_seconds: float = SNAPS
 func _submit_agent_request(request_id: String) -> void:
 	if not _requests.has(request_id):
 		return
-	var record := _requests[request_id] as Dictionary
 	var agent := get_node_or_null("/root/LocalAgentClient")
+	if agent != null and not agent.is_connected_to_gateway() and (
+			DisplayServer.get_name() != "headless" or OS.get_cmdline_user_args().has("--local-agent-autostart")):
+		_requests[request_id]["status"] = "starting_backend"
+		_publish_interaction_state(int(_requests[request_id]["speaker_peer_id"]), "processing", "正在连接智能助手服务，请稍候…")
+		var runtime := get_node_or_null("/root/LocalAgentRuntime")
+		var ready: bool = runtime != null and await runtime.ensure_gateway()
+		# Cancellation, peer disconnect and request timeout can occur while starting.
+		if not _requests.has(request_id):
+			return
+		if not ready:
+			_fail_request(request_id, "backend_unavailable", str(runtime.message) if runtime != null else "智能助手后端未就绪。")
+			return
+	var record := _requests[request_id] as Dictionary
 	if agent == null or not agent.submit_user_message(
 		request_id,
 		str(record.get("text", "")),

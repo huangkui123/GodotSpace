@@ -154,7 +154,11 @@ func _on_transcribe_button_toggled(enabled: bool) -> void:
 func _on_assistant_wake_button_pressed() -> void:
 	if voice_chat == null or not voice_chat.has_method("request_assistant_wake"):
 		return
-	var requested := bool(voice_chat.call("request_assistant_wake"))
+	var requested: bool
+	if voice_chat.has_method("request_assistant_wake_when_ready"):
+		requested = bool(await voice_chat.call("request_assistant_wake_when_ready"))
+	else:
+		requested = bool(voice_chat.call("request_assistant_wake"))
 	if not requested:
 		assistant_wake_button.tooltip_text = "请先连接语音服务并开启转写。"
 
@@ -389,7 +393,7 @@ func _update_assistant_wake_button() -> void:
 		return
 	var has_wake_service := voice_chat != null and voice_chat.has_method("request_assistant_wake")
 	var transcription_available := _get_voice_bool("transcription_enabled")
-	var assistant_busy := assistant_interaction_state in ["processing", "executing"]
+	var assistant_busy := assistant_interaction_state in ["preparing", "processing", "executing"]
 	assistant_wake_button.disabled = not has_wake_service or not transcription_available or assistant_busy
 	assistant_wake_button.text = "重新听写" if assistant_interaction_state == "listening" else "唤醒智能助手"
 	if assistant_interaction_state == "speaking":

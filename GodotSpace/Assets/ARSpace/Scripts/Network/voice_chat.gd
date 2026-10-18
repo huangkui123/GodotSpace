@@ -160,6 +160,8 @@ var _dictation_final_emitted := false
 var _dictation_failure_reported := false
 var _recognition_epoch := 0
 var _manual_wake_pending := false
+var _assistant_service_starting := false
+var _assistant_startup_generation := 0
 var _remote_capture_preparing: Dictionary = {}
 
 func _ready() -> void:
@@ -220,6 +222,8 @@ func toggle_voice() -> void:
 	set_voice_enabled(not voice_enabled)
 
 func set_voice_enabled(enabled: bool) -> void:
+	if not enabled:
+		_assistant_startup_generation += 1
 	if enabled and not voice_endpoint_selected:
 		_log("VoiceChat role is not selected yet. Start server or client before enabling voice.")
 		return
@@ -390,6 +394,7 @@ func set_transcription_enabled(enabled: bool) -> void:
 
 	transcription_enabled = enabled
 	if not transcription_enabled:
+		_assistant_startup_generation += 1
 		_stop_all_transcription()
 		_reset_client_transcription_upload()
 	else:
@@ -819,6 +824,7 @@ func _on_connected_to_server() -> void:
 		transport.send_speaking_state(true)
 
 func _on_connection_failed() -> void:
+	_assistant_startup_generation += 1
 	_log("VoiceChat connection failed")
 	if Execution.is_local():
 		if playback != null:
@@ -832,6 +838,7 @@ func _on_connection_failed() -> void:
 		playback.clear()
 
 func _on_server_disconnected() -> void:
+	_assistant_startup_generation += 1
 	_log("VoiceChat server disconnected")
 	if Execution.is_local():
 		if playback != null:
@@ -924,6 +931,50 @@ func set_assistant_speech_active(peer_id: int, active: bool) -> void:
 		_assistant_speech_peers.erase(peer_id)
 	if peer_id == _get_local_voice_peer_id():
 		_reset_client_transcription_upload()
+
+
+func request_assistant_wake_when_ready() -> bool:
+	if _assistant_service_starting or not transcription_enabled or not voice_endpoint_selected:
+		return false
+	if Execution.endpoint_asr() and not Execution.is_local() and (
+			not multiplayer.has_multiplayer_peer() or multiplayer.multiplayer_peer is OfflineMultiplayerPeer
+			or multiplayer.multiplayer_peer.get_connection_status() != MultiplayerPeer.CONNECTION_CONNECTED):
+		publish_assistant_interaction_state(_get_local_voice_peer_id(), "failed", "尚未连接协作 Server，智能助手不可用。")
+		return false
+	_assistant_service_starting = true
+	_assistant_startup_generation += 1
+	var generation := _assistant_startup_generation
+	publish_assistant_interaction_state(_get_local_voice_peer_id(), "preparing", "正在准备语音识别，请稍候…")
+	var ready := await _prepare_local_asr()
+	_assistant_service_starting = false
+	# Closing voice or losing the connection during cold startup must not open
+	# the microphone or submit a stale wake request after services become ready.
+	if generation != _assistant_startup_generation:
+		publish_assistant_interaction_state(_get_local_voice_peer_id(), "idle", "已取消语音识别准备。")
+		return false
+	if not ready:
+		var runtime := get_node_or_null("/root/LocalAgentRuntime")
+		var detail := str(runtime.get("message")) if runtime != null else "本地语音服务未就绪。"
+		if detail.is_empty():
+			detail = "本地语音服务未就绪，请检查服务启动状态后重试。"
+		publish_assistant_interaction_state(_get_local_voice_peer_id(), "failed", detail)
+		return false
+	if capture != null:
+		capture.setup()
+	return request_assistant_wake()
+
+
+func _prepare_local_asr() -> bool:
+	# Offline fixtures own their services, matching LocalAgentRuntime's startup
+	# policy. Headless live checks opt in explicitly.
+	if DisplayServer.get_name() == "headless" and not OS.get_cmdline_user_args().has("--local-agent-autostart"):
+		return true
+	if not Execution.endpoint_asr() or get_asr_provider() != ASR_PROVIDER_FUNASR or OS.get_name() != "Windows":
+		return true
+	var runtime := get_node_or_null("/root/LocalAgentRuntime")
+	if runtime == null:
+		return false
+	return await runtime.ensure_asr(_get_local_asr_endpoint())
 
 
 func request_assistant_wake() -> bool:

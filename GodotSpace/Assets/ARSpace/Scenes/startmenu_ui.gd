@@ -45,6 +45,7 @@ func _ready():
 	_setup_agent_controls()
 	if _launcher:
 		_setup_launch_controls()
+		call_deferred("_prepare_assistant_services")
 	SessionRuntime.status_changed.connect(_on_session_status)
 	if SessionRuntime.is_child:
 		_agent_toggle.button_pressed = bool(SessionRuntime.options.get("assistant", false))
@@ -73,8 +74,7 @@ func _on_start_pressed():
 	_agent_toggle.disabled = true
 	LocalAgentRuntime.enabled = _agent_toggle.button_pressed
 	ProjectSettings.set_setting("arspace/local_agent/enabled", LocalAgentRuntime.enabled)
-	# Optional model startup must not gate ENet or XR. The runtime publishes its
-	# own progress and remains disabled by default, including managed children.
+	# Service preparation runs in the background without blocking ENet or XR.
 	if LocalAgentRuntime.enabled:
 		LocalAgentRuntime.ensure_services(profile)
 	_starting = false
@@ -150,6 +150,7 @@ func _on_runtime_mode_selected(index: int) -> void:
 		_saved.preset = LaunchConfig.PRESETS[index]
 		_update_runtime_ui()
 		_setup_network_controls()
+		_prepare_assistant_services()
 		return
 	var preset := mode_selector.get_item_id(index)
 	RuntimeProfile.select_session_mode(preset)
@@ -162,7 +163,7 @@ func _on_runtime_mode_selected(index: int) -> void:
 
 func _setup_agent_controls() -> void:
 	_agent_toggle = CheckBox.new()
-	_agent_toggle.text = "启动智能助手服务"
+	_agent_toggle.text = "自动准备智能助手"
 	_agent_toggle.button_pressed = bool(_saved.get("assistant", ProjectSettings.get_setting("arspace/local_agent/enabled", false)))
 	$VBoxContainer.add_child(_agent_toggle)
 	$VBoxContainer.move_child(_agent_toggle, status_label.get_index())
@@ -175,6 +176,15 @@ func _setup_agent_controls() -> void:
 	$VBoxContainer.add_child(_compute_selector)
 	$VBoxContainer.move_child(_compute_selector, status_label.get_index())
 	LocalAgentRuntime.status_changed.connect(func(next: String, detail: String): _set_status(detail, next == "failed"))
+	_agent_toggle.toggled.connect(func(_value: bool): _prepare_assistant_services())
+
+
+func _prepare_assistant_services() -> void:
+	if not _launcher or not LocalAgentRuntime.automatic_start_allowed():
+		return
+	var selected := _collect_launch_options()
+	LaunchConfig.write_json(LaunchConfig.PREFERENCE_PATH, selected)
+	await LocalAgentRuntime.prepare_launch(selected)
 
 
 func _update_runtime_ui() -> void:

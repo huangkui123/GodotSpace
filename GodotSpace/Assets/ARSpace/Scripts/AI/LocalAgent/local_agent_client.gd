@@ -195,6 +195,23 @@ func execute_tool_call_for_test(
 	return _resolve_tool_call(request_id, tool_call_id, tool_name, arguments)
 
 
+func can_host_gateway() -> bool:
+	return Execution.is_local() or _server_role_selected or _is_test_mode()
+
+
+func ensure_connection(timeout_seconds: float = 15.0) -> bool:
+	if not _is_enabled():
+		return false
+	if _connected:
+		return true
+	# Explicit recovery should not inherit the previous reconnect backoff.
+	_next_connect_msec = 0
+	var deadline := Time.get_ticks_msec() + int(timeout_seconds * 1000.0)
+	while _is_enabled() and not _connected and Time.get_ticks_msec() < deadline:
+		await get_tree().process_frame
+	return _connected
+
+
 func _try_connect() -> void:
 	if not _is_enabled():
 		return
@@ -463,7 +480,7 @@ func _is_enabled() -> bool:
 	return (
 		bool(ProjectSettings.get_setting("arspace/local_agent/enabled", true))
 		and _mode() in ["enabled", "debug"]
-		and (Execution.is_local() or _server_role_selected or _is_test_mode())
+		and can_host_gateway()
 	)
 
 
