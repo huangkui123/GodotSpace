@@ -1,7 +1,7 @@
 extends "res://Assets/ARSpace/Scripts/AstronautView/astronaut_view_source.gd"
 
-## Adapter between the local PICO Cast control channel and the FFmpeg
-## GDExtension. The extension decodes RTMP while this script only owns the
+## Adapter between the PICO Cast control channel and the FFmpeg
+## GDExtension. The extension decodes USB HTTP/MPEG-TS or legacy RTMP; this owns the
 ## local VideoStreamPlayer and exposes its texture to AstronautViewWindow.
 
 const DEFAULT_FFMPEG_STREAM_CLASS := &"FFmpegVideoStream"
@@ -115,12 +115,12 @@ func _open_decoder() -> void:
 	if not ClassDB.class_exists(ffmpeg_stream_class):
 		_publish_status(
 			Status.ERROR,
-			"缺少 FFmpeg RTMP 解码扩展 %s" % ffmpeg_stream_class,
+			"缺少 FFmpeg 视频解码扩展 %s" % ffmpeg_stream_class,
 		)
 		return
 	var stream := ClassDB.instantiate(ffmpeg_stream_class) as VideoStream
 	if stream == null:
-		_publish_status(Status.ERROR, "PICO RTMP 解码扩展不是 VideoStream")
+		_publish_status(Status.ERROR, "PICO 视频解码扩展不是 VideoStream")
 		return
 	_open_attempt_count += 1
 	stream.file = _normalize_decoder_url(_rtmp_url)
@@ -138,7 +138,7 @@ func _open_decoder() -> void:
 	set_process(true)
 	_publish_status(
 		Status.CONNECTING,
-		"正在连接 PICO RTMP 投屏（第 %d/%d 次）" % [
+		"正在连接 PICO 投屏（第 %d/%d 次）" % [
 			_open_attempt_count,
 			MAX_OPEN_ATTEMPTS,
 		],
@@ -170,7 +170,7 @@ func _handle_open_failure(now_msec: int, timed_out: bool) -> void:
 		set_process(false)
 		_publish_status(
 			Status.ERROR,
-			"FFmpeg 连续 %d 次无法建立 PICO RTMP 投屏，请查看 Godot 日志" \
+			"FFmpeg 连续 %d 次无法建立 PICO 投屏，请查看 Godot 日志" \
 				% MAX_OPEN_ATTEMPTS,
 		)
 		return
@@ -179,7 +179,7 @@ func _handle_open_failure(now_msec: int, timed_out: bool) -> void:
 	_next_retry_msec = now_msec + RETRY_DELAY_MSEC
 	_publish_status(
 		Status.STALLED,
-		"PICO RTMP 第 %d 次连接失败，4 秒后重试" % _open_attempt_count,
+		"PICO 投屏第 %d 次连接失败，4 秒后重试" % _open_attempt_count,
 	)
 
 
@@ -205,7 +205,7 @@ func _update_metadata(force: bool = false) -> void:
 		"aspect_ratio": float(resolution.x) / float(maxi(resolution.y, 1)),
 		"audio_enabled": false,
 		"timestamp_msec": now_msec,
-		"transport": "rtmp",
+		"transport": str(_session_metadata.get("transport", "rtmp")),
 	})
 
 

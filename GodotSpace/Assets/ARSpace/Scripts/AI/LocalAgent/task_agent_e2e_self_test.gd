@@ -13,6 +13,7 @@ func _init() -> void:
 
 
 func _run() -> void:
+	ProjectSettings.set_setting("arspace/local_agent/enabled", true)
 	var client := root.get_node_or_null("LocalAgentClient")
 	var voice_chat := root.get_node_or_null("VoiceChat")
 	var assistant := root.get_node_or_null("LLMAssistantService")

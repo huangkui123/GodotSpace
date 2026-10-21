@@ -46,6 +46,12 @@
             android:foregroundServiceType="camera|dataSync"
             android:stopWithTask="false" />
 
+        <activity
+            android:name=".ManagedLaunchActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTop" />
+
         <service
             android:name=".PicoCastService"
             android:enabled="true"

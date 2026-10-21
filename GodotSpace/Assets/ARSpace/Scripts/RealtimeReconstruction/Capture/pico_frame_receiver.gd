@@ -1,9 +1,8 @@
 class_name PicoFrameReceiver
 extends Node
 
-## Owns the single PICO helper TCP listener used by both spatial calibration and
-## realtime reconstruction. Consumers subscribe to [signal frame_received]
-## instead of opening a second listener on port 8787.
+## Bounded PSA2 receiver. The shared Server listener stays on 8787; Sky cabinet
+## calibration owns a separate local listener on 8789 using the same parser.
 
 signal listening_changed(is_listening: bool, port: int)
 signal connection_changed(is_connected: bool)
@@ -34,6 +33,8 @@ const MAX_RECEIVE_BUFFER_BYTES := MAX_FRAME_PACKET_BYTES * 2
 
 @export_range(1, 65535, 1) var listen_port := DEFAULT_PORT
 @export var auto_start := true
+@export var server_only := true
+@export var register_shared_receiver := true
 
 var _server := TCPServer.new()
 var _client: StreamPeerTCP
@@ -52,7 +53,8 @@ var _allowed_helper_host := ""
 
 
 func _ready() -> void:
-	add_to_group("pico_frame_receiver")
+	if register_shared_receiver:
+		add_to_group("pico_frame_receiver")
 	_ack_buffer.resize(FrameProtocol.ACK_HEADER_SIZE)
 	_allowed_helper_host = str(ProjectSettings.get_setting(
 		ALLOWED_HOST_SETTING,
@@ -61,7 +63,7 @@ func _ready() -> void:
 	var allowed_host_override := OS.get_environment(ALLOWED_HOST_ENV).strip_edges()
 	if not allowed_host_override.is_empty():
 		_allowed_helper_host = allowed_host_override
-	if not multiplayer.is_server():
+	if server_only and not multiplayer.is_server():
 		set_process(false)
 		_set_status("PICO frame receiver is available on the server only")
 		return
@@ -75,6 +77,9 @@ func _exit_tree() -> void:
 
 
 func _process(_delta: float) -> void:
+	# Poll before accepting a reconnect so a closed old socket cannot reject it.
+	if _client != null:
+		_client.poll()
 	if _server.is_connection_available():
 		_accept_client()
 
@@ -90,7 +95,7 @@ func _process(_delta: float) -> void:
 
 
 func start_listening(port: int = DEFAULT_PORT) -> Error:
-	if not multiplayer.is_server():
+	if server_only and not multiplayer.is_server():
 		_set_status("Only the server can listen for the PICO helper")
 		return ERR_UNAUTHORIZED
 	if port <= 0 or port > 65535:

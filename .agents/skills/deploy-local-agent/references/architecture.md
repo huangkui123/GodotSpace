@@ -1,6 +1,6 @@
 # 当前构成与迁移边界
 
-依据本分支源代码整理（2026-09-12）；配置变化后以源代码和运行时检查为准，不把此表当冻结配置。
+依据本分支源代码整理（2026-10-12）；配置变化后以源代码和运行时检查为准，不把此表当冻结配置。
 
 | 组件 | 实现入口（相对仓库根） | 作用与默认接口 |
 | --- | --- | --- |
@@ -13,11 +13,21 @@
 
 完整交互是：
 
-麦克风 → FunASR → Godot 唤醒/输入状态 → Gateway harness → Qwen 结构化判断 → 安全检查 → Godot 指定 Client 工具 → 返回结果/当前页证据 → UI + TTS → Client 音频输出。
+Client 麦克风 → Client 本机 FunASR → 可靠文本 RPC → 天上主机 Godot Server → 同机 Gateway/harness → 本机或远端 Qwen → Server 校验并请求发起 Client 的快照/工具 → 仅向发起 Client 返回答案、记录及播报指令 → Client 本机 TTS/PICO 输出。
+
+## 双机拓扑与权限
+
+- 默认 `arspace/local_agent/execution_mode="server_hosted"`。三个 Godot 进程、两台电脑：Server 与 Sky Client 在天上电脑，Ground Client 在地面电脑。Server 的历史 `pc_ground` 权限角色不是物理部署位置，不为搬迁主机改动协作权限。
+- 只有 Server 连接 Gateway；两个 Client 都不用部署 Gateway/LLM。Gateway 与模型端口保持 loopback，远端模型通过部署时配置的 SSH alias 隧道连接。日常选择本机/远端模式，不修改业务路由。
+- ASR/TTS 每台 Client 主机一份；同机健康服务复用。Server 桌面模式只启动 Gateway/模型，XR Server 模式还启动语音服务。普通转写由 Server 校验发送方身份、角色、大小与频率后分发为显示文本；命令和助手答案不广播给其他 Client。Opus 通话不变，默认不再上传 ASR PCM。
+- Server 保留请求、会话、确认与工具授权边界；Client 只执行 Server 下发的已支持 UI 工具，不能指定任意节点路径或方法。
+- `local` 为旧端点直连实验兼容模式，`server_relay`/`--local-agent-server-relay` 为旧 Server ASR 兼容模式；均非部署默认，不自动回退。跨端使用同一版本/模式。
+- Server 断开后助手不可用，Client 返回菜单；本次不实现离线 XR 或本地推理降级。退出 Godot 不停止主机共享的后端服务。
 
 ## 已支持的行为
 
 - 语音或按钮唤醒，分段命令输入、倒计时、重新听写；普通转写与助手回复记录分开维护。
+- 本机按钮唤醒/标注听写建立新音频 epoch，清空上传/重采样队列并隔离旧 ASR 回调；旧语句收尾仅进历史。Client 通过同一可靠 RPC 通道通知 Server preparing/ready/failed；Server 按 peer 和 epoch 隔离，ASR ready 才启动 10 秒倒计时。缓冲溢出明确报错，不丢开头后执行残句。重新听写保留待确认动作；语音唤醒保留同句中的指令后缀。
 - 工作清单、相册等允许窗口的打开/关闭，工作清单翻页、步骤操作、当前页上下文与知识问答。最终能力集合以 Gateway 的 SUPPORTED_TOOL_NAMES 和 Godot 工具适配器为准，不能执行任意节点路径/方法。
 - “工作手册”等不精确目标通过模型辅助澄清；待确认状态由 harness/Godot 维护，用户可续答“是/不是”。这不等同于无限制的模型聊天记忆。
 - 唤醒等第一句话 10 秒；final 后静默提交 1.2 秒；partial 兜底 5 秒。它们是当前 router 常量，不是 ASR 网络延迟。

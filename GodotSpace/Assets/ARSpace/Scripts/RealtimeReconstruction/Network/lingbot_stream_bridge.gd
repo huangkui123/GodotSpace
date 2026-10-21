@@ -31,7 +31,7 @@ const MAX_QUEUED_INPUT_FRAMES := 3
 const MAX_OUTPUT_BUFFER_BYTES := ChunkCodec.MAX_ENCODED_BYTES * 2
 const INPUT_WRITE_SLICE_BYTES := 256 * 1024
 
-@export var auto_connect := true
+@export var auto_connect := false
 
 var _host := DEFAULT_HOST
 var _input_port := DEFAULT_INPUT_PORT

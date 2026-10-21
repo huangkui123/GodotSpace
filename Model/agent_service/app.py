@@ -103,6 +103,7 @@ def create_app(
             "vllm": model_health.reachable,
             "model_found": model_health.model_found,
             "model": settings.model_name,
+            "runtime_id": os.getenv("LOCAL_AGENT_RUNTIME_ID", ""),
             "qwen_agent": qwen_agent_available,
             "qwen_agent_version": qwen_agent_version,
             "godot_connected": godot_connection_count > 0,

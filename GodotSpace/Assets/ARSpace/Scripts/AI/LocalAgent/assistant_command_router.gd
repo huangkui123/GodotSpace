@@ -4,6 +4,7 @@ signal command_routed(request_id: String, intent: String, speaker_peer_id: int)
 signal assistant_interaction_state_changed(speaker_peer_id: int, state: String, text: String)
 
 const ROUTE_QWEN_FIRST := "QWEN_FIRST"
+const Execution := preload("res://Assets/ARSpace/Scripts/AI/LocalAgent/local_agent_execution.gd")
 const SERVER_PEER_ID := 1
 const SNAPSHOT_TIMEOUT_SECONDS := 3.0
 const REQUEST_TIMEOUT_MSEC := 90_000
@@ -20,6 +21,7 @@ var _operation_to_request: Dictionary = {}
 var _recent_events: Array[Dictionary] = []
 var _wake_sessions: Dictionary = {}
 var _spoken_requests: Dictionary = {}
+var _local_owner_id := 0
 
 
 func _ready() -> void:
@@ -30,6 +32,8 @@ func _ready() -> void:
 		voice_chat.voice_transcript_received.connect(_on_voice_transcript_received)
 	if voice_chat != null and voice_chat.has_signal("assistant_wake_requested"):
 		voice_chat.assistant_wake_requested.connect(_on_assistant_wake_requested)
+		voice_chat.assistant_capture_ready.connect(_on_capture_ready)
+		voice_chat.assistant_capture_failed.connect(_on_capture_failed)
 	var assistant := get_node_or_null("/root/LLMAssistantService")
 	if assistant != null:
 		if assistant.has_method("set_external_transcript_router_enabled"):
@@ -59,6 +63,11 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
+	if Execution.is_local():
+		var current_id := Execution.local_peer_id(multiplayer)
+		if _local_owner_id > 0 and _local_owner_id != current_id:
+			_on_speaker_disconnected(_local_owner_id)
+		_local_owner_id = current_id
 	_expire_agent_requests(Time.get_ticks_msec())
 	_expire_confirmation_leases(Time.get_ticks_msec())
 
@@ -66,6 +75,10 @@ func _process(_delta: float) -> void:
 func _expire_confirmation_leases(now_msec: int) -> void:
 	for peer_id in _wake_sessions.keys().duplicate():
 		var session := _wake_sessions[peer_id] as Dictionary
+		var prepare_deadline := int(session.get("capture_deadline_msec", 0))
+		if bool(session.get("capture_preparing", false)) and prepare_deadline > 0 and now_msec >= prepare_deadline:
+			_on_capture_failed(int(peer_id), "等待录音就绪超时。")
+			continue
 		var deadline := int(session.get("confirmation_deadline_msec", 0))
 		if deadline > 0 and now_msec >= deadline:
 			var history := session.get("history_interaction", {}) as Dictionary
@@ -158,13 +171,13 @@ func get_debug_state() -> Dictionary:
 func _on_voice_transcript_received(data: Dictionary) -> void:
 	if str(data.get("source", "")) == "llm_assistant":
 		return
-	if multiplayer.has_multiplayer_peer() and not multiplayer.is_server():
+	if not _owns_speaker(int(data.get("speaker_peer_id", 0))) or bool(data.get("history_only", false)):
 		return
 	_handle_wake_transcript(data)
 
 
 func _on_assistant_wake_requested(speaker_peer_id: int) -> void:
-	if multiplayer.has_multiplayer_peer() and not multiplayer.is_server():
+	if not _owns_speaker(speaker_peer_id):
 		return
 	if speaker_peer_id <= 0:
 		return
@@ -185,7 +198,7 @@ func _on_assistant_wake_requested(speaker_peer_id: int) -> void:
 
 
 func _route_final_transcript(data: Dictionary) -> String:
-	if multiplayer.has_multiplayer_peer() and not multiplayer.is_server():
+	if not _owns_speaker(int(data.get("speaker_peer_id", SERVER_PEER_ID))):
 		return ""
 	var text := _strip_required_wake_word(str(data.get("text", "")))
 	if text.is_empty():
@@ -202,7 +215,7 @@ func _route_command(
 	history_interaction: Dictionary = {}
 ) -> String:
 	var clean_text := text.strip_edges()
-	if clean_text.is_empty():
+	if clean_text.is_empty() or not _owns_speaker(speaker_peer_id):
 		return ""
 	var request_id := _new_id("request")
 	var request_record := {
@@ -311,6 +324,14 @@ func _start_wake_session(
 		"history_interaction": history_interaction.duplicate(true),
 	}
 	_wake_sessions[speaker_peer_id] = session
+	var voice := get_node_or_null("/root/VoiceChat")
+	if wake_utterance_id == -1 and voice != null and bool(voice.call("is_assistant_capture_preparing", speaker_peer_id)):
+		session["capture_preparing"] = true
+		session["capture_deadline_msec"] = Time.get_ticks_msec() + 15000
+		_publish_interaction_state(speaker_peer_id, "connecting", "正在连接语音识别，请稍候…")
+		if confirmation:
+			_sync_confirmation(speaker_peer_id, "speaking")
+		return session
 	var prompt := "请直接回答是或不是。" if confirmation else "我在，请说。"
 	_publish_interaction_state(speaker_peer_id, "listening", prompt, {
 		"command_text": "",
@@ -320,6 +341,24 @@ func _start_wake_session(
 	if confirmation:
 		_sync_confirmation(speaker_peer_id, "listening")
 	return session
+
+
+func _on_capture_ready(peer_id: int) -> void:
+	var session := _wake_sessions.get(peer_id, {}) as Dictionary
+	if not bool(session.get("capture_preparing", false)):
+		return
+	_start_wake_session(peer_id, -1, bool(session.get("confirmation", false)), session.get("history_interaction", {}) as Dictionary)
+
+
+func _on_capture_failed(peer_id: int, message: String) -> void:
+	var session := _wake_sessions.get(peer_id, {}) as Dictionary
+	if not bool(session.get("capture_preparing", false)):
+		return
+	session["capture_preparing"] = false
+	session["capture_deadline_msec"] = 0
+	if not bool(session.get("confirmation", false)):
+		_wake_sessions.erase(peer_id)
+	_publish_interaction_state(peer_id, "failed", "语音识别连接失败，请重新听写：%s" % message)
 
 
 func _connect_speech() -> void:
@@ -427,6 +466,8 @@ func _request_target_snapshot(request_id: String, speaker_peer_id: int) -> void:
 
 @rpc("authority", "call_remote", "reliable")
 func _client_request_task_snapshot(request_id: String) -> void:
+	if Execution.is_local():
+		return
 	rpc_id(SERVER_PEER_ID, "_server_receive_task_snapshot", request_id, _execute_get_snapshot())
 
 
@@ -494,7 +535,8 @@ func _append_task_guide_tools(tools: PackedStringArray, guide: Dictionary) -> vo
 	if bool(guide.get("visible", false)):
 		tools.append("close_task_guide")
 		tools.append("get_current_task_step")
-		tools.append("replay_current_task_step")
+		if not Execution.is_local():
+			tools.append("replay_current_task_step")
 		if bool(guide.get("can_next", false)):
 			tools.append("next_task_step")
 		tools.append("go_to_task_guide_page")
@@ -511,8 +553,20 @@ func _expire_snapshot_request(request_id: String, timeout_seconds: float = SNAPS
 func _submit_agent_request(request_id: String) -> void:
 	if not _requests.has(request_id):
 		return
-	var record := _requests[request_id] as Dictionary
 	var agent := get_node_or_null("/root/LocalAgentClient")
+	if agent != null and not agent.is_connected_to_gateway() and (
+			DisplayServer.get_name() != "headless" or OS.get_cmdline_user_args().has("--local-agent-autostart")):
+		_requests[request_id]["status"] = "starting_backend"
+		_publish_interaction_state(int(_requests[request_id]["speaker_peer_id"]), "processing", "正在连接智能助手服务，请稍候…")
+		var runtime := get_node_or_null("/root/LocalAgentRuntime")
+		var ready: bool = runtime != null and await runtime.ensure_gateway()
+		# Cancellation, peer disconnect and request timeout can occur while starting.
+		if not _requests.has(request_id):
+			return
+		if not ready:
+			_fail_request(request_id, "backend_unavailable", str(runtime.message) if runtime != null else "智能助手后端未就绪。")
+			return
+	var record := _requests[request_id] as Dictionary
 	if agent == null or not agent.submit_user_message(
 		request_id,
 		str(record.get("text", "")),
@@ -635,6 +689,8 @@ func _move_task_step(arguments: Dictionary, context: Dictionary, tool_name: Stri
 
 
 func _authorize(context: Dictionary, tool_name: String) -> Dictionary:
+	if Execution.is_local() and not tool_name in Execution.LOCAL_UI_TOOLS:
+		return _error("permission_denied", "Shared-scene operations require Server authorization.")
 	var request_id := _request_id(context)
 	if request_id.is_empty() or not _requests.has(request_id):
 		return _error("permission_denied", "The request is no longer active.")
@@ -655,6 +711,8 @@ func _execute_or_defer_target_tool(request_id: String, context: Dictionary, oper
 		return _error("permission_denied", "The request is no longer active.")
 	var record := _requests[request_id] as Dictionary
 	var speaker_peer_id := int(record.get("speaker_peer_id", 0))
+	if Execution.is_local() and not _is_local_target(speaker_peer_id):
+		return _error("permission_denied", "Local inference cannot operate another peer's UI.")
 	_mark_dispatched(request_id, operation)
 	if _is_local_target(speaker_peer_id):
 		var local_result := _execute_target_tool(operation, arguments)
@@ -701,6 +759,8 @@ func _operation_label(operation: String) -> String:
 
 @rpc("authority", "call_remote", "reliable")
 func _client_execute_task_tool(request_id: String, tool_call_id: String, operation: String, arguments: Dictionary) -> void:
+	if Execution.is_local():
+		return
 	rpc_id(SERVER_PEER_ID, "_server_receive_task_tool_result", request_id, tool_call_id, _execute_target_tool(operation, arguments))
 
 
@@ -819,7 +879,7 @@ func _on_agent_answer(request_id: String, answer: String) -> void:
 		_record_request_history(request_id, record, final_answer, _is_successful_final_result(record))
 	if not needs_confirmation:
 		_publish_interaction_state(speaker_peer_id, "idle")
-	_publish_answer(final_answer)
+	_publish_answer(final_answer, speaker_peer_id)
 	var speech_started := _speak_answer(speaker_peer_id, request_id, final_answer)
 	_clear_operations_for_request(request_id)
 	_requests.erase(request_id)
@@ -885,7 +945,7 @@ func _fail_request(request_id: String, code: String, message: String) -> void:
 	if not record.is_empty():
 		_record_request_history(request_id, record, final_answer, false, code)
 		_publish_interaction_state(int(record.get("speaker_peer_id", SERVER_PEER_ID)), "failed", final_answer)
-	_publish_answer(final_answer)
+	_publish_answer(final_answer, int(record.get("speaker_peer_id", SERVER_PEER_ID)))
 	var agent := get_node_or_null("/root/LocalAgentClient")
 	if not record.is_empty():
 		_speak_answer(int(record.get("speaker_peer_id", SERVER_PEER_ID)), request_id, final_answer)
@@ -901,10 +961,10 @@ func _clear_operations_for_request(request_id: String) -> void:
 			_operation_to_request.erase(tool_call_id)
 
 
-func _publish_answer(answer: String) -> void:
+func _publish_answer(answer: String, speaker_peer_id: int = SERVER_PEER_ID) -> void:
 	var voice_chat := get_node_or_null("/root/VoiceChat")
 	if voice_chat != null and voice_chat.has_method("publish_assistant_transcript"):
-		voice_chat.call("publish_assistant_transcript", answer)
+		voice_chat.call("publish_assistant_transcript", answer, "智能助手", speaker_peer_id)
 
 
 func _publish_interaction_state(
@@ -962,6 +1022,8 @@ func _client_record_assistant_history(
 	success: bool,
 	metadata: Dictionary
 ) -> void:
+	if Execution.is_local() and multiplayer.get_remote_sender_id() > 0:
+		return
 	_apply_history_entry(request_id, question, answer, success, metadata)
 
 
@@ -1040,7 +1102,15 @@ func _verified_answer_or_model_answer(record: Dictionary, model_answer: String) 
 
 
 func _is_local_target(peer_id: int) -> bool:
+	if Execution.endpoint_asr():
+		return peer_id == Execution.local_peer_id(multiplayer)
 	return not multiplayer.has_multiplayer_peer() or peer_id == multiplayer.get_unique_id()
+
+
+func _owns_speaker(peer_id: int) -> bool:
+	if Execution.is_local():
+		return _is_local_target(peer_id)
+	return not multiplayer.has_multiplayer_peer() or multiplayer.is_server()
 
 
 func _is_peer_connected(peer_id: int) -> bool:

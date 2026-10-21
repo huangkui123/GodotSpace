@@ -2,6 +2,7 @@ package com.picospatialanchor.helper
 
 import android.graphics.ImageFormat
 import android.graphics.PixelFormat
+import android.os.Build
 import com.pxr.capturelib.PXRCapture
 import org.json.JSONArray
 import org.json.JSONObject
@@ -43,6 +44,8 @@ class PicoCaptureMetadataCollector {
     ): ByteArray {
         val metadata = JSONObject()
             .put("schema_version", METADATA_SCHEMA_VERSION)
+            .put("device_model", Build.MODEL)
+            .put("device_system", Build.DISPLAY)
             .put("frame_timestamp_ns", frameTimestampNs)
             .put("stream_width", config.width)
             .put("stream_height", config.height)
@@ -103,8 +106,35 @@ class PicoCaptureMetadataCollector {
             .put("camera_extrinsics_secondary", toJsonArray(extrinsics.secondaryValues))
         annotateExtrinsics(metadata, "camera_extrinsics_primary", extrinsics.primaryValues)
         annotateExtrinsics(metadata, "camera_extrinsics_secondary", extrinsics.secondaryValues)
+        annotateCameraModel(metadata, config, extrinsics)
 
         return metadata.toString().toByteArray(Charsets.UTF_8)
+    }
+
+    private fun annotateCameraModel(metadata: JSONObject, config: AnchorStreamConfig, extrinsics: ExtrinsicsResult) {
+        val left = PicoCameraCalibration.cameraToHeadCv(extrinsics.primaryValues)
+        val right = PicoCameraCalibration.cameraToHeadCv(extrinsics.secondaryValues)
+        val status = when {
+            Build.MODEL != PicoCameraCalibration.ULTRA_MODEL -> "unsupported_device"
+            config.outputCameraRawData || config.renderMode !in 0..1 -> "unsupported_image_mode"
+            extrinsics.status != NATIVE_BOOLEAN_SUCCESS -> "sdk_read_failed"
+            left == null || right == null -> "invalid_extrinsics"
+            else -> "valid"
+        }
+        metadata.put("camera_to_head_status", status)
+        metadata.put("camera_intrinsics_source", "configured_fov")
+        if (!config.outputCameraRawData &&
+            kotlin.math.abs(config.horizontalFovDegrees - PicoCameraCalibration.RECTIFIED_HORIZONTAL_FOV_DEGREES) < 0.001 &&
+            kotlin.math.abs(config.verticalFovDegrees - PicoCameraCalibration.RECTIFIED_VERTICAL_FOV_DEGREES) < 0.001
+        ) {
+            metadata.put("camera_intrinsics_source", "pico_4_ultra_rectified_sdk_fov")
+        }
+        if (status != "valid") return
+        metadata
+            .put("camera_to_head_convention", PicoCameraCalibration.CAMERA_TO_HEAD_CONVENTION)
+            .put("camera_to_head_units", "metres")
+            .put("camera_to_head_primary", toJsonArray(left!!))
+            .put("camera_to_head_secondary", toJsonArray(right!!))
     }
 
     private fun collectIntrinsicsResults(
@@ -255,7 +285,7 @@ class PicoCaptureMetadataCollector {
     private fun toJsonArray(values: List<Double>): JSONArray {
         val jsonArray = JSONArray()
         values.forEach { value ->
-            jsonArray.put(value)
+            jsonArray.put(if (value.isFinite()) value else JSONObject.NULL)
         }
         return jsonArray
     }

@@ -4,6 +4,7 @@ signal speech_finished(peer_id: int, request_id: String, success: bool)
 signal local_speech_changed(active: bool)
 
 const MAX_TEXT := 4000
+const Execution := preload("res://Assets/ARSpace/Scripts/AI/LocalAgent/local_agent_execution.gd")
 const MAX_AUDIO_BYTES := 4 * 1024 * 1024
 const REQUEST_TIMEOUT := 180_000
 const TARGET_SEGMENT_CHARS := 64
@@ -53,7 +54,9 @@ func _process(_delta: float) -> void:
 
 
 func speak_for_peer(peer_id: int, request_id: String, text: String) -> bool:
-	if multiplayer.has_multiplayer_peer() and not multiplayer.is_server():
+	if Execution.is_local() and not _is_local(peer_id):
+		return false
+	if not Execution.is_local() and multiplayer.has_multiplayer_peer() and not multiplayer.is_server():
 		return false
 	if peer_id <= 0 or request_id.is_empty() or request_id.length() > 128 or text.strip_edges().is_empty() or text.length() > MAX_TEXT:
 		return false
@@ -87,6 +90,8 @@ func cancel_for_peer(peer_id: int) -> void:
 
 @rpc("authority", "call_remote", "reliable")
 func _client_speak(request_id: String, text: String) -> void:
+	if Execution.is_local() and multiplayer.get_remote_sender_id() > 0:
+		return
 	if request_id.is_empty() or request_id.length() > 128 or text.length() > MAX_TEXT:
 		return
 	if _seen.has(request_id):
@@ -260,6 +265,10 @@ func _finish_local(success: bool) -> void:
 		rpc_id(1, "_server_finished", finished_id, success)
 
 
+func stop_local_playback() -> void:
+	_abort_local()
+
+
 func _abort_local() -> void:
 	if _http != null:
 		_http.cancel_request()
@@ -282,6 +291,8 @@ func _abort_local() -> void:
 
 @rpc("authority", "call_remote", "reliable")
 func _client_cancel(request_id: String) -> void:
+	if Execution.is_local() and multiplayer.get_remote_sender_id() > 0:
+		return
 	if _local_id == request_id:
 		_finish_local(false)
 
@@ -312,6 +323,8 @@ func _on_peer_disconnected(peer_id: int) -> void:
 
 
 func _on_server_disconnected() -> void:
+	if Execution.is_local():
+		return
 	_abort_local()
 	_seen.clear()
 
@@ -323,6 +336,8 @@ func _exit_tree() -> void:
 
 
 func _local_peer() -> int:
+	if Execution.endpoint_asr():
+		return Execution.local_peer_id(multiplayer)
 	return multiplayer.get_unique_id() if multiplayer.has_multiplayer_peer() else 1
 
 
@@ -331,4 +346,4 @@ func _is_local(peer_id: int) -> bool:
 
 
 func _is_authority() -> bool:
-	return not multiplayer.has_multiplayer_peer() or multiplayer.is_server()
+	return Execution.is_local() or not multiplayer.has_multiplayer_peer() or multiplayer.is_server()

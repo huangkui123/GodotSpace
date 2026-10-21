@@ -2,6 +2,9 @@ extends Control
 
 const PanelWindowZoom = preload("res://Assets/ARSpace/Scripts/UI/panel_window_zoom.gd")
 const RuntimeProfile = preload("res://Assets/ARSpace/Scripts/runtime_profile.gd")
+const SkyPanelStyle := preload("res://Assets/ARSpace/Scripts/UI/sky_panel_style.gd")
+const WorkCard := preload("res://Assets/ARSpace/Prefabs/UI/MainMenuCanvas/WorkList.prefab.tscn")
+const SkyDisplaySettings := preload("res://Assets/ARSpace/Scripts/UI/sky_display_settings_ui.gd")
 
 @onready var work_list_view: Control = $WorkTabView/WorkListView
 @onready var llm_assistant_view: LLMAssistantUIView = $WorkTabView/LLMAssistantView
@@ -9,6 +12,7 @@ const RuntimeProfile = preload("res://Assets/ARSpace/Scripts/runtime_profile.gd"
 	$WorkTabView/GridContainer/RealtimeReconstruction
 var _reconstruction_session: Node
 var _network_handler: Node
+var _sky_display_settings: PanelContainer
 
 func _ready():
 	_network_handler = get_node_or_null("/root/NetworkHandler")
@@ -35,6 +39,63 @@ func _ready():
 		_network_handler.connect("peer_role_changed", _on_peer_role_changed)
 	call_deferred("_bind_reconstruction_session")
 	_refresh_reconstruction_entry()
+	_add_sky_display_settings()
+	_add_cabinet_calibration_entry()
+
+
+func _add_sky_display_settings() -> void:
+	var profile = RuntimeProfile.current()
+	if not profile.is_valid() or not profile.is_sky() or not profile.uses_xr():
+		return
+	var button := _add_tool_card("SkyDisplaySettingsButton", "显示设置", false)
+	button.pressed.connect(_open_sky_display_settings)
+	_sky_display_settings = SkyDisplaySettings.new()
+	$WorkTabView.add_child(_sky_display_settings)
+
+
+func _add_cabinet_calibration_entry() -> void:
+	var profile = RuntimeProfile.current()
+	if not profile.is_valid() or not profile.is_sky() or not (profile.uses_xr() or profile.is_test_mode()):
+		return
+	var button := _add_tool_card("CabinetCalibrationButton", "柜体标定", true)
+	button.pressed.connect(func() -> void:
+		var calibration := get_tree().get_first_node_in_group("cabinet_calibration")
+		if calibration != null:
+			calibration.call("open_panel", self))
+
+
+func _add_tool_card(node_name: String, caption: String, cabinet: bool) -> Button:
+	var card := WorkCard.instantiate() as Button
+	card.name = node_name
+	card.get_node("Image").hide()
+	var label := card.get_node("Name") as Label
+	label.text = caption
+	label.position = Vector2(0, 177)
+	label.size = Vector2(207, 24)
+	var icon := SkyPanelStyle.ToolIcon.new()
+	icon.cabinet = cabinet
+	icon.position = Vector2(52, 38)
+	icon.size = Vector2(104, 94)
+	card.add_child(icon)
+	$WorkTabView/GridContainer.add_child(card)
+	# Two rows fit the same work area; keep the title bar and navigation clear.
+	$WorkTabView/GridContainer.position.y = 50
+	$WorkTabView/GridContainer.size = Vector2(599, 420)
+	$WorkTabView/CanvasRenderer.size.y = 348.0 / $WorkTabView/CanvasRenderer.scale.y
+	return card
+
+
+func _open_sky_display_settings() -> void:
+	_hide_llm_assistant_view()
+	work_list_view.hide()
+	_set_spacebox_worklist_visible(false)
+	_sky_display_settings.call("open_settings", get_tree().current_scene)
+
+
+func _hide_sky_display_settings() -> void:
+	if is_instance_valid(_sky_display_settings):
+		_sky_display_settings.hide()
+
 
 func _on_photo_pressed():
 	_set_global_canvas_visible("picture_canvas", true)
@@ -46,6 +107,7 @@ func _on_voice_call_pressed():
 	_set_global_canvas_visible("voice_call_window", true)
 
 func _on_work_list_pressed():
+	_hide_sky_display_settings()
 	_hide_llm_assistant_view()
 	work_list_view.visible = true
 	# Global.work_list_view.refresh_work_list()
@@ -56,10 +118,12 @@ func _on_back_button_pressed():
 	_set_spacebox_worklist_visible(false)
 
 func _on_close_button_pressed():
+	_hide_sky_display_settings()
 	_hide_llm_assistant_view()
 	self.visible = false
 
 func _on_llm_assistant_pressed() -> void:
+	_hide_sky_display_settings()
 	work_list_view.visible = false
 	_set_spacebox_worklist_visible(false)
 

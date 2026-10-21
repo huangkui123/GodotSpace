@@ -11,21 +11,24 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
-import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.ScheduledExecutorService
 
 class PicoCastService : Service() {
 
-    private lateinit var executor: ExecutorService
+    private lateinit var executor: ScheduledExecutorService
     private lateinit var castProvider: PicoCastProvider
     private var currentConfig: PicoCastConfig? = null
     private var castStarted = false
+    private var currentUrl = ""
 
     override fun onCreate() {
         super.onCreate()
-        executor = Executors.newSingleThreadExecutor()
+        executor = Executors.newSingleThreadScheduledExecutor()
         castProvider = PicoCastProvider(this, ::onCastConnectionStateChanged)
         startForegroundWithStatus("等待开始 PICO 投屏")
+        executor.scheduleWithFixedDelay({ publishCurrentSession() }, 3, 3, TimeUnit.SECONDS)
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -79,6 +82,7 @@ class PicoCastService : Service() {
         }
 
         val rtmpUrl = result.rtmpUrl ?: return
+        currentUrl = rtmpUrl
         castStarted = true
         runCatching {
             PicoCastControlSender.publishLive(config, rtmpUrl)
@@ -89,6 +93,14 @@ class PicoCastService : Service() {
         }.onFailure { throwable ->
             updateStatus("投屏已启动，但上报失败: ${PicoCastControlSender.describeFailure(throwable)}")
         }
+    }
+
+    private fun publishCurrentSession() {
+        val config = currentConfig ?: return
+        if (!castStarted || currentUrl.isBlank()) return
+        // A late receiver or restarted Server must receive the current URL.
+        runCatching { PicoCastControlSender.publishLive(config, currentUrl) }
+            .onFailure { updateStatus("投屏通知暂不可达，正在自动重试") }
     }
 
     private fun onCastConnectionStateChanged(state: Int) {
@@ -115,6 +127,7 @@ class PicoCastService : Service() {
         val wasStarted = castStarted
         currentConfig = null
         castStarted = false
+        currentUrl = ""
         if (wasStarted && config != null) {
             runCatching { PicoCastControlSender.publishStopped(config) }
         }

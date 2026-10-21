@@ -5,6 +5,8 @@ signal remote_speaking_changed(peer_id: int, is_speaking: bool)
 signal voice_level_changed(peer_id: int, state: Dictionary)
 signal voice_transcript_received(data: Dictionary)
 signal assistant_wake_requested(speaker_peer_id: int)
+signal assistant_capture_ready(speaker_peer_id: int)
+signal assistant_capture_failed(speaker_peer_id: int, message: String)
 signal assistant_interaction_state_changed(data: Dictionary)
 signal transcription_enabled_changed(enabled: bool)
 signal dictation_state_changed(session_id: String, state: String, detail: String)
@@ -13,6 +15,7 @@ signal dictation_final_received(session_id: String, text: String)
 signal dictation_failed(session_id: String, code: int, message: String)
 
 const SERVER_PEER_ID := 1
+const Execution := preload("res://Assets/ARSpace/Scripts/AI/LocalAgent/local_agent_execution.gd")
 const SERVER_SOURCE_ID := 1
 const ASSISTANT_WAKE_WORD := "助手"
 const XR_CLIENT_ARG := "--xr-client"
@@ -155,6 +158,11 @@ var _dictation_finalize_deadline_msec := 0
 var _dictation_last_text := ""
 var _dictation_final_emitted := false
 var _dictation_failure_reported := false
+var _recognition_epoch := 0
+var _manual_wake_pending := false
+var _assistant_service_starting := false
+var _assistant_startup_generation := 0
+var _remote_capture_preparing: Dictionary = {}
 
 func _ready() -> void:
 	if _has_cmdline_arg(VOICE_DEBUG_ARG):
@@ -165,16 +173,19 @@ func _ready() -> void:
 
 	voice_log_path = _get_arg_value(VOICE_LOG_PATH_ARG)
 	if voice_log_path == "":
+		voice_log_path = OS.get_environment("GODOTSPACE_VOICE_LOG_PATH")
+	if voice_log_path == "":
 		voice_log_path = DEFAULT_VOICE_LOG_PATH
 
 	_request_runtime_audio_permissions()
 	_setup_components()
 	_connect_multiplayer_signals()
 
-	if NetworkHandler.has_signal("network_role_selected"):
-		NetworkHandler.network_role_selected.connect(_on_network_role_selected)
-	if NetworkHandler.has_signal("network_ready"):
-		NetworkHandler.network_ready.connect(_on_network_ready)
+	var network_handler := get_node_or_null("/root/NetworkHandler")
+	if network_handler != null and network_handler.has_signal("network_role_selected"):
+		network_handler.network_role_selected.connect(_on_network_role_selected)
+	if network_handler != null and network_handler.has_signal("network_ready"):
+		network_handler.network_ready.connect(_on_network_ready)
 
 	_select_voice_role_from_args()
 	_log("VoiceChat initialized with two-voip components. %s Log: %s" % [
@@ -211,9 +222,13 @@ func toggle_voice() -> void:
 	set_voice_enabled(not voice_enabled)
 
 func set_voice_enabled(enabled: bool) -> void:
+	if not enabled:
+		_assistant_startup_generation += 1
 	if enabled and not voice_endpoint_selected:
 		_log("VoiceChat role is not selected yet. Start server or client before enabling voice.")
 		return
+	if enabled and capture != null:
+		capture.setup()
 
 	if voice_enabled == enabled:
 		if capture != null and not _is_dictation_active():
@@ -227,11 +242,11 @@ func set_voice_enabled(enabled: bool) -> void:
 	if transport != null:
 		var effective_speaking := voice_enabled and not _is_dictation_active()
 		transport.send_speaking_state(effective_speaking)
-		if multiplayer.is_server():
+		if multiplayer.has_multiplayer_peer() and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED and multiplayer.is_server():
 			for peer_id in multiplayer.get_peers():
 				transport.send_server_speaking_state_to_peer(peer_id, effective_speaking)
 
-	if multiplayer.is_server():
+	if Execution.endpoint_asr() or multiplayer.is_server():
 		_set_peer_transcription_active(_get_local_voice_peer_id(), voice_enabled and not _is_dictation_active())
 	else:
 		_reset_client_transcription_upload()
@@ -314,8 +329,9 @@ func begin_local_dictation(session_id: String, purpose: String = "annotation") -
 	_dictation_last_text = ""
 	_dictation_final_emitted = false
 	_dictation_failure_reported = false
-	_finish_peer_transcription(_get_local_voice_peer_id())
+	_begin_recognition_boundary()
 	if capture != null:
+		capture.setup()
 		capture.set_voice_active(false)
 	_publish_local_speaking_state(false)
 
@@ -371,20 +387,22 @@ func toggle_transcription() -> void:
 	set_transcription_enabled(not transcription_enabled)
 
 func set_transcription_enabled(enabled: bool) -> void:
-	if not multiplayer.is_server():
+	if not Execution.endpoint_asr() and not multiplayer.is_server():
 		return
 	if transcription_enabled == enabled:
 		return
 
 	transcription_enabled = enabled
 	if not transcription_enabled:
+		_assistant_startup_generation += 1
 		_stop_all_transcription()
 		_reset_client_transcription_upload()
 	else:
 		for peer_id in _get_open_mic_peer_ids():
 			_set_peer_transcription_active(int(peer_id), true)
 
-	_broadcast_transcription_enabled()
+	if not Execution.endpoint_asr():
+		_broadcast_transcription_enabled()
 	transcription_enabled_changed.emit(transcription_enabled)
 	_log("Transcription %s" % ("enabled" if transcription_enabled else "disabled"))
 
@@ -501,7 +519,7 @@ func get_debug_state() -> Dictionary:
 		"voice_endpoint_selected": voice_endpoint_selected,
 		"is_vr_mode": is_vr_mode,
 		"network_role": _get_network_role(),
-		"peer_id": multiplayer.get_unique_id() if multiplayer.has_multiplayer_peer() else 0,
+		"peer_id": _get_local_voice_peer_id(),
 		"connected_peers": multiplayer.get_peers() if multiplayer.has_multiplayer_peer() else [],
 		"input_device": AudioServer.get_input_device(),
 		"output_device": AudioServer.get_output_device(),
@@ -575,7 +593,7 @@ func set_audio_devices(input_device: String, output_device: String) -> void:
 
 	if voice_endpoint_selected:
 		_apply_audio_device_profile()
-		if capture != null and capture.has_method("restart_for_device_change"):
+		if capture != null and capture.has_method("restart_for_device_change") and bool(capture.get("is_setup")):
 			capture.restart_for_device_change()
 
 func _setup_components() -> void:
@@ -586,7 +604,7 @@ func _setup_components() -> void:
 		add_child(capture)
 	capture.opus_packet_captured.connect(_on_local_opus_packet_captured)
 	capture.speaking_changed.connect(_on_local_speaking_changed)
-	capture.pcm_frames_captured.connect(_on_local_pcm_frames_captured)
+	capture.recognition_frames_captured.connect(_on_local_pcm_frames_captured)
 
 	transport = get_node_or_null("VoiceTransportENet")
 	if transport == null:
@@ -600,6 +618,7 @@ func _setup_components() -> void:
 	transport.transcription_pcm_received.connect(_on_transcription_pcm_received)
 	transport.transcript_received.connect(_on_transport_transcript_received)
 	transport.assistant_wake_requested.connect(_on_transport_assistant_wake_requested)
+	transport.capture_phase_received.connect(_on_capture_phase_received)
 	transport.assistant_interaction_state_received.connect(_on_assistant_interaction_state_received)
 	transport.transcription_enabled_received.connect(_on_transport_transcription_enabled_received)
 
@@ -660,12 +679,12 @@ func _on_local_pcm_frames_captured(frames: PackedVector2Array) -> void:
 		return
 	if not voice_enabled:
 		return
-	if not voice_endpoint_selected or not multiplayer.has_multiplayer_peer():
+	if not voice_endpoint_selected or (not Execution.is_local() and not multiplayer.has_multiplayer_peer()):
 		return
 	if not transcription_enabled:
 		return
 
-	if multiplayer.is_server():
+	if Execution.endpoint_asr() or multiplayer.is_server():
 		var peer_id := _get_local_voice_peer_id()
 		if _is_peer_mic_open(peer_id):
 			_feed_transcription_frames(peer_id, frames)
@@ -697,6 +716,8 @@ func _on_voice_level_received(peer_id: int, peak: float, peak_db: float, mic_ope
 	_set_peer_transcription_active(peer_id, mic_open)
 
 func _on_transcription_pcm_received(sender_peer_id: int, pcm: PackedByteArray) -> void:
+	if Execution.endpoint_asr():
+		return
 	if not multiplayer.is_server() or pcm.is_empty():
 		return
 	if not transcription_enabled:
@@ -713,13 +734,25 @@ func _on_transport_transcript_received(data: Dictionary) -> void:
 
 
 func _on_transport_assistant_wake_requested(speaker_peer_id: int) -> void:
-	if not multiplayer.is_server() or speaker_peer_id <= 0:
+	if Execution.is_local() or not multiplayer.is_server() or speaker_peer_id <= 0:
 		return
 	assistant_wake_requested.emit(speaker_peer_id)
 
 
+func _on_capture_phase_received(peer_id: int, phase: String) -> void:
+	if Execution.is_local():
+		return
+	_remote_capture_preparing[peer_id] = phase == "preparing"
+	match phase:
+		"preparing": assistant_wake_requested.emit(peer_id)
+		"ready": assistant_capture_ready.emit(peer_id)
+		"failed": assistant_capture_failed.emit(peer_id, "语音连接失败，请重新听写。")
+
+
 func _on_assistant_interaction_state_received(data: Dictionary) -> void:
 	var target_peer_id := int(data.get("target_peer_id", 0))
+	if Execution.is_local() and target_peer_id != _get_local_voice_peer_id():
+		return
 	var state := str(data.get("state", "idle"))
 	_update_assistant_command_capture_state(target_peer_id, state)
 	assistant_interaction_state_changed.emit(data.duplicate(true))
@@ -728,14 +761,14 @@ func _on_assistant_interaction_state_received(data: Dictionary) -> void:
 func _update_assistant_command_capture_state(target_peer_id: int, state: String) -> void:
 	if target_peer_id <= 0:
 		return
-	if state == "listening":
+	if state in ["listening", "connecting"]:
 		_assistant_command_capture_peers[target_peer_id] = true
 	else:
 		_assistant_command_capture_peers.erase(target_peer_id)
 
 
 func _on_transport_transcription_enabled_received(enabled: bool) -> void:
-	if multiplayer.is_server():
+	if Execution.endpoint_asr() or multiplayer.is_server():
 		return
 	transcription_enabled = enabled
 	if not transcription_enabled:
@@ -747,6 +780,13 @@ func _on_network_role_selected(is_server_role: bool, context: String = "") -> vo
 	_print_audio_device_state(context if context != "" else "server selected" if is_server_role else "client selected")
 
 func _on_network_ready() -> void:
+	if Execution.endpoint_asr():
+		# A reconnect can assign a new ENet id. Do not keep a second recognizer
+		# alive for the previous id, nor accept its late callbacks as commands.
+		var local_id := _get_local_voice_peer_id()
+		for previous_id in _peer_transcribers.keys():
+			if int(previous_id) != local_id:
+				_stop_peer_transcription(int(previous_id))
 	if transport != null and voice_enabled:
 		transport.send_speaking_state(true)
 	if voice_endpoint_selected:
@@ -766,10 +806,13 @@ func _on_peer_connected(peer_id: int) -> void:
 		_set_voice_level_mic_state(peer_id, false)
 
 func _on_peer_disconnected(peer_id: int) -> void:
+	_remote_capture_preparing.erase(peer_id)
 	_log("Voice peer disconnected: %d" % peer_id)
 	remove_player(peer_id)
 	voice_level_states.erase(peer_id)
 	_stop_peer_transcription(peer_id)
+	if transport != null:
+		transport.call("forget_endpoint_peer", peer_id)
 
 func _on_connected_to_server() -> void:
 	_log("VoiceChat connected to server")
@@ -781,7 +824,12 @@ func _on_connected_to_server() -> void:
 		transport.send_speaking_state(true)
 
 func _on_connection_failed() -> void:
+	_assistant_startup_generation += 1
 	_log("VoiceChat connection failed")
+	if Execution.is_local():
+		if playback != null:
+			playback.clear()
+		return
 	if _is_dictation_active():
 		cancel_local_dictation(_dictation_session_id)
 	set_voice_enabled(false)
@@ -790,7 +838,16 @@ func _on_connection_failed() -> void:
 		playback.clear()
 
 func _on_server_disconnected() -> void:
+	_assistant_startup_generation += 1
 	_log("VoiceChat server disconnected")
+	if Execution.is_local():
+		if playback != null:
+			playback.clear()
+		return
+	_manual_wake_pending = false
+	_recognition_epoch += 1
+	_remote_capture_preparing.clear()
+	_assistant_command_capture_peers.clear()
 	if _is_dictation_active():
 		cancel_local_dictation(_dictation_session_id)
 	set_voice_enabled(false)
@@ -802,7 +859,8 @@ func _on_server_disconnected() -> void:
 func _update_voice_level_state(delta: float) -> void:
 	if not voice_endpoint_selected or capture == null or transport == null:
 		return
-	if NetworkHandler.peer == null or not multiplayer.has_multiplayer_peer():
+	var network_handler := get_node_or_null("/root/NetworkHandler")
+	if network_handler == null or network_handler.get("peer") == null or not multiplayer.has_multiplayer_peer():
 		return
 
 	_voice_level_send_accum += delta
@@ -875,23 +933,112 @@ func set_assistant_speech_active(peer_id: int, active: bool) -> void:
 		_reset_client_transcription_upload()
 
 
+func request_assistant_wake_when_ready() -> bool:
+	if _assistant_service_starting or not transcription_enabled or not voice_endpoint_selected:
+		return false
+	if Execution.endpoint_asr() and not Execution.is_local() and (
+			not multiplayer.has_multiplayer_peer() or multiplayer.multiplayer_peer is OfflineMultiplayerPeer
+			or multiplayer.multiplayer_peer.get_connection_status() != MultiplayerPeer.CONNECTION_CONNECTED):
+		publish_assistant_interaction_state(_get_local_voice_peer_id(), "failed", "尚未连接协作 Server，智能助手不可用。")
+		return false
+	_assistant_service_starting = true
+	_assistant_startup_generation += 1
+	var generation := _assistant_startup_generation
+	publish_assistant_interaction_state(_get_local_voice_peer_id(), "preparing", "正在准备语音识别，请稍候…")
+	var ready := await _prepare_local_asr()
+	_assistant_service_starting = false
+	# Closing voice or losing the connection during cold startup must not open
+	# the microphone or submit a stale wake request after services become ready.
+	if generation != _assistant_startup_generation:
+		publish_assistant_interaction_state(_get_local_voice_peer_id(), "idle", "已取消语音识别准备。")
+		return false
+	if not ready:
+		var runtime := get_node_or_null("/root/LocalAgentRuntime")
+		var detail := str(runtime.get("message")) if runtime != null else "本地语音服务未就绪。"
+		if detail.is_empty():
+			detail = "本地语音服务未就绪，请检查服务启动状态后重试。"
+		publish_assistant_interaction_state(_get_local_voice_peer_id(), "failed", detail)
+		return false
+	if capture != null:
+		capture.setup()
+	return request_assistant_wake()
+
+
+func _prepare_local_asr() -> bool:
+	# Offline fixtures own their services, matching LocalAgentRuntime's startup
+	# policy. Headless live checks opt in explicitly.
+	if DisplayServer.get_name() == "headless" and not OS.get_cmdline_user_args().has("--local-agent-autostart"):
+		return true
+	if not Execution.endpoint_asr() or get_asr_provider() != ASR_PROVIDER_FUNASR or OS.get_name() != "Windows":
+		return true
+	var runtime := get_node_or_null("/root/LocalAgentRuntime")
+	if runtime == null:
+		return false
+	return await runtime.ensure_asr(_get_local_asr_endpoint())
+
+
 func request_assistant_wake() -> bool:
 	if not transcription_enabled:
 		return false
+	if Execution.endpoint_asr():
+		if not Execution.is_local() and (not multiplayer.has_multiplayer_peer() or multiplayer.multiplayer_peer is OfflineMultiplayerPeer or multiplayer.multiplayer_peer.get_connection_status() != MultiplayerPeer.CONNECTION_CONNECTED):
+			publish_assistant_interaction_state(_get_local_voice_peer_id(), "failed", "尚未连接协作 Server，智能助手不可用。")
+			return false
+		var readiness := get_dictation_readiness()
+		if not bool(readiness.get("available", false)):
+			publish_assistant_interaction_state(_get_local_voice_peer_id(), "failed", str(readiness.get("message", "麦克风尚未就绪。")))
+			return false
 	if not voice_enabled and voice_endpoint_selected:
 		set_voice_enabled(true)
-	if multiplayer.has_multiplayer_peer() and not multiplayer.is_server():
+	if not Execution.endpoint_asr() and multiplayer.has_multiplayer_peer() and not multiplayer.is_server():
 		if transport == null or not transport.has_method("send_assistant_wake_request"):
 			return false
 		return bool(transport.call("send_assistant_wake_request"))
 	var speaker_peer_id := _get_local_voice_peer_id()
 	if speaker_peer_id <= 0:
 		speaker_peer_id = SERVER_PEER_ID
-	assistant_wake_requested.emit(speaker_peer_id)
+	if Execution.endpoint_asr():
+		_begin_recognition_boundary(false)
+		_manual_wake_pending = true
+		# Interrupt local playback immediately; Server cancels its matching
+		# speech/confirmation lease when the reliable prepare arrives.
+		var speech := get_node_or_null("/root/AssistantSpeech")
+		if speech != null and speech.has_method("stop_local_playback"):
+			speech.call("stop_local_playback")
+		set_assistant_speech_active(speaker_peer_id, false)
+		if not Execution.is_local() and transport != null:
+			transport.send_capture_phase(_recognition_epoch, "preparing")
+		else:
+			assistant_wake_requested.emit(speaker_peer_id)
+	else:
+		assistant_wake_requested.emit(speaker_peer_id)
+	if Execution.endpoint_asr():
+		# The router cancels TTS before this, so its suppression cannot discard
+		# the new session. Buffer only post-click audio while ASR connects.
+		_set_peer_transcription_active(speaker_peer_id, true)
 	return true
 
 
-func publish_assistant_transcript(text: String, speaker_name: String = "智能助手") -> void:
+func is_assistant_capture_preparing(peer_id: int = 0) -> bool:
+	if peer_id > 0 and peer_id != _get_local_voice_peer_id():
+		return bool(_remote_capture_preparing.get(peer_id, false))
+	return _manual_wake_pending or bool(_remote_capture_preparing.get(peer_id, false))
+
+
+func _begin_recognition_boundary(notify_server: bool = true) -> void:
+	_recognition_epoch += 1
+	_manual_wake_pending = false
+	_reset_client_transcription_upload()
+	if capture != null and capture.has_method("discard_pending_recognition_audio"):
+		capture.call("discard_pending_recognition_audio")
+	# Finalize the old ordinary utterance into history, not into the next
+	# command. Its callbacks carry the old epoch even if they arrive later.
+	_finish_peer_transcription(_get_local_voice_peer_id())
+	if notify_server and Execution.endpoint_asr() and not Execution.is_local() and transport != null:
+		transport.send_capture_phase(_recognition_epoch, "boundary")
+
+
+func publish_assistant_transcript(text: String, speaker_name: String = "智能助手", target_peer_id: int = 0) -> void:
 	var clean_text := text.strip_edges()
 	if clean_text.is_empty():
 		return
@@ -906,8 +1053,11 @@ func publish_assistant_transcript(text: String, speaker_name: String = "智能�
 		"source": "llm_assistant",
 		"message_id": "assistant-%d" % _assistant_transcript_sequence,
 	}
-	if multiplayer.has_multiplayer_peer() and multiplayer.is_server():
-		_broadcast_transcript(data)
+	if not Execution.is_local() and multiplayer.has_multiplayer_peer() and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED and multiplayer.is_server():
+		if target_peer_id > 0 and transport != null:
+			transport.send_target_transcript(target_peer_id, data)
+		else:
+			_broadcast_transcript(data)
 	else:
 		_on_transport_transcript_received(data)
 
@@ -928,7 +1078,7 @@ func publish_assistant_interaction_state(
 		if not data.has(key):
 			data[key] = details[key]
 	_update_assistant_command_capture_state(target_peer_id, str(data.get("state", "idle")))
-	if multiplayer.has_multiplayer_peer() and multiplayer.is_server():
+	if not Execution.is_local() and multiplayer.has_multiplayer_peer() and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED and multiplayer.is_server():
 		if transport != null and transport.has_method("send_assistant_interaction_state"):
 			transport.send_assistant_interaction_state(target_peer_id, data)
 		else:
@@ -940,7 +1090,11 @@ func publish_assistant_interaction_state(
 func _set_peer_transcription_active(peer_id: int, active: bool) -> void:
 	if is_assistant_speech_active(peer_id):
 		return
-	if not multiplayer.is_server() or peer_id <= 0:
+	if peer_id <= 0:
+		return
+	if Execution.endpoint_asr() and peer_id != _get_local_voice_peer_id():
+		return
+	if not Execution.endpoint_asr() and not multiplayer.is_server():
 		return
 	if not transcription_enabled:
 		active = false
@@ -985,6 +1139,7 @@ func _get_peer_transcriber(peer_id: int) -> Node:
 	var utterance_id := int(_transcript_utterance_ids.get(peer_id, 1))
 	_transcript_utterance_ids[peer_id] = utterance_id + 1
 	transcriber.set_meta("transcript_utterance_id", utterance_id)
+	transcriber.set_meta("recognition_epoch", _recognition_epoch)
 	_configure_peer_transcriber(transcriber)
 	add_child(transcriber)
 	transcriber.transcribed_msg.connect(Callable(self, "_on_peer_transcribed_msg").bind(peer_id, transcriber))
@@ -1195,10 +1350,15 @@ func _feed_transcription_pcm(peer_id: int, pcm: PackedByteArray) -> void:
 	transcriber.push_pcm16_audio(pcm)
 
 func _on_peer_transcribed_msg(is_final: bool, new_text: String, peer_id: int, source: Node = null) -> void:
+	if Execution.endpoint_asr() and not Execution.is_local():
+		if not multiplayer.has_multiplayer_peer() or multiplayer.multiplayer_peer is OfflineMultiplayerPeer or multiplayer.multiplayer_peer.get_connection_status() != MultiplayerPeer.CONNECTION_CONNECTED:
+			return
+	if Execution.endpoint_asr() and peer_id != _get_local_voice_peer_id():
+		return
 	if is_assistant_speech_active(peer_id) or (is_instance_valid(source) and bool(source.get_meta("speech_cancelled", false))):
 		return
 	var text := new_text.strip_edges()
-	if text.is_empty() or not multiplayer.is_server():
+	if text.is_empty() or (not Execution.endpoint_asr() and not multiplayer.is_server()):
 		return
 
 	var utterance_id := int(source.get_meta("transcript_utterance_id", 0)) if source != null else 0
@@ -1211,12 +1371,38 @@ func _on_peer_transcribed_msg(is_final: bool, new_text: String, peer_id: int, so
 		"is_final": is_final,
 		"utterance_id": utterance_id,
 		"timestamp_msec": Time.get_ticks_msec(),
+		"recognition_epoch": int(source.get_meta("recognition_epoch", _recognition_epoch)) if is_instance_valid(source) else _recognition_epoch,
 	}
-	_broadcast_transcript(data)
+	data["history_only"] = peer_id == _get_local_voice_peer_id() and int(data["recognition_epoch"]) != _recognition_epoch
+	if Execution.endpoint_asr() and not Execution.is_local():
+		if not multiplayer.is_server():
+			_on_transport_transcript_received(data)
+		if transport != null:
+			transport.send_endpoint_transcript(data)
+	elif Execution.is_local():
+		var share_ordinary := not _is_assistant_command_transcript(data)
+		_on_transport_transcript_received(data)
+		if share_ordinary and transport != null:
+			transport.send_endpoint_transcript(data)
+	else:
+		_broadcast_transcript(data)
 	if is_final and source == null:
 		_transcript_utterance_ids[peer_id] = utterance_id + 1
 
 func _on_peer_transcription_state_changed(state: String, detail: String, peer_id: int, source: Node = null) -> void:
+	if _manual_wake_pending and is_instance_valid(source) and int(source.get_meta("recognition_epoch", -1)) == _recognition_epoch:
+		if state == "connected":
+			_manual_wake_pending = false
+			if not Execution.is_local() and transport != null:
+				transport.send_capture_phase(_recognition_epoch, "ready")
+			else:
+				assistant_capture_ready.emit(peer_id)
+		elif state in ["error", "closed"]:
+			_manual_wake_pending = false
+			if not Execution.is_local() and transport != null:
+				transport.send_capture_phase(_recognition_epoch, "failed")
+			else:
+				assistant_capture_failed.emit(peer_id, detail)
 	if state == "error" or state == "closed":
 		_log("ASR provider=%s peer=%d state=%s detail=%s" % [get_asr_provider(), peer_id, state, detail])
 	if state == "error" and not detail.strip_edges().is_empty():
@@ -1247,15 +1433,19 @@ func _broadcast_transcript(data: Dictionary) -> void:
 
 func _broadcast_transcription_system_message(message: String) -> void:
 	var text := message.strip_edges()
-	if text.is_empty() or not multiplayer.is_server():
+	if text.is_empty():
 		return
-	_broadcast_transcript({
+	var data := {
 		"speaker_peer_id": 0,
 		"speaker_name": "系统",
 		"text": text,
 		"is_final": true,
 		"timestamp_msec": Time.get_ticks_msec(),
-	})
+	}
+	if Execution.endpoint_asr():
+		_on_transport_transcript_received(data)
+	elif multiplayer.is_server():
+		_broadcast_transcript(data)
 
 func _broadcast_transcription_enabled() -> void:
 	if not multiplayer.is_server():
@@ -1271,6 +1461,8 @@ func _store_transcript_data(data: Dictionary) -> void:
 
 
 func _is_assistant_command_transcript(data: Dictionary) -> bool:
+	if bool(data.get("history_only", false)):
+		return false
 	var speaker_peer_id := int(data.get("speaker_peer_id", 0))
 	if speaker_peer_id <= 0:
 		return false
@@ -1350,6 +1542,8 @@ func _reset_client_transcription_upload() -> void:
 	_client_transcription_pcm_buffer.clear()
 
 func _get_local_voice_peer_id() -> int:
+	if Execution.endpoint_asr():
+		return Execution.local_peer_id(multiplayer)
 	if multiplayer.has_multiplayer_peer():
 		return multiplayer.get_unique_id()
 	return SERVER_PEER_ID if voice_endpoint_selected and is_server_endpoint else 0
@@ -1374,7 +1568,8 @@ func _set_voice_endpoint_role(is_server_role: bool) -> void:
 	is_server_endpoint = is_server_role
 	is_vr_mode = _is_vr_mode_requested()
 	_apply_audio_device_profile()
-	_setup_capture_after_device_selection()
+	if voice_enabled or bool(ProjectSettings.get_setting("arspace/local_agent/enabled", false)) or voice_debug_enabled:
+		_setup_capture_after_device_selection()
 	_ensure_debug_controls()
 	_update_debug_controls()
 	if voice_debug_enabled and _has_cmdline_arg(VOICE_TEST_TONE_ARG):
@@ -1753,7 +1948,8 @@ func _pump_output_test_tone(frequency_hz: float = 880.0) -> void:
 		_output_test_playback = null
 
 func _get_network_role() -> String:
-	if NetworkHandler.peer == null:
+	var network_handler := get_node_or_null("/root/NetworkHandler")
+	if network_handler == null or network_handler.get("peer") == null:
 		return "offline"
 	return "server" if multiplayer.is_server() else "client"
 

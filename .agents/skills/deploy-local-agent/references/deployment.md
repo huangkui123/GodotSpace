@@ -4,6 +4,8 @@
 
 ## 1. 确定目标与先决条件
 
+- 双机迁移先记录服务归属：天上部署 Godot Server + Sky Client + Gateway + ASR/TTS，本机算力模式还部署 Qwen；远端算力模式使用已授权的 SSH 隧道。地面 Client 只部署 ASR/TTS，助手命令通过 ENet 发给天上 Server，不需要另一份 Gateway/8B。地面不要运行要求四服务齐全的健康检查来误报失败。
+
 - 从 skill 所在仓库定位 Repo；Windows 项目路径为 Repo/GodotSpace，后端为 Repo/Model。读取 git status/branch/HEAD，保留既有修改。
 - Windows 用 `wsl.exe --list --verbose`；在实际用户权限下选择已有 WSL2 发行版，优先已有 Ubuntu-20.04。沙箱“无发行版/拒绝访问”先走工具授权，不能据此重装 WSL。
 - 缺 WSL2/驱动，先解释安装和重启需求，通过授权执行系统安装；不要静默更换已有发行版或在 WSL 安装 Linux NVIDIA 内核驱动。可用 `wsl.exe --list --online` 确认可安装名称。
@@ -93,7 +95,7 @@ python3 "$SKILL/scripts/launch_service.py" tts --repo "$REPO" --env-dir "$RUNTIM
 每次重跑先探测身份、端口、配置、健康；匹配者复用，不匹配者报告。默认端口为 8000/7861/8765/8767。使用自定义端口时：
 - vLLM: --port；Gateway: --model-port（必须同步）。
 - 其他服务: --port；检查脚本使用对应 --SERVICE-port。
-- Gateway 改端口还要同步 Godot 的 arspace/local_agent/endpoint_url（它没有通用环境变量覆盖）。
+- Gateway 改端口同步 Godot 进程的 GODOTSPACE_AGENT_ENDPOINT；未设置时读取 arspace/local_agent/endpoint_url。
 - ASR 改端口同步启动 Godot 进程的 LOCAL_ASR_ENDPOINT。
 - TTS 改端口同步 GODOTSPACE_TTS_ENDPOINT。
 
@@ -105,15 +107,18 @@ Windows 新启动的 Godot 进程继承：
 
 ```powershell
 $env:GODOT_ASR_PROVIDER = 'funasr'
+$env:GODOTSPACE_AGENT_ENDPOINT = 'ws://127.0.0.1:7861/ws/godot'
 $env:LOCAL_ASR_ENDPOINT = 'ws://127.0.0.1:8765/ws/asr'
 $env:GODOTSPACE_TTS_ENDPOINT = 'http://127.0.0.1:8767/v1/speech'
 ```
 
-按实际选定端口替换；不是注册系统永久环境变量，也不会改变已运行的 Godot 进程。把这些变量保存到本机启动入口。Gateway 默认读取项目设置 `ws://127.0.0.1:7861/ws/godot`。默认无需改 tracked project.godot；确需改端口时只改明确配置并记录 diff，不改其他功能。
+按实际选定端口替换；不是注册系统永久环境变量，也不会改变已运行的 Godot 进程。把这些变量保存到本机启动入口。未设置 Gateway 环境变量时读取项目设置 `ws://127.0.0.1:7861/ws/godot`。地址中的 localhost 是当前 Godot 所在电脑，不是地面 Server。无需为迁移端口修改 tracked project.godot。
 
 先使用匹配的 Windows Godot 对 Repo/GodotSpace 做 headless import/自检，再启动实际 Server 和目标 Client。参数及角色见根 AGENTS.md。只有目标 XR Client 使用 --xr-mode on/--xr-client，Server/另一个桌面 Client 不抢 OpenXR。PICO 串流连接后选择它的麦克风与扬声器输出；必须听到目标端播报。
 
 ## 6. 交付本机入口与报告
+
+日常启动统一使用 [runtime-profile.md](runtime-profile.md) 所述 runtime.json 与仓库内控制器；上面的前台 launcher 命令用于逐项诊断，不是让用户每天启动四个终端。完成首次验证后，避免留下与控制器配置指纹不匹配的旧 Gateway；不自行杀它，使用已核实的原停止入口或另选端口。只更换前端代码但未重启旧 Gateway 时，其 /readyz 没有 runtime_id，应明确报告而非误复用。
 
 用 apply_patch 创建不跟踪的 `Model/generated/local-agent-deploy/` 下本机启动、检查、停止入口，记录发行版、转换后的路径、三个 venv、模型 ID/path/revision、服务端口和环境变量。入口要引用本 skill 的 launcher，不复制业务实现。启动入口重复执行应复用匹配健康进程；停止入口验证身份。
 

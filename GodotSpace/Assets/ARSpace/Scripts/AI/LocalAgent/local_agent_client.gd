@@ -8,6 +8,7 @@ signal confirmation_received(request_id: String, confirmation_id: String)
 signal confirmation_state_received(confirmation_id: String, active: bool, ttl_seconds: float)
 
 const PROTOCOL_VERSION := "1.0"
+const Execution := preload("res://Assets/ARSpace/Scripts/AI/LocalAgent/local_agent_execution.gd")
 const DEFAULT_ENDPOINT := "ws://127.0.0.1:7861/ws/godot"
 const HEARTBEAT_SECONDS := 10.0
 const PONG_TIMEOUT_SECONDS := 25.0
@@ -42,7 +43,10 @@ func _ready() -> void:
 	if network_handler != null and network_handler.has_signal("network_role_selected"):
 		network_handler.network_role_selected.connect(_on_network_role_selected)
 	_server_role_selected = (
-		multiplayer.has_multiplayer_peer() and multiplayer.is_server()
+		multiplayer.has_multiplayer_peer()
+		and not multiplayer.multiplayer_peer is OfflineMultiplayerPeer
+		and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED
+		and multiplayer.is_server()
 	) or _is_test_mode()
 	set_process(true)
 	_try_connect()
@@ -191,6 +195,23 @@ func execute_tool_call_for_test(
 	return _resolve_tool_call(request_id, tool_call_id, tool_name, arguments)
 
 
+func can_host_gateway() -> bool:
+	return Execution.is_local() or _server_role_selected or _is_test_mode()
+
+
+func ensure_connection(timeout_seconds: float = 15.0) -> bool:
+	if not _is_enabled():
+		return false
+	if _connected:
+		return true
+	# Explicit recovery should not inherit the previous reconnect backoff.
+	_next_connect_msec = 0
+	var deadline := Time.get_ticks_msec() + int(timeout_seconds * 1000.0)
+	while _is_enabled() and not _connected and Time.get_ticks_msec() < deadline:
+		await get_tree().process_frame
+	return _connected
+
+
 func _try_connect() -> void:
 	if not _is_enabled():
 		return
@@ -308,6 +329,8 @@ func _resolve_tool_call(
 	tool_name: String,
 	arguments: Dictionary
 ) -> Dictionary:
+	if Execution.is_local() and not tool_name in Execution.LOCAL_UI_TOOLS:
+		return ToolRegistryScript._error("permission_denied", "Local inference may only execute audited local UI tools.")
 	if _tool_result_cache.has(tool_call_id):
 		var cached := _tool_result_cache[tool_call_id] as Dictionary
 		if str(cached.get("request_id", "")) != request_id or str(cached.get("tool_name", "")) != tool_name:
@@ -446,7 +469,7 @@ func _set_connected(value: bool) -> void:
 
 func _on_network_role_selected(is_server_role: bool) -> void:
 	_server_role_selected = is_server_role
-	if not is_server_role:
+	if not is_server_role and not Execution.is_local():
 		_disable_connection()
 	elif _peer == null:
 		_next_connect_msec = 0
@@ -457,7 +480,7 @@ func _is_enabled() -> bool:
 	return (
 		bool(ProjectSettings.get_setting("arspace/local_agent/enabled", true))
 		and _mode() in ["enabled", "debug"]
-		and (_server_role_selected or _is_test_mode())
+		and can_host_gateway()
 	)
 
 
@@ -470,6 +493,9 @@ func _mode() -> String:
 
 
 func _endpoint_url() -> String:
+	var override := OS.get_environment("GODOTSPACE_AGENT_ENDPOINT").strip_edges()
+	if not override.is_empty():
+		return override
 	return str(ProjectSettings.get_setting("arspace/local_agent/endpoint_url", DEFAULT_ENDPOINT)).strip_edges()
 
 

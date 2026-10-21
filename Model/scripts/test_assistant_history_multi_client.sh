@@ -8,7 +8,7 @@ client2_log="/tmp/godotspace_assistant_history_client2.log"
 test_script="res://Assets/ARSpace/Scripts/AI/LocalAgent/assistant_history_multi_client_self_test.gd"
 
 "$godot_exe" --headless --path 'F:\GodotSpace\GodotSpace' \
-    --script "$test_script" -- --history-server >"$server_log" 2>&1 &
+    --script "$test_script" -- --local-agent-server-relay --history-server >"$server_log" 2>&1 &
 server_pid=$!
 
 cleanup() {
@@ -19,11 +19,11 @@ trap cleanup EXIT
 
 sleep 1
 "$godot_exe" --headless --path 'F:\GodotSpace\GodotSpace' \
-    --script "$test_script" -- --history-client-1 >"$client1_log" 2>&1 &
+    --script "$test_script" -- --local-agent-server-relay --history-client-1 >"$client1_log" 2>&1 &
 client1_pid=$!
 sleep 0.5
 "$godot_exe" --headless --path 'F:\GodotSpace\GodotSpace' \
-    --script "$test_script" -- --history-client-2 >"$client2_log" 2>&1 &
+    --script "$test_script" -- --local-agent-server-relay --history-client-2 >"$client2_log" 2>&1 &
 client2_pid=$!
 
 set +e

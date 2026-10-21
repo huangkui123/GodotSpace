@@ -2,6 +2,8 @@ package com.picospatialanchor.helper
 
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class PicoCameraCalibrationTest {
@@ -48,10 +50,32 @@ class PicoCameraCalibrationTest {
             1.0,
         )
         assertTrue(PicoCameraCalibration.isValidExtrinsic(loggedExtrinsic))
+        val headFromCamera = PicoCameraCalibration.cameraToHeadCv(loggedExtrinsic)!!
+        assertEquals(-0.0323815156686094, headFromCamera[3], 1e-9)
+        assertEquals(-0.0020397543771739, headFromCamera[7], 1e-9)
+        assertEquals(-0.0691208917763377, headFromCamera[11], 1e-9)
+        // Optical +Z points forward (-Z) in the OpenXR head frame.
+        assertTrue(headFromCamera[0] > 0.99)
+        assertTrue(headFromCamera[5] < -0.99)
+        assertTrue(headFromCamera[10] < -0.99)
+        val right = loggedExtrinsic.toMutableList().also {
+            it[3] = -0.02080614973530011
+            it[7] = 0.018765735529823607
+            it[11] = -0.01741845179372815
+        }
+        assertEquals(0.0318042644701764, PicoCameraCalibration.cameraToHeadCv(right)!![3], 1e-9)
         assertFalse(
             PicoCameraCalibration.isValidExtrinsic(
                 loggedExtrinsic.toMutableList().also { it[15] = 0.0 },
             ),
         )
+    }
+
+    @Test
+    fun rejectsShearNonfiniteAndWrongUnits() {
+        val identity = listOf(1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0)
+        assertFalse(PicoCameraCalibration.isValidExtrinsic(identity.toMutableList().also { it[1] = 0.1 }))
+        assertFalse(PicoCameraCalibration.isValidExtrinsic(identity.toMutableList().also { it[3] = Double.NaN }))
+        assertNull(PicoCameraCalibration.cameraToHeadCv(identity.toMutableList().also { it[3] = 20.0 }))
     }
 }

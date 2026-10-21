@@ -49,6 +49,9 @@ class SynchronousDeferredAdapter:
 
 
 func _init() -> void:
+	# This protocol test deliberately registers arbitrary fake tools. Local
+	# endpoint tool restrictions are covered by local_endpoint_self_test.
+	ProjectSettings.set_setting("arspace/local_agent/execution_mode", "server_relay")
 	call_deferred("_run")
 
 

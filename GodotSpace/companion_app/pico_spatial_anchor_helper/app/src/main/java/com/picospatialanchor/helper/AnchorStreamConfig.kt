@@ -13,6 +13,8 @@ data class AnchorStreamConfig(
     val outputCameraRawData: Boolean = DEFAULT_OUTPUT_CAMERA_RAW_DATA,
     val horizontalFovDegrees: Double = DEFAULT_HORIZONTAL_FOV_DEGREES,
     val verticalFovDegrees: Double = DEFAULT_VERTICAL_FOV_DEGREES,
+    val secondaryHost: String = "",
+    val secondaryPort: Int = DEFAULT_PORT,
 ) {
     fun toIntent(intent: Intent): Intent {
         return intent
@@ -26,6 +28,8 @@ data class AnchorStreamConfig(
             .putExtra(EXTRA_OUTPUT_CAMERA_RAW_DATA, outputCameraRawData)
             .putExtra(EXTRA_HORIZONTAL_FOV_DEGREES, horizontalFovDegrees)
             .putExtra(EXTRA_VERTICAL_FOV_DEGREES, verticalFovDegrees)
+            .putExtra("extra_secondary_host", secondaryHost)
+            .putExtra("extra_secondary_port", secondaryPort)
     }
 
     companion object {
@@ -47,8 +51,8 @@ data class AnchorStreamConfig(
         const val DEFAULT_JPEG_QUALITY = 60
         const val DEFAULT_RENDER_MODE = 0
         const val DEFAULT_OUTPUT_CAMERA_RAW_DATA = false
-        const val DEFAULT_HORIZONTAL_FOV_DEGREES = 90.0
-        const val DEFAULT_VERTICAL_FOV_DEGREES = 73.73979529168804
+        const val DEFAULT_HORIZONTAL_FOV_DEGREES = PicoCameraCalibration.RECTIFIED_HORIZONTAL_FOV_DEGREES
+        const val DEFAULT_VERTICAL_FOV_DEGREES = PicoCameraCalibration.RECTIFIED_VERTICAL_FOV_DEGREES
 
         fun fromIntent(intent: Intent?): AnchorStreamConfig? {
             if (intent == null) {
@@ -78,6 +82,8 @@ data class AnchorStreamConfig(
                     EXTRA_VERTICAL_FOV_DEGREES,
                     DEFAULT_VERTICAL_FOV_DEGREES,
                 ),
+                secondaryHost = intent.getStringExtra("extra_secondary_host")?.trim().orEmpty(),
+                secondaryPort = intent.getIntExtra("extra_secondary_port", DEFAULT_PORT),
             )
         }
     }

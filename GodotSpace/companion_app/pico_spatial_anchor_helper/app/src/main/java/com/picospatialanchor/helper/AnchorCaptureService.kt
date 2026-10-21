@@ -32,6 +32,7 @@ class AnchorCaptureService : Service() {
     private var imageReader: ImageReader? = null
     private var pxrCapture: PXRCapture? = null
     private var sender: AnchorFrameSender? = null
+    private var secondarySender: AnchorFrameSender? = null
     private var currentConfig: AnchorStreamConfig? = null
     private val cameraMetadataCollector = PicoCaptureMetadataCollector()
     private lateinit var headPoseProvider: PicoHeadPoseProvider
@@ -64,14 +65,17 @@ class AnchorCaptureService : Service() {
                 frameTimestampNs = image.timestamp,
                 headPoseSnapshot = headPoseSnapshot,
             )
+            val frameId = nextFrameId.getAndIncrement()
             sender?.offer(
-                frameId = nextFrameId.getAndIncrement(),
+                frameId = frameId,
                 timestampNs = image.timestamp,
                 width = image.width,
                 height = image.height,
                 metadataBytes = metadataBytes,
                 jpegBytes = jpegBytes,
             )
+            // One capture and JPEG encode, independent bounded network queues.
+            secondarySender?.offer(frameId, image.timestamp, image.width, image.height, metadataBytes, jpegBytes)
             lastEncodedTimestampNs = image.timestamp
         } catch (error: Throwable) {
             reportThrowable("取帧失败", error)
@@ -187,6 +191,13 @@ class AnchorCaptureService : Service() {
         }
 
         sender = AnchorFrameSender(config.host, config.port, ::updateStatus).also { it.start() }
+        if (config.secondaryHost.isNotBlank() && config.secondaryPort in 1..65535 &&
+            (config.secondaryHost != config.host || config.secondaryPort != config.port)
+        ) {
+            secondarySender = AnchorFrameSender(config.secondaryHost, config.secondaryPort) { message ->
+                Log.d(TAG, "Shared receiver: $message")
+            }.also { it.start() }
+        }
 
         pxrCapture = PXRCapture().apply {
             setCallback(captureCallback)
@@ -258,6 +269,8 @@ class AnchorCaptureService : Service() {
     }
 
     private fun stopStreamingInternal() {
+        secondarySender?.stop()
+        secondarySender = null
         sender?.stop()
         sender = null
 

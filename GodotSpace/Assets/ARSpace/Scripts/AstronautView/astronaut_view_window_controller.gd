@@ -249,6 +249,12 @@ func _bind_panel() -> void:
 
 
 func _connect_pico_cast_receiver() -> void:
+	if SessionRuntime.active:
+		if not SessionRuntime.cast_session_changed.is_connected(_on_pico_cast_session_changed):
+			SessionRuntime.cast_session_changed.connect(_on_pico_cast_session_changed)
+		_on_pico_cast_session_changed(SessionRuntime.cast_url, SessionRuntime.cast_metadata)
+		_on_pico_cast_receiver_status_changed("等待天上端投屏")
+		return
 	if _pico_cast_control_receiver == null:
 		return
 	if _pico_cast_control_receiver.has_signal("session_changed") \
@@ -273,6 +279,8 @@ func _connect_pico_cast_receiver() -> void:
 
 
 func _disconnect_pico_cast_receiver() -> void:
+	if SessionRuntime.cast_session_changed.is_connected(_on_pico_cast_session_changed):
+		SessionRuntime.cast_session_changed.disconnect(_on_pico_cast_session_changed)
 	if _pico_cast_control_receiver != null \
 			and _pico_cast_control_receiver.has_signal("session_changed") \
 			and _pico_cast_control_receiver.session_changed.is_connected(_on_pico_cast_session_changed):
@@ -288,6 +296,8 @@ func _disconnect_pico_cast_receiver() -> void:
 
 
 func _start_pico_cast_receiver() -> void:
+	if SessionRuntime.active:
+		return
 	if _pico_cast_control_receiver != null \
 			and _pico_cast_control_receiver.has_method("start_receiver"):
 		_pico_cast_control_receiver.call("start_receiver")
