@@ -4,6 +4,8 @@ extends Node
 signal answer_started(question: String)
 signal answer_completed(question: String, answer: String, sources: Array)
 signal answer_failed(question: String, message: String)
+signal delegated_answer_completed(request_id: String, answer: String)
+signal delegated_answer_failed(request_id: String, message: String)
 signal partial_transcript_received(speaker: String, text: String)
 signal final_transcript_received(speaker: String, text: String)
 signal qa_history_changed()
@@ -15,6 +17,10 @@ const SETTING_API_KEY_ENVIRONMENT_NAME := "arspace/llm_assistant/api_key_environ
 const SETTING_REQUIRE_WAKE_WORD := "arspace/llm_assistant/require_wake_word"
 const SETTING_WAKE_WORDS := "arspace/llm_assistant/wake_words"
 const SETTING_MAX_CONTEXT_ENTRIES := "arspace/llm_assistant/max_context_entries"
+const SETTING_MAX_PROMPT_CONTEXT_CHARS := "arspace/llm_assistant/max_prompt_context_chars"
+const SETTING_MAX_TOKENS := "arspace/llm_assistant/max_tokens"
+const SETTING_REQUEST_TIMEOUT_SECONDS := "arspace/llm_assistant/request_timeout_seconds"
+const SETTING_THINKING_ENABLED := "arspace/llm_assistant/thinking_enabled"
 const SETTING_USE_LOCAL_FALLBACK := "arspace/llm_assistant/use_local_fallback_when_unconfigured"
 const SETTING_KNOWLEDGE_BASE_PATH := "arspace/llm_assistant/knowledge_base_path"
 const SETTING_KNOWLEDGE_DIRECTORIES := "arspace/llm_assistant/knowledge_directories"
@@ -34,7 +40,10 @@ const LLM_CALL_LOG_PATH := "user://llm_assistant_logs/deepseek_calls.jsonl"
 @export var api_key: String = ""
 @export var api_key_environment_name: String = "OPENAI_API_KEY"
 @export_range(0.0, 1.0, 0.05) var temperature: float = 0.2
-@export_range(256, 4096, 64) var max_tokens: int = 700
+@export_range(128, 4096, 64) var max_tokens: int = 384
+@export_range(400, 8000, 100) var max_prompt_context_chars: int = 1200
+@export_range(10.0, 180.0, 5.0) var request_timeout_seconds: float = 90.0
+@export var thinking_enabled: bool = false
 @export var use_local_fallback_when_unconfigured: bool = true
 
 @export_group("Voice Trigger")
@@ -57,6 +66,10 @@ var _qa_history: Array[Dictionary] = []
 var _listening_enabled := false
 var _active_request_log_id := ""
 var _active_request_started_msec := 0
+var _external_transcript_router_enabled := false
+var _active_delegate_request_id := ""
+var _active_record_history := true
+var _external_qa_request_ids: Dictionary = {}
 
 
 func _ready() -> void:
@@ -118,6 +131,7 @@ func get_debug_state() -> Dictionary:
 		"endpoint_configured": not endpoint_url.strip_edges().is_empty(),
 		"model": model,
 		"api_key_configured": not _get_api_key().is_empty(),
+		"thinking_enabled": thinking_enabled,
 		"local_fallback_enabled": use_local_fallback_when_unconfigured,
 		"active_question": _active_question,
 		"pending_question_count": _pending_questions.size(),
@@ -146,10 +160,45 @@ func ask(question: String) -> void:
 	_begin_question(clean_question, sources, conversation_context)
 
 
-func _begin_question(clean_question: String, sources: Array, conversation_context: String) -> void:
+func request_delegated_answer(
+	request_id: String,
+	question: String,
+	runtime_entries: Array[Dictionary] = [],
+	record_history: bool = true
+) -> void:
+	var clean_request_id := request_id.strip_edges()
+	var clean_question := question.strip_edges()
+	if clean_request_id.is_empty() or clean_question.is_empty():
+		return
+	var sources: Array = []
+	for entry in runtime_entries:
+		if typeof(entry) == TYPE_DICTIONARY:
+			sources.append(entry)
+	sources.append_array(_search_sources(clean_question))
+	if _active_question != "":
+		_pending_questions.append({
+			"question": clean_question,
+			"sources": sources,
+			"conversation_context": "",
+			"delegate_request_id": clean_request_id,
+			"record_history": record_history,
+		})
+		return
+	_begin_question(clean_question, sources, "", clean_request_id, record_history)
+
+
+func _begin_question(
+	clean_question: String,
+	sources: Array,
+	conversation_context: String,
+	delegate_request_id: String = "",
+	record_history: bool = true
+) -> void:
 	_active_question = clean_question
 	_active_sources = sources.duplicate(true)
 	_active_conversation_context = conversation_context
+	_active_delegate_request_id = delegate_request_id
+	_active_record_history = record_history
 	answer_started.emit(clean_question)
 
 	var api_key_value := _get_api_key()
@@ -169,6 +218,8 @@ func _begin_question(clean_question: String, sources: Array, conversation_contex
 		"timestamp": Time.get_datetime_string_from_system(false, true),
 		"endpoint_url": endpoint_url,
 		"model": model,
+		"max_tokens": max_tokens,
+		"max_prompt_context_chars": max_prompt_context_chars,
 		"question": clean_question,
 		"sources": _summarize_sources_for_log(_active_sources),
 		"request_body": request_body,
@@ -269,8 +320,29 @@ func submit_transcript_data(data: Dictionary) -> void:
 	_handle_transcript_data(data, false)
 
 
+func set_external_transcript_router_enabled(enabled: bool) -> void:
+	_external_transcript_router_enabled = enabled
+
+
 func get_qa_history() -> Array:
 	return _qa_history.duplicate(true)
+
+
+func record_external_qa(
+	request_id: String,
+	question: String,
+	answer: String,
+	success: bool,
+	metadata: Dictionary = {}
+) -> bool:
+	var clean_request_id := request_id.strip_edges()
+	if clean_request_id.is_empty() or _external_qa_request_ids.has(clean_request_id):
+		return false
+	_external_qa_request_ids[clean_request_id] = true
+	while _external_qa_request_ids.size() > max_qa_history_items * 4:
+		_external_qa_request_ids.erase(_external_qa_request_ids.keys().front())
+	_record_qa_item(question, answer, [], success, metadata)
+	return true
 
 
 func _setup_knowledge_base() -> void:
@@ -292,6 +364,10 @@ func _apply_project_settings() -> void:
 	api_key_environment_name = str(ProjectSettings.get_setting(SETTING_API_KEY_ENVIRONMENT_NAME, api_key_environment_name)).strip_edges()
 	require_wake_word = bool(ProjectSettings.get_setting(SETTING_REQUIRE_WAKE_WORD, require_wake_word))
 	max_context_entries = int(ProjectSettings.get_setting(SETTING_MAX_CONTEXT_ENTRIES, max_context_entries))
+	max_prompt_context_chars = int(ProjectSettings.get_setting(SETTING_MAX_PROMPT_CONTEXT_CHARS, max_prompt_context_chars))
+	max_tokens = int(ProjectSettings.get_setting(SETTING_MAX_TOKENS, max_tokens))
+	request_timeout_seconds = float(ProjectSettings.get_setting(SETTING_REQUEST_TIMEOUT_SECONDS, request_timeout_seconds))
+	thinking_enabled = bool(ProjectSettings.get_setting(SETTING_THINKING_ENABLED, thinking_enabled))
 	use_local_fallback_when_unconfigured = bool(ProjectSettings.get_setting(SETTING_USE_LOCAL_FALLBACK, use_local_fallback_when_unconfigured))
 	max_conversation_turns = int(ProjectSettings.get_setting(SETTING_MAX_CONVERSATION_TURNS, max_conversation_turns))
 
@@ -340,12 +416,14 @@ func _packed_string_array_from_variant(value: Variant) -> PackedStringArray:
 func _setup_http_request() -> void:
 	_http_request = HTTPRequest.new()
 	_http_request.name = "LLMHttpRequest"
-	_http_request.timeout = 45.0
+	_http_request.timeout = request_timeout_seconds
 	add_child(_http_request)
 	_http_request.request_completed.connect(_on_http_request_completed)
 
 
 func _on_voice_transcript_received(data: Dictionary) -> void:
+	if _external_transcript_router_enabled:
+		return
 	_handle_transcript_data(data, true)
 
 
@@ -390,11 +468,13 @@ func _strip_wake_word(text: String) -> String:
 
 
 func _build_chat_completion_request(question: String, sources: Array, conversation_context: String) -> Dictionary:
-	var context := _format_sources_for_prompt(sources)
+	var context := _format_sources_for_prompt(sources, max_prompt_context_chars)
 	var conversation := conversation_context.strip_edges()
 	if conversation.is_empty():
 		conversation = "暂无近期对话。"
-	return {
+	var remaining_context_chars := maxi(0, max_prompt_context_chars - context.length())
+	conversation = _truncate_prompt_text(conversation, remaining_context_chars)
+	var request := {
 		"model": model,
 		"temperature": temperature,
 		"max_tokens": max_tokens,
@@ -413,9 +493,14 @@ func _build_chat_completion_request(question: String, sources: Array, conversati
 			},
 		],
 	}
+	if model.begins_with("deepseek-") or endpoint_url.contains("api.deepseek.com"):
+		request["thinking"] = {
+			"type": "enabled" if thinking_enabled else "disabled",
+		}
+	return request
 
 
-func _format_sources_for_prompt(sources: Array) -> String:
+func _format_sources_for_prompt(sources: Array, character_limit: int = 1200) -> String:
 	if sources.is_empty():
 		return "暂无命中的本地知识条目。"
 
@@ -428,7 +513,18 @@ func _format_sources_for_prompt(sources: Array) -> String:
 			str(source.get("title", "未命名条目")),
 			str(source.get("content", "")),
 		])
-	return "\n\n".join(lines)
+	return _truncate_prompt_text("\n\n".join(lines), character_limit)
+
+
+func _truncate_prompt_text(text: String, character_limit: int) -> String:
+	var clean_text := text.strip_edges()
+	if character_limit <= 0:
+		return ""
+	if clean_text.length() <= character_limit:
+		return clean_text
+	if character_limit == 1:
+		return "…"
+	return clean_text.substr(0, character_limit - 1).strip_edges() + "…"
 
 
 func _append_conversation_turn(role: String, speaker: String, text: String) -> void:
@@ -448,19 +544,28 @@ func _append_conversation_turn(role: String, speaker: String, text: String) -> v
 		_conversation_history.pop_front()
 
 
-func _record_qa_item(question: String, answer: String, sources: Array, success: bool) -> void:
+func _record_qa_item(
+	question: String,
+	answer: String,
+	sources: Array,
+	success: bool,
+	metadata: Dictionary = {}
+) -> void:
 	var clean_question := question.strip_edges()
 	var clean_answer := answer.strip_edges()
 	if clean_question.is_empty() and clean_answer.is_empty():
 		return
-	_qa_history.append({
+	var item := {
 		"question": clean_question,
 		"answer": clean_answer,
 		"sources": sources.duplicate(true),
 		"success": success,
 		"timestamp_msec": Time.get_ticks_msec(),
 		"timestamp": Time.get_datetime_string_from_system(false, true),
-	})
+	}
+	if not metadata.is_empty():
+		item["metadata"] = metadata.duplicate(true)
+	_qa_history.append(item)
 	while _qa_history.size() > max_qa_history_items:
 		_qa_history.pop_front()
 	qa_history_changed.emit()
@@ -509,7 +614,10 @@ func _on_http_request_completed(result: int, response_code: int, _headers: Packe
 		"response_body": response_body,
 	})
 	if result != HTTPRequest.RESULT_SUCCESS:
-		_fail_active_question("LLM 请求失败：%s" % result)
+		if result == HTTPRequest.RESULT_TIMEOUT:
+			_fail_active_question("LLM 请求超时（%.0f 秒），请稍后重试。" % request_timeout_seconds)
+		else:
+			_fail_active_question("LLM 请求失败：%s" % result)
 		return
 	if response_code < 200 or response_code >= 300:
 		_fail_active_question("LLM 服务返回 HTTP %d：%s" % [response_code, body.get_string_from_utf8()])
@@ -603,12 +711,20 @@ func _complete_active_question(answer: String) -> void:
 	var question := _active_question
 	var sources := _active_sources.duplicate(true)
 	_append_conversation_turn("assistant", "智能助手", answer)
-	_record_qa_item(question, answer, sources, true)
+	if _active_record_history:
+		_record_qa_item(question, answer, sources, true)
 	_active_question = ""
 	_active_sources = []
 	_active_conversation_context = ""
 	_active_request_log_id = ""
 	_active_request_started_msec = 0
+	var delegate_request_id := _active_delegate_request_id
+	_active_delegate_request_id = ""
+	_active_record_history = true
+	if not delegate_request_id.is_empty():
+		delegated_answer_completed.emit(delegate_request_id, answer)
+		_start_next_pending_question()
+		return
 	answer_completed.emit(question, answer, sources)
 	_publish_assistant_transcript(answer)
 	_start_next_pending_question()
@@ -616,12 +732,20 @@ func _complete_active_question(answer: String) -> void:
 
 func _fail_active_question(message: String) -> void:
 	var question := _active_question
-	_record_qa_item(question, message, [], false)
+	if _active_record_history:
+		_record_qa_item(question, message, [], false)
 	_active_question = ""
 	_active_sources = []
 	_active_conversation_context = ""
 	_active_request_log_id = ""
 	_active_request_started_msec = 0
+	var delegate_request_id := _active_delegate_request_id
+	_active_delegate_request_id = ""
+	_active_record_history = true
+	if not delegate_request_id.is_empty():
+		delegated_answer_failed.emit(delegate_request_id, message)
+		_start_next_pending_question()
+		return
 	answer_failed.emit(question, message)
 	_publish_assistant_transcript(message)
 	_start_next_pending_question()
@@ -639,7 +763,9 @@ func _start_next_pending_question() -> void:
 	_begin_question(
 		next_question,
 		next_sources if typeof(next_sources) == TYPE_ARRAY else [],
-		str(next_item.get("conversation_context", ""))
+		str(next_item.get("conversation_context", "")),
+		str(next_item.get("delegate_request_id", "")),
+		bool(next_item.get("record_history", true))
 	)
 
 

@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+bench_root="${MODEL_BENCH_ROOT:-$HOME/local-agent-model-bench}"
+runtime_root="${REMOTE_VLLM_DIR:-$HOME/local-agent-qwen}"
+model_dir="${REMOTE_MODEL_DIR:-$runtime_root/models/Qwen3-VL-2B-Instruct-FP8}"
+
+export CUDA_VISIBLE_DEVICES="${REMOTE_GPU:-5}"
+export PYTHONUNBUFFERED=1
+export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
+
+exec "$runtime_root/.venv/bin/vllm" serve "$model_dir" \
+  --served-model-name "${SERVED_MODEL_NAME:-Qwen/Qwen3-VL-2B-Instruct}" \
+  --host 127.0.0.1 \
+  --port "${REMOTE_MODEL_PORT:-18300}" \
+  --dtype auto \
+  --gpu-memory-utilization "${GPU_MEMORY_UTILIZATION:-0.25}" \
+  --max-model-len "${MAX_MODEL_LEN:-16384}" \
+  --max-num-seqs 1 \
+  --max-num-batched-tokens "${MAX_MODEL_LEN:-16384}" \
+  --limit-mm-per-prompt '{"image": 1, "video": 0}' \
+  --mm-processor-kwargs '{"max_pixels": 401408}' \
+  --skip-mm-profiling \
+  --enforce-eager

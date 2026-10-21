@@ -15,6 +15,7 @@ const DEBUG_LOGS := false
 @onready var audio_toggle_button: Button = $WorkListInfo/ListContent/WorkListInfoItem/AudioToggle
 
 var _info_save_list: Array[WorkListInfoData] = []
+var _current_task_id: int = 0
 @export var info_: Array[WorkListInfoItem] = []
 
 var page_index: int = 1
@@ -43,6 +44,138 @@ func _enter_tree():
 
 func init_view():
 	if DEBUG_LOGS: print(self.name, ": init_view")
+
+
+func open_task(task_id: int, result: WorkListInfoDataResult) -> Dictionary:
+	if task_id <= 0:
+		return _tool_error("invalid_arguments", "task_id must be a positive integer.")
+	if result == null or result.list.is_empty():
+		return _tool_error("not_ready", "The selected task has no available steps.")
+	if visible and _current_task_id == task_id and not _info_save_list.is_empty():
+		return _tool_success({
+			"changed": false,
+			"snapshot": _build_task_snapshot(true),
+		})
+
+	_current_task_id = task_id
+	PanelWindowZoom.set_window_visible(self, true, Global.main_menu_canvas)
+	on_refresh_data_change_view(result)
+	return _tool_success({
+		"changed": true,
+		"snapshot": _build_task_snapshot(true),
+	})
+
+
+func get_task_snapshot(include_next: bool = true) -> Dictionary:
+	if not visible or _current_task_id <= 0 or _info_save_list.is_empty():
+		return _tool_error("no_active_task", "No task guide is currently open.")
+	return _tool_success(_build_task_snapshot(include_next))
+
+
+func advance_if_index(
+	operation_id: String,
+	expected_task_id: int,
+	expected_page_index: int
+) -> Dictionary:
+	var normalized_operation_id := operation_id.strip_edges()
+	if normalized_operation_id.is_empty():
+		return _tool_error("invalid_arguments", "operation_id must not be empty.")
+	if not visible or _current_task_id <= 0 or _info_save_list.is_empty():
+		return _tool_error("no_active_task", "No task guide is currently open.")
+
+	var current_snapshot := _build_task_snapshot(true)
+	if expected_task_id != _current_task_id:
+		return _tool_error("wrong_task", "The active task does not match the request.", {
+			"operation_id": normalized_operation_id,
+			"snapshot": current_snapshot,
+		})
+	if expected_page_index != page_index:
+		return _tool_error("stale_state", "The task page changed before this operation.", {
+			"operation_id": normalized_operation_id,
+			"snapshot": current_snapshot,
+		})
+	if page_index >= page_count:
+		return _tool_error("already_last_step", "The task is already at its last step.", {
+			"operation_id": normalized_operation_id,
+			"snapshot": current_snapshot,
+		})
+
+	var previous_page_index := page_index
+	next_click()
+	if page_index != previous_page_index + 1:
+		return _tool_error("internal_error", "The task view did not advance exactly one step.", {
+			"operation_id": normalized_operation_id,
+			"snapshot": _build_task_snapshot(true),
+		})
+	return _tool_success({
+		"changed": true,
+		"operation_id": normalized_operation_id,
+		"snapshot": _build_task_snapshot(true),
+	})
+
+
+func retreat_if_index(
+	operation_id: String,
+	expected_task_id: int,
+	expected_page_index: int
+) -> Dictionary:
+	var normalized_operation_id := operation_id.strip_edges()
+	if normalized_operation_id.is_empty():
+		return _tool_error("invalid_arguments", "operation_id must not be empty.")
+	if not visible or _current_task_id <= 0 or _info_save_list.is_empty():
+		return _tool_error("no_active_task", "No task guide is currently open.")
+	var current_snapshot := _build_task_snapshot(true)
+	if expected_task_id != _current_task_id or expected_page_index != page_index:
+		return _tool_error("stale_state", "The task page changed before this operation.", {
+			"operation_id": normalized_operation_id,
+			"snapshot": current_snapshot,
+		})
+	if page_index <= 1:
+		return _tool_error("already_first_step", "The task is already at its first step.", {
+			"operation_id": normalized_operation_id,
+			"snapshot": current_snapshot,
+		})
+	var previous_page_index := page_index
+	pre_click()
+	if page_index != previous_page_index - 1:
+		return _tool_error("internal_error", "The task view did not move back exactly one step.")
+	return _tool_success({
+		"changed": true,
+		"operation_id": normalized_operation_id,
+		"snapshot": _build_task_snapshot(true),
+	})
+
+
+func go_to_page(requested_page: int) -> Dictionary:
+	if not visible or _current_task_id <= 0 or _info_save_list.is_empty():
+		return _tool_error("no_active_task", "No task guide is currently open.")
+	if requested_page < 1 or requested_page > page_count:
+		return _tool_error("invalid_page", "The requested task guide page is unavailable.", {
+			"snapshot": _build_task_snapshot(true),
+		})
+	if requested_page == page_index:
+		return _tool_success({"changed": false, "snapshot": _build_task_snapshot(true)})
+	_stop_current_step_voice()
+	page_index = requested_page
+	bind_page(page_index)
+	_sync_assistant_context()
+	return _tool_success({"changed": true, "snapshot": _build_task_snapshot(true)})
+
+
+func close_task_guide() -> Dictionary:
+	if not visible:
+		return _tool_error("no_active_task", "No task guide is currently open.")
+	_stop_current_step_voice()
+	_hide_llm_assistant_view()
+	PanelWindowZoom.set_window_visible(self, false)
+	return _tool_success({"changed": true})
+
+
+func replay_current_task_step_with_result() -> Dictionary:
+	if not visible or _current_task_id <= 0 or _info_save_list.is_empty():
+		return _tool_error("no_active_task", "No task guide is currently open.")
+	replay_current_step_animation()
+	return _tool_success({"snapshot": _build_task_snapshot(true)})
 
 func on_refresh_data_change_view(result: WorkListInfoDataResult):
 	if DEBUG_LOGS: print(self.name, ": on_refresh_data_change_view -> WorkListInfoDataResult")
@@ -239,6 +372,52 @@ func _get_current_step_data() -> WorkListInfoData:
 		return null
 	var current_index: int = max(0, min(_info_save_list.size() - 1, (page_index - 1) * page_item_count))
 	return _info_save_list[current_index]
+
+
+func _build_task_snapshot(include_next: bool) -> Dictionary:
+	var current_step := _get_current_step_data()
+	var current_index: int = max(0, min(_info_save_list.size() - 1, (page_index - 1) * page_item_count))
+	var snapshot := {
+		"task_id": _current_task_id,
+		"task_title": title_label.text if title_label != null else "当前任务",
+		"page_index": page_index,
+		"page_count": page_count,
+		"current_step": _serialize_step(current_step),
+	}
+	if include_next:
+		var next_index := current_index + 1
+		snapshot["next_step_preview"] = (
+			_serialize_step(_info_save_list[next_index])
+			if next_index < _info_save_list.size()
+			else {}
+		)
+	return snapshot
+
+
+func _serialize_step(step_data: WorkListInfoData) -> Dictionary:
+	if step_data == null:
+		return {}
+	return {
+		"step": step_data.step,
+		"title": step_data.title,
+		"info": step_data.info,
+	}
+
+
+func _tool_success(data: Dictionary) -> Dictionary:
+	return {"ok": true, "data": data, "error": null}
+
+
+func _tool_error(
+	code: String,
+	message: String,
+	data: Dictionary = {}
+) -> Dictionary:
+	return {
+		"ok": false,
+		"data": data,
+		"error": {"code": code, "message": message},
+	}
 
 
 func pre_click():

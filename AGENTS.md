@@ -67,6 +67,7 @@ res://Assets/ARSpace/Scenes/ARSpace.tscn
 - `TODO.md`：需求和待办资料。读取时注意文件编码，不要在无关任务中重写整份文件。
 - `LICENSE`：许可证。
 - `GodotSpace/`：Godot 工程主体。
+- `Model/`：本地 Qwen Agent Gateway、知识与工具调用 harness、FunASR 服务、benchmark 和服务生命周期脚本；该目录已通过非 squash subtree 纳入本仓库，不要在其中再初始化嵌套 Git 仓库。进入该目录工作时同时遵守 `Model/AGENTS.md`。
 
 ### Godot 工程目录
 

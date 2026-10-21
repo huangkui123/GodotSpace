@@ -74,6 +74,41 @@ func bind_item(item: WorkListItem, infos: WorkListData):
 	item.refresh_info(infos)
 
 
+func open_task_by_id(task_id: int) -> Dictionary:
+	if task_id <= 0:
+		return _tool_error("invalid_arguments", "task_id must be a positive integer.")
+
+	var selected_task: WorkListData = null
+	for task in _info_save_list:
+		if task != null and task.id == task_id:
+			selected_task = task
+			break
+	if selected_task == null:
+		return _tool_error("not_found", "The requested task guide was not found.")
+	if not _is_task_enabled(selected_task):
+		return _tool_error("permission_denied", "The requested task guide is not enabled.")
+	if selected_task.info_data_result == null or selected_task.info_data_result.list.is_empty():
+		return _tool_error("not_ready", "The requested task guide has no available steps.")
+
+	var global_node := get_node_or_null("/root/Global")
+	var work_info = global_node.get("work_list_info_canvas") if global_node != null else null
+	if work_info == null or not work_info.has_method("open_task"):
+		return _tool_error("not_ready", "The task detail view is not ready.")
+	return work_info.call("open_task", selected_task.id, selected_task.info_data_result)
+
+
+func _is_task_enabled(task: WorkListData) -> bool:
+	return task != null and task.id == 1
+
+
+func _tool_error(code: String, message: String) -> Dictionary:
+	return {
+		"ok": false,
+		"data": {},
+		"error": {"code": code, "message": message},
+	}
+
+
 func get_task_context_entries() -> Array[Dictionary]:
 	var entries: Array[Dictionary] = []
 	for task in _info_save_list:

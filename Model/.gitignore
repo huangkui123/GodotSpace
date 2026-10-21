@@ -1,0 +1,9 @@
+.venv/
+.venv-tts/
+.venv-tts-gpu/
+__pycache__/
+*.pyc
+generated/
+.cache/
+logs/
+models/

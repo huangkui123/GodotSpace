@@ -1,6 +1,9 @@
 extends Node3D
 
 const RuntimeProfile = preload("res://Assets/ARSpace/Scripts/runtime_profile.gd")
+const SkyViewPreferences := preload("res://Assets/ARSpace/Scripts/XR/sky_view_preferences.gd")
+const PicoStreamingAlphaEffect := preload("res://Assets/ARSpace/Scripts/XR/pico_streaming_alpha_effect.gd")
+const CabinetCalibration := preload("res://Assets/ARSpace/Scripts/SpatialCalibration/cabinet_calibration.gd")
 const TEST_PLAYER_SCENE: PackedScene = preload("res://Assets/ARSpace/Scenes/Player.tscn")
 const TEST_PLAYER_DEFAULT_ID: int = 1
 const TEST_LEFT_HAND_OFFSET: Vector3 = Vector3(-0.28, -0.22, -0.45)
@@ -47,6 +50,12 @@ var _last_right_a_pressed: bool = false
 var _last_main_panel_toggle_ms: int = -MAIN_PANEL_TOGGLE_DEBOUNCE_MS
 var _sky_geometry_transparency_enabled: bool = false
 var _sky_transparent_material_cache: Dictionary = {}
+var _sky_object_opacity: float = SKY_OBJECT_OPACITY
+var _sky_panel_ui_opacity: float = SKY_PANEL_UI_OPACITY
+var _sky_boundary_surface_opacity: float = SKY_BOUNDARY_SURFACE_OPACITY
+var _pico_alpha_camera: Camera3D
+var _pico_alpha_original_compositor: Compositor
+var _pico_alpha_compositor: Compositor
 
 
 func _enter_tree() -> void:
@@ -71,7 +80,13 @@ func _ready() -> void:
 		get_tree().node_added.connect(_on_scene_node_added)
 
 	_update_preview_container_visibility()
+	if runtime_profile.is_sky() and runtime_profile.uses_xr():
+		set_sky_opacity(SkyViewPreferences.load_values().opacity)
 	_apply_runtime_profile()
+	if runtime_profile.is_sky() and (runtime_profile.uses_xr() or runtime_profile.is_test_mode()):
+		var cabinet_calibration := CabinetCalibration.new()
+		cabinet_calibration.name = "CabinetCalibration"
+		add_child(cabinet_calibration)
 
 
 func _exit_tree() -> void:
@@ -131,6 +146,28 @@ func _set_sky_geometry_transparency(enabled: bool) -> void:
 		_sky_transparent_material_cache.clear()
 
 
+## Adjust local Sky rendering without changing shared materials or other roles.
+func set_sky_opacity(value: Vector3) -> bool:
+	if not SkyViewPreferences.valid_opacity(value):
+		return false
+	if value.is_equal_approx(Vector3(_sky_object_opacity, _sky_panel_ui_opacity,
+			_sky_boundary_surface_opacity)):
+		return true
+	# Always rebuild from authored values; repeated adjustments must not multiply alpha.
+	_restore_geometry_transparency_in_subtree(self)
+	_sky_transparent_material_cache.clear()
+	_sky_object_opacity = value.x
+	_sky_panel_ui_opacity = value.y
+	_sky_boundary_surface_opacity = value.z
+	if _sky_geometry_transparency_enabled:
+		_apply_sky_transparency_to_subtree(self)
+	return true
+
+
+func get_sky_opacity() -> Vector3:
+	return Vector3(_sky_object_opacity, _sky_panel_ui_opacity, _sky_boundary_surface_opacity)
+
+
 func _apply_sky_transparency_to_subtree(root: Node) -> void:
 	if not is_instance_valid(root):
 		return
@@ -172,6 +209,15 @@ func _restore_geometry_transparency_in_subtree(root: Node) -> void:
 
 
 func _apply_sky_mesh_transparency(mesh_instance: MeshInstance3D) -> void:
+	# Keep settings reachable even after the user fades every other panel to zero.
+	var main_menu := get_node_or_null("MainMenuCanvas")
+	if main_menu != null and main_menu.is_ancestor_of(mesh_instance):
+		return
+	var ancestor: Node = mesh_instance
+	while ancestor != null and ancestor != self:
+		if ancestor.is_in_group("sky_always_visible_ui"):
+			return
+		ancestor = ancestor.get_parent()
 	if mesh_instance.has_meta(SKY_TRANSPARENCY_STATE_META):
 		return
 
@@ -219,9 +265,9 @@ func _get_sky_mesh_opacity(mesh_instance: MeshInstance3D) -> float:
 	var current: Node = mesh_instance
 	while current != null and current != self:
 		if current.name in SKY_BOUNDARY_SURFACE_NAMES:
-			return SKY_BOUNDARY_SURFACE_OPACITY
+			return _sky_boundary_surface_opacity
 		current = current.get_parent()
-	return SKY_OBJECT_OPACITY
+	return _sky_object_opacity
 
 
 func _restore_sky_mesh_transparency(mesh_instance: MeshInstance3D) -> void:
@@ -251,10 +297,10 @@ func _apply_sky_label_transparency(label: Label3D) -> void:
 		"outline_modulate": label.outline_modulate,
 	})
 	var label_modulate := label.modulate
-	label_modulate.a *= SKY_OBJECT_OPACITY
+	label_modulate.a *= _sky_object_opacity
 	label.modulate = label_modulate
 	var outline_modulate := label.outline_modulate
-	outline_modulate.a *= SKY_OBJECT_OPACITY
+	outline_modulate.a *= _sky_object_opacity
 	label.outline_modulate = outline_modulate
 
 
@@ -277,7 +323,7 @@ func _apply_sky_sprite_transparency(sprite: SpriteBase3D) -> void:
 		"modulate": sprite.modulate,
 	})
 	var sprite_modulate := sprite.modulate
-	sprite_modulate.a *= SKY_OBJECT_OPACITY
+	sprite_modulate.a *= _sky_object_opacity
 	sprite.modulate = sprite_modulate
 
 
@@ -291,8 +337,10 @@ func _restore_sky_sprite_transparency(sprite: SpriteBase3D) -> void:
 
 func _get_sky_transparent_material(
 	source: Material,
-	object_opacity: float = SKY_OBJECT_OPACITY
+	object_opacity: float = -1.0
 ) -> Material:
+	if object_opacity < 0.0:
+		object_opacity = _sky_object_opacity
 	var source_id: int = 0 if source == null else source.get_instance_id()
 	var cache_key := "%d:%.4f" % [source_id, object_opacity]
 	if _sky_transparent_material_cache.has(cache_key):
@@ -302,6 +350,7 @@ func _get_sky_transparent_material(
 	if source == null:
 		var default_material := StandardMaterial3D.new()
 		default_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		default_material.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
 		default_material.albedo_color = Color(
 			1.0,
 			1.0,
@@ -320,12 +369,21 @@ func _get_sky_transparent_material(
 		var base_material := source.duplicate(false) as BaseMaterial3D
 		base_material.resource_local_to_scene = true
 		base_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		# Imported cabinet/floor materials use DEPTH_DRAW_ALWAYS. Keeping that
+		# while fading writes an opaque depth mask even at alpha 0, punching
+		# unstable holes in overlapping transparent geometry. Keep depth testing
+		# against opaque objects, but never write depth from these faded copies.
+		base_material.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
 		var albedo_color := base_material.albedo_color
 		var target_opacity := (
-			SKY_PANEL_UI_OPACITY
+			_sky_panel_ui_opacity
 			if source_base_material.albedo_texture is ViewportTexture
 			else object_opacity
 		)
+		if source_was_opaque and is_equal_approx(target_opacity, 1.0):
+			# At the fully solid endpoint, preserve opaque self-occlusion.
+			base_material.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+			base_material.depth_draw_mode = source_base_material.depth_draw_mode
 		# Opaque imported materials can contain arbitrary ignored alpha values.
 		# Give those a stable role-specific opacity instead of multiplying stale alpha.
 		albedo_color.a = (
@@ -434,6 +492,7 @@ func _enter_xr_runtime() -> void:
 
 
 func _shutdown_openxr() -> void:
+	_remove_pico_alpha_compositor()
 	xr_runtime_active = false
 	xr_retry_after_ms = 0
 	last_xr_failure_reason = ""
@@ -450,6 +509,7 @@ func _shutdown_openxr() -> void:
 
 
 func _ensure_opaque_environment() -> void:
+	_remove_pico_alpha_compositor()
 	if xr_interface == null or not xr_interface.is_initialized():
 		return
 	var supported_blend_modes: Array = xr_interface.get_supported_environment_blend_modes()
@@ -490,6 +550,7 @@ func _ensure_passthrough_active() -> bool:
 	var should_log_configuration := not passthrough_supported_modes_logged
 	if should_log_configuration:
 		passthrough_supported_modes_logged = true
+		print("MR rendering method = ", RenderingServer.get_current_rendering_method())
 		print("MR passthrough supported blend modes = ", supported_blend_modes)
 
 	if XRInterface.XR_ENV_BLEND_MODE_ALPHA_BLEND in supported_blend_modes:
@@ -497,11 +558,13 @@ func _ensure_passthrough_active() -> bool:
 			xr_interface.environment_blend_mode = XRInterface.XR_ENV_BLEND_MODE_ALPHA_BLEND
 		_configure_passthrough_background(true)
 		_set_xr_background_transparent(true)
+		_update_pico_alpha_compositor()
 		passthrough_unavailable_warned = false
 		if should_log_configuration:
 			print("MR passthrough active: alpha blend")
 		return true
 
+	_remove_pico_alpha_compositor()
 	if XRInterface.XR_ENV_BLEND_MODE_ADDITIVE in supported_blend_modes:
 		if xr_interface.environment_blend_mode != XRInterface.XR_ENV_BLEND_MODE_ADDITIVE:
 			xr_interface.environment_blend_mode = XRInterface.XR_ENV_BLEND_MODE_ADDITIVE
@@ -532,6 +595,7 @@ func _ensure_passthrough_active() -> bool:
 
 ## 停止 MR 透传模式
 func _stop_passthrough() -> void:
+	_remove_pico_alpha_compositor()
 	if not xr_interface:
 		return
 
@@ -646,6 +710,40 @@ func _configure_virtual_annotation_system() -> void:
 	annotation_system.queue_free()
 
 
+func _update_pico_alpha_compositor() -> void:
+	var runtime_name := str(xr_interface.get_system_info().get("XRRuntimeName", ""))
+	var eligible: bool = OS.has_feature("windows") \
+		and runtime_profile.is_sky() and runtime_profile.uses_xr() \
+		and runtime_name.strip_edges().to_lower() == "pico xr runtime" \
+		and RenderingServer.get_current_rendering_method() == "forward_plus" \
+		and bool(ProjectSettings.get_setting("arspace/xr/pico_streaming_encoded_alpha", false))
+	var camera := get_viewport().get_camera_3d()
+	if not eligible or not camera is XRCamera3D:
+		_remove_pico_alpha_compositor()
+		return
+	if camera == _pico_alpha_camera and camera.compositor == _pico_alpha_compositor:
+		return
+	_remove_pico_alpha_compositor()
+	_pico_alpha_camera = camera
+	_pico_alpha_original_compositor = camera.compositor
+	_pico_alpha_compositor = Compositor.new()
+	if _pico_alpha_original_compositor != null:
+		_pico_alpha_compositor.compositor_effects = _pico_alpha_original_compositor.compositor_effects.duplicate()
+	var effects := _pico_alpha_compositor.compositor_effects
+	effects.append(PicoStreamingAlphaEffect.new())
+	_pico_alpha_compositor.compositor_effects = effects
+	camera.compositor = _pico_alpha_compositor
+	print("MR PICO encoded-alpha correction attached to local XR camera; runtime=", runtime_name)
+
+
+func _remove_pico_alpha_compositor() -> void:
+	if is_instance_valid(_pico_alpha_camera) and _pico_alpha_camera.compositor == _pico_alpha_compositor:
+		_pico_alpha_camera.compositor = _pico_alpha_original_compositor
+	_pico_alpha_camera = null
+	_pico_alpha_original_compositor = null
+	_pico_alpha_compositor = null
+
+
 func _configure_passthrough_background(use_alpha: bool) -> void:
 	var world_environment := get_node_or_null("WorldEnvironment") as WorldEnvironment
 	if world_environment == null or world_environment.environment == null:
@@ -692,6 +790,7 @@ func _ensure_spectator_camera_current() -> void:
 
 
 func _fallback_to_spectator(reason: String) -> void:
+	_remove_pico_alpha_compositor()
 	xr_runtime_active = false
 	xr_retry_after_ms = Time.get_ticks_msec() + XR_RETRY_INTERVAL_MS
 	get_tree().root.use_xr = false

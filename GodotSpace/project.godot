@@ -17,12 +17,25 @@ config/icon="res://icon.svg"
 
 [arspace]
 
+xr/pico_streaming_encoded_alpha=true
+local_agent/enabled=false
+local_agent/execution_mode="server_hosted"
+assistant_speech/enabled=false
+assistant_speech/endpoint_url="http://127.0.0.1:8767/v1/speech"
+assistant_speech/volume_db=-3.0
+local_agent/mode="enabled"
+local_agent/endpoint_url="ws://127.0.0.1:7861/ws/godot"
+local_agent/max_message_bytes=262144
 llm_assistant/endpoint_url="https://api.deepseek.com/chat/completions"
 llm_assistant/model="deepseek-v4-pro"
 llm_assistant/api_key_environment_name="DEEPSEEK_API_KEY"
 llm_assistant/require_wake_word=true
 llm_assistant/wake_words=PackedStringArray("助手", "智能助手", "LLM")
 llm_assistant/max_context_entries=5
+llm_assistant/max_prompt_context_chars=1200
+llm_assistant/max_tokens=384
+llm_assistant/request_timeout_seconds=90.0
+llm_assistant/thinking_enabled=false
 llm_assistant/max_conversation_turns=6
 llm_assistant/use_local_fallback_when_unconfigured=true
 llm_assistant/knowledge_base_path="res://Assets/ARSpace/Data/llm_knowledge_base.json"
@@ -41,8 +54,13 @@ XRToolsUserSettings="*res://addons/godot-xr-tools/user_settings/user_settings.gd
 XRToolsRumbleManager="*res://addons/godot-xr-tools/rumble/rumble_manager.gd"
 Global="*res://Assets/ARSpace/Scripts/Global.gd"
 NetworkHandler="*res://Assets/ARSpace/Scripts/Network/network_handler.gd"
+SessionRuntime="*res://Assets/ARSpace/Scripts/Startup/session_runtime.gd"
 VoiceChat="*res://Assets/ARSpace/Scenes/voice_chat_service.tscn"
 LLMAssistantService="*res://Assets/ARSpace/Scripts/AI/llm_assistant.gd"
+LocalAgentClient="*res://Assets/ARSpace/Scripts/AI/LocalAgent/local_agent_client.gd"
+AssistantCommandRouter="*res://Assets/ARSpace/Scripts/AI/LocalAgent/assistant_command_router.gd"
+AssistantSpeech="*res://Assets/ARSpace/Scripts/AI/LocalAgent/assistant_speech.gd"
+LocalAgentRuntime="*res://Assets/ARSpace/Scripts/AI/LocalAgent/local_agent_runtime.gd"
 OrbitalManager="*res://addons/orbital_tools/orbital_manager.gd"
 
 [editor_plugins]
@@ -117,9 +135,10 @@ push_to_talk={
 
 renderer/rendering_method="mobile"
 textures/vram_compression/import_etc2_astc=true
+renderer/rendering_method.windows="forward_plus"
 
 [xr]
 
 openxr/default_action_map="uid://i53bnkiar6c1"
-openxr/reference_space=2
+openxr/reference_space=1
 shaders/enabled=true

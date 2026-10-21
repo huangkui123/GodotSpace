@@ -89,6 +89,14 @@ func recenter(force: bool = false) -> bool:
 		return false
 
 	xr_origin.global_transform = compute_origin_transform(xr_camera.transform, anchor.global_transform)
+	# Anchors are floor positions. The Stage pose already contains physical eye
+	# height; adding a player height or a saved Y offset would count it twice.
+	print("[SharedSpaceAlignment] role=%s reference_space=%d world_scale=%.3f floor_y=%.3f tracked_head_y=%.3f origin_y=%.3f world_head_y=%.3f" % [
+		"ground" if _runtime_profile.is_ground() else "sky",
+		int(ProjectSettings.get_setting("xr/openxr/reference_space", 1)),
+		XRServer.world_scale, anchor.global_position.y, xr_camera.position.y,
+		xr_origin.global_position.y, xr_camera.global_position.y,
+	])
 	_is_aligned = true
 	_force_recenter_pending = false
 	_timeout_reported = false
@@ -172,7 +180,9 @@ func _has_head_tracking() -> bool:
 	if tracker == null:
 		return false
 	var pose = tracker.get_pose(DEFAULT_POSE_NAME)
-	return pose != null and pose.has_tracking_data
+	# A retained or inferred pose is not enough to establish the initial frame.
+	return pose != null and pose.has_tracking_data \
+		and pose.tracking_confidence == XRPose.XR_TRACKING_CONFIDENCE_HIGH
 
 
 func _bind_recenter_controllers(xr_origin: XROrigin3D) -> void:

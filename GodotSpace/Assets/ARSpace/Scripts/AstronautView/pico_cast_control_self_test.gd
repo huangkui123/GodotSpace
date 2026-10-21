@@ -13,6 +13,7 @@ var _failures: Array[String] = []
 func _init() -> void:
 	await process_frame
 	_test_control_message_validation()
+	_test_usb_control_validation()
 	_test_pico_listen_flag_is_removed_for_decoder()
 	_test_control_failure_is_reported()
 	_test_missing_ffmpeg_decoder_is_reported()
@@ -75,6 +76,25 @@ func _test_pico_listen_flag_is_removed_for_decoder() -> void:
 		"PICO's server-side listen flag must not reach the FFmpeg consumer."
 	)
 	source.queue_free()
+
+
+func _test_usb_control_validation() -> void:
+	var receiver := ControlReceiverScript.new()
+	receiver.set("_shared_token", "a".repeat(48))
+	var request := {"version": 1, "type": "pico_cast_session", "state": "live",
+		"authorization": "a".repeat(48), "transport": "usb",
+		"stream_url": "http://192.168.1.20:35451/" + "c".repeat(48) + "/video.ts"}
+	_expect(receiver.call("_accept_message", JSON.stringify(request)), "Authenticated USB stream should be accepted.")
+	var metadata: Dictionary = receiver.call("get_current_metadata")
+	_expect(metadata.transport == "usb" and not metadata.has("stream_url") and not metadata.has("authorization"),
+		"USB metadata must retain transport without duplicating secrets.")
+	request.authorization = "wrong-token"
+	_expect(not receiver.call("_accept_message", JSON.stringify(request)), "USB requires the same control authentication as RTMP.")
+	request.authorization = "a".repeat(48)
+	for invalid_url in ["file:///etc/passwd", "http://127.0.0.1:80/admin", "http://127.0.0.1:99999/" + "a".repeat(48) + "/video.ts"]:
+		request.stream_url = invalid_url
+		_expect(not receiver.call("_accept_message", JSON.stringify(request)), "Invalid USB URL must be rejected.")
+	receiver.free()
 
 
 func _test_control_failure_is_reported() -> void:

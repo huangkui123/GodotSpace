@@ -1,0 +1,1138 @@
+extends Node
+
+signal command_routed(request_id: String, intent: String, speaker_peer_id: int)
+signal assistant_interaction_state_changed(speaker_peer_id: int, state: String, text: String)
+
+const ROUTE_QWEN_FIRST := "QWEN_FIRST"
+const Execution := preload("res://Assets/ARSpace/Scripts/AI/LocalAgent/local_agent_execution.gd")
+const SERVER_PEER_ID := 1
+const SNAPSHOT_TIMEOUT_SECONDS := 3.0
+const REQUEST_TIMEOUT_MSEC := 90_000
+const MAX_DEBUG_EVENTS := 64
+const REQUIRED_WAKE_WORD := "助手"
+const WAKE_COMMAND_TIMEOUT_SECONDS := 10.0
+const PARTIAL_COMMAND_SETTLE_SECONDS := 5.0
+const FINAL_COMMAND_SETTLE_SECONDS := 1.2
+const WAKE_COMMAND_SEPARATORS := ",，:：。.!！?？;；、…"
+const OpenAlbumAdapterScript := preload("res://Assets/ARSpace/Scripts/AI/LocalAgent/open_album_tool_adapter.gd")
+
+var _requests: Dictionary = {}
+var _operation_to_request: Dictionary = {}
+var _recent_events: Array[Dictionary] = []
+var _wake_sessions: Dictionary = {}
+var _spoken_requests: Dictionary = {}
+var _local_owner_id := 0
+
+
+func _ready() -> void:
+	_connect_speech.call_deferred()
+	multiplayer.peer_disconnected.connect(_on_speaker_disconnected)
+	var voice_chat := get_node_or_null("/root/VoiceChat")
+	if voice_chat != null and voice_chat.has_signal("voice_transcript_received"):
+		voice_chat.voice_transcript_received.connect(_on_voice_transcript_received)
+	if voice_chat != null and voice_chat.has_signal("assistant_wake_requested"):
+		voice_chat.assistant_wake_requested.connect(_on_assistant_wake_requested)
+		voice_chat.assistant_capture_ready.connect(_on_capture_ready)
+		voice_chat.assistant_capture_failed.connect(_on_capture_failed)
+	var assistant := get_node_or_null("/root/LLMAssistantService")
+	if assistant != null:
+		if assistant.has_method("set_external_transcript_router_enabled"):
+			assistant.call("set_external_transcript_router_enabled", true)
+	var agent := get_node_or_null("/root/LocalAgentClient")
+	if agent != null:
+		agent.replace_tool("open_album", Callable(self, "_tool_open_album"))
+		agent.register_tool("close_album", Callable(self, "_tool_close_album"))
+		agent.register_tool("next_album_page", Callable(self, "_tool_next_album_page"))
+		agent.register_tool("go_to_album_page", Callable(self, "_tool_go_to_album_page"))
+		agent.register_tool("previous_album_page", Callable(self, "_tool_previous_album_page"))
+		agent.register_tool("get_album_state", Callable(self, "_tool_get_album_state"))
+		agent.register_tool("open_task_guide", Callable(self, "_tool_open_task_guide"))
+		agent.register_tool("close_task_guide", Callable(self, "_tool_close_task_guide"))
+		agent.register_tool("get_current_task_step", Callable(self, "_tool_get_current_task_step"))
+		agent.register_tool("next_task_step", Callable(self, "_tool_next_task_step"))
+		agent.register_tool("go_to_task_guide_page", Callable(self, "_tool_go_to_task_guide_page"))
+		agent.register_tool("previous_task_step", Callable(self, "_tool_previous_task_step"))
+		agent.register_tool("replay_current_task_step", Callable(self, "_tool_replay_current_task_step"))
+		agent.register_tool("query_task_knowledge", Callable(self, "_tool_query_task_knowledge"))
+		agent.assistant_routing_decision_received.connect(_on_agent_routing_decision)
+		agent.assistant_final_received.connect(_on_agent_answer)
+		agent.run_error_received.connect(_on_agent_error)
+		agent.connection_state_changed.connect(_on_gateway_connection_changed)
+		agent.confirmation_received.connect(_on_confirmation_received)
+		agent.confirmation_state_received.connect(_on_confirmation_state)
+
+
+func _process(_delta: float) -> void:
+	if Execution.is_local():
+		var current_id := Execution.local_peer_id(multiplayer)
+		if _local_owner_id > 0 and _local_owner_id != current_id:
+			_on_speaker_disconnected(_local_owner_id)
+		_local_owner_id = current_id
+	_expire_agent_requests(Time.get_ticks_msec())
+	_expire_confirmation_leases(Time.get_ticks_msec())
+
+
+func _expire_confirmation_leases(now_msec: int) -> void:
+	for peer_id in _wake_sessions.keys().duplicate():
+		var session := _wake_sessions[peer_id] as Dictionary
+		var prepare_deadline := int(session.get("capture_deadline_msec", 0))
+		if bool(session.get("capture_preparing", false)) and prepare_deadline > 0 and now_msec >= prepare_deadline:
+			_on_capture_failed(int(peer_id), "等待录音就绪超时。")
+			continue
+		var deadline := int(session.get("confirmation_deadline_msec", 0))
+		if deadline > 0 and now_msec >= deadline:
+			var history := session.get("history_interaction", {}) as Dictionary
+			_on_confirmation_state(str(history.get("confirmation_id", "")), false)
+
+
+func _expire_agent_requests(now_msec: int) -> void:
+	for request_id in _requests.keys().duplicate():
+		var record := _requests[request_id] as Dictionary
+		if now_msec - int(record.get("created_msec", now_msec)) < REQUEST_TIMEOUT_MSEC:
+			continue
+		var agent := get_node_or_null("/root/LocalAgentClient")
+		if agent != null:
+			agent.cancel_request(str(request_id))
+		_fail_request(str(request_id), "request_timeout", "等待助手超时；已发出的操作可能已执行，请检查当前界面。")
+
+
+func _on_gateway_connection_changed(connected: bool) -> void:
+	if connected or not is_inside_tree():
+		return
+	for peer_id in _wake_sessions.keys().duplicate():
+		_spoken_requests.erase(peer_id)
+		var speech := get_node_or_null("/root/AssistantSpeech")
+		if speech != null:
+			speech.cancel_for_peer(int(peer_id))
+		_publish_interaction_state(int(peer_id), "failed", "助手连接中断，请恢复连接后重新唤醒。")
+	_wake_sessions.clear()
+	for request_id in _requests.keys().duplicate():
+		_fail_request(str(request_id), "gateway_disconnected", "助手连接中断；已发出的操作结果可能未知，请检查当前界面。")
+
+
+func _on_confirmation_received(request_id: String, confirmation_id: String) -> void:
+	if _requests.has(request_id):
+		_requests[request_id]["confirmation_id"] = confirmation_id
+
+
+func _sync_confirmation(peer_id: int, phase: String) -> void:
+	var session := _wake_sessions.get(peer_id, {}) as Dictionary
+	var history := session.get("history_interaction", {}) as Dictionary
+	var confirmation_id := str(history.get("confirmation_id", ""))
+	var agent := get_node_or_null("/root/LocalAgentClient")
+	if not confirmation_id.is_empty() and agent != null:
+		agent.update_confirmation("speaker-%d" % peer_id, confirmation_id, phase)
+
+
+func _on_confirmation_state(confirmation_id: String, active: bool, ttl_seconds: float = -1.0) -> void:
+	if confirmation_id.is_empty():
+		return
+	for peer_id in _wake_sessions.keys().duplicate():
+		var history := (_wake_sessions[peer_id] as Dictionary).get("history_interaction", {}) as Dictionary
+		if str(history.get("confirmation_id", "")) != confirmation_id:
+			continue
+		if active and ttl_seconds > 0.0:
+			_wake_sessions[peer_id]["confirmation_deadline_msec"] = Time.get_ticks_msec() + int(ttl_seconds * 1000.0)
+			if ttl_seconds < WAKE_COMMAND_TIMEOUT_SECONDS and str(_wake_sessions[peer_id].get("speech_id", "")).is_empty():
+				_publish_interaction_state(int(peer_id), "listening", "请在确认有效期内回答。", {
+					"command_text": str(_wake_sessions[peer_id].get("command", "")), "countdown_seconds": ttl_seconds,
+				})
+			continue
+		_wake_sessions.erase(peer_id)
+		_spoken_requests.erase(peer_id)
+		var speech := get_node_or_null("/root/AssistantSpeech")
+		if speech != null:
+			speech.cancel_for_peer(int(peer_id))
+		_publish_interaction_state(int(peer_id), "timeout", "确认已失效，请重新说明要执行的操作。")
+
+
+func classify_text(_text: String) -> String:
+	# Kept only for compatibility with older self-tests. Routing is now Qwen-first.
+	return ROUTE_QWEN_FIRST
+
+
+func route_transcript_for_test(data: Dictionary) -> String:
+	return _route_final_transcript(data)
+
+
+func get_request_debug_state(request_id: String) -> Dictionary:
+	return (_requests.get(request_id, {}) as Dictionary).duplicate(true)
+
+
+func get_debug_state() -> Dictionary:
+	return {
+		"active_request_count": _requests.size(),
+		"wake_session_count": _wake_sessions.size(),
+		"pending_remote_operation_count": _operation_to_request.size(),
+		"recent_events": _recent_events.duplicate(true),
+	}
+
+
+func _on_voice_transcript_received(data: Dictionary) -> void:
+	if str(data.get("source", "")) == "llm_assistant":
+		return
+	if not _owns_speaker(int(data.get("speaker_peer_id", 0))) or bool(data.get("history_only", false)):
+		return
+	_handle_wake_transcript(data)
+
+
+func _on_assistant_wake_requested(speaker_peer_id: int) -> void:
+	if not _owns_speaker(speaker_peer_id):
+		return
+	if speaker_peer_id <= 0:
+		return
+	var existing := _wake_sessions.get(speaker_peer_id, {}) as Dictionary
+	_spoken_requests.erase(speaker_peer_id)
+	var speech := get_node_or_null("/root/AssistantSpeech")
+	if speech != null:
+		speech.call("cancel_for_peer", speaker_peer_id)
+	if bool(existing.get("confirmation", false)):
+		_start_wake_session(
+			speaker_peer_id,
+			-1,
+			true,
+			(existing.get("history_interaction", {}) as Dictionary).duplicate(true)
+		)
+		return
+	_start_wake_session(speaker_peer_id, -1)
+
+
+func _route_final_transcript(data: Dictionary) -> String:
+	if not _owns_speaker(int(data.get("speaker_peer_id", SERVER_PEER_ID))):
+		return ""
+	var text := _strip_required_wake_word(str(data.get("text", "")))
+	if text.is_empty():
+		return ""
+	var speaker_peer_id := int(data.get("speaker_peer_id", SERVER_PEER_ID))
+	if speaker_peer_id <= 0:
+		speaker_peer_id = SERVER_PEER_ID
+	return _route_command(text, speaker_peer_id)
+
+
+func _route_command(
+	text: String,
+	speaker_peer_id: int,
+	history_interaction: Dictionary = {}
+) -> String:
+	var clean_text := text.strip_edges()
+	if clean_text.is_empty() or not _owns_speaker(speaker_peer_id):
+		return ""
+	var request_id := _new_id("request")
+	var request_record := {
+		"speaker_peer_id": speaker_peer_id,
+		"intent": ROUTE_QWEN_FIRST,
+		"text": clean_text,
+		"status": "preparing",
+		"snapshot": {},
+		"allowed_tools": [],
+		"created_msec": Time.get_ticks_msec(),
+	}
+	if not history_interaction.is_empty():
+		request_record["history_interaction"] = history_interaction.duplicate(true)
+	_requests[request_id] = request_record
+	_record_event("routed", request_id, {"target": "local" if _is_local_target(speaker_peer_id) else "remote"})
+	command_routed.emit(request_id, ROUTE_QWEN_FIRST, speaker_peer_id)
+	_publish_interaction_state(speaker_peer_id, "processing", "正在理解你的请求…")
+	_request_target_snapshot(request_id, speaker_peer_id)
+	return request_id
+
+
+func _strip_required_wake_word(raw_text: String) -> String:
+	var wake_index := raw_text.find(REQUIRED_WAKE_WORD)
+	if wake_index < 0:
+		return ""
+	var text := raw_text.substr(wake_index + REQUIRED_WAKE_WORD.length()).strip_edges()
+	while not text.is_empty() and WAKE_COMMAND_SEPARATORS.contains(text.substr(0, 1)):
+		text = text.substr(1).strip_edges()
+	return text
+
+
+func _handle_wake_transcript(data: Dictionary) -> void:
+	var text := str(data.get("text", "")).strip_edges()
+	if text.is_empty():
+		return
+	var speaker_peer_id := int(data.get("speaker_peer_id", SERVER_PEER_ID))
+	if speaker_peer_id <= 0:
+		speaker_peer_id = SERVER_PEER_ID
+	var utterance_id := int(data.get("utterance_id", 0))
+	var is_final := bool(data.get("is_final", false))
+	var session := _wake_sessions.get(speaker_peer_id, {}) as Dictionary
+	if not str(session.get("speech_id", "")).is_empty():
+		return
+	if session.is_empty():
+		if text.find(REQUIRED_WAKE_WORD) < 0:
+			return
+		session = _start_wake_session(speaker_peer_id, utterance_id)
+
+	var utterance_text := _strip_required_wake_word(text) if utterance_id == int(session.get("wake_utterance_id", -1)) else text
+	if not bool(session.get("confirmation", false)) and _is_local_wake_cancel(utterance_text):
+		_wake_sessions.erase(speaker_peer_id)
+		_publish_interaction_state(speaker_peer_id, "idle")
+		return
+
+	var utterance_order := session.get("utterance_order", []) as Array
+	var utterances := session.get("utterances", {}) as Dictionary
+	if not utterance_order.has(utterance_id):
+		utterance_order.append(utterance_id)
+	utterances[utterance_id] = utterance_text
+	session["utterance_order"] = utterance_order
+	session["utterances"] = utterances
+	session["command"] = _join_wake_session_command(session)
+	session["revision"] = int(session.get("revision", 0)) + 1
+	_wake_sessions[speaker_peer_id] = session
+
+	var command_text := str(session.get("command", "")).strip_edges()
+	if bool(session.get("confirmation", false)):
+		_sync_confirmation(speaker_peer_id, "listening")
+	var countdown_seconds := _command_settle_seconds(is_final) if not command_text.is_empty() else WAKE_COMMAND_TIMEOUT_SECONDS
+	_publish_interaction_state(speaker_peer_id, "listening", "我在，请说。", {
+		"command_text": command_text,
+		"countdown_seconds": countdown_seconds,
+		"is_final_segment": is_final,
+	})
+	if command_text.is_empty():
+		return
+	if bool(session.get("confirmation", false)) and is_final:
+		var history_interaction := (session.get("history_interaction", {}) as Dictionary).duplicate(true)
+		if not history_interaction.is_empty():
+			history_interaction["confirmation_reply"] = command_text
+		_wake_sessions.erase(speaker_peer_id)
+		_route_command(command_text, speaker_peer_id, history_interaction)
+		return
+	_submit_wake_session_after_silence(
+		speaker_peer_id,
+		str(session.get("id", "")),
+		int(session.get("revision", 0)),
+		countdown_seconds
+	)
+
+
+func _start_wake_session(
+	speaker_peer_id: int,
+	wake_utterance_id: int,
+	confirmation: bool = false,
+	history_interaction: Dictionary = {}
+) -> Dictionary:
+	var session := {
+		"id": _new_id("wake"),
+		"wake_utterance_id": wake_utterance_id,
+		"utterance_order": [],
+		"utterances": {},
+		"command": "",
+		"revision": 0,
+		"confirmation": confirmation,
+		"history_interaction": history_interaction.duplicate(true),
+	}
+	_wake_sessions[speaker_peer_id] = session
+	var voice := get_node_or_null("/root/VoiceChat")
+	if wake_utterance_id == -1 and voice != null and bool(voice.call("is_assistant_capture_preparing", speaker_peer_id)):
+		session["capture_preparing"] = true
+		session["capture_deadline_msec"] = Time.get_ticks_msec() + 15000
+		_publish_interaction_state(speaker_peer_id, "connecting", "正在连接语音识别，请稍候…")
+		if confirmation:
+			_sync_confirmation(speaker_peer_id, "speaking")
+		return session
+	var prompt := "请直接回答是或不是。" if confirmation else "我在，请说。"
+	_publish_interaction_state(speaker_peer_id, "listening", prompt, {
+		"command_text": "",
+		"countdown_seconds": WAKE_COMMAND_TIMEOUT_SECONDS,
+	})
+	_expire_wake_session(speaker_peer_id, str(session.get("id", "")))
+	if confirmation:
+		_sync_confirmation(speaker_peer_id, "listening")
+	return session
+
+
+func _on_capture_ready(peer_id: int) -> void:
+	var session := _wake_sessions.get(peer_id, {}) as Dictionary
+	if not bool(session.get("capture_preparing", false)):
+		return
+	_start_wake_session(peer_id, -1, bool(session.get("confirmation", false)), session.get("history_interaction", {}) as Dictionary)
+
+
+func _on_capture_failed(peer_id: int, message: String) -> void:
+	var session := _wake_sessions.get(peer_id, {}) as Dictionary
+	if not bool(session.get("capture_preparing", false)):
+		return
+	session["capture_preparing"] = false
+	session["capture_deadline_msec"] = 0
+	if not bool(session.get("confirmation", false)):
+		_wake_sessions.erase(peer_id)
+	_publish_interaction_state(peer_id, "failed", "语音识别连接失败，请重新听写：%s" % message)
+
+
+func _connect_speech() -> void:
+	var speech := get_node_or_null("/root/AssistantSpeech")
+	if speech != null and not speech.speech_finished.is_connected(_on_speech_finished):
+		speech.speech_finished.connect(_on_speech_finished)
+
+
+func _on_speaker_disconnected(peer_id: int) -> void:
+	_sync_confirmation(peer_id, "cancel")
+	_spoken_requests.erase(peer_id)
+	_wake_sessions.erase(peer_id)
+	for request_id in _requests.keys().duplicate():
+		if int((_requests[request_id] as Dictionary).get("speaker_peer_id", 0)) == peer_id:
+			var agent := get_node_or_null("/root/LocalAgentClient")
+			if agent != null:
+				agent.cancel_request(str(request_id))
+			_fail_request(str(request_id), "target_offline", "请求所属客户端已断开；已发出操作的结果可能未知。")
+
+
+func _speak_answer(peer_id: int, request_id: String, answer: String) -> bool:
+	var speech := get_node_or_null("/root/AssistantSpeech")
+	if speech == null or not bool(speech.call("speak_for_peer", peer_id, request_id, answer)):
+		return false
+	_spoken_requests[peer_id] = request_id
+	_publish_interaction_state(peer_id, "speaking", "正在播报，点击按钮可停止并开始听写。")
+	return true
+
+
+func _on_speech_finished(peer_id: int, request_id: String, _success: bool) -> void:
+	if str(_spoken_requests.get(peer_id, "")) != request_id:
+		return
+	_spoken_requests.erase(peer_id)
+	var session := _wake_sessions.get(peer_id, {}) as Dictionary
+	if str(session.get("speech_id", "")) == request_id:
+		_start_wake_session(peer_id, -1, true, session.get("history_interaction", {}) as Dictionary)
+	elif session.is_empty():
+		_publish_interaction_state(peer_id, "idle")
+
+
+func _join_wake_session_command(session: Dictionary) -> String:
+	var parts: Array[String] = []
+	var utterances := session.get("utterances", {}) as Dictionary
+	for utterance_id in session.get("utterance_order", []) as Array:
+		var part := str(utterances.get(utterance_id, "")).strip_edges()
+		if not part.is_empty():
+			parts.append(part)
+	return " ".join(parts).strip_edges()
+
+
+func _command_settle_seconds(is_final_segment: bool) -> float:
+	return FINAL_COMMAND_SETTLE_SECONDS if is_final_segment else PARTIAL_COMMAND_SETTLE_SECONDS
+
+
+func _submit_wake_session_after_silence(
+	speaker_peer_id: int,
+	session_id: String,
+	revision: int,
+	settle_seconds: float
+) -> void:
+	await get_tree().create_timer(settle_seconds).timeout
+	var session := _wake_sessions.get(speaker_peer_id, {}) as Dictionary
+	if session.is_empty() or str(session.get("id", "")) != session_id:
+		return
+	if int(session.get("revision", 0)) != revision:
+		return
+	var command_text := str(session.get("command", "")).strip_edges()
+	if command_text.is_empty():
+		return
+	var history_interaction := (session.get("history_interaction", {}) as Dictionary).duplicate(true)
+	if bool(session.get("confirmation", false)) and not history_interaction.is_empty():
+		history_interaction["confirmation_reply"] = command_text
+	_wake_sessions.erase(speaker_peer_id)
+	_route_command(command_text, speaker_peer_id, history_interaction)
+
+
+func _expire_wake_session(speaker_peer_id: int, session_id: String) -> void:
+	await get_tree().create_timer(WAKE_COMMAND_TIMEOUT_SECONDS).timeout
+	var session := _wake_sessions.get(speaker_peer_id, {}) as Dictionary
+	if session.is_empty() or str(session.get("id", "")) != session_id:
+		return
+	if not str(session.get("speech_id", "")).is_empty():
+		return
+	if not str(session.get("command", "")).strip_edges().is_empty():
+		return
+	_sync_confirmation(speaker_peer_id, "cancel")
+	_wake_sessions.erase(speaker_peer_id)
+	_publish_interaction_state(speaker_peer_id, "timeout", "等待命令超时，请再次呼叫助手。")
+
+
+func _is_local_wake_cancel(text: String) -> bool:
+	var normalized := text.strip_edges().replace("，", "").replace(",", "").replace("。", "")
+	return normalized in ["取消", "算了", "不用了", "不需要了"]
+
+
+func _request_target_snapshot(request_id: String, speaker_peer_id: int) -> void:
+	if _is_local_target(speaker_peer_id):
+		_receive_snapshot(request_id, _execute_get_snapshot())
+	elif _is_peer_connected(speaker_peer_id):
+		rpc_id(speaker_peer_id, "_client_request_task_snapshot", request_id)
+		_expire_snapshot_request(request_id)
+	else:
+		_fail_request(request_id, "target_offline", "The speaking client is offline.")
+
+
+@rpc("authority", "call_remote", "reliable")
+func _client_request_task_snapshot(request_id: String) -> void:
+	if Execution.is_local():
+		return
+	rpc_id(SERVER_PEER_ID, "_server_receive_task_snapshot", request_id, _execute_get_snapshot())
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _server_receive_task_snapshot(request_id: String, result: Dictionary) -> void:
+	if not multiplayer.is_server() or not _requests.has(request_id):
+		return
+	var record := _requests[request_id] as Dictionary
+	if multiplayer.get_remote_sender_id() != int(record.get("speaker_peer_id", 0)):
+		return
+	_receive_snapshot(request_id, result)
+
+
+func _receive_snapshot(request_id: String, result: Dictionary) -> void:
+	if not _requests.has(request_id):
+		return
+	if not bool(result.get("ok", false)):
+		_fail_request(request_id, "snapshot_failed", "Unable to read the current UI state.")
+		return
+	var record := _requests[request_id] as Dictionary
+	var snapshot := (result.get("data", {}) as Dictionary).duplicate(true)
+	record["snapshot"] = snapshot
+	record["allowed_tools"] = _allowed_tools_for_snapshot(snapshot)
+	_requests[request_id] = record
+	_record_event("snapshot_received", request_id, {"tool_count": (record["allowed_tools"] as Array).size()})
+	_submit_agent_request(request_id)
+
+
+func _allowed_tools_for_snapshot(snapshot: Dictionary) -> PackedStringArray:
+	var tools := PackedStringArray()
+	var album := snapshot.get("album", {}) as Dictionary
+	var guide := snapshot.get("task_guide", {}) as Dictionary
+	var album_visible := bool(album.get("visible", false))
+	var guide_visible := bool(guide.get("visible", false))
+	# Put operations for the uniquely visible panel first. This is still only an
+	# authorization list; Qwen makes the semantic routing decision.
+	if guide_visible and not album_visible:
+		_append_task_guide_tools(tools, guide)
+	elif album_visible and not guide_visible:
+		_append_album_tools(tools, album)
+	else:
+		if album_visible:
+			_append_album_tools(tools, album)
+		if guide_visible:
+			_append_task_guide_tools(tools, guide)
+	tools.append("open_album")
+	tools.append("open_task_guide")
+	tools.append("query_task_knowledge")
+	tools.sort()
+	return tools
+
+
+func _append_album_tools(tools: PackedStringArray, album: Dictionary) -> void:
+	if bool(album.get("visible", false)):
+		tools.append("close_album")
+		tools.append("get_album_state")
+		if bool(album.get("can_next", false)):
+			tools.append("next_album_page")
+		tools.append("go_to_album_page")
+		if bool(album.get("can_previous", false)):
+			tools.append("previous_album_page")
+
+
+func _append_task_guide_tools(tools: PackedStringArray, guide: Dictionary) -> void:
+	if bool(guide.get("visible", false)):
+		tools.append("close_task_guide")
+		tools.append("get_current_task_step")
+		if not Execution.is_local():
+			tools.append("replay_current_task_step")
+		if bool(guide.get("can_next", false)):
+			tools.append("next_task_step")
+		tools.append("go_to_task_guide_page")
+		if bool(guide.get("can_previous", false)):
+			tools.append("previous_task_step")
+
+
+func _expire_snapshot_request(request_id: String, timeout_seconds: float = SNAPSHOT_TIMEOUT_SECONDS) -> void:
+	await get_tree().create_timer(timeout_seconds).timeout
+	if _requests.has(request_id) and str((_requests[request_id] as Dictionary).get("status", "")) == "preparing":
+		_fail_request(request_id, "tool_timeout", "Timed out waiting for the target client UI state.")
+
+
+func _submit_agent_request(request_id: String) -> void:
+	if not _requests.has(request_id):
+		return
+	var agent := get_node_or_null("/root/LocalAgentClient")
+	if agent != null and not agent.is_connected_to_gateway() and (
+			DisplayServer.get_name() != "headless" or OS.get_cmdline_user_args().has("--local-agent-autostart")):
+		_requests[request_id]["status"] = "starting_backend"
+		_publish_interaction_state(int(_requests[request_id]["speaker_peer_id"]), "processing", "正在连接智能助手服务，请稍候…")
+		var runtime := get_node_or_null("/root/LocalAgentRuntime")
+		var ready: bool = runtime != null and await runtime.ensure_gateway()
+		# Cancellation, peer disconnect and request timeout can occur while starting.
+		if not _requests.has(request_id):
+			return
+		if not ready:
+			_fail_request(request_id, "backend_unavailable", str(runtime.message) if runtime != null else "智能助手后端未就绪。")
+			return
+	var record := _requests[request_id] as Dictionary
+	if agent == null or not agent.submit_user_message(
+		request_id,
+		str(record.get("text", "")),
+		(record.get("snapshot", {}) as Dictionary).duplicate(true),
+		record.get("allowed_tools", PackedStringArray()),
+		"speaker-%d" % int(record.get("speaker_peer_id", SERVER_PEER_ID)),
+		str((record.get("history_interaction", {}) as Dictionary).get("confirmation_id", ""))
+	):
+		_fail_request(request_id, "target_offline", "The Local Agent Gateway is not connected.")
+		return
+	record["status"] = "agent_running"
+	_requests[request_id] = record
+
+
+func _tool_open_album(arguments: Dictionary, context: Dictionary) -> Dictionary:
+	var validation := _authorize(context, "open_album")
+	if not bool(validation.get("ok", false)):
+		return validation
+	return _execute_or_defer_target_tool(_request_id(context), context, "album_open", arguments)
+
+
+func _tool_close_album(arguments: Dictionary, context: Dictionary) -> Dictionary:
+	return _execute_authorized_empty_tool(arguments, context, "close_album", "album_close")
+
+func _tool_next_album_page(arguments: Dictionary, context: Dictionary) -> Dictionary:
+	return _execute_authorized_empty_tool(arguments, context, "next_album_page", "album_next")
+
+func _tool_go_to_album_page(arguments: Dictionary, context: Dictionary) -> Dictionary:
+	return _execute_authorized_page_tool(arguments, context, "go_to_album_page", "album_goto")
+
+func _tool_previous_album_page(arguments: Dictionary, context: Dictionary) -> Dictionary:
+	return _execute_authorized_empty_tool(arguments, context, "previous_album_page", "album_previous")
+
+func _tool_get_album_state(arguments: Dictionary, context: Dictionary) -> Dictionary:
+	return _execute_authorized_empty_tool(arguments, context, "get_album_state", "album_state")
+
+func _tool_open_task_guide(arguments: Dictionary, context: Dictionary) -> Dictionary:
+	var validation := _authorize(context, "open_task_guide")
+	if not bool(validation.get("ok", false)):
+		return validation
+	if int(arguments.get("task_id", 0)) != 1 or arguments.size() != 1:
+		return _error("invalid_arguments", "Only task_id 1 is enabled.")
+	return _execute_or_defer_target_tool(_request_id(context), context, "guide_open", {"task_id": 1})
+
+func _tool_close_task_guide(arguments: Dictionary, context: Dictionary) -> Dictionary:
+	return _execute_authorized_empty_tool(arguments, context, "close_task_guide", "guide_close")
+
+func _tool_get_current_task_step(arguments: Dictionary, context: Dictionary) -> Dictionary:
+	var validation := _authorize(context, "get_current_task_step")
+	if not bool(validation.get("ok", false)):
+		return validation
+	if not arguments.is_empty():
+		return _error("invalid_arguments", "get_current_task_step does not accept arguments.")
+	return _success(((_requests[_request_id(context)] as Dictionary).get("snapshot", {}) as Dictionary).get("task_guide", {}))
+
+func _tool_next_task_step(arguments: Dictionary, context: Dictionary) -> Dictionary:
+	return _move_task_step(arguments, context, "next_task_step", "guide_advance")
+
+func _tool_go_to_task_guide_page(arguments: Dictionary, context: Dictionary) -> Dictionary:
+	return _execute_authorized_page_tool(arguments, context, "go_to_task_guide_page", "guide_goto")
+
+func _tool_previous_task_step(arguments: Dictionary, context: Dictionary) -> Dictionary:
+	return _move_task_step(arguments, context, "previous_task_step", "guide_previous")
+
+func _tool_replay_current_task_step(arguments: Dictionary, context: Dictionary) -> Dictionary:
+	return _execute_authorized_empty_tool(arguments, context, "replay_current_task_step", "guide_replay")
+
+func _tool_query_task_knowledge(arguments: Dictionary, context: Dictionary) -> Dictionary:
+	var validation := _authorize(context, "query_task_knowledge")
+	if not bool(validation.get("ok", false)):
+		return validation
+	if not arguments.is_empty():
+		return _error("invalid_arguments", "query_task_knowledge does not accept arguments.")
+	var request_id := _request_id(context)
+	_mark_dispatched(request_id, "query_task_knowledge")
+	# Gateway owns evidence selection and answer rendering. Return the current
+	# target snapshot as evidence; no model answer is generated inside Godot.
+	return _success({"entries": _task_knowledge_context_entries(request_id)})
+
+
+func _execute_authorized_empty_tool(arguments: Dictionary, context: Dictionary, tool_name: String, operation: String) -> Dictionary:
+	var validation := _authorize(context, tool_name)
+	if not bool(validation.get("ok", false)):
+		return validation
+	if not arguments.is_empty():
+		return _error("invalid_arguments", "%s does not accept arguments." % tool_name)
+	return _execute_or_defer_target_tool(_request_id(context), context, operation, {})
+
+
+func _execute_authorized_page_tool(arguments: Dictionary, context: Dictionary, tool_name: String, operation: String) -> Dictionary:
+	var validation := _authorize(context, tool_name)
+	if not bool(validation.get("ok", false)):
+		return validation
+	if arguments.size() != 1 or not arguments.has("page") or not _is_positive_integer(arguments.get("page")):
+		return _error("invalid_arguments", "%s requires a positive integer page." % tool_name)
+	return _execute_or_defer_target_tool(_request_id(context), context, operation, {"page": int(arguments.get("page"))})
+
+
+func _is_positive_integer(value: Variant) -> bool:
+	if typeof(value) == TYPE_INT:
+		return int(value) > 0
+	if typeof(value) == TYPE_FLOAT:
+		var number := float(value)
+		return number > 0.0 and is_equal_approx(number, floorf(number))
+	return false
+
+
+func _move_task_step(arguments: Dictionary, context: Dictionary, tool_name: String, operation: String) -> Dictionary:
+	var validation := _authorize(context, tool_name)
+	if not bool(validation.get("ok", false)):
+		return validation
+	if not arguments.is_empty():
+		return _error("invalid_arguments", "%s does not accept arguments." % tool_name)
+	var snapshot := ((_requests[_request_id(context)] as Dictionary).get("snapshot", {}) as Dictionary).get("task_guide", {}) as Dictionary
+	return _execute_or_defer_target_tool(_request_id(context), context, operation, {
+		"operation_id": _new_id("operation"),
+		"expected_task_id": int(snapshot.get("task_id", 0)),
+		"expected_page_index": int(snapshot.get("page_index", 0)),
+	})
+
+
+func _authorize(context: Dictionary, tool_name: String) -> Dictionary:
+	if Execution.is_local() and not tool_name in Execution.LOCAL_UI_TOOLS:
+		return _error("permission_denied", "Shared-scene operations require Server authorization.")
+	var request_id := _request_id(context)
+	if request_id.is_empty() or not _requests.has(request_id):
+		return _error("permission_denied", "The request is no longer active.")
+	var record := _requests[request_id] as Dictionary
+	if not (record.get("allowed_tools", PackedStringArray()) as PackedStringArray).has(tool_name):
+		return _error("permission_denied", "This tool is not authorized for the current UI state.")
+	if str(record.get("status", "")) in ["tool_dispatched", "cancelled", "completed"]:
+		return _error("permission_denied", "The request is no longer mutable.")
+	return _success({})
+
+
+func _request_id(context: Dictionary) -> String:
+	return str(context.get("request_id", ""))
+
+
+func _execute_or_defer_target_tool(request_id: String, context: Dictionary, operation: String, arguments: Dictionary) -> Dictionary:
+	if not _requests.has(request_id):
+		return _error("permission_denied", "The request is no longer active.")
+	var record := _requests[request_id] as Dictionary
+	var speaker_peer_id := int(record.get("speaker_peer_id", 0))
+	if Execution.is_local() and not _is_local_target(speaker_peer_id):
+		return _error("permission_denied", "Local inference cannot operate another peer's UI.")
+	_mark_dispatched(request_id, operation)
+	if _is_local_target(speaker_peer_id):
+		var local_result := _execute_target_tool(operation, arguments)
+		_record_verified_ui_result(request_id, operation, local_result)
+		return local_result
+	if not _is_peer_connected(speaker_peer_id):
+		return _error("target_offline", "The speaking client is offline.")
+	var tool_call_id := str(context.get("tool_call_id", ""))
+	if tool_call_id.is_empty():
+		return _error("invalid_tool_call", "tool_call_id is required for remote execution.")
+	_operation_to_request[tool_call_id] = request_id
+	rpc_id(speaker_peer_id, "_client_execute_task_tool", request_id, tool_call_id, operation, arguments)
+	return {"__deferred__": true}
+
+
+func _mark_dispatched(request_id: String, operation: String) -> void:
+	if not _requests.has(request_id):
+		return
+	var record := _requests[request_id] as Dictionary
+	record["status"] = "tool_dispatched"
+	record["last_operation"] = operation
+	_requests[request_id] = record
+	_record_event("tool_dispatched", request_id, {"operation": operation})
+	_publish_interaction_state(int(record.get("speaker_peer_id", SERVER_PEER_ID)), "executing", "正在执行：%s" % _operation_label(operation))
+
+
+func _operation_label(operation: String) -> String:
+	var labels := {
+		"album_open": "打开相册",
+		"album_close": "关闭相册",
+		"album_next": "翻到相册下一页",
+		"album_previous": "返回相册上一页",
+		"album_goto": "跳转相册页面",
+		"guide_open": "打开工作清单",
+		"guide_close": "关闭工作清单",
+		"guide_advance": "切换到下一步",
+		"guide_previous": "返回上一步",
+		"guide_goto": "跳转工作清单步骤",
+		"guide_replay": "读取当前步骤",
+		"query_task_knowledge": "查询任务知识",
+	}
+	return str(labels.get(operation, "执行操作"))
+
+
+@rpc("authority", "call_remote", "reliable")
+func _client_execute_task_tool(request_id: String, tool_call_id: String, operation: String, arguments: Dictionary) -> void:
+	if Execution.is_local():
+		return
+	rpc_id(SERVER_PEER_ID, "_server_receive_task_tool_result", request_id, tool_call_id, _execute_target_tool(operation, arguments))
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _server_receive_task_tool_result(request_id: String, tool_call_id: String, result: Dictionary) -> void:
+	if not multiplayer.is_server() or not _requests.has(request_id):
+		return
+	var record := _requests[request_id] as Dictionary
+	if multiplayer.get_remote_sender_id() != int(record.get("speaker_peer_id", 0)) or str(_operation_to_request.get(tool_call_id, "")) != request_id:
+		return
+	_operation_to_request.erase(tool_call_id)
+	_record_verified_ui_result(request_id, str(record.get("last_operation", "")), result)
+	_complete_deferred_tool_call(tool_call_id, result)
+
+
+func _execute_target_tool(operation: String, arguments: Dictionary) -> Dictionary:
+	if operation == "album_open":
+		return OpenAlbumAdapterScript.new().execute(arguments)
+	if operation == "album_close":
+		return OpenAlbumAdapterScript.new().execute_action("close")
+	if operation == "album_next":
+		return OpenAlbumAdapterScript.new().execute_action("next")
+	if operation == "album_goto":
+		return OpenAlbumAdapterScript.new().execute_action("goto", arguments)
+	if operation == "album_previous":
+		return OpenAlbumAdapterScript.new().execute_action("previous")
+	if operation == "album_state":
+		return OpenAlbumAdapterScript.new().execute_action("state")
+	if operation == "guide_open":
+		var search_root := get_tree().current_scene if get_tree().current_scene != null else get_tree().root
+		var list_view := _find_node_with_method(search_root, "open_task_by_id")
+		return list_view.call("open_task_by_id", int(arguments.get("task_id", 0))) if list_view != null else _error("not_ready", "The task list view is not ready.")
+	var detail := _resolve_task_detail()
+	if detail == null:
+		return _error("not_ready", "The task detail view is not ready.")
+	if operation == "guide_close":
+		return detail.call("close_task_guide")
+	if operation == "guide_replay":
+		return detail.call("replay_current_task_step_with_result")
+	if operation == "guide_advance":
+		return detail.call("advance_if_index", str(arguments.get("operation_id", "")), int(arguments.get("expected_task_id", 0)), int(arguments.get("expected_page_index", 0)))
+	if operation == "guide_goto":
+		return detail.call("go_to_page", int(arguments.get("page", 0)))
+	if operation == "guide_previous":
+		return detail.call("retreat_if_index", str(arguments.get("operation_id", "")), int(arguments.get("expected_task_id", 0)), int(arguments.get("expected_page_index", 0)))
+	return _error("permission_denied", "Unsupported UI operation.")
+
+
+func _execute_get_snapshot() -> Dictionary:
+	var album_result := OpenAlbumAdapterScript.new().execute_action("state")
+	var album: Dictionary = {"visible": false}
+	if bool(album_result.get("ok", false)):
+		album = album_result.get("data", {}) as Dictionary
+	var guide: Dictionary = {"visible": false}
+	var detail := _resolve_task_detail()
+	if detail != null:
+		var guide_result: Dictionary = detail.call("get_task_snapshot", true)
+		if bool(guide_result.get("ok", false)):
+			guide = guide_result.get("data", {}) as Dictionary
+			guide["visible"] = true
+	guide["can_next"] = bool(guide.get("visible", false)) and int(guide.get("page_index", 0)) < int(guide.get("page_count", 0))
+	guide["can_previous"] = bool(guide.get("visible", false)) and int(guide.get("page_index", 0)) > 1
+	return _success({"album": album, "task_guide": guide})
+
+
+func _task_knowledge_context_entries(request_id: String) -> Array[Dictionary]:
+	if not _requests.has(request_id):
+		return []
+	var snapshot := ((_requests[request_id] as Dictionary).get("snapshot", {}) as Dictionary).get("task_guide", {}) as Dictionary
+	if not bool(snapshot.get("visible", false)):
+		return []
+	var current := snapshot.get("current_step", {}) as Dictionary
+	return [{
+		"id": "voice-current-task-step",
+		"title": str(snapshot.get("task_title", "当前任务")),
+		"tags": ["当前任务", "当前步骤", str(current.get("title", ""))],
+		"content": "任务：%s\n当前页：%d/%d\n当前步骤：%s\n要求：%s" % [str(snapshot.get("task_title", "当前任务")), int(snapshot.get("page_index", 0)), int(snapshot.get("page_count", 0)), str(current.get("title", "")), str(current.get("info", ""))],
+	}]
+
+
+func _complete_deferred_tool_call(tool_call_id: String, result: Dictionary) -> void:
+	var agent := get_node_or_null("/root/LocalAgentClient")
+	if agent != null:
+		agent.complete_deferred_tool_call(tool_call_id, result)
+
+
+func _resolve_task_detail() -> Node:
+	var global_node := get_node_or_null("/root/Global")
+	var detail: Variant = global_node.get("work_list_info_canvas") if global_node != null else null
+	return detail as Node if detail is Node and is_instance_valid(detail) else null
+
+
+func _find_node_with_method(node: Node, method_name: StringName) -> Node:
+	if node == null:
+		return null
+	if node.has_method(method_name):
+		return node
+	for child in node.get_children():
+		var found := _find_node_with_method(child, method_name)
+		if found != null:
+			return found
+	return null
+
+
+func _on_agent_answer(request_id: String, answer: String) -> void:
+	if not _requests.has(request_id):
+		return
+	var record := _requests[request_id] as Dictionary
+	var final_answer := _verified_answer_or_model_answer(record, answer)
+	record["status"] = "completed"
+	_requests[request_id] = record
+	_record_event("completed", request_id, {"elapsed_msec": Time.get_ticks_msec() - int(record.get("created_msec", Time.get_ticks_msec()))})
+	var speaker_peer_id := int(record.get("speaker_peer_id", SERVER_PEER_ID))
+	var needs_confirmation := str(record.get("qwen_route", "")) == "confirm_action"
+	if not needs_confirmation:
+		_record_request_history(request_id, record, final_answer, _is_successful_final_result(record))
+	if not needs_confirmation:
+		_publish_interaction_state(speaker_peer_id, "idle")
+	_publish_answer(final_answer, speaker_peer_id)
+	var speech_started := _speak_answer(speaker_peer_id, request_id, final_answer)
+	_clear_operations_for_request(request_id)
+	_requests.erase(request_id)
+	if needs_confirmation:
+		_start_wake_session(
+			speaker_peer_id,
+			-1,
+			true,
+			_confirmation_history_interaction(request_id, record, final_answer)
+		)
+		if speech_started:
+			_wake_sessions[speaker_peer_id]["speech_id"] = request_id
+			_sync_confirmation(speaker_peer_id, "speaking")
+			_publish_interaction_state(speaker_peer_id, "speaking", "正在播报确认问题；播报结束后请回答是或不是。")
+
+
+func _confirmation_history_interaction(
+	request_id: String,
+	record: Dictionary,
+	clarification_answer: String
+) -> Dictionary:
+	var interaction := (record.get("history_interaction", {}) as Dictionary).duplicate(true)
+	if interaction.is_empty():
+		interaction = {
+			"id": request_id,
+			"question": str(record.get("text", "")).strip_edges(),
+			"clarification_prompts": [],
+		}
+	interaction["confirmation_id"] = str(record.get("confirmation_id", ""))
+	var prompts := interaction.get("clarification_prompts", []) as Array
+	var clean_prompt := clarification_answer.strip_edges()
+	if not clean_prompt.is_empty():
+		prompts.append(clean_prompt)
+	interaction["clarification_prompts"] = prompts
+	return interaction
+
+
+func _on_agent_routing_decision(request_id: String, route: String, tool_name: String) -> void:
+	if not _requests.has(request_id):
+		return
+	var record := _requests[request_id] as Dictionary
+	record["qwen_route"] = route
+	record["qwen_tool_name"] = tool_name
+	_requests[request_id] = record
+	_record_event("agent_decision", request_id, {
+		"route": route,
+		"tool_name": tool_name,
+	})
+
+
+func _on_agent_error(request_id: String, code: String, message: String) -> void:
+	if not _requests.has(request_id):
+		return
+	if code == "too_late" and _requests.has(request_id):
+		return
+	_fail_request(request_id, code, message)
+
+
+func _fail_request(request_id: String, code: String, message: String) -> void:
+	var record := _requests.get(request_id, {}) as Dictionary
+	_record_event("failed", request_id, {"code": code, "elapsed_msec": Time.get_ticks_msec() - int(record.get("created_msec", Time.get_ticks_msec()))})
+	var final_answer := "操作未完成：%s（%s）" % [message, code]
+	if not record.is_empty():
+		_record_request_history(request_id, record, final_answer, false, code)
+		_publish_interaction_state(int(record.get("speaker_peer_id", SERVER_PEER_ID)), "failed", final_answer)
+	_publish_answer(final_answer, int(record.get("speaker_peer_id", SERVER_PEER_ID)))
+	var agent := get_node_or_null("/root/LocalAgentClient")
+	if not record.is_empty():
+		_speak_answer(int(record.get("speaker_peer_id", SERVER_PEER_ID)), request_id, final_answer)
+	if agent != null and agent.has_method("abandon_deferred_tool_calls_for_request"):
+		agent.call("abandon_deferred_tool_calls_for_request", request_id)
+	_clear_operations_for_request(request_id)
+	_requests.erase(request_id)
+
+
+func _clear_operations_for_request(request_id: String) -> void:
+	for tool_call_id in _operation_to_request.keys():
+		if str(_operation_to_request[tool_call_id]) == request_id:
+			_operation_to_request.erase(tool_call_id)
+
+
+func _publish_answer(answer: String, speaker_peer_id: int = SERVER_PEER_ID) -> void:
+	var voice_chat := get_node_or_null("/root/VoiceChat")
+	if voice_chat != null and voice_chat.has_method("publish_assistant_transcript"):
+		voice_chat.call("publish_assistant_transcript", answer, "智能助手", speaker_peer_id)
+
+
+func _publish_interaction_state(
+	speaker_peer_id: int,
+	state: String,
+	text: String = "",
+	details: Dictionary = {}
+) -> void:
+	assistant_interaction_state_changed.emit(speaker_peer_id, state, text)
+	var voice_chat := get_node_or_null("/root/VoiceChat")
+	if voice_chat != null and voice_chat.has_method("publish_assistant_interaction_state"):
+		voice_chat.call("publish_assistant_interaction_state", speaker_peer_id, state, text, details)
+
+
+func _record_request_history(
+	request_id: String,
+	record: Dictionary,
+	answer: String,
+	success: bool,
+	error_code: String = ""
+) -> void:
+	var metadata := {
+		"provider": "local_qwen_agent",
+		"route": str(record.get("qwen_route", "direct_answer")),
+		"tool_name": str(record.get("qwen_tool_name", record.get("last_operation", ""))),
+		"error_code": error_code,
+	}
+	var history_interaction := record.get("history_interaction", {}) as Dictionary
+	var history_request_id := str(history_interaction.get("id", request_id)).strip_edges()
+	var history_question := str(history_interaction.get("question", record.get("text", ""))).strip_edges()
+	if not history_interaction.is_empty():
+		metadata["interaction_id"] = history_request_id
+		metadata["clarification_prompts"] = (history_interaction.get("clarification_prompts", []) as Array).duplicate(true)
+		metadata["confirmation_reply"] = str(history_interaction.get("confirmation_reply", "")).strip_edges()
+	var speaker_peer_id := int(record.get("speaker_peer_id", SERVER_PEER_ID))
+	if _is_local_target(speaker_peer_id):
+		_apply_history_entry(history_request_id, history_question, answer, success, metadata)
+	elif _is_peer_connected(speaker_peer_id):
+		rpc_id(
+			speaker_peer_id,
+			"_client_record_assistant_history",
+			history_request_id,
+			history_question,
+			answer,
+			success,
+			metadata
+		)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _client_record_assistant_history(
+	request_id: String,
+	question: String,
+	answer: String,
+	success: bool,
+	metadata: Dictionary
+) -> void:
+	if Execution.is_local() and multiplayer.get_remote_sender_id() > 0:
+		return
+	_apply_history_entry(request_id, question, answer, success, metadata)
+
+
+func _apply_history_entry(
+	request_id: String,
+	question: String,
+	answer: String,
+	success: bool,
+	metadata: Dictionary
+) -> void:
+	var assistant := get_node_or_null("/root/LLMAssistantService")
+	if assistant == null or not assistant.has_method("record_external_qa"):
+		return
+	assistant.call("record_external_qa", request_id, question, answer, success, metadata)
+
+
+func _is_successful_final_result(record: Dictionary) -> bool:
+	var verified := record.get("verified_ui_result", {}) as Dictionary
+	if verified.is_empty():
+		return true
+	var result := verified.get("result", {}) as Dictionary
+	return bool(result.get("ok", false))
+
+
+func _record_verified_ui_result(request_id: String, operation: String, result: Dictionary) -> void:
+	if not _requests.has(request_id) or operation in ["album_state", "guide_replay", "query_task_knowledge"]:
+		return
+	var record := _requests[request_id] as Dictionary
+	record["verified_ui_result"] = {
+		"operation": operation,
+		"result": result.duplicate(true),
+	}
+	_requests[request_id] = record
+
+
+func _verified_answer_or_model_answer(record: Dictionary, model_answer: String) -> String:
+	var verified := record.get("verified_ui_result", {}) as Dictionary
+	if verified.is_empty():
+		return model_answer
+	var operation := str(verified.get("operation", ""))
+	var result := verified.get("result", {}) as Dictionary
+	if not bool(result.get("ok", false)):
+		var error := result.get("error", {}) as Dictionary
+		return "操作未完成：%s（%s）" % [str(error.get("message", "工具执行失败。")), str(error.get("code", "tool_failed"))]
+	var data := result.get("data", {}) as Dictionary
+	var snapshot := data.get("snapshot", {}) as Dictionary
+	if operation == "guide_advance":
+		var current_step := snapshot.get("current_step", {}) as Dictionary
+		var title := str(current_step.get("title", "")).strip_edges()
+		var info := str(current_step.get("info", "")).strip_edges()
+		var message := "已切换到工作清单第 %d 步。" % int(snapshot.get("page_index", 0))
+		if not title.is_empty():
+			message += "接下来：%s。" % title
+		if not info.is_empty():
+			message += info
+		return message
+	if operation == "guide_previous":
+		return "已返回工作清单第 %d 步。" % int(snapshot.get("page_index", 0))
+	if operation == "guide_open":
+		return "已打开工作清单第 %d 步。" % int(snapshot.get("page_index", 1))
+	if operation == "guide_close":
+		return "已关闭工作清单。"
+	if operation == "album_open":
+		return "已打开相册第 %d 页。" % int(data.get("page", 1))
+	if operation == "album_next":
+		return "已切换到相册第 %d 页。" % int(data.get("page", 0))
+	if operation == "album_goto":
+		return "已切换到相册第 %d 页。" % int(data.get("page", 0))
+	if operation == "album_previous":
+		return "已返回相册第 %d 页。" % int(data.get("page", 0))
+	if operation == "album_close":
+		return "已关闭相册。"
+	if operation == "guide_goto":
+		return "已切换到工作清单第 %d 步。" % int(snapshot.get("page_index", 0))
+	return model_answer
+
+
+func _is_local_target(peer_id: int) -> bool:
+	if Execution.endpoint_asr():
+		return peer_id == Execution.local_peer_id(multiplayer)
+	return not multiplayer.has_multiplayer_peer() or peer_id == multiplayer.get_unique_id()
+
+
+func _owns_speaker(peer_id: int) -> bool:
+	if Execution.is_local():
+		return _is_local_target(peer_id)
+	return not multiplayer.has_multiplayer_peer() or multiplayer.is_server()
+
+
+func _is_peer_connected(peer_id: int) -> bool:
+	return multiplayer.has_multiplayer_peer() and multiplayer.get_peers().has(peer_id)
+
+
+func _new_id(prefix: String) -> String:
+	return "%s-%d-%d" % [prefix, Time.get_ticks_usec(), randi()]
+
+
+func _record_event(event_name: String, request_id: String, details: Dictionary) -> void:
+	var event := {"event": event_name, "request_id": request_id, "timestamp_msec": Time.get_ticks_msec()}
+	for key in details.keys():
+		event[key] = details[key]
+	_recent_events.append(event)
+	while _recent_events.size() > MAX_DEBUG_EVENTS:
+		_recent_events.pop_front()
+
+
+func _success(data: Dictionary) -> Dictionary:
+	return {"ok": true, "data": data, "error": null}
+
+
+func _error(code: String, message: String) -> Dictionary:
+	return {"ok": false, "data": {}, "error": {"code": code, "message": message}}

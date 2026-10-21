@@ -111,6 +111,10 @@ func request_enter_workspace() -> bool:
 		_refresh_panel_from_session()
 	recenter_panel()
 	workspace_entered.emit(_local_role)
+	if _local_role == ROLE_SKY:
+		var pipeline := get_tree().get_first_node_in_group("reconstruction_pipeline_controller")
+		if pipeline != null and pipeline.has_method("prepare_on_demand"):
+			pipeline.call("prepare_on_demand")
 	return true
 
 

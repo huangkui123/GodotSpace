@@ -4,6 +4,7 @@ extends Node
 signal opus_packet_captured(packet: PackedByteArray)
 signal speaking_changed(is_speaking: bool)
 signal pcm_frames_captured(frames: PackedVector2Array)
+signal recognition_frames_captured(frames: PackedVector2Array)
 
 const OPUS_EFFECT_CLASS := "AudioEffectOpusChunked"
 
@@ -36,6 +37,22 @@ var capture_mode: String = "AudioStreamMicrophone.mix_audio"
 
 var _mix_frame_accumulator: float = 0.0
 var _synthetic_phase: float = 0.0
+var _last_mix_msec: int = 0
+var _recognition_skip_frames: int = 0
+
+
+func discard_pending_recognition_audio() -> void:
+	# Exclude already queued capture frames from ASR only. Opus/live voice keeps
+	# receiving them. Do not restart WASAPI or flush the shared voice encoder.
+	var elapsed := maxf(0.0, float(Time.get_ticks_msec() - _last_mix_msec) / 1000.0) if _last_mix_msec > 0 else 0.0
+	_recognition_skip_frames = int(ceil(_mix_frame_accumulator + elapsed * _get_audio_sample_rate()))
+
+
+func _emit_recognition_frames(frames: PackedVector2Array) -> void:
+	var skip := mini(_recognition_skip_frames, frames.size())
+	_recognition_skip_frames -= skip
+	if skip < frames.size():
+		recognition_frames_captured.emit(frames.slice(skip))
 
 func _ready() -> void:
 	set_process(false)
@@ -67,6 +84,8 @@ func restart_for_device_change() -> void:
 	_stop_microphone_playback()
 	is_setup = false
 	_mix_frame_accumulator = 0.0
+	_last_mix_msec = 0
+	_recognition_skip_frames = 0
 	_clear_opus_buffers()
 	_clear_debug_peaks()
 	pending_audio_frames.clear()
@@ -149,6 +168,7 @@ func _read_microphone_frames(delta: float) -> void:
 	frames_read_total += frames.size()
 	_sample_input_peak_from(frames)
 	pcm_frames_captured.emit(frames)
+	_emit_recognition_frames(frames)
 	if ptt_active:
 		pending_audio_frames.append_array(frames)
 
@@ -170,10 +190,12 @@ func _read_synthetic_frames(delta: float) -> void:
 	frames_read_total += frames.size()
 	_sample_input_peak_from(frames)
 	pcm_frames_captured.emit(frames)
+	_emit_recognition_frames(frames)
 	if ptt_active:
 		pending_audio_frames.append_array(frames)
 
 func _get_frames_to_mix(delta: float) -> int:
+	_last_mix_msec = Time.get_ticks_msec()
 	var audio_sample_rate := _get_audio_sample_rate()
 	_mix_frame_accumulator += max(delta, 0.0) * float(audio_sample_rate)
 

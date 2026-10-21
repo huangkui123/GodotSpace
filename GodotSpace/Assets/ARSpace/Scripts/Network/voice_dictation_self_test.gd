@@ -1,6 +1,7 @@
 extends SceneTree
 
 const TRANSCRIBER_SCRIPT := preload("res://Assets/ARSpace/Scripts/Network/tencent_asr_transcriber.gd")
+const LOCAL_TRANSCRIBER_SCRIPT := preload("res://Assets/ARSpace/Scripts/Network/local_funasr_transcriber.gd")
 const VOICE_SCENE_PATH := "res://Assets/ARSpace/Scenes/voice_chat_service.tscn"
 
 var _failures: Array[String] = []
@@ -8,11 +9,15 @@ var _failures: Array[String] = []
 
 class MockTranscriber extends Node:
 	var cancel_count: int = 0
+	var finish_count: int = 0
 	var audio_push_count: int = 0
 	var input_active_calls: Array[bool] = []
 
 	func cancel_transcription() -> void:
 		cancel_count += 1
+
+	func finish_transcription() -> void:
+		finish_count += 1
 
 	func push_audio_frames(_frames: PackedVector2Array) -> void:
 		audio_push_count += 1
@@ -36,6 +41,7 @@ func _initialize() -> void:
 func _run() -> void:
 	_check_secret_hygiene()
 	_check_transcriber_lifecycle_api()
+	_check_local_transcriber_lifecycle_api()
 	_check_voice_chat_dictation_api()
 	await _check_dictation_state_machine()
 	if _failures.is_empty():
@@ -67,6 +73,40 @@ func _check_transcriber_lifecycle_api() -> void:
 	transcriber.free()
 
 
+func _check_local_transcriber_lifecycle_api() -> void:
+	var transcriber := LOCAL_TRANSCRIBER_SCRIPT.new()
+	for method_name in [
+		"start_transcription",
+		"finish_transcription",
+		"cancel_transcription",
+		"push_audio_frames",
+		"push_pcm16_audio",
+		"get_debug_state",
+	]:
+		_expect(transcriber.has_method(method_name), "Local FunASR transcriber must expose %s()." % method_name)
+	for signal_name in ["transcribed_msg", "connection_state_changed", "error_occurred"]:
+		_expect(transcriber.has_signal(signal_name), "Local FunASR transcriber must expose %s." % signal_name)
+	var state: Dictionary = transcriber.get_debug_state()
+	_expect(str(state.get("provider", "")) == "funasr", "Local transcriber debug state must identify FunASR.")
+	_expect(str(state.get("endpoint", "")).begins_with("ws://"), "Local FunASR endpoint must be a WebSocket URL.")
+	_expect(transcriber.vad_silence_time == 600, "Local FunASR must use the stable 600 ms silence window.")
+	_expect(transcriber.stable_partial_msec == 1800, "Local FunASR must bound a stalled partial transcript at 1800 ms.")
+	_expect(transcriber.packet_duration_msec == 100, "Local FunASR must use stable 100 ms audio packets.")
+	var transcript_events: Array[Dictionary] = []
+	var transcript_callback := func(is_final: bool, text: String) -> void:
+		transcript_events.append({"is_final": is_final, "text": text})
+	transcriber.transcribed_msg.connect(transcript_callback)
+	transcriber.call("_handle_message", {"type": "transcript", "text": "智能助", "is_final": false})
+	transcriber.call("_handle_message", {"type": "finished"})
+	_expect(transcript_events.size() == 2, "A finished Local FunASR stream must close a dangling partial transcript.")
+	if transcript_events.size() == 2:
+		_expect(bool(transcript_events[-1].get("is_final", false)), "The fallback transcript must be final.")
+		_expect(str(transcript_events[-1].get("text", "")) == "智能助", "The fallback final must preserve the latest partial text.")
+	transcriber.finish_transcription()
+	transcriber.cancel_transcription()
+	transcriber.free()
+
+
 func _check_voice_chat_dictation_api() -> void:
 	var voice_chat := root.get_node_or_null("VoiceChat")
 	_expect(voice_chat != null, "VoiceChat autoload must exist.")
@@ -89,6 +129,7 @@ func _check_voice_chat_dictation_api() -> void:
 	var readiness: Dictionary = voice_chat.get_dictation_readiness()
 	_expect(readiness.has("available"), "Dictation readiness must include available.")
 	_expect(readiness.has("reason"), "Dictation readiness must include reason.")
+	_expect(voice_chat.has_method("get_asr_provider"), "VoiceChat must expose get_asr_provider().")
 
 
 func _check_dictation_state_machine() -> void:
@@ -135,6 +176,13 @@ func _check_dictation_state_machine() -> void:
 	normal_asr.name = "MockNormalAsr"
 	voice_chat.add_child(normal_asr)
 	voice_chat.set("_peer_transcribers", {1: normal_asr})
+	voice_chat.call("_finish_peer_transcription", 1)
+	_expect(normal_asr.finish_count == 1, "Switching to dictation must finalize ordinary ASR instead of cancelling its partial transcript.")
+	_expect(normal_asr.cancel_count == 0, "Finalizing ordinary ASR must not discard the current utterance.")
+	var resumed_normal_asr := MockTranscriber.new()
+	resumed_normal_asr.name = "MockResumedNormalAsr"
+	voice_chat.add_child(resumed_normal_asr)
+	voice_chat.set("_peer_transcribers", {1: resumed_normal_asr})
 	var success_transcriber := _arm_dictation(voice_chat, "success", "finalizing", "已完成说明")
 	voice_chat.call("_on_local_pcm_frames_captured", PackedVector2Array([Vector2(0.1, 0.1)]))
 	_expect(success_transcriber.audio_push_count == 1, "Active dictation should receive local PCM frames.")
@@ -143,7 +191,7 @@ func _check_dictation_state_machine() -> void:
 	_expect(_contains_session(finals, "success"), "Successful dictation must emit one final result.")
 	_expect(_contains_state(states, "success", "completed"), "Successful dictation must reach completed.")
 	_expect(not mock_capture.active_calls.is_empty() and mock_capture.active_calls[-1], "Voice capture must resume after dictation.")
-	_expect(not normal_asr.input_active_calls.is_empty() and normal_asr.input_active_calls[-1], "Normal ASR must resume after dictation.")
+	_expect(not resumed_normal_asr.input_active_calls.is_empty() and resumed_normal_asr.input_active_calls[-1], "Normal ASR must resume after dictation.")
 
 	_arm_dictation(voice_chat, "failure", "capturing", "")
 	voice_chat.call("_fail_dictation", ERR_CANT_CONNECT, "simulated failure")
@@ -189,6 +237,8 @@ func _check_dictation_state_machine() -> void:
 	voice_chat.set("_dictation_state", "idle")
 	if is_instance_valid(normal_asr):
 		normal_asr.queue_free()
+	if is_instance_valid(resumed_normal_asr):
+		resumed_normal_asr.queue_free()
 	if is_instance_valid(mock_capture):
 		mock_capture.queue_free()
 	await process_frame

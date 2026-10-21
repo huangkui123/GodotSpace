@@ -71,6 +71,10 @@ GODOTSPACE_LINGBOT_OUTPUT_PORT
 
 ### 3. Godot 与 PICO
 
+使用仓库根目录 `Start-GodotSpace.cmd` 时，启动台会自动启动 Server / XR Client，并配置 SKY helper 同时发送到本机 `8789` 和 Server `8787`。无需再手动打开 helper、填写地址或点击连接。主程序默认不连接 Lab；天上端进入实时重建工作区后开始预检连接。Lab 服务与上面的 SSH 隧道仍需已准备好。
+
+手动逐个启动时保留以下兼容流程：
+
 1. 启动 PC Ground Server。
 2. 在 PICO 本机手动启动 Spatial Anchor Helper，并让它连接 PC 的 `8787` 端口。
 3. 启动天上 VR 和地面 VR 的 Godot 串流客户端。
