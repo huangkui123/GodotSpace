@@ -1,0 +1,4 @@
+artifacts/*
+!artifacts/.gdignore
+__pycache__/
+.venv/
