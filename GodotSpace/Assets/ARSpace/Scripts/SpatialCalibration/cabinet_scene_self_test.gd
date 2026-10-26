@@ -5,6 +5,10 @@ var failures: Array[String] = []
 
 
 func _initialize() -> void:
+	if OS.get_cmdline_user_args().has("--no-cabinet-receiver"):
+		node_added.connect(func(node: Node):
+			if node.name == "CabinetCalibration":
+				node.set("auto_start_receiver", false))
 	call_deferred("_run")
 
 
@@ -55,6 +59,8 @@ func _run() -> void:
 		_expect(panel != null and panel.visible, "Sky menu opens actual XR surface")
 		var content := cabinet.get("_ui") as Control
 		_expect(content != null and content.get_viewport() is SubViewport, "calibration content is inside VR viewport")
+		_expect(content.name == "CabinetVisualUI", "actual scene entry defaults to CAD recognition")
+		_expect(cabinet.call("_visual_frame") == current_scene.get_node("SpaceBox/SpaceBox/dashiyangui/dashiyangui/MeshRenderer"), "CAD aligns to real experimental cabinet anchor")
 		current_scene.call("set_sky_opacity", Vector3.ZERO)
 		var mesh := panel.get_node("Screen") as MeshInstance3D
 		_expect(not mesh.has_meta(current_scene.SKY_TRANSPARENCY_STATE_META), "calibration UI remains readable when objects are faded")
@@ -67,6 +73,8 @@ func _run() -> void:
 	if OS.get_cmdline_user_args().has("--hold-server"):
 		print("[CabinetSceneTest] Server ready; no cabinet calibration controller or menu")
 		await create_timer(50.0).timeout
+	if OS.get_cmdline_user_args().has("--hold-client"):
+		await create_timer(10.0).timeout
 	var scene := current_scene
 	current_scene = null
 	scene.queue_free()

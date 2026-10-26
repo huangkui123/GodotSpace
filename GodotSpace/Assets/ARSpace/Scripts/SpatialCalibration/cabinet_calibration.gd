@@ -4,6 +4,8 @@ extends Node3D
 ## stay in this process; no calibration RPC, replicated pose or server ACK.
 const Geometry := preload("res://Assets/ARSpace/Scripts/SpatialCalibration/cabinet_geometry.gd")
 const CabinetUI := preload("res://Assets/ARSpace/Scripts/SpatialCalibration/cabinet_calibration_window.gd")
+const VisualUI := preload("res://Assets/ARSpace/Scripts/SpatialCalibration/cabinet_visual_panel.gd")
+const VisualGeometry := preload("res://Assets/ARSpace/Scripts/SpatialCalibration/cabinet_visual_geometry.gd")
 const CabinetScene := preload("res://Assets/ARSpace/Prefabs/CalibrationCabinet.tscn")
 const FrameReceiver := preload("res://Assets/ARSpace/Scripts/RealtimeReconstruction/Capture/pico_frame_receiver.gd")
 const VIEWPORT_SCENE_PATH := "res://addons/godot-xr-tools/objects/viewport_2d_in_3d.tscn"
@@ -18,6 +20,9 @@ const HELPER_PORT := 8789
 @export var local_xr_origin_path := NodePath("")
 @export_range(1, 65535) var helper_port: int = HELPER_PORT
 @export var auto_start_receiver := true
+# Kept for existing four-corner regression fixtures; the product entry uses CAD.
+var use_legacy_panel := false
+@export var visual_target_path := NodePath("../SpaceBox/SpaceBox/dashiyangui")
 
 signal state_changed(state: Dictionary)
 
@@ -41,6 +46,7 @@ var _clock_valid: bool = false
 var _last_timestamp_ns: int = 0
 var _alignment_settle_until_usec: int = 0
 var _applied_alignment_revision: int = -1
+var _visual_points := PackedVector3Array()
 
 
 func is_local_calibrator() -> bool:
@@ -101,7 +107,7 @@ func open_panel(parent_panel: Node = null) -> void:
 		_panel.set("unshaded", true)
 		_panel.set("allow_window_drag", false)
 		_panel.set("input_keyboard", false)
-		_ui = CabinetUI.new()
+		_ui = CabinetUI.new() if use_legacy_panel else VisualUI.new()
 		_ui.set("controller", self)
 		_ui.size = Vector2(1280, 900)
 		_panel.get_node("Viewport").add_child(_ui)
@@ -123,6 +129,8 @@ func open_panel(parent_panel: Node = null) -> void:
 
 
 func close_panel() -> void:
+	if is_instance_valid(_ui) and _ui.has_method("suspend"):
+		_ui.call("suspend")
 	if is_instance_valid(_window):
 		_window.call("close_window")
 
@@ -241,6 +249,10 @@ func _on_capture_connection(_connected: bool) -> void:
 	_clock_valid = false
 	_last_timestamp_ns = 0
 	capture_epoch += 1
+	# A disconnected feed cannot authorize a pending CAD application. A completed
+	# alignment is retained, just as in the existing calibration lifecycle.
+	if state.get("method") == "cad" and state.get("status") == "preview":
+		_set_state({"status": "invalid", "reason": "相机已重新连接，请重新识别柜体。"})
 
 
 ## Low-accuracy deployment uses a stationary capture: keep the head still for
@@ -286,6 +298,8 @@ func confirm_preview() -> bool:
 	if get_head_sample().is_empty():
 		invalidate("本地头部跟踪不可用，不能确认旧标定。")
 		return false
+	if state.get("method") == "cad":
+		return _confirm_visual_preview()
 	var confirmed := state.duplicate(true)
 	confirmed["revision"] = int(state.revision) + 1
 	var measured: Transform3D = Geometry.decode_transform(state.pose)
@@ -302,6 +316,93 @@ func confirm_preview() -> bool:
 	capture_epoch += 1
 	_set_state(confirmed)
 	# Keep controls in reach after rebasing tracking; world geometry stays fixed.
+	_position_panel()
+	return true
+
+
+func _visual_target() -> Node3D:
+	return get_node_or_null(visual_target_path) as Node3D
+
+
+func _visual_frame() -> Node3D:
+	var target := _visual_target()
+	return target.get_node_or_null("dashiyangui/MeshRenderer") as Node3D if target != null else null
+
+
+func show_visual_preview(pose: Transform3D, physical_scale: float, points: Array,
+		offline: bool, epoch: int) -> bool:
+	if not is_local_calibrator() or not VisualGeometry.is_rigid(pose) \
+			or not is_finite(physical_scale) or physical_scale < 0.05 or physical_scale > 2.0 \
+			or points.is_empty() or points.size() > 4000:
+		return false
+	var target_frame := _visual_frame()
+	if not offline and (epoch != capture_epoch or get_head_sample().is_empty() or target_frame == null):
+		return false
+	var cloud := PackedVector3Array()
+	for item in points:
+		if not item is Array or item.size() != 3:
+			return false
+		for coordinate in item:
+			if typeof(coordinate) not in [TYPE_INT, TYPE_FLOAT] or not is_finite(float(coordinate)):
+				return false
+		var point := Vector3(item[0], item[1], item[2])
+		if point.length() > 20:
+			return false
+		cloud.append(point)
+	_visual_points = cloud
+	var target_pose := target_frame.global_transform if target_frame != null else Transform3D.IDENTITY
+	var target_basis := target_pose.basis.orthonormalized()
+	if target_pose.basis.determinant() <= 0 or not VisualGeometry.is_rigid(Transform3D(target_basis, target_pose.origin)):
+		return false
+	_set_state({"status": "preview", "method": "cad", "pose": Geometry.encode_transform(pose),
+		"physical_scale": physical_scale, "offline": offline, "epoch": epoch,
+		"target_pose": Geometry.encode_transform(Transform3D(target_basis, target_pose.origin))})
+	return true
+
+
+func _confirm_visual_preview() -> bool:
+	if int(state.get("epoch", -1)) != capture_epoch:
+		invalidate("旧识别结果已失效，请重新识别。")
+		return false
+	var target := _visual_target()
+	var target_frame := _visual_frame()
+	var origin := _get_local_xr_origin()
+	if target == null or target_frame == null or origin == null:
+		return false
+	var authored: Transform3D = Geometry.decode_transform(state.target_pose)
+	var current := target_frame.global_transform
+	# Do not silently follow animation/user movement of the alignment anchor.
+	if not Transform3D(current.basis.orthonormalized(), current.origin).is_equal_approx(authored):
+		invalidate("场景实验柜位置已变化，请重新识别。")
+		return false
+	var lengths := current.basis.get_scale()
+	if minf(lengths.x, minf(lengths.y, lengths.z)) <= 0 \
+			or absf(lengths.x - lengths.y) > 0.001 or absf(lengths.x - lengths.z) > 0.001:
+		invalidate("场景柜体存在非均匀缩放，无法应用刚体标定。")
+		return false
+	var measured: Transform3D = Geometry.decode_transform(state.pose)
+	var confirmed := state.duplicate(true)
+	confirmed["revision"] = int(state.revision) + 1
+	confirmed["world_alignment"] = Geometry.encode_transform(compute_world_alignment(measured, authored))
+	# Scale ONLY cabinet content around its fixed-frame anchor. XR/world scale
+	# remains one, and player head/hand tracking retains metric distances.
+	var original_target := target.global_transform
+	var adjusted := original_target
+	adjusted.basis *= float(state.physical_scale) / lengths.x
+	target.global_transform = adjusted
+	target.global_position += authored.origin - target_frame.global_position
+	var error := _apply_world_alignment(confirmed)
+	if not error.is_empty():
+		target.global_transform = original_target
+		invalidate(error)
+		return false
+	confirmed["status"] = "confirmed"
+	_alignment_settle_until_usec = Time.get_ticks_usec() + 200_000
+	_head_history.clear()
+	_last_pose_usec = 0
+	latest_frame.clear()
+	capture_epoch += 1
+	_set_state(confirmed)
 	_position_panel()
 	return true
 
@@ -365,6 +466,9 @@ func _render_state() -> void:
 	for child in _model.get_children():
 		_model.remove_child(child)
 		child.queue_free()
+	if state.get("method") == "cad":
+		_render_visual_state()
+		return
 	_render_cabinet()
 	_model.visible = str(state.get("status")) in ["preview", "confirmed"]
 	if not _model.visible:
@@ -404,6 +508,30 @@ func _render_state() -> void:
 	label.pixel_size = 0.002
 	label.position = Vector3(dimensions.x * 0.5, dimensions.y + 0.1, 0)
 	_model.add_child(label)
+
+
+func _render_visual_state() -> void:
+	# Hide the old cuboid only while showing CAD; align the real scene model.
+	_cabinet.visible = false
+	_model.visible = state.get("status") in ["preview", "confirmed"]
+	if not _model.visible or DisplayServer.get_name() == "headless":
+		return
+	var confirmed: bool = state.get("status") == "confirmed"
+	_model.global_transform = Geometry.decode_transform(state.target_pose if confirmed else state.pose)
+	var mesh := ArrayMesh.new()
+	var arrays: Array = []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = _visual_points
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_POINTS, arrays)
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.albedo_color = Color(0.2, 1, 0.55) if confirmed else Color(1, 0.65, 0.1)
+	material.use_point_size = true
+	material.point_size = 3.0
+	var instance := MeshInstance3D.new()
+	instance.mesh = mesh
+	instance.material_override = material
+	_model.add_child(instance)
 
 
 func _render_cabinet() -> void:
