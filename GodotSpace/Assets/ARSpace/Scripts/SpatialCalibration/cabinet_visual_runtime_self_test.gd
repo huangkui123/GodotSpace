@@ -255,27 +255,28 @@ func _run() -> void:
 		(ui.get("_dimensions")[1] as SpinBox).value = 121
 		(ui.get("_source") as OptionButton).select(0)
 		var metadata := CameraFixture.fixture()
-		metadata.merge({"camera_intrinsics_width": 640, "camera_intrinsics_height": 640,
-			"camera_intrinsics_fx": 680.0, "camera_intrinsics_fy": 675.0,
-			"camera_intrinsics_cx": 320.0, "camera_intrinsics_cy": 320.0})
 		var model := preload("res://Assets/ARSpace/Scripts/SpatialCalibration/pico_camera_model.gd")
 		var extrinsic: Transform3D = model.head_from_camera(metadata).transform
 		for frame in fixture.frames:
+			var frame_metadata := metadata.duplicate(true)
+			frame_metadata.merge({"camera_intrinsics_width": frame.width, "camera_intrinsics_height": frame.height,
+				"camera_intrinsics_fx": frame.K[0][0], "camera_intrinsics_fy": frame.K[1][1],
+				"camera_intrinsics_cx": frame.K[0][2], "camera_intrinsics_cy": frame.K[1][2]}, true)
 			var world_cv: Transform3D = Visual.from_row_major(frame.world_from_camera).transform
 			var heads: Array[Transform3D] = []
 			for matrix in frame.get("camera_history", []):
 				var recorded: Transform3D = Visual.from_row_major(matrix).transform
 				heads.append(recorded * Visual.OPENCV_TO_GODOT * extrinsic.affine_inverse())
-			cabinet.injected_frames.append({"timestamp_ns": frame.capture_id, "size": Vector2i(640, 640),
-				"metadata": metadata, "head_world": world_cv * Visual.OPENCV_TO_GODOT * extrinsic.affine_inverse(),
+			cabinet.injected_frames.append({"timestamp_ns": frame.capture_id, "size": Vector2i(frame.width, frame.height),
+				"metadata": frame_metadata, "head_world": world_cv * Visual.OPENCV_TO_GODOT * extrinsic.affine_inverse(),
 				"head_history": heads,
 				"jpeg": Marshalls.base64_to_raw(frame.jpeg_base64), "epoch": cabinet.capture_epoch})
 		ui.call("_begin")
-		var joint_end := Time.get_ticks_msec() + 120_000
+		var joint_end := Time.get_ticks_msec() + 150_000
 		while bool(ui.get("_busy")) and Time.get_ticks_msec() < joint_end:
 			await create_timer(0.05).timeout
 		_expect(not (ui.get("_apply") as Button).disabled,
-			"synthetic moving-view JPEGs pass worker and local pose validation: " + str((ui.get("_status") as Label).text))
+			"recorded moving-view JPEGs pass worker and local pose validation: " + str((ui.get("_status") as Label).text))
 		_expect((ui.get("_result") as Dictionary).get("multiview_fit", {}).get("status") == "candidate",
 			"partial-face joint fit reaches VR preview through actual process")
 		if OS.get_cmdline_user_args().has("--capture-ui") and DisplayServer.get_name() != "headless":

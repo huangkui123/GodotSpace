@@ -72,13 +72,14 @@ def _cliques(neighbors):
 
 
 def choose_timing(cameras_by_delay, intrinsics, pairs):
-    """All members of a selected group must agree pairwise, not just in a chain."""
+    """Require consistent, cycle-supported overlap; missing overlap is unknown."""
     if not pairs:
         return {'status': 'rejected', 'reason': 'timing_features_insufficient', 'matched_pairs': 0}
     ranked = []
     original_errors = []
     for delay, cameras in cameras_by_delay.items():
         neighbors = [set() for _ in cameras]
+        compatible = [set(range(len(cameras))) - {i} for i in range(len(cameras))]
         scores = {}
         for a, b, p, q in pairs:
             if np.linalg.norm(cameras[a][:3, 3] - cameras[b][:3, 3]) < .025:
@@ -91,14 +92,34 @@ def choose_timing(cameras_by_delay, intrinsics, pairs):
                 neighbors[a].add(b)
                 neighbors[b].add(a)
                 scores[a, b] = median
-        for group in _cliques(neighbors):
-            if len(group) < 3:
+            else:
+                compatible[a].discard(b)
+                compatible[b].discard(a)
+        for compatible_group in _cliques(compatible):
+            # Do not discard views simply because they no longer see the same
+            # background patch. Retain the 2-core of measured overlap instead;
+            # a chain without loop evidence still cannot verify timing.
+            core = set(compatible_group)
+            while True:
+                weak = {i for i in core if len(neighbors[i] & core) < 2}
+                if not weak:
+                    break
+                core -= weak
+            if not core:
                 continue
-            positions = np.array([cameras[i][:3, 3] for i in group])
-            if np.max(np.linalg.norm(positions[:, None] - positions[None, :], axis=2)) < .12:
-                continue
-            score = float(np.mean([scores[a, b] for a, b in combinations(group, 2)]))
-            ranked.append((-len(group), score, delay, group))
+            while core:
+                connected, pending = set(), {min(core)}
+                while pending:
+                    vertex = pending.pop()
+                    connected.add(vertex)
+                    pending |= (neighbors[vertex] & core) - connected
+                core -= connected
+                group = sorted(connected)
+                positions = np.array([cameras[i][:3, 3] for i in group])
+                if np.max(np.linalg.norm(positions[:, None] - positions[None, :], axis=2)) < .12:
+                    continue
+                score = float(np.mean([scores[a, b] for a, b in combinations(group, 2) if (a, b) in scores]))
+                ranked.append((-len(group), score, delay, group))
     diagnostic = {'matched_pairs': len(pairs),
                   'arrival_median_epipolar_px': float(np.median(original_errors)) if original_errors else None}
     if not ranked:

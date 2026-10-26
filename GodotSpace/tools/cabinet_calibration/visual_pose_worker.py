@@ -20,7 +20,7 @@ from geometry import load_mesh, sha256
 from rgb_pose import estimate
 import cuboid_pose
 import cuboid_multiview
-from cuboid_faces import face_proposals, pose_seeds
+from cuboid_faces import face_proposals, pose_seeds, partial_pose_seeds
 import camera_timing
 from diagnostic_capture import save_case
 
@@ -194,8 +194,11 @@ def run_job(request: dict, artifacts: Path) -> dict:
         if multiview and kind == 'cuboid':
             proposals = face_proposals(image)
             hypotheses = pose_seeds(image, k, size, camera_up, proposals)
+            partial = partial_pose_seeds(image, k, size, camera_up)
+            hypotheses.extend(partial)
             row['face_proposals'] = len(proposals)
             row['pose_hypotheses'] = len(hypotheses)
+            row['partial_pose_hypotheses'] = len(partial)
             if timing is not None and (timing['status'] != 'verified' or frame_index not in timing['support_indices']):
                 continue
             world_camera = (corrected_cameras[frame_index] if corrected_cameras is not None

@@ -31,10 +31,20 @@ def world_pose(parameters):
 def prepare(image, k, world_from_camera):
     scale = min(1., 640 / max(image.shape[:2]))
     small = cv2.resize(image, None, fx=scale, fy=scale) if scale < 1 else image
-    _, edges = edge_map(small)
+    gray, edges = edge_map(small)
+    enhanced = cv2.createCLAHE(clipLimit=3, tileGridSize=(8, 8)).apply(gray)
+    gx = cv2.Sobel(enhanced, cv2.CV_32F, 1, 0, ksize=3)
+    gy = cv2.Sobel(enhanced, cv2.CV_32F, 0, 1, ksize=3)
+    tangent = (np.arctan2(gy, gx) + np.pi / 2) % np.pi
+    directional = []
+    for angle in np.arange(12) * np.pi / 12:
+        difference = np.abs((tangent - angle + np.pi / 2) % np.pi - np.pi / 2)
+        selected = ((edges != 0) & (difference < np.deg2rad(20))).astype('uint8') * 255
+        directional.append(cv2.distanceTransform(255 - selected, cv2.DIST_L2, 3))
     calibrated = np.asarray(k, float).copy()
     calibrated[:2] *= scale
     return {'distance': cv2.distanceTransform(255 - edges, cv2.DIST_L2, 3),
+            'directional_distance': directional,
             'k': calibrated, 'camera': rigid(world_from_camera), 'scale': scale}
 
 
@@ -60,6 +70,11 @@ def edge_observations(points, pose, view):
                 xy = pixels[valid].astype('float32')
                 residual[valid] = cv2.remap(distance, xy[:, 0, None], xy[:, 1, None],
                                            cv2.INTER_LINEAR).ravel()
+                direction = pixels[-1] - pixels[0]
+                angle = np.arctan2(direction[1], direction[0]) % np.pi
+                oriented = view['directional_distance'][int(round(angle * 12 / np.pi)) % 12]
+                residual[valid] = np.maximum(residual[valid], cv2.remap(
+                    oriented, xy[:, 0, None], xy[:, 1, None], cv2.INTER_LINEAR).ravel())
             sides.append(np.minimum(residual, 15))
             side_masks.append(valid)
         errors.append(np.asarray(sides))
@@ -135,6 +150,7 @@ def fit(views, seeds, size):
         pose = world_pose(optimized.x)
         supported = []
         edge_votes = {}
+        boundary_votes = {}
         scores = []
         view_evidence = []
         for i, view in enumerate(views):
@@ -164,20 +180,29 @@ def fit(views, seeds, size):
                 supported.append(i)
                 for edge in observed:
                     edge_votes[edge] = edge_votes.get(edge, 0) + 1
+                    # Sparse accidental matches on floor tiles must not close
+                    # a face whose top was actually an internal door seam.
+                    if observed[edge] >= .85:
+                        boundary_votes[edge] = boundary_votes.get(edge, 0) + 1
                 scores.append(float(np.mean(list(observed.values()))))
         # Require repeated evidence of both faces, including their unshared
         # edges. A single flat panel or one accidental frame cannot pass.
         face_support = []
+        boundary_support = []
         for index, face in enumerate(FACES):
             if index not in (2, 3):
                 face_support.append(sum(edge_votes.get(tuple(sorted((a, b))), 0) >= 2
                                         for a, b in zip(face, face[1:] + face[:1])))
+                boundary_support.append(sum(boundary_votes.get(tuple(sorted((a, b))), 0) >= 2
+                                            for a, b in zip(face, face[1:] + face[:1])))
         diagnostics['trials'].append({'world_from_model': pose.tolist(),
                                      'supported_view_indices': supported.copy(),
                                      'repeated_edges_per_vertical_face': face_support,
+                                     'repeated_boundaries_per_vertical_face': boundary_support,
                                      'mean_residual_px': float(np.mean(optimized.fun)),
                                      'views': view_evidence})
-        if len(supported) >= 3 and max(face_support) == 4 and sum(n >= 3 for n in face_support) >= 2:
+        if (len(supported) >= 3 and max(boundary_support) == 4
+                and sum(n >= 3 for n in face_support) >= 2):
             centers = cameras[supported]
             target = pose[:3, :3] @ points.mean(0) + pose[:3, 3]
             rays = centers - target

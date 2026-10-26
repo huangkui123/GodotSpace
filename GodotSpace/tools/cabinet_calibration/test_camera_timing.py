@@ -14,10 +14,10 @@ def camera(t):
     return pose
 
 
-def fixture():
+def fixture(times=None):
     rng = np.random.default_rng(123)
     points = rng.uniform([-1, -.8, 3], [1, .8, 5], size=(100, 3))
-    times = [.5, 1.4, 2.1, 3.1]
+    times = [.5, 1.4, 2.1, 3.1] if times is None else times
     k = np.array([[610., 0, 479.5], [0, 610., 359.5], [0, 0, 1]])
     paths = {delay: [camera(t + .12 - delay / 1000) for t in times] for delay in range(0, 401, 10)}
     pixels = []
@@ -26,7 +26,7 @@ def fixture():
         uv = local @ k.T
         pixels.append(uv[:, :2] / uv[:, 2:])
     pairs = [(a, b, pixels[a], pixels[b]) for a, b in combinations(range(len(times)), 2)]
-    return paths, [k] * 4, pairs
+    return paths, [k] * len(times), pairs
 
 
 class CameraTimingTests(TestCase):
@@ -56,6 +56,25 @@ class CameraTimingTests(TestCase):
         paths, intrinsics, pairs = fixture()
         chain = [p for p in pairs if p[1] == p[0] + 1]
         self.assertEqual(choose_timing(paths, intrinsics, chain)['status'], 'rejected')
+
+    def test_overlapping_view_loops_keep_views_without_direct_overlap(self):
+        paths, intrinsics, pairs = fixture([.5, 1.4, 2.1, 3.1, 4.0])
+        loops = [p for p in pairs if {p[0], p[1]} <= {0, 1, 2} or {p[0], p[1]} <= {0, 3, 4}]
+        result = choose_timing(paths, intrinsics, loops)
+        self.assertEqual(result['delay_ms'], 120)
+        self.assertEqual(result['support_indices'], [0, 1, 2, 3, 4])
+        # Missing overlap is unknown; measured disagreement is still a veto.
+        conflict = next(p for p in pairs if p[:2] == (1, 3))
+        result = choose_timing({120: paths[120]}, intrinsics,
+                               loops + [(1, 3, conflict[2], conflict[3] + [0, 70])])
+        self.assertFalse({1, 3} <= set(result['support_indices']))
+
+    def test_disconnected_loops_are_not_fused(self):
+        paths, intrinsics, pairs = fixture([.5, 1.4, 2.1, 3.1, 4.0, 4.8])
+        loops = [p for p in pairs if {p[0], p[1]} <= {0, 1, 2} or {p[0], p[1]} <= {3, 4, 5}]
+        result = choose_timing(paths, intrinsics, loops)
+        self.assertEqual(result['delay_ms'], 120)
+        self.assertIn(result['support_indices'], [[0, 1, 2], [3, 4, 5]])
 
     def test_blank_images_cannot_verify_timing(self):
         self.assertEqual(correspondences([np.zeros((240, 320), np.uint8)] * 3), [])

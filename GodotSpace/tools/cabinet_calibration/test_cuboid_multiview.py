@@ -6,9 +6,9 @@ from unittest import TestCase
 import cv2
 import numpy as np
 
-from cuboid_faces import pose_seeds
+from cuboid_faces import pose_seeds, partial_pose_seeds
 from cuboid_multiview import fit, prepare, rigid
-from cuboid_pose import DEFAULT_DIMENSIONS, estimate_cuboid, corners, _project
+from cuboid_pose import DEFAULT_DIMENSIONS, estimate_cuboid, corners, _project, FACES
 from test_cuboid_pose import scene
 from render_model import camera_pose as render_camera_pose
 from visual_pose_worker import run_job
@@ -59,6 +59,38 @@ def sequence(occluded=True, timed=False):
 
 
 class MultiViewTests(TestCase):
+    def test_clipped_bottom_generates_metric_seeds_without_a_closed_face(self):
+        image, k, truth = scene(DEFAULT_DIMENSIONS, 35)
+        cropped = image[:380]
+        seeds = partial_pose_seeds(cropped, k, DEFAULT_DIMENSIONS, truth[:3, 1])
+        self.assertTrue(seeds)
+        center = corners(DEFAULT_DIMENSIONS).mean(0)
+        error = min(np.linalg.norm(seed[:3, :3] @ center + seed[:3, 3]
+                                   - truth[:3, :3] @ center - truth[:3, 3]) for seed in seeds)
+        self.assertLess(error, .04)
+
+    def test_door_seam_and_partial_floor_lines_do_not_shift_the_box_down(self):
+        views = []
+        wrong = np.eye(4)
+        wrong[1, 3] = -.16
+        points = corners(DEFAULT_DIMENSIONS)
+        for yaw in [25, 35, 45]:
+            image, k, camera_pose = scene(DEFAULT_DIMENSIONS, yaw)
+            # Strong internal seam and unrelated partial lines on the floor
+            # form most, but not all, of a second translated cuboid outline.
+            for face in [FACES[0], FACES[5]]:
+                for a, b in zip(face, face[1:] + face[:1]):
+                    if abs(points[a, 1] - points[b, 1]) > .01:
+                        continue
+                    end = points[b] if points[a, 1] > 0 else points[a] * .3 + points[b] * .7
+                    uv, _ = _project(np.array([points[a], end]), camera_pose @ wrong, k)
+                    cv2.line(image, tuple(np.rint(uv[0]).astype(int)), tuple(np.rint(uv[1]).astype(int)),
+                             (80, 80, 80), 2)
+            views.append(prepare(image, k, np.linalg.inv(camera_pose)))
+        result = fit(views, [wrong, np.eye(4)], DEFAULT_DIMENSIONS)
+        self.assertEqual(result['status'], 'candidate', result)
+        np.testing.assert_allclose(np.asarray(result['world_from_model'])[:3, 3], 0, atol=.025)
+
     def test_image_matches_correct_delay_before_joint_cabinet_fit(self):
         _, _, frames = sequence(timed=True)
         result = run_job({'schema_version': 1, 'request_id': 'timed-views', 'mode': 'live',
