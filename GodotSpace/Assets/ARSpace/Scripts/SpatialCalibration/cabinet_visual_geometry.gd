@@ -101,6 +101,10 @@ static func validate_batch(result: Dictionary, captures: Array[Dictionary], phys
 			or (offline and rows.size() != 1) or (not offline and (rows.size() < 3 or rows.size() > 16)):
 		return {"error": "识别帧数量不完整。"}
 	if not offline and result.get("multiview", false):
+		var timed := _resolve_camera_timing(result, captures)
+		if timed.has("error"):
+			return timed
+		captures = timed.captures
 		if not has_view_baseline(captures):
 			return {"error": "视点移动不足 12 cm，请横向移动观察柜体；静止或原地转头不能代替多个视角。"}
 		if model_kind == "cuboid":
@@ -126,6 +130,8 @@ static func validate_batch(result: Dictionary, captures: Array[Dictionary], phys
 		if row.status != "candidate":
 			ambiguous += 1 if row.status == "ambiguous" else 0
 			continue
+		if not bool(captures[i].get("timing_eligible", true)):
+			continue
 		var rms := float(row.get("reprojection_rms_px", INF))
 		var minimum_points := 6 if model_kind == "cuboid" else 10
 		if not is_finite(rms) or rms < 0 or rms > 2.5 or int(row.get("inliers", 0)) < minimum_points:
@@ -148,6 +154,8 @@ static func validate_batch(result: Dictionary, captures: Array[Dictionary], phys
 		source_indices.append(i)
 	var required := 1 if offline else 3
 	if poses.size() < required:
+		if model_kind == "cad":
+			return {"error": "当前为真实 CAD 模式：%d / %d 帧匹配到模型细节。若扫描的是普通白色长方体柜，请切换“自定义长方体柜体”，设置宽、高、深后扫描。" % [poses.size(), rows.size()]}
 		return {"error": "已分析 %d 帧，仅 %d 帧识别有效（%d 帧有歧义），未找到可靠的多帧结果。请让完整柜体、正面和侧面清晰可见，换角度后停稳重试。" % [
 			rows.size(), poses.size(), ambiguous]}
 	# Every pair in a group must agree; a chain of nearby poses is not consensus.
@@ -240,6 +248,48 @@ static func _maximal_pose_groups(neighbors: Array, group: Array[int], remaining:
 		excluded.append(index)
 
 
+static func _resolve_camera_timing(result: Dictionary, captures: Array[Dictionary]) -> Dictionary:
+	var needs_history := false
+	for sample in captures:
+		needs_history = needs_history or not sample.get("camera_history", []).is_empty()
+	if not needs_history and not result.has("camera_timing"):
+		return {"captures": captures}
+	var timing: Dictionary = result.get("camera_timing", {})
+	if timing.get("status") != "verified":
+		if timing.get("reason") == "timing_features_insufficient":
+			return {"error": "周围可跟踪的图像特征不足，暂时无法确认画面与头姿是否对应。请把柜体及周围环境一起收入画面后缓慢横移。"}
+		return {"error": "画面与头姿未能对齐，已停止标定。请缓慢横移重新扫描；持续失败时请检查串流延迟和相机参数。"}
+	var delay: Variant = timing.get("delay_ms")
+	var score := float(timing.get("median_epipolar_px", INF))
+	if typeof(delay) not in [TYPE_INT, TYPE_FLOAT] or not is_finite(float(delay)) \
+			or float(delay) != floor(float(delay)) or delay < 0 or delay > 400 or int(delay) % 10 != 0 \
+			or not is_finite(score) or score < 0 or score > 3:
+		return {"error": "图像时间校验结果无效。"}
+	var indices: Variant = timing.get("support_indices")
+	if not indices is Array or indices.size() < 3 or indices.size() > captures.size():
+		return {"error": "时间校验的有效视角不足。"}
+	var allowed: Dictionary = {}
+	for index in indices:
+		if typeof(index) not in [TYPE_INT, TYPE_FLOAT] or not is_finite(float(index)) \
+				or float(index) != floor(float(index)) or index < 0 or index >= captures.size() or allowed.has(int(index)):
+			return {"error": "时间校验的视角索引无效。"}
+		allowed[int(index)] = true
+	var adjusted: Array[Dictionary] = []
+	for i in range(captures.size()):
+		var sample := captures[i].duplicate()
+		var history: Array = sample.get("camera_history", [])
+		if needs_history:
+			if history.size() != 41 or not history[int(delay) / 10] is Transform3D \
+					or not is_rigid(history[int(delay) / 10]):
+				return {"error": "缺少本次取景对应的头姿历史，请重新扫描。"}
+			sample.camera_world = history[int(delay) / 10]
+		elif delay != 0:
+			return {"error": "旧取景没有头姿历史，不能补偿时间偏差，请重新扫描。"}
+		sample["timing_eligible"] = allowed.has(i)
+		adjusted.append(sample)
+	return {"captures": adjusted}
+
+
 static func has_view_baseline(captures: Array[Dictionary]) -> bool:
 	for a in captures:
 		for b in captures:
@@ -292,6 +342,8 @@ static func _validate_multiview(result: Dictionary, captures: Array[Dictionary],
 			return {"error": "多视角支持帧索引无效。"}
 		used[int(index)] = true
 		var sample: Dictionary = captures[int(index)]
+		if not bool(sample.get("timing_eligible", true)):
+			return {"error": "柜体结果使用了未通过时间校验的视角。"}
 		for previous in selected:
 			if (sample.camera_world as Transform3D).origin.distance_to((previous.camera_world as Transform3D).origin) < 0.04:
 				return {"error": "有效视点重复，请从至少三个不同位置观察柜体。"}

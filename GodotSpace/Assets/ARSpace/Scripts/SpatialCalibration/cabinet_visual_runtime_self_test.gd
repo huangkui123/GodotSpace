@@ -57,6 +57,28 @@ func _run() -> void:
 	cabinet.visual_target_path = NodePath("../Target")
 	host.add_child(cabinet)
 	cabinet.set_process(false)
+	# Exercise the production history capture, not only injected worker fixtures.
+	var capture_now := Time.get_ticks_usec()
+	var tracked_history: Array[Dictionary] = []
+	for offset in range(500000, -1, -20000):
+		var tracked := camera.global_transform
+		tracked.origin.x -= offset / 1000000.0 * 0.1
+		tracked_history.append({"time_usec": capture_now - offset, "transform": tracked})
+	cabinet.set("_head_history", tracked_history)
+	cabinet.latest_frame = {"receive_usec": capture_now, "estimated_capture_usec": capture_now - 50000}
+	var moving_frame := cabinet.capture_moving_frame()
+	_expect(moving_frame.get("head_history", []).size() == 41, "capture records 0..400 ms without extrapolation")
+	if moving_frame.has("head_history"):
+		_expect((moving_frame.head_history[0] as Transform3D).is_equal_approx(moving_frame.head_world),
+			"history starts at the original image-time pose")
+		_expect(is_equal_approx((moving_frame.head_history[0] as Transform3D).origin.x -
+			(moving_frame.head_history[40] as Transform3D).origin.x, 0.04), "moving history retains translated viewpoints")
+	tracked_history = tracked_history.slice(-3)
+	cabinet.set("_head_history", tracked_history)
+	_expect(cabinet.capture_moving_frame().has("error"), "incomplete exposure-time history skips frame")
+	tracked_history.clear()
+	cabinet.set("_head_history", tracked_history)
+	cabinet.latest_frame.clear()
 	var original_target := target.global_transform
 	var original_anchor := anchor.global_transform
 	var original_head := camera.transform
@@ -156,7 +178,7 @@ func _run() -> void:
 			await create_timer(0.05).timeout
 		_expect((ui.get("_result") as Dictionary).is_empty() and (ui.get("_apply") as Button).disabled,
 			"blank live JPEG must not enable alignment")
-		_expect((ui.get("_status") as Label).text.contains("未找到可靠"), "live rejection returns actionable status")
+		_expect((ui.get("_status") as Label).text.contains("图像特征不足"), "live rejection distinguishes missing timing evidence")
 		_expect(bool(ui.get("_hold_rejected_image")) and (ui.get("_image") as TextureRect).texture != null,
 			"rejection retains actual last frame without authorizing application")
 		_expect(origin.global_transform.is_equal_approx(before_rejection), "rejection preserves world mapping")
@@ -234,15 +256,20 @@ func _run() -> void:
 		var extrinsic: Transform3D = model.head_from_camera(metadata).transform
 		for frame in fixture.frames:
 			var world_cv: Transform3D = Visual.from_row_major(frame.world_from_camera).transform
+			var heads: Array[Transform3D] = []
+			for matrix in frame.get("camera_history", []):
+				var recorded: Transform3D = Visual.from_row_major(matrix).transform
+				heads.append(recorded * Visual.OPENCV_TO_GODOT * extrinsic.affine_inverse())
 			cabinet.injected_frames.append({"timestamp_ns": frame.capture_id, "size": Vector2i(640, 640),
 				"metadata": metadata, "head_world": world_cv * Visual.OPENCV_TO_GODOT * extrinsic.affine_inverse(),
+				"head_history": heads,
 				"jpeg": Marshalls.base64_to_raw(frame.jpeg_base64), "epoch": cabinet.capture_epoch})
 		ui.call("_begin")
 		var joint_end := Time.get_ticks_msec() + 120_000
 		while bool(ui.get("_busy")) and Time.get_ticks_msec() < joint_end:
 			await create_timer(0.05).timeout
 		_expect(not (ui.get("_apply") as Button).disabled,
-			"real moving-view JPEGs pass worker and local pose validation: " + str((ui.get("_status") as Label).text))
+			"synthetic moving-view JPEGs pass worker and local pose validation: " + str((ui.get("_status") as Label).text))
 		_expect((ui.get("_result") as Dictionary).get("multiview_fit", {}).get("status") == "candidate",
 			"partial-face joint fit reaches VR preview through actual process")
 		if OS.get_cmdline_user_args().has("--capture-ui") and DisplayServer.get_name() != "headless":
@@ -413,6 +440,29 @@ func _test_moving_capture() -> void:
 	custom.multiview_fit.support_indices = [0, 0, 2]
 	_expect(Visual.validate_batch(custom, sequence.captures, 1, "cuboid", Vector3(0.45, 1.21, 0.8)).has("error"),
 		"joint fit cannot repeat support views")
+	custom.multiview_fit.support_indices = [0, 1, 2]
+	for sample in sequence.captures:
+		var recorded: Array[Transform3D] = []
+		for i in range(41):
+			var pose: Transform3D = sample.camera_world
+			pose.origin.x += (12 - i) * 0.001
+			recorded.append(pose)
+		sample["camera_history"] = recorded
+	_expect(Visual.validate_batch(custom, sequence.captures, 1, "cuboid", Vector3(0.45, 1.21, 0.8)).has("error"),
+		"recorded timing history requires explicit image agreement")
+	custom.camera_timing = {"status": "verified", "delay_ms": 120, "support_indices": [0, 1, 2], "median_epipolar_px": 1.0}
+	result = Visual.validate_batch(custom, sequence.captures, 1, "cuboid", Vector3(0.45, 1.21, 0.8))
+	_expect(result.has("pose"), "verified delay selects local recorded cameras")
+	var adjusted := Visual._resolve_camera_timing(custom, sequence.captures)
+	_expect((adjusted.captures[0].camera_world as Transform3D).is_equal_approx(sequence.captures[0].camera_history[12]),
+		"camera compensation uses exact recorded history index")
+	custom.camera_timing.delay_ms = 410
+	_expect(Visual.validate_batch(custom, sequence.captures, 1, "cuboid", Vector3(0.45, 1.21, 0.8)).has("error"),
+		"delay outside recorded history cannot extrapolate")
+	custom.camera_timing.delay_ms = 120
+	custom.camera_timing.status = "rejected"
+	_expect(Visual.validate_batch(custom, sequence.captures, 1, "cuboid", Vector3(0.45, 1.21, 0.8)).has("error"),
+		"inconsistent images and poses cannot enable application")
 
 
 func _expect(condition: bool, message: String) -> void:

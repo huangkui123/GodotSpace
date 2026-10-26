@@ -201,7 +201,7 @@ func _begin() -> void:
 		_capture_start = Time.get_ticks_msec() + 3000
 		_next_capture = _capture_start
 		_deadline = _capture_start + CAPTURE_DURATION_MS
-		_status.text = "3 秒后开始多视角扫描 12 秒。请缓慢向侧面移动，保持柜体在画面中；无需停稳。"
+		_status.text = "%s：3 秒后开始扫描 12 秒。请缓慢横移，保持柜体在画面中。" % _kind.get_item_text(_kind.selected)
 
 
 func _process(delta: float) -> void:
@@ -270,14 +270,23 @@ func _capture() -> void:
 			_capture_hint = "视点变化不足，请缓慢向侧面移动；原地转头或静止重复拍摄不计入。"
 			return
 	var camera_up := VisualGeometry.OPENCV_TO_GODOT.basis * camera_world.basis.inverse() * Vector3.UP
-	_frames.append({"capture_id": identifier, "jpeg_base64": Marshalls.raw_to_base64(frame.jpeg),
+	var request_frame := {"capture_id": identifier, "jpeg_base64": Marshalls.raw_to_base64(frame.jpeg),
 		"width": frame.size.x, "height": frame.size.y, "rectified": true,
 		"world_from_camera": VisualGeometry.to_row_major(camera_world * VisualGeometry.OPENCV_TO_GODOT),
 		"camera_up": [camera_up.x, camera_up.y, camera_up.z],
-		"K": [[k.x, 0, k.z], [0, k.y, k.w], [0, 0, 1]]})
+		"K": [[k.x, 0, k.z], [0, k.y, k.w], [0, 0, 1]]}
+	var camera_history: Array[Transform3D] = []
+	if frame.has("head_history"):
+		var encoded_history: Array = []
+		for head_pose: Transform3D in frame.head_history:
+			var camera_pose := head_pose * (extrinsics.transform as Transform3D)
+			camera_history.append(camera_pose)
+			encoded_history.append(VisualGeometry.to_row_major(camera_pose * VisualGeometry.OPENCV_TO_GODOT))
+		request_frame["camera_history"] = encoded_history
+	_frames.append(request_frame)
 	_jpeg_bytes += (frame.jpeg as PackedByteArray).size()
 	_captures.append({"capture_id": identifier, "camera_world": camera_world,
-		"captured_msec": Time.get_ticks_msec()})
+		"captured_msec": Time.get_ticks_msec(), "camera_history": camera_history})
 	_capture_hint = "继续缓慢横移，尽量露出另一侧柜面；柜体本身保持不动。"
 
 
@@ -290,7 +299,7 @@ func _finish_capture() -> void:
 
 
 func _launch() -> void:
-	_status.text = "采集完成，正在分析 %d 帧、筛除失败帧并融合稳定姿态…" % _captures.size()
+	_status.text = "%s：已采集 %d 个视角，正在检查画面与头姿的对应关系并联合识别…" % [_kind.get_item_text(_kind.selected), _captures.size()]
 	var size_m := dimensions_m()
 	var error: String = _job.call("start", {"schema_version": 1, "request_id": _request_id,
 		"pose_timing": "interpolated_arrival_estimate",

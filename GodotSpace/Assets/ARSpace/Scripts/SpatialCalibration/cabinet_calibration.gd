@@ -304,7 +304,17 @@ func capture_moving_frame() -> Dictionary:
 	if matched.has("error"):
 		return matched
 	var frame := latest_frame.duplicate(true)
+	# Retain exposure-time alternatives rather than assuming arrival is exposure.
+	# The worker selects one common delay using image feature geometry, before
+	# any cabinet fit. Samples belong to this same tracking epoch.
+	var pose_history: Array[Transform3D] = []
+	for delay_ms in range(0, 401, 10):
+		var sample := interpolate_capture_pose(history, int(latest_frame.estimated_capture_usec) - delay_ms * 1000)
+		if sample.has("error"):
+			return {"error": "等待完整的图像对应头姿历史，请缓慢移动。"}
+		pose_history.append(sample.transform)
 	frame["head_world"] = matched.transform
+	frame["head_history"] = pose_history
 	frame["epoch"] = capture_epoch
 	frame["pose_timing"] = "interpolated_arrival_estimate"
 	return frame

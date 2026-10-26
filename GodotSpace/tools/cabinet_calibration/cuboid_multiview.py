@@ -38,17 +38,17 @@ def prepare(image, k, world_from_camera):
             'k': calibrated, 'camera': rigid(world_from_camera), 'scale': scale}
 
 
-def edge_errors(points, pose, view):
+def edge_observations(points, pose, view):
     camera_pose = np.linalg.inv(view['camera']) @ pose
     eye = -camera_pose[:3, :3].T @ camera_pose[:3, 3]
     center = points.mean(0)
-    errors, face_ids = [], []
+    errors, face_ids, masks = [], [], []
     for index, face in enumerate(FACES):
         midpoint = points[list(face)].mean(0)
         # Only vertical faces. Top is often covered by objects.
         if index in (2, 3) or np.dot(midpoint - center, eye - midpoint) <= 0:
             continue
-        sides = []
+        sides, side_masks = [], []
         for a, b in zip(face, face[1:] + face[:1]):
             pixels, depth = _project(np.linspace(points[a], points[b], 32)[2:-2], camera_pose, view['k'])
             distance = view['distance']
@@ -61,18 +61,31 @@ def edge_errors(points, pose, view):
                 residual[valid] = cv2.remap(distance, xy[:, 0, None], xy[:, 1, None],
                                            cv2.INTER_LINEAR).ravel()
             sides.append(np.minimum(residual, 15))
+            side_masks.append(valid)
         errors.append(np.asarray(sides))
+        masks.append(np.asarray(side_masks))
         face_ids.append(index)
-    return errors, face_ids
+    return errors, face_ids, masks
+
+
+def edge_errors(points, pose, view):
+    errors, ids, _ = edge_observations(points, pose, view)
+    return errors, ids
 
 
 def _residual(parameters, points, views):
     pose = world_pose(parameters)
     residuals = []
     for view in views:
-        faces, _ = edge_errors(points, pose, view)
-        # Fixed-size residual: best visible face plus best three edges of the
-        # adjacent face. The fourth may be hidden behind a desk or another object.
+        faces, _, masks = edge_observations(points, pose, view)
+        # Pixels outside the image are unknown, not failed observations. Keep
+        # each observed edge's weight independent of its clipped sample count.
+        for face, mask in zip(faces, masks):
+            for side, visible in zip(face, mask):
+                if np.count_nonzero(visible) >= 8:
+                    side[~visible] = 0
+                    side *= len(side) / np.count_nonzero(visible)
+        # Fixed-size residual; one occluded edge per face is permitted.
         faces.sort(key=lambda face: float(np.mean(np.sort(np.mean(face, axis=1))[:3])))
         for i in range(2):
             if i < len(faces):
@@ -119,22 +132,38 @@ def fit(views, seeds, size):
         optimized = least_squares(_residual, initial, args=(points, views), jac=_jacobian,
                                   loss='soft_l1', f_scale=2, max_nfev=35)
         pose = world_pose(optimized.x)
-        supported, visible = [], set()
+        supported = []
+        edge_votes = {}
         scores = []
         for i, view in enumerate(views):
-            faces, ids = edge_errors(points, pose, view)
-            supports = [np.mean(face < 3.5, axis=1) for face in faces]
-            # At least one face with all its edges and another with 3 edges;
-            # no unconstrained single rectangle, even across many frames.
-            full = [j for j, support in enumerate(supports) if min(support) >= .65]
-            partial = [j for j, support in enumerate(supports) if sum(support >= .55) >= 3]
-            if full and len(partial) >= 2:
+            faces, ids, masks = edge_observations(points, pose, view)
+            observed = {}
+            for errors, face_id, mask in zip(faces, ids, masks):
+                face = FACES[face_id]
+                for a, b, error, valid in zip(face, face[1:] + face[:1], errors, mask):
+                    if np.count_nonzero(valid) < 8:
+                        continue
+                    support = float(np.mean(error[valid] < 3.5))
+                    if support >= .65:
+                        observed[tuple(sorted((a, b)))] = support
+            # Every accepted view must contribute several actual box edges.
+            # Complementary views may expose different edges of the same box.
+            vertical = sum(abs(points[a, 1] - points[b, 1]) > .01 for a, b in observed)
+            if len(observed) >= 4 and vertical >= 2 and len(observed) - vertical >= 2:
                 if any(np.linalg.norm(cameras[i] - cameras[prior]) < .04 for prior in supported):
                     continue
                 supported.append(i)
-                visible.update(ids[j] for j in partial)
-                scores.append(float(np.mean([np.mean(s) for s in supports])))
-        if len(supported) >= 3 and len(visible) >= 2:
+                for edge in observed:
+                    edge_votes[edge] = edge_votes.get(edge, 0) + 1
+                scores.append(float(np.mean(list(observed.values()))))
+        # Require repeated evidence of both faces, including their unshared
+        # edges. A single flat panel or one accidental frame cannot pass.
+        face_support = []
+        for index, face in enumerate(FACES):
+            if index not in (2, 3):
+                face_support.append(sum(edge_votes.get(tuple(sorted((a, b))), 0) >= 2
+                                        for a, b in zip(face, face[1:] + face[:1])))
+        if len(supported) >= 3 and max(face_support) == 4 and sum(n >= 3 for n in face_support) >= 2:
             centers = cameras[supported]
             target = pose[:3, :3] @ points.mean(0) + pose[:3, 3]
             rays = centers - target
