@@ -5,11 +5,17 @@ const Geometry := preload("res://Assets/ARSpace/Scripts/SpatialCalibration/cabin
 const VisualGeometry := preload("res://Assets/ARSpace/Scripts/SpatialCalibration/cabinet_visual_geometry.gd")
 const CameraModel := preload("res://Assets/ARSpace/Scripts/SpatialCalibration/pico_camera_model.gd")
 const Job := preload("res://Assets/ARSpace/Scripts/SpatialCalibration/cabinet_visual_job.gd")
+const CabinetModel := preload("res://Assets/ARSpace/Scripts/SpatialCalibration/calibration_cabinet.gd")
 
 var controller: Node
 var _job: Node
 var _source: OptionButton
 var _scale: OptionButton
+var _kind: OptionButton
+var _dimension_row: HBoxContainer
+var _scale_caption: Label
+var _dimensions: Array[SpinBox] = []
+var _dimension_buttons: Array[Button] = []
 var _image: TextureRect
 var _status: Label
 var _connection: Label
@@ -38,32 +44,61 @@ func _ready() -> void:
 		margin.add_theme_constant_override("margin_" + side, 20)
 	add_child(margin)
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 14)
+	column.add_theme_constant_override("separation", 10)
 	margin.add_child(column)
 	var header := HBoxContainer.new()
 	column.add_child(header)
-	var title := _label(header, "柜体 CAD 自动识别")
+	var title := _label(header, "柜体自动视觉标定")
 	title.autowrap_mode = TextServer.AUTOWRAP_OFF
 	title.add_theme_font_size_override("font_size", 30)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_button(header, "放大 / 还原", func(): controller.call("toggle_panel_zoom"))
 	_button(header, "关闭", func(): controller.call("close_panel"))
-	_label(column, "看向柜体 → 自动匹配 CAD → 检查预览并应用；无需人工选点")
+	_label(column, "选择柜体 → 自动视觉识别 → 检查预览并应用；无需手动选角点")
 	var options := HBoxContainer.new()
 	options.add_theme_constant_override("separation", 16)
 	column.add_child(options)
+	_kind = OptionButton.new()
+	_kind.name = "CalibrationModelKind"
+	_kind.custom_minimum_size.y = 48
+	_kind.add_item("真实 CAD 模型")
+	_kind.add_item("自定义长方体柜体")
+	_kind.item_selected.connect(func(_index: int): _options_changed())
+	options.add_child(_kind)
 	_source = OptionButton.new()
 	_source.add_item("实时 PICO")
-	_source.add_item("CAD 合成演练（无实物）")
+	_source.add_item("合成演练（无实物）")
+	_source.custom_minimum_size.y = 48
 	_source.item_selected.connect(func(_index: int): _reset())
 	options.add_child(_source)
-	var scale_caption := _label(options, "实物 / 原模型比例")
-	scale_caption.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_scale_caption = _label(options, "CAD 比例")
+	_scale_caption.autowrap_mode = TextServer.AUTOWRAP_OFF
 	_scale = OptionButton.new()
 	_scale.add_item("1:1 原尺寸")
 	_scale.add_item("1:3 打印缩比")
 	_scale.item_selected.connect(func(_index: int): _reset())
 	options.add_child(_scale)
+	_dimension_row = HBoxContainer.new()
+	_dimension_row.add_theme_constant_override("separation", 18)
+	column.add_child(_dimension_row)
+	for i in range(3):
+		var cell := HBoxContainer.new()
+		cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_dimension_row.add_child(cell)
+		var caption := _label(cell, ["宽 cm", "高 cm", "深 cm"][i])
+		caption.autowrap_mode = TextServer.AUTOWRAP_OFF
+		var spin := SpinBox.new()
+		spin.name = ["WidthCm", "HeightCm", "DepthCm"][i]
+		spin.min_value = 5
+		spin.max_value = 2000
+		spin.step = 1
+		spin.value = CabinetModel.DEFAULT_DIMENSIONS[i] * 100
+		spin.custom_minimum_size = Vector2(120, 48)
+		_dimension_buttons.append(_button(cell, "−", func(): spin.value -= 1))
+		cell.add_child(spin)
+		_dimension_buttons.append(_button(cell, "+", func(): spin.value += 1))
+		spin.value_changed.connect(func(_value: float): _options_changed())
+		_dimensions.append(spin)
 	_model_info = _label(column, "模型：Merge_of_储存版-白色哑光_w2.magics 装配体 · 默认 1:1")
 	_connection = _label(column, "正在检查相机连接…")
 	_connection.autowrap_mode = TextServer.AUTOWRAP_OFF
@@ -71,7 +106,7 @@ func _ready() -> void:
 	_image = TextureRect.new()
 	_image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_image.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	_image.custom_minimum_size = Vector2(600, 330)
+	_image.custom_minimum_size = Vector2(600, 280)
 	_image.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	# No input handlers/point collection in the CAD workflow.
 	_image.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -87,17 +122,18 @@ func _ready() -> void:
 	_apply = _button(actions, "应用对齐", _confirm)
 	_apply.disabled = true
 	Style.primary(_apply)
-	_label(column, "当前为实验性 RGB 识别；实柜精度待验证。合成演练不会改变空间对齐。")
+	_label(column, "自动识别仍需现场验证；自定义柜体请同时露出正面、侧面及完整棱边。")
 	_job = Job.new()
 	_job.connect("completed", _on_completed)
 	add_child(_job)
 	controller.connect("state_changed", _on_state_changed)
+	_options_changed()
 
 
 func _button(parent: Node, caption: String, action: Callable) -> Button:
 	var button := Button.new()
 	button.text = caption
-	button.custom_minimum_size.y = 48
+	button.custom_minimum_size = Vector2(48, 48)
 	button.pressed.connect(action)
 	parent.add_child(button)
 	return button
@@ -112,7 +148,26 @@ func _label(parent: Node, caption: String) -> Label:
 
 
 func physical_scale() -> float:
-	return 1.0 if _scale.selected == 0 else 1.0 / 3.0
+	return 1.0 if _kind.selected == 1 or _scale.selected == 0 else 1.0 / 3.0
+
+
+func model_kind() -> String:
+	return "cad" if _kind.selected == 0 else "cuboid"
+
+
+func dimensions_m() -> Vector3:
+	return Vector3(_dimensions[0].value, _dimensions[1].value, _dimensions[2].value) / 100.0
+
+
+func _options_changed() -> void:
+	_reset()
+	var custom := model_kind() == "cuboid"
+	_dimension_row.visible = custom
+	_scale.visible = not custom
+	_scale_caption.visible = not custom
+	controller.call("configure_visual_model", model_kind(), dimensions_m())
+	_status.text = "请让完整柜体及多个面的棱边清晰可见，然后开始自动识别。" if custom \
+		else "看清真实 CAD 柜体整体和结构细节后，开始自动识别。"
 
 
 func _begin() -> void:
@@ -121,6 +176,11 @@ func _begin() -> void:
 	_start.disabled = true
 	_source.disabled = true
 	_scale.disabled = true
+	_kind.disabled = true
+	for spin in _dimensions:
+		spin.editable = false
+	for button in _dimension_buttons:
+		button.disabled = true
 	_epoch = int(controller.get("capture_epoch"))
 	_request_id = "%d_%d" % [OS.get_process_id(), Time.get_ticks_usec()]
 	if _source.selected == 1:
@@ -148,7 +208,7 @@ func _process(delta: float) -> void:
 	if _display_tick < 0.15:
 		return
 	_display_tick = 0.0
-	_connection.text = str(controller.call("get_capture_status")) if _source.selected == 0 else "CAD 合成图像 · 离线演练"
+	_connection.text = str(controller.call("get_capture_status")) if _source.selected == 0 else "合成图像 · 离线演练（不会应用现场对齐）"
 	if _source.selected != 0 or not _result.is_empty() or (_busy and not _collecting):
 		return
 	var latest: Dictionary = controller.get("latest_frame")
@@ -177,10 +237,13 @@ func _capture() -> void:
 		_fail(message)
 		return
 	var k: Vector4 = intrinsics.k
+	var camera_world: Transform3D = (frame.head_world as Transform3D) * (extrinsics.transform as Transform3D)
+	var camera_up := VisualGeometry.OPENCV_TO_GODOT.basis * camera_world.basis.inverse() * Vector3.UP
 	_frames.append({"capture_id": identifier, "jpeg_base64": Marshalls.raw_to_base64(frame.jpeg),
 		"width": frame.size.x, "height": frame.size.y, "rectified": true,
+		"camera_up": [camera_up.x, camera_up.y, camera_up.z],
 		"K": [[k.x, 0, k.z], [0, k.y, k.w], [0, 0, 1]]})
-	_captures.append({"capture_id": identifier, "camera_world": (frame.head_world as Transform3D) * (extrinsics.transform as Transform3D)})
+	_captures.append({"capture_id": identifier, "camera_world": camera_world})
 	_status.text = "已自动采集 %d / 3 帧。" % _frames.size()
 	if _frames.size() == 3:
 		_collecting = false
@@ -188,8 +251,10 @@ func _capture() -> void:
 
 
 func _launch() -> void:
-	_status.text = "正在匹配真实柜体 CAD 并估计姿态…"
+	_status.text = "正在自动识别柜体轮廓和棱边…" if model_kind() == "cuboid" else "正在匹配真实柜体 CAD 并估计姿态…"
+	var size_m := dimensions_m()
 	var error: String = _job.call("start", {"schema_version": 1, "request_id": _request_id,
+		"model_kind": model_kind(), "dimensions_m": [size_m.x, size_m.y, size_m.z],
 		"mode": "live" if _source.selected == 0 else "demo", "physical_scale": physical_scale(), "frames": _frames})
 	_frames.clear()
 	if not error.is_empty():
@@ -210,22 +275,26 @@ func _on_completed(result: Dictionary) -> void:
 		_fail("结果与当前识别请求不匹配。")
 		return
 	_display(Marshalls.base64_to_raw(str(result.get("overlay_jpeg_base64", ""))))
-	var solved := VisualGeometry.validate_batch(result, _captures, physical_scale())
+	var solved := VisualGeometry.validate_batch(result, _captures, physical_scale(), model_kind(), dimensions_m())
 	if solved.has("error"):
 		_fail(str(solved.error))
 		return
-	var accepted: bool = controller.call("show_visual_preview", solved.pose, physical_scale(), result.get("model_points", []),
-		bool(solved.offline), _epoch)
+	var accepted: bool
+	if model_kind() == "cuboid":
+		accepted = controller.call("show_cuboid_visual_preview", solved.pose, dimensions_m(), bool(solved.offline), _epoch)
+	else:
+		accepted = controller.call("show_visual_preview", solved.pose, physical_scale(), result.get("model_points", []),
+			bool(solved.offline), _epoch)
 	if not accepted:
-		_fail("无法创建 CAD 预览；请检查本地跟踪和场景中的实验柜模型。")
+		_fail("无法创建柜体预览；请检查本地跟踪和当前柜体模型。")
 		return
 	_result = result
 	_set_idle()
 	_apply.disabled = bool(solved.offline)
 	var extents: Array = result.get("model_extents_m", [])
 	if extents.size() == 3:
-		_model_info.text = "CAD 模型尺寸（X / Y / Z）：%.3f / %.3f / %.3f 米 · 比例 %s" % [extents[0], extents[1], extents[2], "1:1" if _scale.selected == 0 else "1:3"]
-	_status.text = "CAD 识别成功：绿色图像点为模型投影，空间中显示 CAD 点云预览。"
+		_model_info.text = "识别模型（宽 / 高 / 深）：%.1f / %.1f / %.1f cm" % [extents[0] * 100, extents[1] * 100, extents[2] * 100]
+	_status.text = "识别成功：绿色图像点为模型投影，空间中显示柜体预览。"
 	_status.text += "\n合成演练不可应用现场对齐。" if solved.offline else "\n三帧姿态一致；从不同方向检查后可应用。实柜精度尚未验证。"
 
 
@@ -235,7 +304,7 @@ func _confirm() -> void:
 		return
 	if controller.call("confirm_preview"):
 		_apply.disabled = true
-		_status.text = "已按 CAD 识别结果对齐整个场景。请移动观察柜体是否贴合；系统重新定位后需重新识别。"
+		_status.text = "已按视觉识别结果对齐整个场景。请移动观察柜体是否贴合；系统重新定位后需重新识别。"
 	else:
 		_fail("对齐未应用，请检查本地跟踪或重新识别。")
 
@@ -254,6 +323,11 @@ func _set_idle() -> void:
 	_start.disabled = false
 	_source.disabled = false
 	_scale.disabled = false
+	_kind.disabled = false
+	for spin in _dimensions:
+		spin.editable = true
+	for button in _dimension_buttons:
+		button.disabled = false
 
 
 func _reset() -> void:
@@ -267,7 +341,8 @@ func _reset() -> void:
 	_image.texture = null
 	controller.call("clear_cabinet")
 	_status.text = "已清除识别预览。可重新开始；已应用的空间映射保持不变。"
-	_model_info.text = "模型：Merge_of_储存版-白色哑光_w2.magics · 当前比例 %s" % ("1:1" if _scale.selected == 0 else "1:3")
+	_model_info.text = "自定义长方体 · 尺寸单位 cm · 朝向采用面向相机的宽面" if model_kind() == "cuboid" \
+		else "模型：Merge_of_储存版-白色哑光_w2.magics · 当前比例 %s" % ("1:1" if _scale.selected == 0 else "1:3")
 
 
 func _fail(message: String) -> void:

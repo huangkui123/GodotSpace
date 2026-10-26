@@ -20,7 +20,7 @@ func start(request: Dictionary) -> String:
 	var artifacts := OS.get_environment("GODOTSPACE_CABINET_ARTIFACTS")
 	if artifacts.is_empty():
 		artifacts = ProjectSettings.globalize_path("res://tools/cabinet_calibration/artifacts")
-	if not FileAccess.file_exists(artifacts.path_join("templates/templates.json")):
+	if request.get("model_kind", "cad") == "cad" and not FileAccess.file_exists(artifacts.path_join("templates/templates.json")):
 		return "未找到 CAD 特征库。请先按柜体识别文档准备模型与模板。"
 	_request_id = str(request.get("request_id", ""))
 	_directory = ProjectSettings.globalize_path(JOB_ROOT).path_join("job_%d_%d" % [OS.get_process_id(), Time.get_ticks_usec()])

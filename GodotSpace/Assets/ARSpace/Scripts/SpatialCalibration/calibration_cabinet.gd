@@ -2,7 +2,7 @@ extends Node3D
 
 const Geometry := preload("res://Assets/ARSpace/Scripts/SpatialCalibration/cabinet_geometry.gd")
 
-const DEFAULT_DIMENSIONS := Vector3(0.40, 0.56, 0.50)
+const DEFAULT_DIMENSIONS := Vector3(0.45, 1.21, 0.80)
 var dimensions := DEFAULT_DIMENSIONS
 
 

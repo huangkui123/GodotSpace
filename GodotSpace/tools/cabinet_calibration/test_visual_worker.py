@@ -21,6 +21,34 @@ def frame(identifier="1"):
 
 
 class VisualWorkerTests(TestCase):
+    def test_custom_demo_needs_no_cad_assets_and_cannot_apply(self):
+        result = worker.run_job({"schema_version": 1, "request_id": "custom-demo", "mode": "demo",
+                                 "model_kind": "cuboid", "physical_scale": 1,
+                                 "dimensions_m": [.45, 1.21, .80]}, Path("missing-cad-assets"))
+        self.assertEqual(result["status"], "candidate")
+        self.assertEqual(result["model_kind"], "cuboid")
+        self.assertEqual(result["dimensions_m"], [.45, 1.21, .80])
+        self.assertFalse(result["automatic_application_allowed"])
+        self.assertTrue(result["overlay_jpeg_base64"])
+
+    def test_custom_live_uses_image_geometry_and_reports_dimensions(self):
+        from test_cuboid_pose import scene
+        image, k, pose = scene((.7, 1.4, .5), -32)
+        ok, jpeg = cv2.imencode('.jpg', image)
+        self.assertTrue(ok)
+        frames = [{"capture_id": str(i), "jpeg_base64": base64.b64encode(jpeg).decode(),
+                   "width": 640, "height": 640, "K": k.tolist(), "rectified": True,
+                   "camera_up": pose[:3, 1].tolist()} for i in range(3)]
+        request = {"schema_version": 1, "request_id": "custom-live", "mode": "live",
+                   "model_kind": "cuboid", "physical_scale": 1,
+                   "dimensions_m": [.7, 1.4, .5], "frames": frames}
+        result = worker.run_job(request, Path('missing-cad-assets'))
+        self.assertEqual(result['status'], 'candidate')
+        self.assertEqual(len(result['frames']), 3)
+        request['physical_scale'] = 1 / 3
+        with self.assertRaisesRegex(ValueError, 'already physical'):
+            worker.run_job(request, Path('missing-cad-assets'))
+
     def test_wrong_model_bank_pair_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

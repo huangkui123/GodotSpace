@@ -66,14 +66,27 @@ static func from_row_major(matrix: Variant) -> Dictionary:
 
 ## Compare poses in the SAME world frame, not camera coordinates. Camera motion
 ## between captures must not look like object motion, nor hide inconsistent poses.
-static func validate_batch(result: Dictionary, captures: Array[Dictionary], physical_scale: float) -> Dictionary:
+static func validate_batch(result: Dictionary, captures: Array[Dictionary], physical_scale: float,
+		model_kind: String = "cad", dimensions: Vector3 = Vector3.ZERO) -> Dictionary:
+	var model_coordinates := "godot_frame_mesh_local_right_handed_y_up" if model_kind == "cad" \
+		else "cabinet_front_bottom_left_x_right_y_up_depth_negative_z"
+	if model_kind not in ["cad", "cuboid"] or result.get("model_kind", "cad") != model_kind:
+		return {"error": "识别结果与当前柜体类型不匹配。"}
+	if model_kind == "cuboid":
+		var actual: Variant = result.get("dimensions_m")
+		if not actual is Array or actual.size() != 3:
+			return {"error": "识别结果缺少柜体尺寸。"}
+		for i in range(3):
+			if typeof(actual[i]) not in [TYPE_INT, TYPE_FLOAT] or not is_finite(float(actual[i])) \
+					or not is_equal_approx(float(actual[i]), dimensions[i]):
+				return {"error": "识别结果与当前柜体尺寸不匹配，请重新识别。"}
 	if result.get("schema_version") != 1 or result.get("units") != "meters" \
 			or result.get("coordinate_system") != "opencv_camera_x_right_y_down_z_forward" \
-			or result.get("model_coordinates") != "godot_frame_mesh_local_right_handed_y_up" \
+			or result.get("model_coordinates") != model_coordinates \
 			or not is_equal_approx(float(result.get("physical_scale", 0)), physical_scale):
 		return {"error": "识别结果的坐标、单位或模型比例不匹配。"}
 	if result.get("status") != "candidate":
-		return {"error": "未找到可靠的柜体，或存在多个可能姿态。请换一个能看清柜体结构的视角重试。"}
+		return {"error": "未找到可靠的柜体，或存在多个可能姿态。请让整个柜体及正面、侧面棱边清晰可见后重试。"}
 	var offline: bool = result.get("mode") == "demo"
 	if not offline and result.get("mode") != "live":
 		return {"error": "未知的识别模式。"}
@@ -92,8 +105,15 @@ static func validate_batch(result: Dictionary, captures: Array[Dictionary], phys
 			return {"error": "识别帧重复或顺序不匹配。"}
 		identifiers[identifier] = true
 		var rms := float(row.get("reprojection_rms_px", INF))
-		if not is_finite(rms) or rms < 0 or rms > 2.5 or int(row.get("inliers", 0)) < 10:
+		var minimum_points := 6 if model_kind == "cuboid" else 10
+		if not is_finite(rms) or rms < 0 or rms > 2.5 or int(row.get("inliers", 0)) < minimum_points:
 			return {"error": "CAD 特征匹配质量不足。"}
+		if model_kind == "cuboid":
+			var support := float(row.get("edge_support", 0))
+			var silhouette := float(row.get("silhouette_iou", 0))
+			if not is_finite(support) or support < 0.8 or support > 1 \
+					or not is_finite(silhouette) or silhouette < 0.94 or silhouette > 1:
+				return {"error": "柜体轮廓或棱边不完整，请换到能看清多个面的角度。"}
 		var decoded := from_row_major(row.get("camera_from_model"))
 		if decoded.has("error"):
 			return decoded

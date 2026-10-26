@@ -47,6 +47,9 @@ var _last_timestamp_ns: int = 0
 var _alignment_settle_until_usec: int = 0
 var _applied_alignment_revision: int = -1
 var _visual_points := PackedVector3Array()
+var _custom_visual := false
+var _custom_dimensions := Vector3(0.45, 1.21, 0.80)
+var _cad_visibility_before_custom := true
 
 
 func is_local_calibrator() -> bool:
@@ -251,7 +254,7 @@ func _on_capture_connection(_connected: bool) -> void:
 	capture_epoch += 1
 	# A disconnected feed cannot authorize a pending CAD application. A completed
 	# alignment is retained, just as in the existing calibration lifecycle.
-	if state.get("method") == "cad" and state.get("status") == "preview":
+	if state.get("method") in ["cad", "cuboid_auto"] and state.get("status") == "preview":
 		_set_state({"status": "invalid", "reason": "相机已重新连接，请重新识别柜体。"})
 
 
@@ -300,6 +303,9 @@ func confirm_preview() -> bool:
 		return false
 	if state.get("method") == "cad":
 		return _confirm_visual_preview()
+	if state.get("method") == "cuboid_auto" and int(state.get("epoch", -1)) != capture_epoch:
+		invalidate("旧识别结果已失效，请重新识别。")
+		return false
 	var confirmed := state.duplicate(true)
 	confirmed["revision"] = int(state.revision) + 1
 	var measured: Transform3D = Geometry.decode_transform(state.pose)
@@ -324,6 +330,34 @@ func _visual_target() -> Node3D:
 	return get_node_or_null(visual_target_path) as Node3D
 
 
+func configure_visual_model(kind: String, dimensions: Vector3) -> bool:
+	if not is_local_calibrator() or kind not in ["cad", "cuboid"] or not Geometry.valid_dimensions(dimensions):
+		return false
+	var custom := kind == "cuboid"
+	var target := _visual_target()
+	if target != null and custom != _custom_visual:
+		if custom:
+			_cad_visibility_before_custom = target.visible
+			target.visible = false
+		else:
+			target.visible = _cad_visibility_before_custom
+	_custom_visual = custom
+	_custom_dimensions = dimensions
+	clear_cabinet()
+	return true
+
+
+func show_cuboid_visual_preview(pose: Transform3D, dimensions: Vector3, offline: bool, epoch: int) -> bool:
+	if not is_local_calibrator() or not _custom_visual or not Geometry.valid_dimensions(dimensions) \
+			or not dimensions.is_equal_approx(_custom_dimensions) or not VisualGeometry.is_rigid(pose):
+		return false
+	if epoch != capture_epoch or (not offline and get_head_sample().is_empty()):
+		return false
+	_set_state({"status": "preview", "method": "cuboid_auto", "pose": Geometry.encode_transform(pose),
+		"dimensions": [dimensions.x, dimensions.y, dimensions.z], "offline": offline, "epoch": epoch})
+	return true
+
+
 func _visual_frame() -> Node3D:
 	var target := _visual_target()
 	return target.get_node_or_null("dashiyangui/MeshRenderer") as Node3D if target != null else null
@@ -331,7 +365,7 @@ func _visual_frame() -> Node3D:
 
 func show_visual_preview(pose: Transform3D, physical_scale: float, points: Array,
 		offline: bool, epoch: int) -> bool:
-	if not is_local_calibrator() or not VisualGeometry.is_rigid(pose) \
+	if not is_local_calibrator() or _custom_visual or not VisualGeometry.is_rigid(pose) \
 			or not is_finite(physical_scale) or physical_scale < 0.05 or physical_scale > 2.0 \
 			or points.is_empty() or points.size() > 4000:
 		return false
@@ -537,13 +571,13 @@ func _render_visual_state() -> void:
 func _render_cabinet() -> void:
 	var status := str(state.get("status"))
 	var offline := bool(state.get("offline", false))
-	_cabinet.visible = status != "invalid"
+	_cabinet.visible = status != "invalid" and (use_legacy_panel or _custom_visual)
 	if not _cabinet.visible:
 		return
 	# The authored cabinet transform NEVER changes. Its physical alignment is
 	# achieved by rebasing the source headset's tracking origin on confirmation.
 	if status == "empty" or offline:
-		_cabinet.call("set_dimensions", _default_cabinet_dimensions)
+		_cabinet.call("set_dimensions", _custom_dimensions if _custom_visual else _default_cabinet_dimensions)
 		_cabinet.call("show_uncalibrated_label", true)
 		return
 	if status not in ["preview", "confirmed"]:

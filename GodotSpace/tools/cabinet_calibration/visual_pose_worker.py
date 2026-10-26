@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import base64
 import json
+import hashlib
 import os
 from pathlib import Path
 import sys
@@ -17,6 +18,7 @@ import numpy as np
 
 from geometry import load_mesh, sha256
 from rgb_pose import estimate
+import cuboid_pose
 
 MAX_REQUEST = 36 * 1024 * 1024
 
@@ -91,38 +93,61 @@ def run_job(request: dict, artifacts: Path) -> dict:
     scale = float(request["physical_scale"])
     if mode not in ("live", "demo") or not np.isfinite(scale) or not 0.05 <= scale <= 2:
         raise ValueError("Invalid mode or physical scale")
-    manifest, report, mesh = load_assets(artifacts)
+    kind = request.get("model_kind", "cad")
+    if kind not in ("cad", "cuboid"):
+        raise ValueError("Unknown model kind")
+    size = None
+    if kind == "cuboid":
+        size = cuboid_pose.dimensions(request.get("dimensions_m"))
+        if scale != 1:
+            raise ValueError("Custom dimensions are already physical metres; scale must be one")
+        mesh = cuboid_pose.mesh_for(size)
+        manifest = {"backend": "experimental_upright_cuboid_edges_pnp",
+                    "model_sha256": hashlib.sha256(size.astype('<f8').tobytes()).hexdigest()}
+        report = {"coordinate_system": cuboid_pose.COORDINATES, "print_scale": 1}
+        points = cuboid_pose.preview_points(size)
+    else:
+        manifest, report, mesh = load_assets(artifacts)
+        points = np.asarray(mesh.vertices)[::max(1, len(mesh.vertices) // 4000)][:4000]
     ratio = scale / float(report["print_scale"])
-    points = np.asarray(mesh.vertices)[::max(1, len(mesh.vertices) // 4000)][:4000] * ratio
+    points = points * ratio
     result = {"schema_version": 1, "request_id": request["request_id"], "mode": mode,
+              "model_kind": kind,
               "physical_scale": scale, "model_sha256": manifest["model_sha256"],
               "backend": manifest["backend"], "real_camera_validated": False,
               "automatic_application_allowed": False,
               "coordinate_system": "opencv_camera_x_right_y_down_z_forward",
               "model_coordinates": report["coordinate_system"], "units": "meters",
               "model_points": points.tolist(), "model_extents_m": (mesh.extents * ratio).tolist(), "frames": []}
+    if kind == "cuboid":
+        result["dimensions_m"] = size.tolist()
     frames = request.get("frames", [])
     if mode == "demo":
         # A held-out view, not an image retrieved from the template bank.
         from render_model import camera_pose, render
         k = np.array([[720, 0, 320], [0, 710, 320], [0, 0, 1]], dtype=float)
-        truth = camera_pose(mesh.bounds.mean(0), mesh.extents.max() * 1.8, 95, 10)
-        rgb, xyz = render(mesh, truth, k, background=100, light=(0.2, -0.6, -1))
+        truth = camera_pose(mesh.bounds.mean(0), mesh.extents.max() * (2.4 if kind == "cuboid" else 1.8),
+                            35 if kind == "cuboid" else 95, 18 if kind == "cuboid" else 10)
+        rgb, xyz = render(mesh, truth, k, background=35 if kind == "cuboid" else 100,
+                          light=(-.3, -.7, -1) if kind == "cuboid" else (0.2, -0.6, -1))
         background = ~np.isfinite(xyz).all(axis=-1)
-        gradient = np.broadcast_to(np.linspace(70, 130, 640), (640, 640))
+        gradient = np.broadcast_to(np.linspace(25, 45, 640) if kind == "cuboid"
+                                   else np.linspace(70, 130, 640), (640, 640))
         rgb[background] = np.repeat(gradient[background, None], 3, axis=1).astype(np.uint8)
         image = cv2.cvtColor(cv2.GaussianBlur(rgb, (3, 3), 0.5), cv2.COLOR_RGB2BGR)
-        inputs = [("demo", image, k, np.zeros(5))]
+        inputs = [("demo", image, k, np.zeros(5), truth[:3, 1])]
     else:
         if not isinstance(frames, list) or len(frames) != 3:
             raise ValueError("Live recognition requires three distinct frames")
         identifiers = [str(frame["capture_id"]) for frame in frames]
         if len(set(identifiers)) != 3:
             raise ValueError("Repeated camera frames cannot establish consistency")
-        inputs = [(identifier, *decode_frame(frame)) for identifier, frame in zip(identifiers, frames)]
+        inputs = [(identifier, *decode_frame(frame), frame.get("camera_up"))
+                  for identifier, frame in zip(identifiers, frames)]
     last_pose = None
-    for identifier, image, k, distortion in inputs:
-        prediction = estimate(image, k, distortion, artifacts / "templates")
+    for identifier, image, k, distortion, camera_up in inputs:
+        prediction = (cuboid_pose.estimate_cuboid(image, k, size, camera_up) if kind == "cuboid"
+                      else estimate(image, k, distortion, artifacts / "templates"))
         row = {"capture_id": identifier, "status": prediction["status"]}
         if prediction["status"] == "candidate":
             candidate = prediction["candidates"][0].copy()

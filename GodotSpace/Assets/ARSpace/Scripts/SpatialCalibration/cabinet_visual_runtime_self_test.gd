@@ -126,22 +126,78 @@ func _run() -> void:
 		_expect((ui.get("_apply") as Button).disabled, "synthetic worker result cannot apply")
 		_expect((ui.get("_image") as TextureRect).texture != null, "actual CAD overlay reaches XR panel")
 		if OS.get_cmdline_user_args().has("--capture-ui") and DisplayServer.get_name() != "headless":
-			await RenderingServer.frame_post_draw
-			ui.get_viewport().get_texture().get_image().save_png(OS.get_environment("TEMP").path_join("cabinet-visual-ui.png"))
+			await _capture_ui(ui, "cabinet-visual-ui.png")
 		ui.call("_begin")
 		var job: Node = ui.get("_job")
 		var pid: int = job.get("_pid")
 		cabinet.close_panel()
 		_expect(not bool(ui.get("_busy")) and int(job.get("_pid")) == -1, "closing cancels owned worker")
 		_expect(pid <= 0 or not OS.is_process_running(pid), "cancel terminates worker process")
+	# Both product modes use the same image-only workflow; no point collector.
+	cabinet.open_panel()
+	await process_frame
+	(ui.get("_kind") as OptionButton).select(1)
+	ui.call("_options_changed")
+	_expect((ui.call("dimensions_m") as Vector3).is_equal_approx(Vector3(0.45, 1.21, 0.80)), "custom defaults are width 45 height 121 depth 80 cm")
+	_expect((ui.get("_dimension_row") as Control).visible and not (ui.get("_scale") as Control).visible, "custom dimensions replace CAD scale")
+	_expect(not target.visible and (cabinet.get("_cabinet") as Node3D).visible, "model selector swaps CAD and cuboid")
+	var dimension_buttons: Array = ui.get("_dimension_buttons")
+	(dimension_buttons[1] as Button).pressed.emit()
+	_expect((ui.call("dimensions_m") as Vector3).is_equal_approx(Vector3(0.46, 1.21, 0.8)), "VR plus changes width only in centimetres")
+	(dimension_buttons[0] as Button).pressed.emit()
+	var custom_size: Vector3 = ui.call("dimensions_m")
+	_expect(cabinet.show_cuboid_visual_preview(measured, custom_size, false, cabinet.capture_epoch), "custom automatic pose previews without clicked corners")
+	_expect(cabinet.confirm_preview(), "custom automatic result aligns scene")
+	_expect(origin.global_basis.get_scale().is_equal_approx(Vector3.ONE), "custom dimensions do not scale XR tracking")
+	_expect((cabinet.get("_cabinet").get("dimensions") as Vector3).is_equal_approx(custom_size), "virtual body uses requested physical dimensions")
+	_expect(not cabinet.confirm_preview(), "custom result cannot apply twice")
+	var applied_origin := origin.global_transform
+	(ui.get("_dimensions")[1] as SpinBox).value = 130
+	_expect(cabinet.state.status == "empty" and origin.global_transform.is_equal_approx(applied_origin), "size edit clears pending state but keeps applied mapping")
+	_expect(not cabinet.show_cuboid_visual_preview(measured, custom_size, false, cabinet.capture_epoch), "old dimensions cannot authorize a preview")
+	custom_size = ui.call("dimensions_m")
+	_expect(cabinet.show_cuboid_visual_preview(measured, custom_size, false, cabinet.capture_epoch), "new dimensions preview")
+	cabinet.call("_on_capture_connection", false)
+	_expect(not cabinet.confirm_preview(), "disconnect invalidates custom automatic result")
+	if OS.get_cmdline_user_args().has("--cad-worker") or OS.get_cmdline_user_args().has("--cuboid-worker"):
+		(ui.get("_dimensions")[1] as SpinBox).value = 121
+		(ui.get("_source") as OptionButton).select(1)
+		var prior_artifacts := OS.get_environment("GODOTSPACE_CABINET_ARTIFACTS")
+		OS.set_environment("GODOTSPACE_CABINET_ARTIFACTS", OS.get_environment("TEMP").path_join("no-cad-assets-required"))
+		ui.call("_begin")
+		OS.set_environment("GODOTSPACE_CABINET_ARTIFACTS", prior_artifacts)
+		var custom_end := Time.get_ticks_msec() + 120_000
+		while bool(ui.get("_busy")) and Time.get_ticks_msec() < custom_end:
+			await create_timer(0.05).timeout
+		_expect((ui.get("_result") as Dictionary).get("model_kind") == "cuboid", "real custom worker runs without CAD bank: " + str((ui.get("_status") as Label).text))
+		_expect((ui.get("_apply") as Button).disabled, "custom synthetic result cannot apply")
+		if OS.get_cmdline_user_args().has("--capture-ui") and DisplayServer.get_name() != "headless":
+			await _capture_ui(ui, "cabinet-cuboid-ui.png")
+		(ui.get("_dimensions")[0] as SpinBox).value = 50
+		_expect((ui.get("_result") as Dictionary).is_empty(), "changing dimensions clears actual worker result")
+	(ui.get("_kind") as OptionButton).select(0)
+	ui.call("_options_changed")
+	_expect(target.visible and not (cabinet.get("_cabinet") as Node3D).visible, "returning to CAD restores original model visibility")
 	host.queue_free()
 	await process_frame
 	if failures.is_empty():
-		print("Cabinet CAD runtime self-test passed")
+		print("Cabinet CAD/custom visual runtime self-test passed")
 	else:
 		for failure in failures:
 			push_error(failure)
 	quit(0 if failures.is_empty() else 1)
+
+
+func _capture_ui(ui: Control, filename: String) -> void:
+	# The 3D panel may be outside the desktop test camera frustum after origin
+	# rebasing. Render its SubViewport explicitly; never save a stale texture.
+	var viewport := ui.get_viewport() as SubViewport
+	var previous := viewport.render_target_update_mode
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	await process_frame
+	RenderingServer.force_draw()
+	viewport.get_texture().get_image().save_png(OS.get_environment("TEMP").path_join(filename))
+	viewport.render_target_update_mode = previous
 
 
 func _test_batches() -> void:
@@ -169,6 +225,20 @@ func _test_batches() -> void:
 	bad.frames[1].capture_id = "0"
 	_expect(Visual.validate_batch(bad, captures, 1).has("error"), "duplicate/reordered frames rejected")
 	_expect(Visual.validate_batch(response, captures, 1.0 / 3).has("error"), "scale mismatch rejected")
+	var custom := response.duplicate(true)
+	custom["model_kind"] = "cuboid"
+	custom["model_coordinates"] = "cabinet_front_bottom_left_x_right_y_up_depth_negative_z"
+	custom["dimensions_m"] = [0.45, 1.21, 0.8]
+	for row in custom.frames:
+		row["inliers"] = 6
+		row["edge_support"] = 1.0
+		row["silhouette_iou"] = 0.99
+	var dimensions := Vector3(0.45, 1.21, 0.8)
+	_expect(Visual.validate_batch(custom, captures, 1, "cuboid", dimensions).has("pose"), "custom batch accepts automatic silhouette geometry")
+	_expect(Visual.validate_batch(custom, captures, 1).has("error"), "custom result cannot be used for CAD")
+	_expect(Visual.validate_batch(custom, captures, 1, "cuboid", Vector3.ONE).has("error"), "custom dimensions are bound to result")
+	custom.frames[0]["edge_support"] = 0.1
+	_expect(Visual.validate_batch(custom, captures, 1, "cuboid", dimensions).has("error"), "weak custom edges rejected")
 
 
 func _matrix(t: Transform3D) -> Array:
