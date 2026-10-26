@@ -21,6 +21,7 @@ from rgb_pose import estimate
 import cuboid_pose
 
 MAX_REQUEST = 36 * 1024 * 1024
+MAX_FRAMES = 16
 
 
 def decode_frame(frame: dict) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -80,7 +81,18 @@ def overlay(image, points, pose, k):
     for x, y in uv:
         if 0 <= x < out.shape[1] and 0 <= y < out.shape[0]:
             cv2.circle(out, (round(x), round(y)), 1, (80, 230, 120), -1)
+    # Bound all per-frame previews together, even with full resolution input.
+    if max(out.shape[:2]) > 960:
+        factor = 960 / max(out.shape[:2])
+        out = cv2.resize(out, (round(out.shape[1] * factor), round(out.shape[0] * factor)),
+                         interpolation=cv2.INTER_AREA)
     ok, data = cv2.imencode(".jpg", out, [cv2.IMWRITE_JPEG_QUALITY, 85])
+    # 17 previews (16 candidates + last frame), base64 and pose data must fit
+    # inside the client's 16 MiB result-file limit even for noisy images.
+    while ok and len(data) > 512 * 1024:
+        out = cv2.resize(out, (max(1, out.shape[1] * 3 // 4), max(1, out.shape[0] * 3 // 4)),
+                         interpolation=cv2.INTER_AREA)
+        ok, data = cv2.imencode(".jpg", out, [cv2.IMWRITE_JPEG_QUALITY, 85])
     if not ok:
         raise ValueError("Cannot encode overlay")
     return base64.b64encode(data).decode("ascii")
@@ -137,14 +149,16 @@ def run_job(request: dict, artifacts: Path) -> dict:
         image = cv2.cvtColor(cv2.GaussianBlur(rgb, (3, 3), 0.5), cv2.COLOR_RGB2BGR)
         inputs = [("demo", image, k, np.zeros(5), truth[:3, 1])]
     else:
-        if not isinstance(frames, list) or len(frames) != 3:
-            raise ValueError("Live recognition requires three distinct frames")
+        if not isinstance(frames, list) or not 3 <= len(frames) <= MAX_FRAMES:
+            raise ValueError("Live recognition requires 3..16 distinct frames")
+        if sum(len(frame.get("jpeg_base64", "")) for frame in frames) > 32 * 1024 * 1024:
+            raise ValueError("Capture sequence exceeds the image budget")
         identifiers = [str(frame["capture_id"]) for frame in frames]
-        if len(set(identifiers)) != 3:
+        if len(set(identifiers)) != len(frames):
             raise ValueError("Repeated camera frames cannot establish consistency")
-        inputs = [(identifier, *decode_frame(frame), frame.get("camera_up"))
-                  for identifier, frame in zip(identifiers, frames)]
-    last_pose = None
+        # Decode one frame at a time: a sequence must not retain 16 full images.
+        inputs = ((identifier, *decode_frame(frame), frame.get("camera_up"))
+                  for identifier, frame in zip(identifiers, frames))
     for identifier, image, k, distortion, camera_up in inputs:
         prediction = (cuboid_pose.estimate_cuboid(image, k, size, camera_up) if kind == "cuboid"
                       else estimate(image, k, distortion, artifacts / "templates"))
@@ -155,14 +169,17 @@ def run_job(request: dict, artifacts: Path) -> dict:
             pose[:3, 3] *= ratio
             candidate["camera_from_model"] = pose.tolist()
             row.update(candidate)
-            last_pose = pose
-        else:
-            last_pose = None
+            row["overlay_jpeg_base64"] = overlay(image, points, pose, k)
         result["frames"].append(row)
-    result["status"] = "candidate" if all(row["status"] == "candidate" for row in result["frames"]) else "rejected"
-    # Always show the actual processed frame, including failures, without fabricating corners.
-    result["overlay_jpeg_base64"] = overlay(image, points if last_pose is not None else points[:0],
-                                            last_pose if last_pose is not None else np.eye(4), k)
+    counts = {status: sum(row["status"] == status for row in result["frames"])
+              for status in ("candidate", "not_found", "ambiguous")}
+    result["frame_counts"] = counts
+    # This is only a proposal. The client must check consensus in world space
+    # using its local capture poses before enabling preview/application.
+    result["status"] = "candidate" if counts["candidate"] >= (1 if mode == "demo" else 3) else "rejected"
+    # Rejection shows the actual last frame without an unaccepted projection.
+    # Success uses a per-frame overlay selected from the client's stable group.
+    result["overlay_jpeg_base64"] = overlay(image, points[:0], np.eye(4), k)
     return result
 
 

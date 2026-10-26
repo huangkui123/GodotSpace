@@ -24,6 +24,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	_test_batches()
+	_test_temporal_batches()
 	Profile.select_session_mode(Profile.Preset.SKY_XR_CLIENT)
 	var host := Node3D.new()
 	root.add_child(host)
@@ -93,6 +94,39 @@ func _run() -> void:
 	_expect(ui.name == "CabinetVisualUI", "product entry defaults to CAD UI")
 	_expect(is_equal_approx(ui.call("physical_scale"), 1), "default physical scale is 1:1")
 	_expect(ui.get("_image") is TextureRect, "CAD image has no manual point collector")
+	# Exercise timed acquisition independently of detection and hardware.
+	ui.set_process(false)
+	ui.call("_begin")
+	var started: int = ui.get("_capture_start")
+	_expect(int(ui.get("_deadline")) - started == 8000, "capture window lasts eight seconds")
+	var capture_metadata := CameraFixture.fixture()
+	capture_metadata.merge({"camera_intrinsics_width": 64, "camera_intrinsics_height": 64,
+		"camera_intrinsics_fx": 60.0, "camera_intrinsics_fy": 60.0,
+		"camera_intrinsics_cx": 32.0, "camera_intrinsics_cy": 32.0})
+	var capture_image := Image.create(64, 64, false, Image.FORMAT_RGB8)
+	capture_image.fill(Color.GRAY)
+	for id in ["a", "a", "b", "c"]:
+		cabinet.injected_frames.append({"timestamp_ns": id, "size": Vector2i(64, 64),
+			"metadata": capture_metadata, "head_world": camera.global_transform,
+			"jpeg": capture_image.save_jpg_to_buffer(), "epoch": cabinet.capture_epoch})
+		ui.call("_capture")
+	_expect((ui.get("_captures") as Array).size() == 3 and int(ui.get("_skipped")) == 1,
+		"repeated frame skipped without ending acquisition")
+	_expect(bool(ui.get("_collecting")) and int(ui.get("_job").get("_pid")) == -1,
+		"three captured frames do not end the continuous window early")
+	cabinet.close_panel()
+	_expect(not bool(ui.get("_busy")) and (ui.get("_captures") as Array).is_empty(),
+		"closing during capture clears the sequence")
+	cabinet.open_panel()
+	ui.call("_begin")
+	ui.call("_finish_capture")
+	_expect(not bool(ui.get("_busy")) and (ui.get("_apply") as Button).disabled,
+		"empty capture window fails without launching or applying")
+	ui.call("_begin")
+	cabinet.call("_on_capture_connection", false)
+	ui.call("_process", 0.01)
+	_expect(not bool(ui.get("_busy")), "disconnect cancels a live capture window")
+	ui.set_process(true)
 	if OS.get_cmdline_user_args().has("--cad-worker"):
 		# Send actual JPEG bytes through the live capture + Python path. A blank
 		# scene must fail without moving tracking or inventing manual corners.
@@ -108,17 +142,18 @@ func _run() -> void:
 				"jpeg": blank.save_jpg_to_buffer(), "epoch": cabinet.capture_epoch})
 		var before_rejection := origin.global_transform
 		ui.call("_begin")
-		for i in range(3):
-			ui.call("_capture")
 		var rejection_end := Time.get_ticks_msec() + 120_000
 		while bool(ui.get("_busy")) and Time.get_ticks_msec() < rejection_end:
 			await create_timer(0.05).timeout
 		_expect((ui.get("_result") as Dictionary).is_empty() and (ui.get("_apply") as Button).disabled,
 			"blank live JPEG must not enable alignment")
 		_expect((ui.get("_status") as Label).text.contains("未找到可靠"), "live rejection returns actionable status")
+		_expect(bool(ui.get("_hold_rejected_image")) and (ui.get("_image") as TextureRect).texture != null,
+			"rejection retains actual last frame without authorizing application")
 		_expect(origin.global_transform.is_equal_approx(before_rejection), "rejection preserves world mapping")
 		(ui.get("_source") as OptionButton).select(1)
 		ui.call("_begin")
+		_expect(not bool(ui.get("_hold_rejected_image")), "new request releases rejected-frame preview")
 		var end := Time.get_ticks_msec() + 120_000
 		while bool(ui.get("_busy")) and Time.get_ticks_msec() < end:
 			await create_timer(0.05).timeout
@@ -206,7 +241,7 @@ func _test_batches() -> void:
 	var rows: Array = []
 	for i in range(3):
 		var camera := Transform3D(Basis(Vector3.UP, i * 0.04), Vector3(i * 0.01, 1.6, 0))
-		captures.append({"capture_id": str(i), "camera_world": camera})
+		captures.append({"capture_id": str(i), "camera_world": camera, "captured_msec": i * 500})
 		var pose := Visual.OPENCV_TO_GODOT.affine_inverse() * camera.affine_inverse() * measured
 		rows.append({"capture_id": str(i), "status": "candidate", "inliers": 20,
 			"reprojection_rms_px": 1.0, "camera_from_model": _matrix(pose)})
@@ -245,6 +280,69 @@ func _matrix(t: Transform3D) -> Array:
 	return [[t.basis.x.x, t.basis.y.x, t.basis.z.x, t.origin.x],
 		[t.basis.x.y, t.basis.y.y, t.basis.z.y, t.origin.y],
 		[t.basis.x.z, t.basis.y.z, t.basis.z.z, t.origin.z], [0, 0, 0, 1]]
+
+
+func _sequence(offsets: Array, missing: Array = []) -> Dictionary:
+	var captures: Array[Dictionary] = []
+	var rows: Array = []
+	for i in range(offsets.size()):
+		var camera := Transform3D(Basis(Vector3.UP, i * 0.03), Vector3(i * 0.02, 1.6, 0))
+		captures.append({"capture_id": str(i), "camera_world": camera, "captured_msec": i * 500})
+		var world_pose := Transform3D(Basis(Vector3.UP, 0.4), Vector3(0.3 + offsets[i], 0.4, -2))
+		var pose := Visual.OPENCV_TO_GODOT.affine_inverse() * camera.affine_inverse() * world_pose
+		rows.append({"capture_id": str(i), "status": "not_found" if missing.has(i) else "candidate",
+			"inliers": 20, "reprojection_rms_px": 1.0, "camera_from_model": _matrix(pose)})
+	return {"captures": captures, "response": {"schema_version": 1, "status": "candidate",
+		"units": "meters", "physical_scale": 1.0, "coordinate_system": "opencv_camera_x_right_y_down_z_forward",
+		"model_coordinates": "godot_frame_mesh_local_right_handed_y_up", "mode": "live", "frames": rows}}
+
+
+func _test_temporal_batches() -> void:
+	var sequence := _sequence([0, 0, 0, 0.008, -0.008, 0.3, 0, 0.004], [0, 2, 6])
+	# A very sharp but inconsistent frame must not become the overlay/pose.
+	sequence.response.frames[5].reprojection_rms_px = 0.01
+	sequence.response.frames[2].status = "ambiguous"
+	var result := Visual.validate_batch(sequence.response, sequence.captures, 1)
+	_expect(result.has("pose"), "dropouts and one outlier do not reject consistent remaining frames")
+	if result.has("pose"):
+		_expect(result.support_count == 4 and result.rejected_count == 3 and result.outlier_count == 1,
+			"sequence reports actual accepted/rejected/outlier counts")
+		_expect((result.pose as Transform3D).origin.is_equal_approx(Vector3(0.301, 0.4, -2)),
+			"fusion averages accepted world positions rather than using last frame")
+		_expect(result.representative_index != 5, "preview image belongs to accepted consensus")
+	sequence = _sequence([0, 0, 0, 0, 0.2, 0.2, 0.2])
+	_expect(Visual.validate_batch(sequence.response, sequence.captures, 1).has("error"),
+		"two persistent poses rejected even when one has a majority")
+	sequence = _sequence([0, 0.02, 0.04, 0.06, 0.08])
+	_expect(Visual.validate_batch(sequence.response, sequence.captures, 1).has("error"),
+		"transitive chain cannot manufacture consensus")
+	sequence = _sequence([0, 0, 0])
+	sequence.captures[1].captured_msec = 300
+	sequence.captures[2].captured_msec = 600
+	_expect(Visual.validate_batch(sequence.response, sequence.captures, 1).has("error"),
+		"brief detection shorter than one second cannot apply")
+	sequence.captures[1].captured_msec = 0
+	_expect(Visual.validate_batch(sequence.response, sequence.captures, 1).has("error"),
+		"duplicate capture times cannot count as independent samples")
+	var offsets: Array = []
+	for i in range(16):
+		offsets.append(0)
+	sequence = _sequence(offsets)
+	result = Visual.validate_batch(sequence.response, sequence.captures, 1)
+	_expect(result.get("support_count") == 16, "full sixteen-frame consensus stays bounded and succeeds")
+	for i in range(16):
+		if i not in [1, 5, 15]:
+			sequence.response.frames[i].status = "not_found"
+	result = Visual.validate_batch(sequence.response, sequence.captures, 1)
+	_expect(result.get("support_count") == 3, "sparse but stable detections across window can succeed")
+	sequence = _sequence([0, 0, 0])
+	for i in range(3):
+		var world_pose := Transform3D(Basis(Vector3.UP, deg_to_rad([179.8, -179.8, 180.0][i])), Vector3(0.3, 0.4, -2))
+		var camera: Transform3D = sequence.captures[i].camera_world
+		sequence.response.frames[i].camera_from_model = _matrix(Visual.OPENCV_TO_GODOT.affine_inverse() * camera.affine_inverse() * world_pose)
+	result = Visual.validate_batch(sequence.response, sequence.captures, 1)
+	_expect(result.has("pose") and (result.pose as Transform3D).basis.is_equal_approx(Basis(Vector3.UP, PI)),
+		"quaternion fusion handles rotations crossing plus/minus 180 degrees")
 
 
 func _expect(condition: bool, message: String) -> void:

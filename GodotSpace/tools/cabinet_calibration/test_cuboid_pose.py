@@ -55,6 +55,18 @@ class CuboidPoseTests(TestCase):
         result = estimate_cuboid(image, k, DEFAULT_DIMENSIONS, truth[:3, 1])
         self.assertEqual(result['status'], 'candidate')
 
+    def test_pale_cabinet_preserves_geometry_after_contrast_enhancement(self):
+        image, k, truth = scene()
+        image = np.clip(image.astype(float) * .3 + 150, 0, 255).astype('uint8')
+        result = estimate_cuboid(image, k, DEFAULT_DIMENSIONS, truth[:3, 1])
+        self.assertEqual(result['status'], 'candidate')
+        recovered = np.asarray(result['candidates'][0]['camera_from_model'])
+        np.testing.assert_allclose(recovered[:3, 3], truth[:3, 3], atol=.025)
+        self.assertLess(np.linalg.norm(recovered[:3, :3] - truth[:3, :3]), .08)
+        # Amplifying local contrast must not turn sensor noise into a cabinet.
+        noise = np.random.default_rng(13).normal(180, 2, image.shape).clip(0, 255).astype('uint8')
+        self.assertEqual(estimate_cuboid(noise, k, DEFAULT_DIMENSIONS, truth[:3, 1])['status'], 'not_found')
+
     def test_multiple_matching_cabinets_are_ambiguous(self):
         mesh = mesh_for(DEFAULT_DIMENSIONS)
         k = np.array([[680., 0, 320], [0, 675., 320], [0, 0, 1.]])

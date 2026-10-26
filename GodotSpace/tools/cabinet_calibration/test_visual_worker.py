@@ -21,6 +21,45 @@ def frame(identifier="1"):
 
 
 class VisualWorkerTests(TestCase):
+    def test_noisy_preview_is_bounded_for_a_full_sequence(self):
+        image = np.random.default_rng(3).integers(0, 256, (2048, 2048, 3), dtype=np.uint8)
+        encoded = worker.overlay(image, np.empty((0, 3)), np.eye(4), np.eye(3))
+        jpeg = base64.b64decode(encoded)
+        self.assertLessEqual(len(jpeg), 512 * 1024)
+        preview = cv2.imdecode(np.frombuffer(jpeg, np.uint8), cv2.IMREAD_COLOR)
+        self.assertLessEqual(max(preview.shape[:2]), 960)
+
+    def test_sequence_survives_missing_frames_and_retains_per_frame_previews(self):
+        from test_cuboid_pose import scene
+        image, k, pose = scene()
+        frames = []
+        # Real image geometry, including pale images and intermittent loss.
+        for i in range(16):
+            pixels = (image.astype(float) * .3 + 150).astype('uint8') if i % 2 else image
+            if i in [0, 3, 7, 11, 15]:
+                pixels = np.full_like(image, 180)
+            ok, jpeg = cv2.imencode('.jpg', pixels)
+            self.assertTrue(ok)
+            frames.append({"capture_id": str(i), "jpeg_base64": base64.b64encode(jpeg).decode(),
+                           "width": 640, "height": 640, "K": k.tolist(), "rectified": True,
+                           "camera_up": pose[:3, 1].tolist()})
+        request = {"schema_version": 1, "request_id": "sequence", "mode": "live",
+                   "model_kind": "cuboid", "physical_scale": 1,
+                   "dimensions_m": [.45, 1.21, .8], "frames": frames}
+        result = worker.run_job(request, Path('missing-cad-assets'))
+        self.assertEqual(result['status'], 'candidate')
+        self.assertEqual(result['frame_counts'], {'candidate': 11, 'not_found': 5, 'ambiguous': 0})
+        self.assertEqual([row['capture_id'] for row in result['frames']], [str(i) for i in range(16)])
+        for row in result['frames']:
+            self.assertEqual('overlay_jpeg_base64' in row, row['status'] == 'candidate')
+        self.assertFalse(result['automatic_application_allowed'])
+        request['frames'] = frames[:2]
+        with self.assertRaisesRegex(ValueError, '3..16'):
+            worker.run_job(request, Path('missing-cad-assets'))
+        request['frames'] = frames + [frames[0]]
+        with self.assertRaisesRegex(ValueError, '3..16'):
+            worker.run_job(request, Path('missing-cad-assets'))
+
     def test_custom_demo_needs_no_cad_assets_and_cannot_apply(self):
         result = worker.run_job({"schema_version": 1, "request_id": "custom-demo", "mode": "demo",
                                  "model_kind": "cuboid", "physical_scale": 1,

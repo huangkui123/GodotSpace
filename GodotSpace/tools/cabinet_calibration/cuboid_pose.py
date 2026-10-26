@@ -156,6 +156,11 @@ def estimate_cuboid(image, k, size, camera_up) -> dict:
         raise ValueError("Cuboid recognition needs a unit tracking-up vector in camera coordinates")
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     edges = cv2.Canny(cv2.GaussianBlur(gray, (3, 3), .6), 35, 100)
+    # Pale cabinets against pale walls can have real edges below the fixed
+    # threshold. Recover local contrast before edge extraction, while keeping
+    # all geometric, gravity, junction-support and ambiguity checks unchanged.
+    enhanced = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8)).apply(gray)
+    edges |= cv2.Canny(cv2.GaussianBlur(enhanced, (3, 3), .6), 35, 100)
     distance = cv2.distanceTransform(255 - edges, cv2.DIST_L2, 3)
     found = []
     for polygon in _polygons(gray, edges):

@@ -6,6 +6,10 @@ const VisualGeometry := preload("res://Assets/ARSpace/Scripts/SpatialCalibration
 const CameraModel := preload("res://Assets/ARSpace/Scripts/SpatialCalibration/pico_camera_model.gd")
 const Job := preload("res://Assets/ARSpace/Scripts/SpatialCalibration/cabinet_visual_job.gd")
 const CabinetModel := preload("res://Assets/ARSpace/Scripts/SpatialCalibration/calibration_cabinet.gd")
+const CAPTURE_DURATION_MS := 8000
+const CAPTURE_INTERVAL_MS := 500
+const MAX_FRAMES := 16
+const MAX_JPEG_BYTES := 24 * 1024 * 1024 - 4096 # Leave room for per-frame base64 padding.
 
 var controller: Node
 var _job: Node
@@ -26,6 +30,10 @@ var _busy := false
 var _collecting := false
 var _deadline: int = 0
 var _next_capture: int = 0
+var _capture_start: int = 0
+var _jpeg_bytes := 0
+var _skipped := 0
+var _capture_hint := ""
 var _epoch: int = -1
 var _request_id := ""
 var _frames: Array[Dictionary] = []
@@ -33,6 +41,7 @@ var _captures: Array[Dictionary] = []
 var _last_display: int = -1
 var _display_tick := 0.0
 var _result: Dictionary = {}
+var _hold_rejected_image := false
 
 
 func _ready() -> void:
@@ -111,7 +120,7 @@ func _ready() -> void:
 	# No input handlers/point collection in the CAD workflow.
 	_image.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_child(_image)
-	_status = _label(column, "看清柜体整体和结构细节后点击开始。识别期间请保持头部与实物稳定。")
+	_status = _label(column, "连续取景 8 秒，自动筛选并融合多帧。请看清柜体并停稳头部。")
 	_status.custom_minimum_size.y = 70
 	var actions := HBoxContainer.new()
 	actions.add_theme_constant_override("separation", 16)
@@ -189,9 +198,10 @@ func _begin() -> void:
 		_launch()
 	else:
 		_collecting = true
-		_next_capture = Time.get_ticks_msec() + 3000
-		_deadline = Time.get_ticks_msec() + 15000
-		_status.text = "3 秒后开始取图。请看向柜体并停稳；将自动采集三帧，无需点选。"
+		_capture_start = Time.get_ticks_msec() + 3000
+		_next_capture = _capture_start
+		_deadline = _capture_start + CAPTURE_DURATION_MS
+		_status.text = "3 秒后开始连续取景 8 秒。请露出完整柜体、正面和侧面，并停稳头部。"
 
 
 func _process(delta: float) -> void:
@@ -200,15 +210,21 @@ func _process(delta: float) -> void:
 		return
 	if _collecting:
 		var now := Time.get_ticks_msec()
-		if now > _deadline:
-			_fail("自动取图超时。请检查相机画面、头部跟踪，并保持静止后重试。")
+		if now >= _deadline:
+			_finish_capture()
 		elif now >= _next_capture:
 			_capture()
+		if _collecting and now >= _capture_start:
+			_status.text = "连续取景：剩余 %.1f 秒 · 已采集 %d 帧 · 跳过 %d 次\n%s" % [
+				maxf(0, (_deadline - now) / 1000.0), _captures.size(), _skipped, _capture_hint]
 	_display_tick += delta
 	if _display_tick < 0.15:
 		return
 	_display_tick = 0.0
 	_connection.text = str(controller.call("get_capture_status")) if _source.selected == 0 else "合成图像 · 离线演练（不会应用现场对齐）"
+	if _hold_rejected_image:
+		_connection.text = "本次识别末帧 · 点击开始后恢复实时取景"
+		return
 	if _source.selected != 0 or not _result.is_empty() or (_busy and not _collecting):
 		return
 	var latest: Dictionary = controller.get("latest_frame")
@@ -218,15 +234,24 @@ func _process(delta: float) -> void:
 
 
 func _capture() -> void:
-	_next_capture = Time.get_ticks_msec() + 350
+	_next_capture = Time.get_ticks_msec() + CAPTURE_INTERVAL_MS
+	if _frames.size() >= MAX_FRAMES:
+		return
 	var frame: Dictionary = controller.call("freeze_frame")
 	if frame.has("error"):
-		_status.text = str(frame.error)
+		_skipped += 1
+		_capture_hint = str(frame.error)
 		return
 	var identifier := str(frame.timestamp_ns)
 	for previous in _captures:
 		if previous.capture_id == identifier:
+			_skipped += 1
+			_capture_hint = "等待新的相机帧；重复画面不会计入融合。"
 			return
+	if _jpeg_bytes + (frame.jpeg as PackedByteArray).size() > MAX_JPEG_BYTES:
+		_skipped += 1
+		_capture_hint = "已达到图像缓存上限，将使用已采集的帧。"
+		return
 	var extrinsics := CameraModel.head_from_camera(frame.metadata)
 	var intrinsics := Geometry.intrinsics_from_metadata(frame.metadata, frame.size)
 	var intrinsics_error := CameraModel.intrinsics_error(frame.metadata)
@@ -243,15 +268,22 @@ func _capture() -> void:
 		"width": frame.size.x, "height": frame.size.y, "rectified": true,
 		"camera_up": [camera_up.x, camera_up.y, camera_up.z],
 		"K": [[k.x, 0, k.z], [0, k.y, k.w], [0, 0, 1]]})
-	_captures.append({"capture_id": identifier, "camera_world": camera_world})
-	_status.text = "已自动采集 %d / 3 帧。" % _frames.size()
-	if _frames.size() == 3:
-		_collecting = false
-		_launch()
+	_jpeg_bytes += (frame.jpeg as PackedByteArray).size()
+	_captures.append({"capture_id": identifier, "camera_world": camera_world,
+		"captured_msec": Time.get_ticks_msec()})
+	_capture_hint = "保持柜体不动；换角度后请停稳，移动中的画面会跳过。"
+
+
+func _finish_capture() -> void:
+	_collecting = false
+	if _captures.size() < 3:
+		_fail("8 秒内仅采到 %d 帧可用画面，至少需要 3 帧。%s" % [_captures.size(), _capture_hint])
+		return
+	_launch()
 
 
 func _launch() -> void:
-	_status.text = "正在自动识别柜体轮廓和棱边…" if model_kind() == "cuboid" else "正在匹配真实柜体 CAD 并估计姿态…"
+	_status.text = "采集完成，正在分析 %d 帧、筛除失败帧并融合稳定姿态…" % _captures.size()
 	var size_m := dimensions_m()
 	var error: String = _job.call("start", {"schema_version": 1, "request_id": _request_id,
 		"model_kind": model_kind(), "dimensions_m": [size_m.x, size_m.y, size_m.z],
@@ -277,8 +309,15 @@ func _on_completed(result: Dictionary) -> void:
 	_display(Marshalls.base64_to_raw(str(result.get("overlay_jpeg_base64", ""))))
 	var solved := VisualGeometry.validate_batch(result, _captures, physical_scale(), model_kind(), dimensions_m())
 	if solved.has("error"):
+		# Keep the processed image visible on rejection so the user can inspect
+		# the actual framing. It never authorizes application.
+		var rejected_image := _image.texture
 		_fail(str(solved.error))
+		_image.texture = rejected_image
+		_hold_rejected_image = true
 		return
+	var representative: Dictionary = result.frames[solved.representative_index]
+	_display(Marshalls.base64_to_raw(str(representative.get("overlay_jpeg_base64", ""))))
 	var accepted: bool
 	if model_kind() == "cuboid":
 		accepted = controller.call("show_cuboid_visual_preview", solved.pose, dimensions_m(), bool(solved.offline), _epoch)
@@ -295,7 +334,9 @@ func _on_completed(result: Dictionary) -> void:
 	if extents.size() == 3:
 		_model_info.text = "识别模型（宽 / 高 / 深）：%.1f / %.1f / %.1f cm" % [extents[0] * 100, extents[1] * 100, extents[2] * 100]
 	_status.text = "识别成功：绿色图像点为模型投影，空间中显示柜体预览。"
-	_status.text += "\n合成演练不可应用现场对齐。" if solved.offline else "\n三帧姿态一致；从不同方向检查后可应用。实柜精度尚未验证。"
+	_status.text += "\n合成演练不可应用现场对齐。" if solved.offline else \
+		"\n已融合 %d / %d 帧，跳过 %d 帧识别失败及 %d 帧异常姿态。检查贴合后可应用。" % [
+			solved.support_count, _captures.size(), solved.rejected_count, solved.outlier_count]
 
 
 func _confirm() -> void:
@@ -336,7 +377,11 @@ func _reset() -> void:
 	_set_idle()
 	_frames.clear()
 	_captures.clear()
+	_jpeg_bytes = 0
+	_skipped = 0
+	_capture_hint = ""
 	_result.clear()
+	_hold_rejected_image = false
 	_apply.disabled = true
 	_image.texture = null
 	controller.call("clear_cabinet")
