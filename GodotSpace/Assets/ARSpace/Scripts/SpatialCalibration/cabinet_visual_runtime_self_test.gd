@@ -16,6 +16,10 @@ class TestCabinet extends Cabinet:
 		if not injected_frames.is_empty():
 			return injected_frames.pop_front()
 		return super.freeze_frame()
+	func capture_moving_frame() -> Dictionary:
+		if not injected_frames.is_empty():
+			return injected_frames.pop_front()
+		return super.capture_moving_frame()
 
 
 func _initialize() -> void:
@@ -25,6 +29,7 @@ func _initialize() -> void:
 func _run() -> void:
 	_test_batches()
 	_test_temporal_batches()
+	_test_moving_capture()
 	Profile.select_session_mode(Profile.Preset.SKY_XR_CLIENT)
 	var host := Node3D.new()
 	root.add_child(host)
@@ -98,20 +103,22 @@ func _run() -> void:
 	ui.set_process(false)
 	ui.call("_begin")
 	var started: int = ui.get("_capture_start")
-	_expect(int(ui.get("_deadline")) - started == 8000, "capture window lasts eight seconds")
+	_expect(int(ui.get("_deadline")) - started == 12000, "multi-view capture window lasts twelve seconds")
 	var capture_metadata := CameraFixture.fixture()
 	capture_metadata.merge({"camera_intrinsics_width": 64, "camera_intrinsics_height": 64,
 		"camera_intrinsics_fx": 60.0, "camera_intrinsics_fy": 60.0,
 		"camera_intrinsics_cx": 32.0, "camera_intrinsics_cy": 32.0})
 	var capture_image := Image.create(64, 64, false, Image.FORMAT_RGB8)
 	capture_image.fill(Color.GRAY)
-	for id in ["a", "a", "b", "c"]:
+	for id in ["a", "a", "b", "c", "d"]:
+		var viewpoint := camera.global_transform
+		viewpoint.origin.x += {"a": 0.0, "b": 0.1, "c": 0.2, "d": 0.2}[id]
 		cabinet.injected_frames.append({"timestamp_ns": id, "size": Vector2i(64, 64),
-			"metadata": capture_metadata, "head_world": camera.global_transform,
+			"metadata": capture_metadata, "head_world": viewpoint,
 			"jpeg": capture_image.save_jpg_to_buffer(), "epoch": cabinet.capture_epoch})
 		ui.call("_capture")
-	_expect((ui.get("_captures") as Array).size() == 3 and int(ui.get("_skipped")) == 1,
-		"repeated frame skipped without ending acquisition")
+	_expect((ui.get("_captures") as Array).size() == 3 and int(ui.get("_skipped")) == 2,
+		"repeated frame or same viewpoint with new frame ID skipped without ending acquisition")
 	_expect(bool(ui.get("_collecting")) and int(ui.get("_job").get("_pid")) == -1,
 		"three captured frames do not end the continuous window early")
 	cabinet.close_panel()
@@ -137,8 +144,10 @@ func _run() -> void:
 			"camera_intrinsics_fx": 60.0, "camera_intrinsics_fy": 60.0,
 			"camera_intrinsics_cx": 32.0, "camera_intrinsics_cy": 32.0})
 		for i in range(3):
+			var viewpoint := camera.global_transform
+			viewpoint.origin.x += i * 0.1
 			cabinet.injected_frames.append({"timestamp_ns": str(i + 100), "size": Vector2i(64, 64),
-				"metadata": metadata, "head_world": camera.global_transform,
+				"metadata": metadata, "head_world": viewpoint,
 				"jpeg": blank.save_jpg_to_buffer(), "epoch": cabinet.capture_epoch})
 		var before_rejection := origin.global_transform
 		ui.call("_begin")
@@ -210,6 +219,35 @@ func _run() -> void:
 			await _capture_ui(ui, "cabinet-cuboid-ui.png")
 		(ui.get("_dimensions")[0] as SpinBox).value = 50
 		_expect((ui.get("_result") as Dictionary).is_empty(), "changing dimensions clears actual worker result")
+	for argument in OS.get_cmdline_user_args():
+		if not argument.begins_with("--multiview-fixture="):
+			continue
+		var fixture: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(argument.trim_prefix("--multiview-fixture=")))
+		(ui.get("_dimensions")[0] as SpinBox).value = 45
+		(ui.get("_dimensions")[1] as SpinBox).value = 121
+		(ui.get("_source") as OptionButton).select(0)
+		var metadata := CameraFixture.fixture()
+		metadata.merge({"camera_intrinsics_width": 640, "camera_intrinsics_height": 640,
+			"camera_intrinsics_fx": 680.0, "camera_intrinsics_fy": 675.0,
+			"camera_intrinsics_cx": 320.0, "camera_intrinsics_cy": 320.0})
+		var model := preload("res://Assets/ARSpace/Scripts/SpatialCalibration/pico_camera_model.gd")
+		var extrinsic: Transform3D = model.head_from_camera(metadata).transform
+		for frame in fixture.frames:
+			var world_cv: Transform3D = Visual.from_row_major(frame.world_from_camera).transform
+			cabinet.injected_frames.append({"timestamp_ns": frame.capture_id, "size": Vector2i(640, 640),
+				"metadata": metadata, "head_world": world_cv * Visual.OPENCV_TO_GODOT * extrinsic.affine_inverse(),
+				"jpeg": Marshalls.base64_to_raw(frame.jpeg_base64), "epoch": cabinet.capture_epoch})
+		ui.call("_begin")
+		var joint_end := Time.get_ticks_msec() + 120_000
+		while bool(ui.get("_busy")) and Time.get_ticks_msec() < joint_end:
+			await create_timer(0.05).timeout
+		_expect(not (ui.get("_apply") as Button).disabled,
+			"real moving-view JPEGs pass worker and local pose validation: " + str((ui.get("_status") as Label).text))
+		_expect((ui.get("_result") as Dictionary).get("multiview_fit", {}).get("status") == "candidate",
+			"partial-face joint fit reaches VR preview through actual process")
+		if OS.get_cmdline_user_args().has("--capture-ui") and DisplayServer.get_name() != "headless":
+			await _capture_ui(ui, "cabinet-multiview-ui.png")
+		ui.call("_reset")
 	(ui.get("_kind") as OptionButton).select(0)
 	ui.call("_options_changed")
 	_expect(target.visible and not (cabinet.get("_cabinet") as Node3D).visible, "returning to CAD restores original model visibility")
@@ -343,6 +381,38 @@ func _test_temporal_batches() -> void:
 	result = Visual.validate_batch(sequence.response, sequence.captures, 1)
 	_expect(result.has("pose") and (result.pose as Transform3D).basis.is_equal_approx(Basis(Vector3.UP, PI)),
 		"quaternion fusion handles rotations crossing plus/minus 180 degrees")
+
+
+func _test_moving_capture() -> void:
+	var before := Transform3D.IDENTITY
+	var after := Transform3D(Basis(Vector3.UP, deg_to_rad(1)), Vector3(0.01, 0, 0))
+	var history: Array = [{"time_usec": 100000, "transform": before}, {"time_usec": 150000, "transform": after}]
+	var matched := Cabinet.interpolate_capture_pose(history, 125000)
+	_expect(matched.has("transform") and (matched.transform as Transform3D).is_equal_approx(before.interpolate_with(after, 0.5)),
+		"moving capture uses mapped-image-time interpolated pose, not latest pose")
+	_expect(Cabinet.interpolate_capture_pose(history, 90000).has("error"), "no extrapolation beyond recorded tracking")
+	history[1].time_usec = 300000
+	_expect(Cabinet.interpolate_capture_pose(history, 125000).has("error"), "tracking gaps reject capture")
+	history[1].time_usec = 150000
+	after.origin.x = 0.2
+	history[1].transform = after
+	_expect(Cabinet.interpolate_capture_pose(history, 125000).has("error"), "fast movement rejected without requiring stationary history")
+	var sequence := _sequence([0, 0, 0])
+	sequence.response.multiview = true
+	_expect(Visual.validate_batch(sequence.response, sequence.captures, 1).has("error"), "same viewpoint repeats cannot count as multi-view")
+	var custom := sequence.response as Dictionary
+	custom.model_kind = "cuboid"
+	custom.model_coordinates = "cabinet_front_bottom_left_x_right_y_up_depth_negative_z"
+	custom.dimensions_m = [0.45, 1.21, 0.8]
+	custom.multiview_fit = {"status": "candidate", "world_from_model": _matrix(Transform3D.IDENTITY),
+		"support_indices": [0, 1, 2], "edge_score": 0.9}
+	for i in range(3):
+		sequence.captures[i].camera_world = Transform3D(Basis.IDENTITY, Vector3((i - 1) * 0.5, 1.4, 2))
+	var result := Visual.validate_batch(custom, sequence.captures, 1, "cuboid", Vector3(0.45, 1.21, 0.8))
+	_expect(result.has("pose"), "joint multi-view pose validated using independent camera baseline and parallax")
+	custom.multiview_fit.support_indices = [0, 0, 2]
+	_expect(Visual.validate_batch(custom, sequence.captures, 1, "cuboid", Vector3(0.45, 1.21, 0.8)).has("error"),
+		"joint fit cannot repeat support views")
 
 
 func _expect(condition: bool, message: String) -> void:

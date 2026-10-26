@@ -285,6 +285,51 @@ func freeze_frame() -> Dictionary:
 	return result
 
 
+## Moving-view capture uses the image's mapped timestamp and interpolated local
+## tracking, never the latest pose substituted for an older camera image.
+## The arrival clock map still contains unknown fixed transport latency; this
+## remains an experimental preview until device timing is physically verified.
+func capture_moving_frame() -> Dictionary:
+	var now := Time.get_ticks_usec()
+	if now < _alignment_settle_until_usec:
+		return {"error": "跟踪空间正在更新，请稍后重新扫描。"}
+	if latest_frame.is_empty() or now - int(latest_frame.receive_usec) > 500_000:
+		return {"error": "没有新鲜相机画面，请检查 Helper。"}
+	var current := get_head_sample()
+	if current.is_empty():
+		return {"error": "头部跟踪不可用，当前画面已跳过。"}
+	var history := _head_history.duplicate()
+	history.append({"time_usec": now, "transform": current.transform})
+	var matched := interpolate_capture_pose(history, int(latest_frame.estimated_capture_usec))
+	if matched.has("error"):
+		return matched
+	var frame := latest_frame.duplicate(true)
+	frame["head_world"] = matched.transform
+	frame["epoch"] = capture_epoch
+	frame["pose_timing"] = "interpolated_arrival_estimate"
+	return frame
+
+
+static func interpolate_capture_pose(history: Array, capture_usec: int) -> Dictionary:
+	for i in range(1, history.size()):
+		var before: Dictionary = history[i - 1]
+		var after: Dictionary = history[i]
+		var start := int(before.time_usec)
+		var end := int(after.time_usec)
+		if capture_usec < start or capture_usec > end or end <= start:
+			continue
+		if end - start > 100_000:
+			return {"error": "图像对应的跟踪采样有间断，已跳过。"}
+		var a: Transform3D = before.transform
+		var b: Transform3D = after.transform
+		var seconds := (end - start) / 1000000.0
+		if a.origin.distance_to(b.origin) / seconds > 0.4 \
+				or a.basis.get_rotation_quaternion().angle_to(b.basis.get_rotation_quaternion()) / seconds > deg_to_rad(45):
+			return {"error": "移动过快，请缓慢横移并始终看向柜体。"}
+		return {"transform": a.interpolate_with(b, float(capture_usec - start) / (end - start))}
+	return {"error": "等待与相机时间匹配的头姿；不会使用当前头姿代替旧画面。"}
+
+
 func show_preview(pose: Transform3D, dimensions: Vector3, offline: bool = false) -> bool:
 	if not is_local_calibrator() or not Geometry.valid_dimensions(dimensions) or Geometry.decode_transform(Geometry.encode_transform(pose)) == null:
 		return false

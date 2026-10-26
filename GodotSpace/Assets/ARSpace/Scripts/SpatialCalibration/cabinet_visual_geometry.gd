@@ -64,6 +64,12 @@ static func from_row_major(matrix: Variant) -> Dictionary:
 	return {"transform": value}
 
 
+static func to_row_major(t: Transform3D) -> Array:
+	return [[t.basis.x.x, t.basis.y.x, t.basis.z.x, t.origin.x],
+		[t.basis.x.y, t.basis.y.y, t.basis.z.y, t.origin.y],
+		[t.basis.x.z, t.basis.y.z, t.basis.z.z, t.origin.z], [0, 0, 0, 1]]
+
+
 ## Compare poses in the SAME world frame, not camera coordinates. Camera motion
 ## between captures must not look like object motion, nor hide inconsistent poses.
 static func validate_batch(result: Dictionary, captures: Array[Dictionary], physical_scale: float,
@@ -94,6 +100,11 @@ static func validate_batch(result: Dictionary, captures: Array[Dictionary], phys
 	if not rows is Array or rows.size() != captures.size() \
 			or (offline and rows.size() != 1) or (not offline and (rows.size() < 3 or rows.size() > 16)):
 		return {"error": "识别帧数量不完整。"}
+	if not offline and result.get("multiview", false):
+		if not has_view_baseline(captures):
+			return {"error": "视点移动不足 12 cm，请横向移动观察柜体；静止或原地转头不能代替多个视角。"}
+		if model_kind == "cuboid":
+			return _validate_multiview(result, captures, dimensions)
 	var poses: Array[Transform3D] = []
 	var source_indices: Array[int] = []
 	var identifiers: Dictionary = {}
@@ -227,3 +238,74 @@ static func _maximal_pose_groups(neighbors: Array, group: Array[int], remaining:
 		_maximal_pose_groups(neighbors, next_group, next_remaining, next_excluded, groups)
 		remaining.erase(index)
 		excluded.append(index)
+
+
+static func has_view_baseline(captures: Array[Dictionary]) -> bool:
+	for a in captures:
+		for b in captures:
+			if a.get("camera_world") is Transform3D and b.get("camera_world") is Transform3D \
+					and (a.camera_world as Transform3D).origin.distance_to((b.camera_world as Transform3D).origin) >= 0.12:
+				return true
+	return false
+
+
+static func _validate_multiview(result: Dictionary, captures: Array[Dictionary], dimensions: Vector3) -> Dictionary:
+	var fit: Dictionary = result.get("multiview_fit", {})
+	if fit.get("status") != "candidate":
+		var reasons := {"insufficient_baseline": "移动距离不足", "need_three_views": "有效视角不足",
+			"ambiguous": "存在多个可行位置", "insufficient_edge_support": "可见边线不足或尺寸不匹配"}
+		return {"error": "多个视角未能共同确定柜体：%s。请绕开遮挡，露出正面和侧面后重新扫描。" % str(reasons.get(fit.get("reason", ""), "线索不足"))}
+	var decoded := from_row_major(fit.get("world_from_model"))
+	if decoded.has("error"):
+		return decoded
+	var pose: Transform3D = decoded.transform
+	if pose.basis.y.dot(Vector3.UP) < cos(deg_to_rad(4)):
+		return {"error": "多视角柜体姿态与竖直方向不符。"}
+	var score := float(fit.get("edge_score", 0))
+	if not is_finite(score) or score < 0.65 or score > 1:
+		return {"error": "多个视角中的柜体边线支持不足。"}
+	var support: Variant = fit.get("support_indices")
+	if not support is Array or support.size() < 3 or support.size() > captures.size():
+		return {"error": "多视角有效数量不足。"}
+	var seen: Dictionary = {}
+	var previous_time := -1
+	for i in range(captures.size()):
+		var row: Variant = result.frames[i]
+		var identifier := str(captures[i].get("capture_id", ""))
+		var timestamp := int(captures[i].get("captured_msec", -1))
+		if not row is Dictionary or identifier.is_empty() or row.get("capture_id") != identifier or seen.has(identifier) \
+				or timestamp < 0 or (previous_time >= 0 and timestamp - previous_time < 250):
+			return {"error": "多视角图像身份或时间不匹配。"}
+		if not captures[i].get("camera_world") is Transform3D or not is_rigid(captures[i].camera_world):
+			return {"error": "多视角相机位姿无效。"}
+		seen[identifier] = true
+		previous_time = timestamp
+	var selected: Array[Dictionary] = []
+	var used: Dictionary = {}
+	var center := pose * (dimensions * Vector3(0.5, 0.5, -0.5))
+	var rays: Array[Vector3] = []
+	var first_time := 9223372036854775807
+	var last_time := 0
+	for index in support:
+		if typeof(index) not in [TYPE_INT, TYPE_FLOAT] or float(index) != floor(float(index)) \
+				or index < 0 or index >= captures.size() or used.has(int(index)):
+			return {"error": "多视角支持帧索引无效。"}
+		used[int(index)] = true
+		var sample: Dictionary = captures[int(index)]
+		for previous in selected:
+			if (sample.camera_world as Transform3D).origin.distance_to((previous.camera_world as Transform3D).origin) < 0.04:
+				return {"error": "有效视点重复，请从至少三个不同位置观察柜体。"}
+		selected.append(sample)
+		rays.append(((sample.camera_world as Transform3D).origin - center).normalized())
+		first_time = mini(first_time, int(sample.captured_msec))
+		last_time = maxi(last_time, int(sample.captured_msec))
+	var parallax := false
+	for a in rays:
+		for b in rays:
+			if a.dot(b) < cos(deg_to_rad(8)):
+				parallax = true
+	if not has_view_baseline(selected) or not parallax or last_time - first_time < 1000:
+		return {"error": "有效视角的移动距离、角度或时间不足，请进一步向侧面移动。"}
+	return {"pose": pose, "offline": false, "support_count": support.size(),
+		"rejected_count": captures.size() - support.size(), "outlier_count": 0,
+		"representative_index": int(support[0])}

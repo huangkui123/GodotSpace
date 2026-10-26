@@ -19,6 +19,8 @@ import numpy as np
 from geometry import load_mesh, sha256
 from rgb_pose import estimate
 import cuboid_pose
+import cuboid_multiview
+from cuboid_faces import pose_seeds
 
 MAX_REQUEST = 36 * 1024 * 1024
 MAX_FRAMES = 16
@@ -133,6 +135,12 @@ def run_job(request: dict, artifacts: Path) -> dict:
               "model_points": points.tolist(), "model_extents_m": (mesh.extents * ratio).tolist(), "frames": []}
     if kind == "cuboid":
         result["dimensions_m"] = size.tolist()
+    multiview = mode == 'live' and request.get('multiview') is True
+    result['multiview'] = multiview
+    result['pose_timing'] = request.get('pose_timing', 'unspecified')
+    if multiview and kind == 'cuboid':
+        result['backend'] = 'experimental_multiview_upright_cuboid_edges'
+    views, seeds = [], []
     frames = request.get("frames", [])
     if mode == "demo":
         # A held-out view, not an image retrieved from the template bank.
@@ -159,7 +167,7 @@ def run_job(request: dict, artifacts: Path) -> dict:
         # Decode one frame at a time: a sequence must not retain 16 full images.
         inputs = ((identifier, *decode_frame(frame), frame.get("camera_up"))
                   for identifier, frame in zip(identifiers, frames))
-    for identifier, image, k, distortion, camera_up in inputs:
+    for frame_index, (identifier, image, k, distortion, camera_up) in enumerate(inputs):
         prediction = (cuboid_pose.estimate_cuboid(image, k, size, camera_up) if kind == "cuboid"
                       else estimate(image, k, distortion, artifacts / "templates"))
         row = {"capture_id": identifier, "status": prediction["status"]}
@@ -171,6 +179,12 @@ def run_job(request: dict, artifacts: Path) -> dict:
             row.update(candidate)
             row["overlay_jpeg_base64"] = overlay(image, points, pose, k)
         result["frames"].append(row)
+        if multiview and kind == 'cuboid':
+            world_camera = cuboid_multiview.rigid(frames[frame_index].get('world_from_camera'))
+            views.append(cuboid_multiview.prepare(image, k, world_camera))
+            seeds.extend(world_camera @ seed for seed in pose_seeds(image, k, size, camera_up))
+            if prediction['status'] == 'candidate':
+                seeds.append(world_camera @ pose)
     counts = {status: sum(row["status"] == status for row in result["frames"])
               for status in ("candidate", "not_found", "ambiguous")}
     result["frame_counts"] = counts
@@ -180,6 +194,16 @@ def run_job(request: dict, artifacts: Path) -> dict:
     # Rejection shows the actual last frame without an unaccepted projection.
     # Success uses a per-frame overlay selected from the client's stable group.
     result["overlay_jpeg_base64"] = overlay(image, points[:0], np.eye(4), k)
+    if multiview and kind == 'cuboid':
+        fitted = cuboid_multiview.fit(views, seeds, size)
+        result['multiview_fit'] = fitted
+        result['status'] = fitted['status']
+        if fitted['status'] == 'candidate':
+            world_pose = np.asarray(fitted['world_from_model'])
+            for index in fitted['support_indices']:
+                image, k, _ = decode_frame(frames[index])
+                pose = np.linalg.inv(views[index]['camera']) @ world_pose
+                result['frames'][index]['overlay_jpeg_base64'] = overlay(image, points, pose, k)
     return result
 
 

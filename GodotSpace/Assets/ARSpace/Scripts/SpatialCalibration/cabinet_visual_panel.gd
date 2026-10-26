@@ -6,8 +6,8 @@ const VisualGeometry := preload("res://Assets/ARSpace/Scripts/SpatialCalibration
 const CameraModel := preload("res://Assets/ARSpace/Scripts/SpatialCalibration/pico_camera_model.gd")
 const Job := preload("res://Assets/ARSpace/Scripts/SpatialCalibration/cabinet_visual_job.gd")
 const CabinetModel := preload("res://Assets/ARSpace/Scripts/SpatialCalibration/calibration_cabinet.gd")
-const CAPTURE_DURATION_MS := 8000
-const CAPTURE_INTERVAL_MS := 500
+const CAPTURE_DURATION_MS := 12000
+const CAPTURE_INTERVAL_MS := 750
 const MAX_FRAMES := 16
 const MAX_JPEG_BYTES := 24 * 1024 * 1024 - 4096 # Leave room for per-frame base64 padding.
 
@@ -120,7 +120,7 @@ func _ready() -> void:
 	# No input handlers/point collection in the CAD workflow.
 	_image.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_child(_image)
-	_status = _label(column, "连续取景 8 秒，自动筛选并融合多帧。请看清柜体并停稳头部。")
+	_status = _label(column, "多视角扫描 12 秒：缓慢横移并看向柜体，让不同角度共同参与识别。")
 	_status.custom_minimum_size.y = 70
 	var actions := HBoxContainer.new()
 	actions.add_theme_constant_override("separation", 16)
@@ -131,7 +131,7 @@ func _ready() -> void:
 	_apply = _button(actions, "应用对齐", _confirm)
 	_apply.disabled = true
 	Style.primary(_apply)
-	_label(column, "自动识别仍需现场验证；自定义柜体请同时露出正面、侧面及完整棱边。")
+	_label(column, "缓慢横移，尽量露出正面和侧面；多视角标定仍需现场检查贴合。")
 	_job = Job.new()
 	_job.connect("completed", _on_completed)
 	add_child(_job)
@@ -175,8 +175,8 @@ func _options_changed() -> void:
 	_scale.visible = not custom
 	_scale_caption.visible = not custom
 	controller.call("configure_visual_model", model_kind(), dimensions_m())
-	_status.text = "请让完整柜体及多个面的棱边清晰可见，然后开始自动识别。" if custom \
-		else "看清真实 CAD 柜体整体和结构细节后，开始自动识别。"
+	_status.text = "从正面缓慢移动到斜侧面，让不同视角共同识别柜体。" if custom \
+		else "缓慢移动观察真实 CAD 柜体，让不同视角匹配模型细节。"
 
 
 func _begin() -> void:
@@ -201,7 +201,7 @@ func _begin() -> void:
 		_capture_start = Time.get_ticks_msec() + 3000
 		_next_capture = _capture_start
 		_deadline = _capture_start + CAPTURE_DURATION_MS
-		_status.text = "3 秒后开始连续取景 8 秒。请露出完整柜体、正面和侧面，并停稳头部。"
+		_status.text = "3 秒后开始多视角扫描 12 秒。请缓慢向侧面移动，保持柜体在画面中；无需停稳。"
 
 
 func _process(delta: float) -> void:
@@ -215,7 +215,7 @@ func _process(delta: float) -> void:
 		elif now >= _next_capture:
 			_capture()
 		if _collecting and now >= _capture_start:
-			_status.text = "连续取景：剩余 %.1f 秒 · 已采集 %d 帧 · 跳过 %d 次\n%s" % [
+			_status.text = "多视角扫描：剩余 %.1f 秒 · 已采集 %d 个视角 · 跳过 %d 次\n%s" % [
 				maxf(0, (_deadline - now) / 1000.0), _captures.size(), _skipped, _capture_hint]
 	_display_tick += delta
 	if _display_tick < 0.15:
@@ -237,7 +237,7 @@ func _capture() -> void:
 	_next_capture = Time.get_ticks_msec() + CAPTURE_INTERVAL_MS
 	if _frames.size() >= MAX_FRAMES:
 		return
-	var frame: Dictionary = controller.call("freeze_frame")
+	var frame: Dictionary = controller.call("capture_moving_frame")
 	if frame.has("error"):
 		_skipped += 1
 		_capture_hint = str(frame.error)
@@ -263,21 +263,28 @@ func _capture() -> void:
 		return
 	var k: Vector4 = intrinsics.k
 	var camera_world: Transform3D = (frame.head_world as Transform3D) * (extrinsics.transform as Transform3D)
+	for captured in _captures:
+		var previous: Transform3D = captured.camera_world
+		if camera_world.origin.distance_to(previous.origin) < 0.04:
+			_skipped += 1
+			_capture_hint = "视点变化不足，请缓慢向侧面移动；原地转头或静止重复拍摄不计入。"
+			return
 	var camera_up := VisualGeometry.OPENCV_TO_GODOT.basis * camera_world.basis.inverse() * Vector3.UP
 	_frames.append({"capture_id": identifier, "jpeg_base64": Marshalls.raw_to_base64(frame.jpeg),
 		"width": frame.size.x, "height": frame.size.y, "rectified": true,
+		"world_from_camera": VisualGeometry.to_row_major(camera_world * VisualGeometry.OPENCV_TO_GODOT),
 		"camera_up": [camera_up.x, camera_up.y, camera_up.z],
 		"K": [[k.x, 0, k.z], [0, k.y, k.w], [0, 0, 1]]})
 	_jpeg_bytes += (frame.jpeg as PackedByteArray).size()
 	_captures.append({"capture_id": identifier, "camera_world": camera_world,
 		"captured_msec": Time.get_ticks_msec()})
-	_capture_hint = "保持柜体不动；换角度后请停稳，移动中的画面会跳过。"
+	_capture_hint = "继续缓慢横移，尽量露出另一侧柜面；柜体本身保持不动。"
 
 
 func _finish_capture() -> void:
 	_collecting = false
 	if _captures.size() < 3:
-		_fail("8 秒内仅采到 %d 帧可用画面，至少需要 3 帧。%s" % [_captures.size(), _capture_hint])
+		_fail("12 秒内仅采到 %d 个视角，至少需要 3 个。%s" % [_captures.size(), _capture_hint])
 		return
 	_launch()
 
@@ -286,8 +293,10 @@ func _launch() -> void:
 	_status.text = "采集完成，正在分析 %d 帧、筛除失败帧并融合稳定姿态…" % _captures.size()
 	var size_m := dimensions_m()
 	var error: String = _job.call("start", {"schema_version": 1, "request_id": _request_id,
+		"pose_timing": "interpolated_arrival_estimate",
 		"model_kind": model_kind(), "dimensions_m": [size_m.x, size_m.y, size_m.z],
-		"mode": "live" if _source.selected == 0 else "demo", "physical_scale": physical_scale(), "frames": _frames})
+		"mode": "live" if _source.selected == 0 else "demo", "multiview": _source.selected == 0,
+		"physical_scale": physical_scale(), "frames": _frames})
 	_frames.clear()
 	if not error.is_empty():
 		_fail(error)
@@ -335,8 +344,8 @@ func _on_completed(result: Dictionary) -> void:
 		_model_info.text = "识别模型（宽 / 高 / 深）：%.1f / %.1f / %.1f cm" % [extents[0] * 100, extents[1] * 100, extents[2] * 100]
 	_status.text = "识别成功：绿色图像点为模型投影，空间中显示柜体预览。"
 	_status.text += "\n合成演练不可应用现场对齐。" if solved.offline else \
-		"\n已融合 %d / %d 帧，跳过 %d 帧识别失败及 %d 帧异常姿态。检查贴合后可应用。" % [
-			solved.support_count, _captures.size(), solved.rejected_count, solved.outlier_count]
+		"\n%d / %d 个视角共同支持该位置。请从多个方向检查贴合后再应用。" % [
+			solved.support_count, _captures.size()]
 
 
 func _confirm() -> void:
@@ -375,6 +384,7 @@ func _reset() -> void:
 	if _job != null:
 		_job.call("cancel")
 	_set_idle()
+	_start.text = "开始合成演练" if _source.selected == 1 else "开始多视角扫描"
 	_frames.clear()
 	_captures.clear()
 	_jpeg_bytes = 0
