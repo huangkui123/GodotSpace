@@ -43,9 +43,16 @@ def prepare(image, k, world_from_camera):
         directional.append(cv2.distanceTransform(255 - selected, cv2.DIST_L2, 3))
     calibrated = np.asarray(k, float).copy()
     calibrated[:2] *= scale
+    camera = rigid(world_from_camera)
+    up = calibrated @ camera[:3, :3].T @ np.array([0., 1., 0.])
+    yy, xx = np.indices(gray.shape)
+    upright_angle = np.arctan2(up[1] - up[2] * yy, up[0] - up[2] * xx)
+    upright_difference = np.abs((tangent - upright_angle + np.pi / 2) % np.pi - np.pi / 2)
+    upright_edges = ((edges != 0) & (upright_difference < np.deg2rad(12))).astype('uint8') * 255
     return {'distance': cv2.distanceTransform(255 - edges, cv2.DIST_L2, 3),
             'directional_distance': directional,
-            'k': calibrated, 'camera': rigid(world_from_camera), 'scale': scale}
+            'upright_distance': cv2.distanceTransform(255 - upright_edges, cv2.DIST_L2, 3),
+            'k': calibrated, 'camera': camera, 'scale': scale}
 
 
 def edge_observations(points, pose, view):
@@ -86,6 +93,42 @@ def edge_observations(points, pose, view):
 def edge_errors(points, pose, view):
     errors, ids, _ = edge_observations(points, pose, view)
     return errors, ids
+
+
+def upright_junctions(points, pose, view):
+    """Check short vertical edge segments adjacent to top/bottom endpoints.
+
+    A door seam can match the top of a vertically shifted box while a parallel
+    floor joint matches its bottom. Whole-edge coverage hides the unsupported
+    last few centimetres of the uprights. Test that local evidence separately.
+    Clipped endpoints remain unknown, and either endpoint may support a cross
+    edge so complementary crops and one occluded corner are still permitted.
+    """
+    pixels, depth = _project(points, np.linalg.inv(view['camera']) @ pose, view['k'])
+    height, width = view['distance'].shape
+    support = [None] * len(points)
+    for index, other in enumerate((3, 2, 1, 0, 7, 6, 5, 4)):
+        corner = pixels[index]
+        if (depth[index] <= .05 or depth[other] <= .05 or not np.isfinite(corner).all()
+                or np.any(corner < 0) or np.any(corner >= [width - 1, height - 1])):
+            continue
+        direction = pixels[other] - corner
+        length = np.linalg.norm(direction)
+        extent = min(24., length * .15)
+        if extent < 8:
+            continue
+        samples = corner + np.linspace(3, extent, 12)[:, None] * direction / length
+        valid = ((samples[:, 0] >= 0) & (samples[:, 0] < width - 1)
+                 & (samples[:, 1] >= 0) & (samples[:, 1] < height - 1))
+        if np.count_nonzero(valid) < 8:
+            continue
+        # Use the projected gravity direction at each pixel, without coarse
+        # direction bins that could mistake a sloping floor joint for an upright.
+        distance = view['upright_distance']
+        xy = samples[valid].astype('float32')
+        error = cv2.remap(distance, xy[:, 0, None], xy[:, 1, None], cv2.INTER_LINEAR).ravel()
+        support[index] = float(np.mean(error < 3.5))
+    return support
 
 
 def _residual(parameters, points, views):
@@ -151,10 +194,12 @@ def fit(views, seeds, size):
         supported = []
         edge_votes = {}
         boundary_votes = {}
+        endpoint_votes = set()
         scores = []
         view_evidence = []
         for i, view in enumerate(views):
             faces, ids, masks = edge_observations(points, pose, view)
+            junctions = upright_junctions(points, pose, view)
             observed = {}
             face_evidence = []
             for errors, face_id, mask in zip(faces, ids, masks):
@@ -173,35 +218,48 @@ def fit(views, seeds, size):
             # Complementary views may expose different edges of the same box.
             vertical = sum(abs(points[a, 1] - points[b, 1]) > .01 for a, b in observed)
             view_evidence.append({'view_index': i, 'faces': face_evidence,
+                                  'upright_endpoint_coverage': junctions,
                                   'supported_edge_count': len(observed), 'vertical_edges': int(vertical)})
             if len(observed) >= 4 and vertical >= 2 and len(observed) - vertical >= 2:
                 if any(np.linalg.norm(cameras[i] - cameras[prior]) < .04 for prior in supported):
                     continue
                 supported.append(i)
+                visible_corners = {corner for face_id in ids for corner in FACES[face_id]}
+                endpoint_votes.update(j for j in visible_corners
+                                      if junctions[j] is not None and junctions[j] >= .85)
                 for edge in observed:
                     edge_votes[edge] = edge_votes.get(edge, 0) + 1
                     # Sparse accidental matches on floor tiles must not close
                     # a face whose top was actually an internal door seam.
-                    if observed[edge] >= .85:
+                    a, b = edge
+                    is_upright = abs(points[a, 1] - points[b, 1]) > .01
+                    meets_upright = any(junctions[j] is not None and junctions[j] >= .85 for j in edge)
+                    if observed[edge] >= .85 and (is_upright or meets_upright):
                         boundary_votes[edge] = boundary_votes.get(edge, 0) + 1
                 scores.append(float(np.mean(list(observed.values()))))
         # Require repeated evidence of both faces, including their unshared
         # edges. A single flat panel or one accidental frame cannot pass.
         face_support = []
         boundary_support = []
+        endpoint_support = []
         for index, face in enumerate(FACES):
             if index not in (2, 3):
                 face_support.append(sum(edge_votes.get(tuple(sorted((a, b))), 0) >= 2
                                         for a, b in zip(face, face[1:] + face[:1])))
                 boundary_support.append(sum(boundary_votes.get(tuple(sorted((a, b))), 0) >= 2
                                             for a, b in zip(face, face[1:] + face[:1])))
+                endpoint_support.append(sum(corner in endpoint_votes for corner in face))
         diagnostics['trials'].append({'world_from_model': pose.tolist(),
                                      'supported_view_indices': supported.copy(),
                                      'repeated_edges_per_vertical_face': face_support,
                                      'repeated_boundaries_per_vertical_face': boundary_support,
+                                     'observed_endpoints_per_vertical_face': endpoint_support,
                                      'mean_residual_px': float(np.mean(optimized.fun)),
                                      'views': view_evidence})
-        if (len(supported) >= 3 and max(boundary_support) == 4
+        # Across the sequence, observe both ends of the complete face's top
+        # and bottom. Repeated floor lines cannot substitute for an unobserved
+        # cabinet corner. Different views may contribute different endpoints.
+        if (len(supported) >= 3 and any(b == 4 and e == 4 for b, e in zip(boundary_support, endpoint_support))
                 and sum(n >= 3 for n in face_support) >= 2):
             centers = cameras[supported]
             target = pose[:3, :3] @ points.mean(0) + pose[:3, 3]

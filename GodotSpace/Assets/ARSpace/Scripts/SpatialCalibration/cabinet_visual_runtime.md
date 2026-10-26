@@ -41,7 +41,7 @@ $env:GODOTSPACE_CABINET_ARTIFACTS = '<含 assembly 和 templates 的 artifacts �
 
 请求和结果临时写入本机 `user://cabinet_visual_jobs/job_<进程>_<时间>/`；完成、取消、超时、退出时清理本次文件。异常断电可能留下临时图像。缓存上限为 16 帧、24 MiB 原始 JPEG（编码后请求上限 36 MiB），逐帧解码避免同时保留全部高分辨率图像。进程最多运行 120 秒，关闭面板会取消正在进行的识别；已完成预览可保留。不会打印相机图像或上传现场数据。
 
-为避免现场失败后失去证据，进入实时识别的最近一次扫描另保留到 `user://cabinet_visual_diagnostics/last_scan.json`，包含原始 JPEG、内参、头姿历史、模式/尺寸和识别结果。下一次实时扫描覆盖；合成演练与离线重放不覆盖。Python 在开始分析及返回结果时原子写入，因此分析超时可能留下 `processing` 状态，但仍可重放输入。目录只使用一份 JSON、一份写入暂存文件及一个锁文件；不积累扫描历史，不上传数据。可用 `GODOTSPACE_CABINET_DIAGNOSTIC_PATH` 指定保存文件，自动化测试必须使用临时目录，避免覆盖现场记录。保存成功时失败面板会显示本机留存提示；日志记录请求 ID、拒绝原因和保存位置，不打印图像内容。
+为避免现场失败后失去证据，实时扫描保留到 `user://cabinet_visual_diagnostics/last_scan.json`，并在同级 `last_scan_history/` 中保留最近 **5 次不同请求**，包含原始 JPEG、内参、头姿历史、模式/尺寸和识别结果。Python 在开始分析及返回结果时原子写入，同一请求更新同一历史文件，超时仍可重放 `processing` 输入。历史文件名由请求 ID 哈希生成；超过 5 次时只清理本工具拥有的旧历史 JSON，保留独立的最新记录。首次升级会归档尚存的上一段扫描。合成演练与离线重放不覆盖或增加历史，不上传数据。可用 `GODOTSPACE_CABINET_DIAGNOSTIC_PATH` 指定保存文件，对应历史目录为 `<文件名不含扩展名>_history/`；自动化测试必须使用临时目录，避免覆盖现场记录。日志记录请求 ID、拒绝原因和保存位置，不打印图像内容。
 
 离线重放不需要重新戴头显，也不改变场景：
 
@@ -52,7 +52,7 @@ $env:GODOTSPACE_CABINET_ARTIFACTS = '<含 assembly 和 templates 的 artifacts �
     --artifacts "$Project/tools/cabinet_calibration/artifacts"
 ```
 
-联合拟合的 `multiview_fit.diagnostics` 记录候选数量、每次优化的位姿、各视角边线可见率/覆盖率、支持视角及各面的重复边线数；这些被拒绝的位姿只是排障数据，不能用于对齐。诊断视角编号按 `input_frame_indices` 映射回原始请求。
+联合拟合的 `multiview_fit.diagnostics` 记录候选数量、每次优化的位姿、各视角边线可见率/覆盖率、局部竖边端点覆盖、支持视角及各面的重复边线数/已观测端点数；这些被拒绝的位姿只是排障数据，不能用于对齐。诊断视角编号按 `input_frame_indices` 映射回原始请求。
 
 旧四角实现仍保留用于回归测试，但产品默认入口不显示人工选点控件。旧尺寸、四角快照不会参与 CAD 识别。
 
@@ -203,3 +203,21 @@ $Godot = 'D:/godot_modding/bin/godot.windows.editor.x86_64.llvm.console.exe'
 本轮未重新连接 PICO 采集，也未在头显中实际应用/量测。现场复测选择自定义柜体，确认尺寸后缓慢横移扫描；让至少两个视角看到顶、底边，保持一定静态背景重叠。应出现跨视角一致的实柜轮廓；应用后从侧面及不同高度检查位置与尺度。无需导出主工程或重装 Helper。照片、原始记录、诊断叠加图均不提交到仓库。
 
 验证结果：上述 Python discovery 49 项通过；Godot 窗口集成、`cabinet_visual_self_test.gd`、`cabinet_geometry_self_test.gd`（60 组）、`pico_camera_model_self_test.gd`、`cabinet_calibration_self_test.gd` 均退出 0。四项脚本均用 `--headless --path F:/GodotSpace/GodotSpace --script res://Assets/ARSpace/Scripts/SpatialCalibration/<脚本名>` 执行。导入退出 0，无新增脚本解析、资源缺失、autoload 或 GDExtension 错误；仍出现既有 progress-dialog/tasks/ObjectDB 退出日志，窗口测试有既有 SubViewport 日志。本轮没有改网络协议，没有重新运行一 Server 两 Client 的多机联调。
+
+### 2026-10-26 10:58 UTC 扫描的伪候选歧义修复
+
+用户连续两次测试失败；旧版本只保存最后一次，本轮能取得最后一次 11 帧及完整头姿历史，前一次已覆盖，不能声称两次都已复现。最新记录通过图像/头姿校验（54 对匹配、统一延迟 80 ms、约 0.88 px），实际拒绝原因是 `ambiguous`。正确外轮廓已找到，但另一个向下偏移约 17 cm 的候选借用了柜门横缝和完整地砖缝，也满足此前的长边覆盖门槛。
+
+`cuboid_multiview.py` 新增 `upright_junctions()`：按相机内参和头姿计算逐像素重力投影方向，用更精确的竖边方向过滤地砖斜线，再检查柜角附近短竖边的连续证据。横边的强支持需要至少一端实际接到竖边；完整柜面的四个端点在整次序列中都需实际观测，可由不同视角补全。保留原有重复边线、两面、基线、视差与多目标歧义约束。未改变输入尺寸、相机位姿或写入照片坐标。
+
+新回放接受 9/11 个视角，正确候选四个端点都有证据，向下偏移候选只有三个，被排除。相同原始图像、K 和历史记录通过 Godot 实际采集入口、Python 子进程和本地校验，面板显示“识别成功，9/11 个视角共同支持该位置”，应用按钮可用；逐帧投影和面板截图已检查。将该序列隔帧抽成六视角仍接受 4/6。此前通过的八视角数据重跑仍为 8/8，位姿保持不变。
+
+`diagnostic_capture.py` 改为最近五次不同请求的本地历史；同一次请求的 processing/final 原子更新同一哈希文件，首次升级迁移仍在的上一段扫描。最新 JSON 路径保持兼容，演练/重放不改历史，清理只作用于本工具的历史文件。已有用户现场记录在测试前后 SHA-256 一致，所有测试记录写入 TEMP。
+
+验证：
+
+- `python -B -m unittest discover -s GodotSpace/tools/cabinet_calibration -p 'test_*.py' -v`：52 项通过，新增完整地砖缝与缺失柜角的图像回归，确认移除端点完整性检查会复现歧义；覆盖五次上限、同请求更新、旧记录迁移、请求 ID 路径隔离及无关文件保留。
+- 指定引擎执行 `--path F:/GodotSpace/GodotSpace --script res://Assets/ARSpace/Scripts/SpatialCalibration/cabinet_visual_runtime_self_test.gd -- --cad-worker --capture-ui --multiview-fixture=<本机 request.json>`：退出 0，覆盖新实拍预览、空白序列拒绝、CAD/自定义演练、取消、空间失效及清理。
+- `--headless --path F:/GodotSpace/GodotSpace --import`：退出 0，无脚本解析、资源缺失、autoload 或 GDExtension 加载错误；仍有既有 progress-dialog/tasks/ObjectDB 清理日志，窗口测试仍有既有 SubViewport 日志。
+
+本轮未重新连接 PICO 采集、实际应用头显对齐或重跑多机联调。下一次扫描会启动新的 Python 识别器，无需主工程导出或重装 Helper；成功后从侧面及不同高度核对投影和实体贴合。持续遮挡整个柜角仍可能缺少足够证据而被拒绝。

@@ -91,6 +91,30 @@ class MultiViewTests(TestCase):
         self.assertEqual(result['status'], 'candidate', result)
         np.testing.assert_allclose(np.asarray(result['world_from_model'])[:3, 3], 0, atol=.025)
 
+    def test_complete_floor_lines_do_not_replace_missing_upright_endpoints(self):
+        views = []
+        wrong = np.eye(4)
+        wrong[1, 3] = -.16
+        points = corners(DEFAULT_DIMENSIONS)
+        for yaw in [25, 35, 45]:
+            image, k, camera_pose = scene(DEFAULT_DIMENSIONS, yaw)
+            for face in [FACES[0], FACES[5]]:
+                for a, b in zip(face, face[1:] + face[:1]):
+                    segment = np.array([points[a], points[b]])
+                    if abs(points[a, 1] - points[b, 1]) > .01 and 2 in (a, b):
+                        # Clutter continues most of an upright but stops short
+                        # of the shared false floor corner. Both cross edges
+                        # have evidence at their OTHER endpoint: complete
+                        # corner coverage across the sequence is necessary.
+                        segment[np.argmin(segment[:, 1]), 1] += .06
+                    uv, _ = _project(segment, camera_pose @ wrong, k)
+                    cv2.line(image, tuple(np.rint(uv[0]).astype(int)), tuple(np.rint(uv[1]).astype(int)),
+                             (80, 80, 80), 2)
+            views.append(prepare(image, k, np.linalg.inv(camera_pose)))
+        result = fit(views, [wrong, np.eye(4)], DEFAULT_DIMENSIONS)
+        self.assertEqual(result['status'], 'candidate', result)
+        np.testing.assert_allclose(np.asarray(result['world_from_model'])[:3, 3], 0, atol=.025)
+
     def test_image_matches_correct_delay_before_joint_cabinet_fit(self):
         _, _, frames = sequence(timed=True)
         result = run_job({'schema_version': 1, 'request_id': 'timed-views', 'mode': 'live',

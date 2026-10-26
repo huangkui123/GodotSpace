@@ -5,7 +5,7 @@ import sys
 import tempfile
 from unittest import TestCase
 
-from diagnostic_capture import save_case
+from diagnostic_capture import save_case, MAX_RECENT_SCANS
 from test_visual_worker import frame
 
 
@@ -21,7 +21,40 @@ class DiagnosticCaptureTests(TestCase):
             self.assertEqual(path.read_bytes(), first)
             save_case(path, {'mode': 'live', 'request_id': 'second'}, {'status': 'candidate'})
             self.assertEqual(json.loads(path.read_text())['request']['request_id'], 'second')
-            self.assertEqual(sorted(p.name for p in path.parent.iterdir()), ['last_scan.json', 'last_scan.lock'])
+            self.assertEqual(sorted(p.name for p in path.parent.iterdir()),
+                             ['last_scan.json', 'last_scan.lock', 'last_scan_history'])
+            self.assertEqual({json.loads(p.read_text())['request']['request_id']
+                              for p in path.with_name('last_scan_history').glob('*.json')}, {'first', 'second'})
+
+    def test_recent_history_keeps_distinct_scans_and_updates_processing_in_place(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'last_scan.json'
+            for i in range(MAX_RECENT_SCANS + 2):
+                request = {'mode': 'live', 'request_id': str(i)}
+                self.assertEqual(save_case(path, request, {'status': 'processing'}), str(path))
+                self.assertEqual(save_case(path, request, {'status': 'rejected'}), str(path))
+            archive = path.with_name('last_scan_history')
+            cases = [json.loads(p.read_text()) for p in archive.glob('*.json')]
+            self.assertEqual(len(cases), MAX_RECENT_SCANS)
+            self.assertEqual({c['request']['request_id'] for c in cases},
+                             {str(i) for i in range(2, MAX_RECENT_SCANS + 2)})
+            self.assertTrue(all(c['result']['status'] == 'rejected' for c in cases))
+            self.assertFalse(list(archive.glob('*.tmp')))
+
+    def test_history_migrates_old_latest_and_does_not_use_request_ids_as_paths(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'last_scan.json'
+            path.write_text(json.dumps({'request': {'request_id': 'old'}, 'result': {'status': 'rejected'}}))
+            request = {'mode': 'live', 'request_id': '../../escape'}
+            self.assertEqual(save_case(path, request, {'status': 'candidate'}), str(path))
+            archive = path.with_name('last_scan_history')
+            unrelated = archive / 'notes.json'
+            unrelated.write_text('keep')
+            cases = [json.loads(p.read_text()) for p in archive.glob('*.json') if p != unrelated]
+            self.assertEqual({c['request']['request_id'] for c in cases}, {'old', '../../escape'})
+            for i in range(6):
+                save_case(path, {'mode': 'live', 'request_id': str(i)}, {'status': 'rejected'})
+            self.assertEqual(unrelated.read_text(), 'keep')
 
     def test_unwritable_destination_does_not_crash_recognition(self):
         with tempfile.TemporaryDirectory() as directory:
