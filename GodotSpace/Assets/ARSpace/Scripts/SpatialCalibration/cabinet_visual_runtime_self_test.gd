@@ -6,6 +6,7 @@ const Geometry := preload("res://Assets/ARSpace/Scripts/SpatialCalibration/cabin
 const Profile := preload("res://Assets/ARSpace/Scripts/runtime_profile.gd")
 const CameraFixture := preload("res://Assets/ARSpace/Scripts/SpatialCalibration/pico_camera_model_self_test.gd")
 var failures: Array[String] = []
+var _prior_diagnostic_path: String
 
 class TestCabinet extends Cabinet:
 	var tracking := true
@@ -27,6 +28,8 @@ func _initialize() -> void:
 
 
 func _run() -> void:
+	_prior_diagnostic_path = OS.get_environment("GODOTSPACE_CABINET_DIAGNOSTIC_PATH")
+	OS.set_environment("GODOTSPACE_CABINET_DIAGNOSTIC_PATH", OS.get_environment("TEMP").path_join("cabinet-self-test-last-scan.json"))
 	_test_batches()
 	_test_temporal_batches()
 	_test_moving_capture()
@@ -179,6 +182,9 @@ func _run() -> void:
 		_expect((ui.get("_result") as Dictionary).is_empty() and (ui.get("_apply") as Button).disabled,
 			"blank live JPEG must not enable alignment")
 		_expect((ui.get("_status") as Label).text.contains("图像特征不足"), "live rejection distinguishes missing timing evidence")
+		var diagnostic: Variant = JSON.parse_string(FileAccess.get_file_as_string(OS.get_environment("GODOTSPACE_CABINET_DIAGNOSTIC_PATH")))
+		_expect(diagnostic is Dictionary and diagnostic.get("request", {}).get("frames", []).size() == 3 \
+			and diagnostic.get("result", {}).get("status") == "rejected", "live rejection retains replay inputs and outcome after job cleanup")
 		_expect(bool(ui.get("_hold_rejected_image")) and (ui.get("_image") as TextureRect).texture != null,
 			"rejection retains actual last frame without authorizing application")
 		_expect(origin.global_transform.is_equal_approx(before_rejection), "rejection preserves world mapping")
@@ -285,6 +291,7 @@ func _run() -> void:
 	else:
 		for failure in failures:
 			push_error(failure)
+	OS.set_environment("GODOTSPACE_CABINET_DIAGNOSTIC_PATH", _prior_diagnostic_path)
 	quit(0 if failures.is_empty() else 1)
 
 

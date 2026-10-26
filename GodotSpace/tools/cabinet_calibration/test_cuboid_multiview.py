@@ -1,4 +1,5 @@
 import base64
+import json
 from pathlib import Path
 from unittest import TestCase
 
@@ -85,6 +86,8 @@ class MultiViewTests(TestCase):
         self.assertEqual(result['multiview_fit']['support_indices'], [0, 1, 2])
         self.assertTrue(all(row.get('overlay_jpeg_base64') for row in result['frames']))
         self.assertFalse(result['automatic_application_allowed'])
+        self.assertGreater(len(result['multiview_fit']['diagnostics']['trials']), 0)
+        json.dumps(result, allow_nan=False)  # Full evidence must cross the worker's JSON boundary.
 
     def test_static_repeats_and_rotation_only_do_not_create_viewpoint_baseline(self):
         views, seeds, _ = sequence(False)
@@ -98,7 +101,10 @@ class MultiViewTests(TestCase):
         views, _, _ = sequence(False)
         for view in views:
             view['distance'][:] = 100
-        self.assertEqual(fit(views, [np.eye(4)], DEFAULT_DIMENSIONS)['status'], 'rejected')
+        rejected = fit(views, [np.eye(4)], DEFAULT_DIMENSIONS)
+        self.assertEqual(rejected['status'], 'rejected')
+        self.assertEqual(rejected['diagnostics']['trials'][0]['supported_view_indices'], [])
+        json.dumps(rejected, allow_nan=False)
 
     def test_camera_transforms_must_be_finite_rigid(self):
         for invalid in [np.eye(3), np.eye(4) * 2, np.full((4, 4), np.nan)]:

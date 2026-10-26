@@ -4,6 +4,7 @@ extends Node
 signal completed(result: Dictionary)
 const JOB_ROOT := "user://cabinet_visual_jobs"
 const WORKER := "res://tools/cabinet_calibration/visual_pose_worker.py"
+const LAST_SCAN := "user://cabinet_visual_diagnostics/last_scan.json"
 var _pid: int = -1
 var _directory: String = ""
 var _started: int = 0
@@ -33,10 +34,14 @@ func start(request: Dictionary) -> String:
 		return "无法写入识别请求。"
 	file.store_string(JSON.stringify(request))
 	file.close()
+	var diagnostic := OS.get_environment("GODOTSPACE_CABINET_DIAGNOSTIC_PATH")
+	if diagnostic.is_empty():
+		diagnostic = ProjectSettings.globalize_path(LAST_SCAN)
 	# Python imports and feature matching run outside the render/main thread.
 	_pid = OS.create_process(executable, PackedStringArray([
 		"-B", ProjectSettings.globalize_path(WORKER), "--request", _directory.path_join("request.json"),
 		"--output", _directory.path_join("result.json"), "--artifacts", artifacts,
+		"--diagnostic", diagnostic,
 	]), false)
 	if _pid <= 0:
 		cancel()
@@ -72,6 +77,10 @@ func _process(_delta: float) -> void:
 
 
 func _finish(result: Dictionary) -> void:
+	print("[CabinetVisual] request=%s status=%s reason=%s diagnostic=%s" % [
+		_request_id, str(result.get("status", "unknown")),
+		str(result.get("multiview_fit", {}).get("reason", result.get("error", ""))),
+		str(result.get("diagnostic_path", "not saved"))])
 	cancel()
 	completed.emit(result)
 

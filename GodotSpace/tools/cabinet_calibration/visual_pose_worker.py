@@ -22,6 +22,7 @@ import cuboid_pose
 import cuboid_multiview
 from cuboid_faces import face_proposals, pose_seeds
 import camera_timing
+from diagnostic_capture import save_case
 
 MAX_REQUEST = 36 * 1024 * 1024
 MAX_FRAMES = 16
@@ -219,6 +220,7 @@ def run_job(request: dict, artifacts: Path) -> dict:
         return result
     if multiview and kind == 'cuboid':
         fitted = cuboid_multiview.fit(views, seeds, size)
+        fitted['input_frame_indices'] = view_indices
         result['multiview_fit'] = fitted
         result['status'] = fitted['status']
         if fitted['status'] == 'candidate':
@@ -233,20 +235,36 @@ def run_job(request: dict, artifacts: Path) -> dict:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--request", type=Path, required=True)
+    inputs = parser.add_mutually_exclusive_group(required=True)
+    inputs.add_argument("--request", type=Path)
+    inputs.add_argument("--replay", type=Path, help="Replay a locally saved scan without recapturing")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--artifacts", type=Path, required=True)
+    parser.add_argument("--diagnostic", type=Path, help="Replace the last local live scan (includes images)")
     args = parser.parse_args()
     cv2.setNumThreads(2)
     request = {}
     try:
-        if args.request.stat().st_size > MAX_REQUEST:
+        source = args.replay or args.request
+        if source.stat().st_size > (64 * 1024 * 1024 if args.replay else MAX_REQUEST):
             raise ValueError("Job request too large")
-        request = json.loads(args.request.read_text(encoding="utf-8"))
+        loaded = json.loads(source.read_text(encoding="utf-8"))
+        if args.replay:
+            loaded = loaded['request']
+        if not isinstance(loaded, dict):
+            raise ValueError('Expected a request object')
+        request = loaded
+        # Capture before recognition too, so a timeout still leaves the inputs.
+        if not args.replay:
+            save_case(args.diagnostic, request, {'status': 'processing', 'request_id': request.get('request_id')})
         result = run_job(request, args.artifacts)
     except Exception as error:
         result = {"schema_version": 1, "request_id": request.get("request_id", ""),
                   "status": "error", "error": str(error)[:500]}
+    if args.diagnostic and not args.replay and request.get('mode') == 'live':
+        saved = save_case(args.diagnostic, request, result)
+        result['diagnostic_path'] = saved
+        result['diagnostic_saved'] = saved is not None
     temporary = args.output.with_suffix(".tmp")
     temporary.write_text(json.dumps(result, allow_nan=False), encoding="utf-8")
     os.replace(temporary, args.output)

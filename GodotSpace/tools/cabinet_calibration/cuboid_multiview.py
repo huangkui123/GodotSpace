@@ -122,6 +122,7 @@ def fit(views, seeds, size):
         residual = _residual(params, points, views)
         ranked.append((float(np.mean(np.minimum(residual, 8))), params))
     ranked.sort(key=lambda pair: pair[0])
+    diagnostics = {'seed_count': len(seeds), 'upright_seed_count': len(ranked), 'trials': []}
     candidates = []
     starts = []
     for _, initial in ranked:
@@ -135,11 +136,17 @@ def fit(views, seeds, size):
         supported = []
         edge_votes = {}
         scores = []
+        view_evidence = []
         for i, view in enumerate(views):
             faces, ids, masks = edge_observations(points, pose, view)
             observed = {}
+            face_evidence = []
             for errors, face_id, mask in zip(faces, ids, masks):
                 face = FACES[face_id]
+                face_evidence.append({'face_id': face_id,
+                                      'visible_fraction': np.mean(mask, axis=1).tolist(),
+                                      'edge_coverage': [float(np.mean(e[v] < 3.5)) if v.any() else None
+                                                        for e, v in zip(errors, mask)]})
                 for a, b, error, valid in zip(face, face[1:] + face[:1], errors, mask):
                     if np.count_nonzero(valid) < 8:
                         continue
@@ -149,6 +156,8 @@ def fit(views, seeds, size):
             # Every accepted view must contribute several actual box edges.
             # Complementary views may expose different edges of the same box.
             vertical = sum(abs(points[a, 1] - points[b, 1]) > .01 for a, b in observed)
+            view_evidence.append({'view_index': i, 'faces': face_evidence,
+                                  'supported_edge_count': len(observed), 'vertical_edges': int(vertical)})
             if len(observed) >= 4 and vertical >= 2 and len(observed) - vertical >= 2:
                 if any(np.linalg.norm(cameras[i] - cameras[prior]) < .04 for prior in supported):
                     continue
@@ -163,6 +172,11 @@ def fit(views, seeds, size):
             if index not in (2, 3):
                 face_support.append(sum(edge_votes.get(tuple(sorted((a, b))), 0) >= 2
                                         for a, b in zip(face, face[1:] + face[:1])))
+        diagnostics['trials'].append({'world_from_model': pose.tolist(),
+                                     'supported_view_indices': supported.copy(),
+                                     'repeated_edges_per_vertical_face': face_support,
+                                     'mean_residual_px': float(np.mean(optimized.fun)),
+                                     'views': view_evidence})
         if len(supported) >= 3 and max(face_support) == 4 and sum(n >= 3 for n in face_support) >= 2:
             centers = cameras[supported]
             target = pose[:3, :3] @ points.mean(0) + pose[:3, 3]
@@ -192,7 +206,8 @@ def fit(views, seeds, size):
                    and np.linalg.norm(pose[:3, :3] - other['pose'][:3, :3]) < .15 for other in distinct):
             distinct.append(candidate)
     if len(distinct) != 1:
-        return {'status': 'rejected', 'reason': 'ambiguous' if distinct else 'insufficient_edge_support'}
+        return {'status': 'rejected', 'reason': 'ambiguous' if distinct else 'insufficient_edge_support',
+                'diagnostics': diagnostics}
     best = distinct[0]
     return {'status': 'candidate', 'world_from_model': best['pose'].tolist(),
-            'support_indices': best['supported'], 'edge_score': best['score']}
+            'support_indices': best['supported'], 'edge_score': best['score'], 'diagnostics': diagnostics}

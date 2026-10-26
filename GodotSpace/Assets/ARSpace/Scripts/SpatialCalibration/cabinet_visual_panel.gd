@@ -331,6 +331,8 @@ func _on_completed(result: Dictionary) -> void:
 		# the actual framing. It never authorizes application.
 		var rejected_image := _image.texture
 		_fail(str(solved.error))
+		if bool(result.get("diagnostic_saved", false)):
+			_status.text += "\n本次扫描已保存在本机，可离线重放分析。"
 		_image.texture = rejected_image
 		_hold_rejected_image = true
 		return
@@ -410,6 +412,7 @@ func _reset() -> void:
 
 
 func _fail(message: String) -> void:
+	print("[CabinetVisual] request=%s failure=%s" % [_request_id, message])
 	_reset()
 	_status.text = message
 

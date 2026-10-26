@@ -41,6 +41,19 @@ $env:GODOTSPACE_CABINET_ARTIFACTS = '<含 assembly 和 templates 的 artifacts �
 
 请求和结果临时写入本机 `user://cabinet_visual_jobs/job_<进程>_<时间>/`；完成、取消、超时、退出时清理本次文件。异常断电可能留下临时图像。缓存上限为 16 帧、24 MiB 原始 JPEG（编码后请求上限 36 MiB），逐帧解码避免同时保留全部高分辨率图像。进程最多运行 120 秒，关闭面板会取消正在进行的识别；已完成预览可保留。不会打印相机图像或上传现场数据。
 
+为避免现场失败后失去证据，进入实时识别的最近一次扫描另保留到 `user://cabinet_visual_diagnostics/last_scan.json`，包含原始 JPEG、内参、头姿历史、模式/尺寸和识别结果。下一次实时扫描覆盖；合成演练与离线重放不覆盖。Python 在开始分析及返回结果时原子写入，因此分析超时可能留下 `processing` 状态，但仍可重放输入。目录只使用一份 JSON、一份写入暂存文件及一个锁文件；不积累扫描历史，不上传数据。可用 `GODOTSPACE_CABINET_DIAGNOSTIC_PATH` 指定保存文件，自动化测试必须使用临时目录，避免覆盖现场记录。保存成功时失败面板会显示本机留存提示；日志记录请求 ID、拒绝原因和保存位置，不打印图像内容。
+
+离线重放不需要重新戴头显，也不改变场景：
+
+```powershell
+& $Python -B "$Project/tools/cabinet_calibration/visual_pose_worker.py" `
+    --replay "$env:APPDATA/Godot/app_userdata/GodotSpace/cabinet_visual_diagnostics/last_scan.json" `
+    --output "$env:TEMP/cabinet-replay-result.json" `
+    --artifacts "$Project/tools/cabinet_calibration/artifacts"
+```
+
+联合拟合的 `multiview_fit.diagnostics` 记录候选数量、每次优化的位姿、各视角边线可见率/覆盖率、支持视角及各面的重复边线数；这些被拒绝的位姿只是排障数据，不能用于对齐。诊断视角编号按 `input_frame_indices` 映射回原始请求。
+
 旧四角实现仍保留用于回归测试，但产品默认入口不显示人工选点控件。旧尺寸、四角快照不会参与 CAD 识别。
 
 ## 失效处理与边界
@@ -153,3 +166,10 @@ StartMenu → ARSpace 回归使用一台本机 Server 与两个 `--testmode` Cli
 
 
 本轮窗口版集成（含 --cad-worker --capture-ui 及 timed=True 的 --multiview-fixture）退出 0，已查看 3/3 支持视角的合成预览截图。随后重新运行一台 Server、两台 --testmode Client 的场景回归，三者断言通过、退出码均为 0；仍记录 SubViewport/dummy renderer 日志，以及一个 Client 在 player.gd:493 退出时的既有空 multiplayer 引用，因此完整网络日志检查仍未通过。未改动该无关模块。
+
+
+### 2026-10-26 实柜再次拒绝与诊断留存
+
+用户再次测试，面板提示“可见边线不足或尺寸不匹配”。按当前执行路径，失败位于图像/头姿校验之后的柜体几何拟合，不是尺寸测量结论。该次 XR 已退出，旧任务文件已清理，日志没有识别结果，无法追溯到某条具体边。当前算法仍依赖直线候选和两面边线，白色弱边、饰条、遮挡仍是未解决的实柜问题；不能把新增留存功能称为识别修复成功。
+
+新增最近一次实时扫描留存、离线 --replay、逐候选边线/视角指标和运行日志。验证命令 `python -B -m unittest discover -s GodotSpace/tools/cabinet_calibration -p 'test_*.py' -v`：45 项通过；另验证完整拟合诊断能序列化为 JSON。指定引擎执行 `--headless --path F:/GodotSpace/GodotSpace --script res://Assets/ARSpace/Scripts/SpatialCalibration/cabinet_visual_runtime_self_test.gd -- --cad-worker` 退出 0，验证真实子进程失败后保留三帧输入和结果、临时任务清理不影响诊断、演练不覆盖现场记录；`--headless --import` 退出 0，无解析或资源加载错误，保留既有清理/渲染基线。测试诊断写到 TEMP，未覆盖用户现场记录。本轮没有新的真实 PICO 扫描，也未重新进行多端联调。下一次需重启天上端后留存一遍实际失败，再离线验证核心识别改进。
