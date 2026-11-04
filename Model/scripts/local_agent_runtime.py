@@ -15,6 +15,42 @@ import sys
 import time
 import urllib.request
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from agent_service.model_endpoint import validate_base_url, validate_key_env
+
+
+def external_gateway(config: dict, model: dict) -> dict:
+    allowed = {"base_url", "model_id", "api_key_env", "allow_insecure_http", "health_check", "json_mode",
+               "gateway_port", "request_timeout_seconds", "health_timeout_seconds", "credential_revision"}
+    if set(model) - allowed:
+        raise ValueError("Unknown external model settings; store credentials in api_key_env, not inline")
+    model_id = model.get("model_id", "")
+    if not isinstance(model_id, str) or not model_id.strip() or len(model_id) > 256:
+        raise ValueError("external.model_id must be the exact model ID exposed by the provider")
+    insecure = model.get("allow_insecure_http", False)
+    if type(insecure) is not bool:
+        raise ValueError("allow_insecure_http must be a boolean")
+    base_url = validate_base_url(model.get("base_url", ""), allow_insecure_http=insecure)
+    key_env = model.get("api_key_env", "")
+    if not isinstance(key_env, str):
+        raise ValueError("api_key_env must be an environment variable name or an empty string")
+    if key_env:
+        validate_key_env(key_env)
+    health = model.get("health_check", "models")
+    json_mode = model.get("json_mode", "prompt")
+    if health not in ("models", "chat") or json_mode not in ("json_schema", "json_object", "prompt"):
+        raise ValueError("Invalid external health_check or json_mode")
+    timeout = model.get("request_timeout_seconds", 20)
+    health_timeout = model.get("health_timeout_seconds", 5)
+    if type(timeout) not in (int, float) or not 1 <= timeout <= 120 or type(health_timeout) not in (int, float) or not 1 <= health_timeout <= 30:
+        raise ValueError("External timeouts must be finite: request 1..120s, health 1..30s")
+    return dict(service="gateway", env_dir=config["gateway_env"], model_id=model_id.strip(),
+                port=validate_port(model.get("gateway_port", 7863)), model_server=base_url,
+                api_key_env=key_env, model_type="oai", model_use_raw_api=True,
+                model_health_check=health, model_json_mode=json_mode,
+                request_timeout_seconds=timeout, health_timeout_seconds=health_timeout,
+                credential_revision=str(model.get("credential_revision", "")))
+
 
 def write_status(path: Path, state: str, message: str, **extra: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -23,8 +59,8 @@ def write_status(path: Path, state: str, message: str, **extra: object) -> None:
     temp.replace(path)
 
 
-def get_json(port: int, path: str) -> dict:
-    with urllib.request.urlopen(f"http://127.0.0.1:{port}{path}", timeout=2) as response:
+def get_json(port: int, path: str, timeout: float = 2) -> dict:
+    with urllib.request.urlopen(f"http://127.0.0.1:{port}{path}", timeout=timeout) as response:
         return json.loads(response.read(65536))
 
 
@@ -44,12 +80,17 @@ def service_specs(config: dict, role: str, mode: str) -> list[dict]:
     result = []
     if role in ("server", "server_voice"):
         model = dict(config["compute"][mode])
-        model.setdefault("model_id", "Qwen/Qwen3-VL-8B-Instruct")
-        model["port"] = validate_port(model.get("port", 8000 if mode == "local" else 18000))
-        result.append(dict(model, service="vllm" if mode == "local" else "remote"))
-        result.append(dict(service="gateway", env_dir=config["gateway_env"],
-                           model_id=model["model_id"], model_port=model["port"],
-                           port=validate_port(model.get("gateway_port", 7861 if mode == "local" else 7862))))
+        if mode == "external":
+            result.append(external_gateway(config, model))
+        elif mode in ("local", "remote"):
+            model.setdefault("model_id", "Qwen/Qwen3-VL-8B-Instruct")
+            model["port"] = validate_port(model.get("port", 8000 if mode == "local" else 18000))
+            result.append(dict(model, service="vllm" if mode == "local" else "remote"))
+            result.append(dict(service="gateway", env_dir=config["gateway_env"],
+                               model_id=model["model_id"], model_port=model["port"],
+                               port=validate_port(model.get("gateway_port", 7861 if mode == "local" else 7862))))
+        else:
+            raise ValueError("Unknown compute mode")
     if role in ("client", "server_voice", "asr"):
         for name, port in (("asr", 8765), ("tts", 8767)):
             if role == "asr" and name != "asr":
@@ -97,7 +138,7 @@ def ready(spec: dict) -> bool:
         if name in ("vllm", "remote"):
             return spec["model_id"] in [m.get("id") for m in get_json(port, "/v1/models").get("data", [])]
         if name == "gateway":
-            data = get_json(port, "/readyz")
+            data = get_json(port, "/readyz", timeout=float(spec.get("health_timeout_seconds", 2)) + 1)
             return (data.get("status") == "ready" and data.get("model") == spec["model_id"]
                     and data.get("runtime_id") == fingerprint(spec))
         data = get_json(port, "/health")
@@ -133,6 +174,21 @@ def command(spec: dict, repo: Path) -> tuple[list[str], dict[str, str]]:
         if key in spec:
             args.extend(["--" + key.replace("_", "-"), str(spec[key])])
     argv, env = build(parse_args(args), dict(os.environ))
+    if spec["service"] == "gateway" and "model_server" in spec:
+        key_name = spec.get("api_key_env", "")
+        key = os.getenv(key_name, "") if key_name else "EMPTY"
+        if not key.strip():
+            raise ValueError("Configured model API key environment variable is missing or empty")
+        env.update(MODEL_SERVER=spec["model_server"], API_KEY=key, MODEL_TYPE="oai",
+                   MODEL_BACKEND="openai",
+                   MODEL_USE_RAW_API="1", MODEL_JSON_MODE=spec["model_json_mode"],
+                   MODEL_HEALTH_CHECK=spec["model_health_check"],
+                   AGENT_MODEL_TIMEOUT=str(spec["request_timeout_seconds"]),
+                   TOOL_SEMANTIC_TIMEOUT=str(spec["request_timeout_seconds"]),
+                   KNOWLEDGE_MODEL_TIMEOUT=str(spec["request_timeout_seconds"]),
+                   VLLM_HEALTH_TIMEOUT=str(spec["health_timeout_seconds"]))
+        # Never inherit vendor-specific switches from a previous Qwen session.
+        env.pop("MODEL_ENABLE_THINKING", None)
     env["LOCAL_AGENT_RUNTIME_ID"] = fingerprint(spec)
     if spec["service"] == "tts":
         env["LOCAL_TTS_SPEAKER"] = str(spec.get("speaker", 17))
@@ -165,6 +221,8 @@ def host_lock(timeout: float = 650):
 
 def ensure(spec: dict, repo: Path, status: Path, timeout: float = 600) -> str:
     name = spec["service"]
+    if spec.get("api_key_env") and not os.getenv(spec["api_key_env"], "").strip():
+        raise ValueError("Configured model API key environment variable is missing or empty")
     owner = live_owner_fingerprint(spec["port"])
     if owner and owner != fingerprint(spec):
         raise RuntimeError(f"{name}: another managed configuration is still running/starting; no process stopped")
@@ -183,6 +241,16 @@ def ensure(spec: dict, repo: Path, status: Path, timeout: float = 600) -> str:
     if port_open(spec["port"]):
         raise RuntimeError(f"{name}: port {spec['port']} occupied by unready/different configuration; no process stopped")
     argv, env = command(spec, repo)
+    if name == "gateway" and "model_server" in spec:
+        write_status(status, "starting", "Checking external model tools/JSON compatibility (synthetic requests only)")
+        try:
+            check = subprocess.run([argv[0], str(repo / "Model/scripts/check_external_model.py")],
+                cwd=repo / "Model", env=env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE, timeout=90, check=False)
+        except subprocess.TimeoutExpired:
+            raise RuntimeError("External model compatibility check timed out; Gateway was not started") from None
+        if check.returncode:
+            raise RuntimeError("External model compatibility failed: check authentication, model ID, native tools/tool_choice and JSON output; Gateway was not started")
     logs = repo / "Model/logs/local-agent-deploy"
     logs.mkdir(parents=True, exist_ok=True)
     log = logs / f"{name}-{spec['port']}.log"
@@ -213,7 +281,7 @@ def main() -> int:
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--status", type=Path, required=True)
     parser.add_argument("--role", choices=("server", "client", "server_voice", "asr"), required=True)
-    parser.add_argument("--mode", choices=("local", "remote"), default="local")
+    parser.add_argument("--mode", choices=("local", "remote", "external"), default="local")
     parser.add_argument("--require-windows-check", action="store_true")
     args = parser.parse_args()
     try:
@@ -237,9 +305,10 @@ def main() -> int:
                 endpoints["GODOTSPACE_TTS_ENDPOINT"] = f"http://127.0.0.1:{port}/v1/speech"
             if name in ("gateway", "asr", "tts"):
                 path = "/readyz" if name == "gateway" else "/health"
-                health = get_json(port, path)
+                health_timeout = float(spec.get("health_timeout_seconds", 2)) + 2
+                health = get_json(port, path, timeout=health_timeout)
                 expected = {k: health[k] for k in ("status", "service", "model", "runtime_id", "device", "speaker", "vad_loaded", "warmed_up") if k in health}
-                checks.append(dict(url=f"http://127.0.0.1:{port}{path}", expected=expected))
+                checks.append(dict(url=f"http://127.0.0.1:{port}{path}", expected=expected, timeout_seconds=health_timeout))
         write_status(args.status, "verifying" if args.require_windows_check else "ready",
                      "Checking Windows localhost forwarding" if args.require_windows_check else "Local Agent services ready",
                      endpoints=endpoints, services=results, health_checks=checks)

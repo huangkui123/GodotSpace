@@ -14,6 +14,8 @@ TTS_PY -m unittest discover -s tts_service/tests -v
 
 MODEL_PY/ASR_PY/TTS_PY 为本次绝对路径。导入成功不证明 GPU 推理。
 
+external 模式的 MODEL_PY 是独立 Gateway 环境的 Python；按 [external-model.md](external-model.md) 做兼容检查和真实接口验收，跳过下面要求本地 vLLM 四服务的 services/smoke。ASR/TTS 仍分别检查和实测；TTS 单测使用 TTS 环境，Gateway 环境通常没有 sherpa-onnx。
+
 运行 `deployment_check.py services --model-id EXACT_ID`，默认 EXACT_ID 为 Qwen/Qwen3-VL-8B-Instruct（省略参数也是此值）。要求：
 - vLLM /v1/models 正好包含部署选定 ID。
 - Gateway /healthz 为 godotspace-local-agent，/readyz.status=ready、model=EXACT_ID、vllm/model_found/qwen_agent 均 true。
@@ -46,6 +48,7 @@ TTS 音色/性能验收使用 `python scripts/benchmark_local_tts.py --model kok
    - res://Assets/ARSpace/Scripts/AI/LocalAgent/assistant_command_router_self_test.gd
    - res://Assets/ARSpace/Scripts/AI/LocalAgent/local_endpoint_self_test.gd
    - res://Assets/ARSpace/Scripts/AI/LocalAgent/local_agent_runtime_self_test.gd
+   - res://Assets/ARSpace/Scripts/AI/LocalAgent/local_agent_bridge_self_test.gd（含切换 Gateway 后连接、会话与工具缓存清理）
    - res://Assets/ARSpace/Scripts/AI/LocalAgent/assistant_speech_self_test.gd
    - res://Assets/ARSpace/Scripts/AI/LocalAgent/assistant_speech_live_smoke.gd
    先确认路径实际存在；上游改名时搜索相应测试，不编造 PASS。
@@ -57,6 +60,10 @@ TTS 音色/性能验收使用 `python scripts/benchmark_local_tts.py --model kok
    测试应实际推进/回退页码，并验证第17页问题得到当前步骤证据及 2.5N·m。检查退出码和明确 passed 标记，不能只看模型输出一段文字。
 4. 默认拓扑运行 `MODEL_PY scripts/test_server_hosted.py --godot GODOT_EXE --project WINDOWS_PROJECT`（Model cwd，WSL 启动 Windows 引擎时项目参数使用 `F:/.../GodotSpace` 形式）。使用独立端口 18761、42869，占用时不杀旧进程。验证一个 Server/两个 Client 只产生一个 Gateway 连接、四次目标端 UI 工具往返、旧 epoch 不进入模型、ready 前不开始倒计时、普通文本分发、答案不串端、Server 断开后助手不可用。测试隔离场景复制，不代表真实角色分配/XR/麦克风/模型质量已通过。旧 local endpoint 和 server_relay 测试只是显式兼容模式，不能当作默认部署验收。
 5. 可运行现有 benchmark 作额外回归，但报告实际 model ID、上下文、精度、GPU/运行库和用例数。不能将 mock、旧2B或远程8B/FP8分数套在本次5090的8B/BF16部署上。失败时查 harness trace、Godot状态、模型选择，不能用提高超时掩盖语义失败。
+
+真实模型返回 `malformed_model_arguments` 时，用合成指令核对模型原始输出与解析后的参数。HTTP 200、正常 `finish_reason` 和非空回答仍可能包含未闭合 JSON；这种情况是工具能力验收失败。保留拒绝执行行为，不通过自动补括号或跳过语义校验把失败改成通过。
+
+若部署要求 Sky 不依赖 Ground，额外运行同一个 `test_server_hosted.py` 的 `--sky-only` 和 `--sky-only --external-model-fixture` 两种模式；确认输出 `NO Ground process was started`。真机时在 Sky 上启动 Server + Sky Client + 后端，Ground 保持关闭，执行打开、翻页、确认及问答；随后让 Ground 加入再退出，重复 Sky 命令，结果应继续只返回 Sky。最后关闭 Sky 所在 Server，助手应明确不可用，不向 Ground 自动降级。
 
 ## D. 真实交互验收（需要用户/硬件）
 

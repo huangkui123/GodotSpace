@@ -34,6 +34,8 @@ mkdir -p "$RUNTIME/envs" "$BACKEND/generated/local-agent-deploy" "$BACKEND/logs/
 `uv venv --python 3.12 --seed "$RUNTIME/envs/NAME"`。
 **不要 --clear**。已存在且来源不明的环境先检查，不安装进去；选一个新的明确路径。对本 skill 上次创建的环境，按已保存部署记录检查 pip check/版本后复用，安装失败可续装该环境，不删目录重来。
 
+WSL 新部署优先把这些 Python 环境建在 Linux 自身文件系统（例如 `$HOME/.local/share/godotspace-local-agent/envs`），将实际绝对路径写入 runtime.json 的 env_dir/gateway_env；仓库、日志和 runtime.json 仍可留在 Windows 工作树。现有 `/mnt/f` 环境实测冷启动会长时间停在 Python 包元数据扫描/导入，不能把服务尚未监听直接判为模型接口失败。不要直接搬运旧 venv；也不要为提速在已有运行环境里重装依赖。首次启动与复用分别记录耗时。
+
 ```bash
 uv pip install --python "$RUNTIME/envs/model/bin/python" "vllm==0.11.0" --torch-backend=cu128
 uv pip install --python "$RUNTIME/envs/model/bin/python" \

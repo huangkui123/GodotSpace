@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+from contextlib import nullcontext
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -16,6 +17,15 @@ from agent_service.config import Settings
 
 
 class ActionEntailmentTests(unittest.TestCase):
+    def test_verifier_closes_client_without_automatic_retries_on_failure(self) -> None:
+        with patch("openai.OpenAI") as factory:
+            client = factory.return_value.__enter__.return_value
+            client.chat.completions.create.side_effect = RuntimeError("unavailable")
+            result = QwenActionEntailmentVerifier(Settings()).verify("让相册先退场一下", "close_album")
+            self.assertEqual(result.verdict, "unclear")
+            self.assertEqual(factory.call_args.kwargs["max_retries"], 0)
+            factory.return_value.__exit__.assert_called_once()
+
     def test_mapping_parser_is_strict(self) -> None:
         valid = {
             "candidate_tool": "next_task_step",
@@ -47,7 +57,7 @@ class ActionEntailmentTests(unittest.TestCase):
             )
         )
 
-        with patch("openai.OpenAI", return_value=client):
+        with patch("openai.OpenAI", return_value=nullcontext(client)):
             result = QwenActionEntailmentVerifier(Settings()).verify(
                 "带我往后走",
                 "next_task_step",
@@ -112,7 +122,7 @@ class ActionEntailmentTests(unittest.TestCase):
             )
         )
 
-        with patch("openai.OpenAI", return_value=client):
+        with patch("openai.OpenAI", return_value=nullcontext(client)):
             result = QwenActionEntailmentVerifier(Settings()).verify(
                 "关闭工作文档",
                 "close_task_guide",
@@ -144,7 +154,7 @@ class ActionEntailmentTests(unittest.TestCase):
             )
         )
 
-        with patch("openai.OpenAI", return_value=client):
+        with patch("openai.OpenAI", return_value=nullcontext(client)):
             different_action = QwenActionEntailmentVerifier(Settings()).verify(
                 "打开工作清单",
                 "close_task_guide",

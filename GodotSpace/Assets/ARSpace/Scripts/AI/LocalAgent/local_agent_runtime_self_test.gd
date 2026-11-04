@@ -77,6 +77,9 @@ func _run() -> void:
 	agent._server_role_selected = false
 	assert(runtime.default_compute({"compute": {"remote": {}}}, "") == "remote")
 	assert(runtime.default_compute({"compute": {"remote": {}}}, "local") == "local")
+	assert(runtime.default_compute({"compute": {"external": {}}}, "") == "external")
+	assert(runtime.default_compute({"compute": {"local": {}, "external": {}}}, "external") == "external")
+	assert(runtime.default_compute({"compute": {"external": {}}}, "remote") == "remote") # never silently override saved host
 	assert(await runtime.prepare_launch({"preset": "local_sky", "assistant": true}))
 	assert(runtime.calls.back() == "server_voice")
 	assert(await runtime.ensure_services(profile))

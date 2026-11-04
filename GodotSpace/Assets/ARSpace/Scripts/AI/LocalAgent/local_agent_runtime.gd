@@ -30,9 +30,11 @@ func _ready() -> void:
 
 static func default_compute(config: Dictionary, saved_mode: String) -> String:
 	# Preserve an explicit choice; never silently move inference to another host.
-	if saved_mode in ["local", "remote"]:
+	if saved_mode in ["local", "remote", "external"]:
 		return saved_mode
 	var modes: Dictionary = config.get("compute", {})
+	if modes.has("external") and not modes.has("local") and not modes.has("remote"):
+		return "external"
 	return "remote" if modes.has("remote") and not modes.has("local") else "local"
 
 
@@ -67,7 +69,7 @@ func _poll_services(now_msec: int) -> void:
 
 
 func select_compute(mode: String) -> void:
-	if _busy or mode not in ["local", "remote"]:
+	if _busy or mode not in ["local", "remote", "external"]:
 		return
 	compute_mode = mode
 	var saved := ConfigFile.new()

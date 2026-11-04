@@ -19,6 +19,7 @@ const ToolRegistryScript := preload("res://Assets/ARSpace/Scripts/AI/LocalAgent/
 const OpenAlbumAdapterScript := preload("res://Assets/ARSpace/Scripts/AI/LocalAgent/open_album_tool_adapter.gd")
 
 var _peer: WebSocketPeer
+var _transport_endpoint := ""
 var _registry: RefCounted
 var _session_id := ""
 var _client_id := "godotspace-%x" % randi()
@@ -64,6 +65,7 @@ func _process(_delta: float) -> void:
 	if not _is_enabled():
 		_disable_connection()
 		return
+	_refresh_endpoint()
 	if _peer == null:
 		if Time.get_ticks_msec() >= _next_connect_msec:
 			_try_connect()
@@ -202,6 +204,7 @@ func can_host_gateway() -> bool:
 func ensure_connection(timeout_seconds: float = 15.0) -> bool:
 	if not _is_enabled():
 		return false
+	_refresh_endpoint()
 	if _connected:
 		return true
 	# Explicit recovery should not inherit the previous reconnect backoff.
@@ -224,6 +227,7 @@ func _try_connect() -> void:
 		_record_error("Local Agent endpoint URL is empty.")
 		_schedule_reconnect()
 		return
+	_transport_endpoint = endpoint
 	var error := _peer.connect_to_url(endpoint)
 	if error != OK:
 		_peer = null
@@ -435,11 +439,21 @@ func _disable_connection() -> void:
 		_peer.close(1000, "Local Agent disabled")
 		_peer = null
 	_hello_sent = false
+	_transport_endpoint = ""
 	_session_id = ""
 	_tool_result_cache.clear()
 	_early_deferred_results.clear()
 	_resolving_tool_calls.clear()
 	_set_connected(false)
+
+
+func _refresh_endpoint() -> void:
+	if not _transport_endpoint.is_empty() and _transport_endpoint != _endpoint_url():
+		# Sessions, pending confirmations and tool-result IDs belong to one Gateway.
+		# Emit disconnect before reconnecting so the router fails old requests.
+		_disable_connection()
+		_next_connect_msec = 0
+		_reconnect_seconds = 1.0
 
 
 func _close_with_error(code: int, message: String) -> void:

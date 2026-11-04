@@ -251,17 +251,12 @@ class QwenActionEntailmentVerifier:
         try:
             from openai import OpenAI
 
-            client = OpenAI(
-                base_url=self._settings.model_server,
-                api_key=self._settings.api_key,
-                timeout=self._settings.tool_semantic_timeout_seconds,
-            )
             extra_body: dict[str, Any] = {}
-            if self._settings.model_enable_thinking is not None:
+            if self._settings.model_backend != "openai" and self._settings.model_enable_thinking is not None:
                 extra_body["chat_template_kwargs"] = {
                     "enable_thinking": self._settings.model_enable_thinking
                 }
-            response = client.chat.completions.create(
+            payload = dict(
                 model=self._settings.model_name,
                 messages=[
                     {"role": "system", "content": SYSTEM_MESSAGE},
@@ -280,13 +275,26 @@ class QwenActionEntailmentVerifier:
                 },
                 temperature=0.0,
                 max_tokens=48,
-                extra_body=extra_body,
             )
-            message = response.choices[0].message
-            calls = message.tool_calls or []
-            if len(calls) != 1 or calls[0].function.name != "verify_action_entailment":
+            if self._settings.model_backend == "openai":
+                from agent_service.model_endpoint import request_tool_call
+                name, raw_arguments = request_tool_call(
+                    self._settings.model_server + "/chat/completions", self._settings.api_key,
+                    self._settings.tool_semantic_timeout_seconds, payload,
+                )
+            else:
+                with OpenAI(
+                    base_url=self._settings.model_server, api_key=self._settings.api_key,
+                    timeout=self._settings.tool_semantic_timeout_seconds, max_retries=0,
+                ) as client:
+                    response = client.chat.completions.create(**payload, extra_body=extra_body)
+                calls = response.choices[0].message.tool_calls or []
+                if len(calls) != 1:
+                    raise ValueError("verifier did not return exactly one assessment")
+                name, raw_arguments = calls[0].function.name, calls[0].function.arguments
+            if name != "verify_action_entailment":
                 raise ValueError("verifier did not return exactly one assessment")
-            arguments = json.loads(calls[0].function.arguments)
+            arguments = json.loads(raw_arguments)
             if not isinstance(arguments, dict) or set(arguments) != {"verdict"}:
                 raise ValueError("verifier returned an invalid assessment object")
             verdict = arguments.get("verdict")

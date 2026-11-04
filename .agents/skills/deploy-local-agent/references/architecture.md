@@ -18,7 +18,7 @@ Client 麦克风 → Client 本机 FunASR → 可靠文本 RPC → 天上主机 
 ## 双机拓扑与权限
 
 - 默认 `arspace/local_agent/execution_mode="server_hosted"`。三个 Godot 进程、两台电脑：Server 与 Sky Client 在天上电脑，Ground Client 在地面电脑。Server 的历史 `pc_ground` 权限角色不是物理部署位置，不为搬迁主机改动协作权限。
-- 只有 Server 连接 Gateway；两个 Client 都不用部署 Gateway/LLM。Gateway 与模型端口保持 loopback，远端模型通过部署时配置的 SSH alias 隧道连接。日常选择本机/远端模式，不修改业务路由。
+- 只有 Server 连接 Gateway；两个 Client 都不用部署 Gateway/LLM。Gateway 保持 loopback；local 模型在本机 loopback，remote 经 SSH alias 隧道，external 连接甲方提供的受保护兼容 API（详见 external-model.md）。选择模型来源不修改业务路由。
 - ASR/TTS 每台 Client 主机一份；同机健康服务复用。Server 桌面模式只启动 Gateway/模型，XR Server 模式还启动语音服务。普通转写由 Server 校验发送方身份、角色、大小与频率后分发为显示文本；命令和助手答案不广播给其他 Client。Opus 通话不变，默认不再上传 ASR PCM。
 - Server 保留请求、会话、确认与工具授权边界；Client 只执行 Server 下发的已支持 UI 工具，不能指定任意节点路径或方法。
 - `local` 为旧端点直连实验兼容模式，`server_relay`/`--local-agent-server-relay` 为旧 Server ASR 兼容模式；均非部署默认，不自动回退。跨端使用同一版本/模式。

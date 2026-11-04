@@ -170,9 +170,11 @@ func _setup_agent_controls() -> void:
 	_compute_selector = OptionButton.new()
 	_compute_selector.add_item("模型算力：本机（8B）")
 	_compute_selector.add_item("模型算力：远端（已配置 SSH）")
-	_compute_selector.select(1 if LocalAgentRuntime.compute_mode == "remote" else 0)
+	_compute_selector.add_item("模型算力：已有模型服务（兼容 API）")
+	var compute_modes := ["local", "remote", "external"]
+	_compute_selector.select(maxi(0, compute_modes.find(LocalAgentRuntime.compute_mode)))
 	_compute_selector.visible = RuntimeProfile.current().is_server()
-	_compute_selector.item_selected.connect(func(index: int): LocalAgentRuntime.select_compute("local" if index == 0 else "remote"))
+	_compute_selector.item_selected.connect(func(index: int): LocalAgentRuntime.select_compute(compute_modes[index]))
 	$VBoxContainer.add_child(_compute_selector)
 	$VBoxContainer.move_child(_compute_selector, status_label.get_index())
 	LocalAgentRuntime.status_changed.connect(func(next: String, detail: String): _set_status(detail, next == "failed"))

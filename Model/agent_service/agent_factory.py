@@ -178,12 +178,16 @@ class AgentFactory:
             ClarifyUITargetTool(),
         ]
         selection_tools = [_tool_selection_proxy(tool, BaseTool) for tool in tool_definitions]
-        bot = FnCallAgent(
-            llm=self._llm_config(),
-            function_list=selection_tools,
-            name="GodotSpace Local Qwen Router",
-            system_message=ROUTING_DECISION_SYSTEM_MESSAGE,
-        )
+        if self._settings.model_backend == "openai":
+            from agent_service.openai_tool_selector import OpenAIToolSelector
+            bot = OpenAIToolSelector(self._settings, selection_tools, ROUTING_DECISION_SYSTEM_MESSAGE)
+        else:
+            bot = FnCallAgent(
+                llm=self._llm_config(),
+                function_list=selection_tools,
+                name="GodotSpace Local Qwen Router",
+                system_message=ROUTING_DECISION_SYSTEM_MESSAGE,
+            )
 
         # FnCallAgent passes every BaseTool definition to Qwen through the native
         # function-calling prompt. Do not append a second JSON copy to the user

@@ -14,6 +14,7 @@ func _init() -> void:
 func _run() -> void:
 	ProjectSettings.set_setting("arspace/local_agent/enabled", true)
 	var server := OS.get_cmdline_user_args().has("--endpoint-test-server")
+	var expected_clients := 1 if OS.get_cmdline_user_args().has("--sky-only") else 2
 	var api := root.multiplayer
 	var network := root.get_node("NetworkHandler")
 	# Isolate scene replication; keep real Server role registration checks.
@@ -40,11 +41,12 @@ func _run() -> void:
 	_check(error == OK, "ENet start failed")
 	api.multiplayer_peer = peer
 	agent._on_network_role_selected(server)
-	var deadline := Time.get_ticks_msec() + 23000
+	var deadline := Time.get_ticks_msec() + (130000 if OS.get_cmdline_user_args().has("--live-model") else 23000)
 	if server:
-		while (routed < 4 or ordinary < 2 or not router._requests.is_empty()) and Time.get_ticks_msec() < deadline:
+		while (routed < expected_clients * 2 or ordinary < expected_clients or not router._requests.is_empty()) and Time.get_ticks_msec() < deadline:
 			await process_frame
-		_check(routed == 4 and ordinary == 2, "Server did not exclusively route four commands / two ordinary texts")
+		_check(routed == expected_clients * 2 and ordinary == expected_clients, "Server did not exclusively route the expected commands / ordinary texts")
+		_check(api.get_peers().size() == expected_clients, "Unexpected peer count; Sky-only test must not contain a Ground Client")
 		_check(answers == 0, "Private Client answers leaked to Server display")
 		await create_timer(1.5).timeout
 		peer.close()

@@ -54,6 +54,7 @@ def create_app(
             settings.model_name,
             api_key=settings.api_key,
             timeout_seconds=settings.knowledge_model_timeout_seconds,
+            json_mode=settings.model_json_mode,
         ),
         retrieval_limit=settings.knowledge_retrieval_limit,
         minimum_score=settings.knowledge_minimum_score,
@@ -101,6 +102,8 @@ def create_app(
         return {
             "status": "ready" if model_ready and qwen_agent_available else "not_ready",
             "vllm": model_health.reachable,
+            "model_reachable": model_health.reachable,
+            "model_health_check": settings.model_health_check,
             "model_found": model_health.model_found,
             "model": settings.model_name,
             "runtime_id": os.getenv("LOCAL_AGENT_RUNTIME_ID", ""),

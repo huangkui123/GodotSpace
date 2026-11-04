@@ -1,13 +1,10 @@
 from __future__ import annotations
 
 import asyncio
-import json
-import urllib.error
-import urllib.request
 from dataclasses import dataclass
-from typing import Any
 
 from agent_service.config import Settings
+from agent_service.model_endpoint import request_json
 
 
 @dataclass(slots=True)
@@ -22,18 +19,21 @@ async def probe_model_server(settings: Settings) -> ModelHealth:
 
 
 def _probe_model_server_sync(settings: Settings) -> ModelHealth:
-    request = urllib.request.Request(settings.models_url, method="GET")
-    if settings.api_key:
-        request.add_header("Authorization", f"Bearer {settings.api_key}")
     try:
-        with urllib.request.urlopen(
-            request, timeout=settings.vllm_health_timeout_seconds
-        ) as response:
-            payload: Any = json.loads(response.read().decode("utf-8"))
-    except (OSError, ValueError, urllib.error.URLError) as exc:
+        if settings.model_health_check == "chat":
+            payload = request_json(settings.model_server + "/chat/completions", settings.api_key,
+                settings.vllm_health_timeout_seconds, {"model": settings.model_name,
+                "messages": [{"role": "user", "content": "Reply OK."}], "max_tokens": 8, "stream": False})
+            choices = payload.get("choices", [])
+            valid = bool(choices and isinstance(choices[0], dict) and choices[0].get("message", {}).get("content"))
+            return ModelHealth(reachable=True, model_found=valid, error="" if valid else "chat health probe returned no text")
+        payload = request_json(settings.models_url, settings.api_key, settings.vllm_health_timeout_seconds)
+    except (RuntimeError, ValueError, TypeError, IndexError, AttributeError) as exc:
         return ModelHealth(reachable=False, model_found=False, error=str(exc))
 
     models = payload.get("data", []) if isinstance(payload, dict) else []
+    if not isinstance(models, list):
+        return ModelHealth(reachable=True, model_found=False, error="models response must contain a data array")
     model_ids = {
         str(item.get("id", ""))
         for item in models

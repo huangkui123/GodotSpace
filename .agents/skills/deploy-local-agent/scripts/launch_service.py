@@ -51,7 +51,8 @@ def build(args: argparse.Namespace, inherited: dict[str, str]) -> tuple[list[str
         argv[3] = "agent_service.app:app"
         env.update(MODEL_NAME=args.model_id, MODEL_SERVER=f"http://127.0.0.1:{args.model_port}/v1",
                    API_KEY="EMPTY", MODEL_TYPE="qwenvl_oai", MODEL_USE_RAW_API="0",
-                   MODEL_FNCALL_PROMPT_TYPE="nous")
+                   MODEL_FNCALL_PROMPT_TYPE="nous", MODEL_BACKEND="qwen_agent",
+                   MODEL_HEALTH_CHECK="models", MODEL_JSON_MODE="json_schema")
     elif args.service == "asr":
         env.update(FUNASR_DEVICE=args.asr_device, FUNASR_WARMUP="1", FUNASR_PRELOAD="1",
                    FUNASR_MODEL=args.asr_model, FUNASR_VAD_MODEL=args.vad_model,

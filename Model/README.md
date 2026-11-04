@@ -16,11 +16,18 @@ override the Godot process's local service addresses. Both machines must use
 the same repository version; do not expose unauthenticated services to the LAN.
 
 After first deployment, Godot's start menu starts/checks the required services.
-Server remembers local/remote compute selection; Clients only prepare ASR/TTS.
+Server remembers local/remote/external compute selection; Clients only prepare ASR/TTS.
 See [runtime profile](../.agents/skills/deploy-local-agent/references/runtime-profile.md)
 for the ignored machine-specific configuration. No silent fallback or process
 eviction; exiting Godot leaves shared services running. Server disconnect makes
 the assistant unavailable (offline XR is not implemented).
+
+For a customer-managed model, use **external** mode: configure its API base URL,
+model ID and optional API-key environment variable once, then select “已有模型服务”
+in Godot. This starts only Gateway and verifies native tool calls/JSON using
+synthetic requests; it never installs, stops or switches the customer's model.
+See [external model integration](../.agents/skills/deploy-local-agent/references/external-model.md)
+for the configuration, protocol requirements, security and acceptance checks.
 
 ## Current target
 

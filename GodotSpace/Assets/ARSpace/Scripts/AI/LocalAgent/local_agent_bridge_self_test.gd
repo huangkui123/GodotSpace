@@ -205,6 +205,23 @@ func _run() -> void:
 	if not _check(bool(protocol_client.call("_pong_timed_out", 25_002)), "stale pong did not trigger timeout state"):
 		return
 
+	var saved_endpoint := OS.get_environment("GODOTSPACE_AGENT_ENDPOINT")
+	OS.set_environment("GODOTSPACE_AGENT_ENDPOINT", "ws://127.0.0.1:19763/ws/godot")
+	protocol_client.set("_transport_endpoint", "ws://127.0.0.1:19761/ws/godot")
+	var connection_events: Array[bool] = []
+	protocol_client.connection_state_changed.connect(func(connected: bool) -> void: connection_events.append(connected))
+	protocol_client.call("_refresh_endpoint")
+	OS.set_environment("GODOTSPACE_AGENT_ENDPOINT", saved_endpoint)
+	debug_state = protocol_client.get_debug_state()
+	if not _check(not protocol_client.is_connected_to_gateway() and connection_events == [false], "endpoint switch did not invalidate the old connection"):
+		return
+	if not _check(str(debug_state.session_id).is_empty() and int(debug_state.cached_tool_result_count) == 0, "endpoint switch retained old session/tool results"):
+		return
+	protocol_client.set("_hello_sent", true)
+	protocol_client.call("_handle_envelope", _envelope("hello_ack", "new-gateway-session"))
+	if not _check(protocol_client.is_connected_to_gateway(), "new Gateway handshake rejected after endpoint switch"):
+		return
+
 	ProjectSettings.set_setting("arspace/local_agent/enabled", false)
 	protocol_client.call("_process", 0.0)
 	ProjectSettings.set_setting("arspace/local_agent/enabled", true)

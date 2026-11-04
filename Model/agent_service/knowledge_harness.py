@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import json
 import re
-import urllib.request
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
 from agent_service.harness_protocol import HarnessStageTrace
+from agent_service.model_endpoint import request_json
 
 
 ABSTAIN_ANSWER = "现有可信资料未提供足够依据，请查阅对应手册或请专家席确认。"
@@ -533,11 +533,15 @@ class OpenAICompatibleJsonClient:
         *,
         api_key: str = "EMPTY",
         timeout_seconds: float = 2.0,
+        json_mode: str = "json_schema",
     ) -> None:
         self._endpoint = endpoint.rstrip("/")
         self._model = model
         self._api_key = api_key
         self._timeout_seconds = timeout_seconds
+        if json_mode not in {"json_schema", "json_object", "prompt"}:
+            raise ValueError("Unsupported JSON output mode")
+        self._json_mode = json_mode
 
     def __call__(self, prompt: str, schema: dict[str, Any]) -> str:
         url = self._endpoint
@@ -557,17 +561,13 @@ class OpenAICompatibleJsonClient:
                 },
             },
         }
-        request = urllib.request.Request(
-            url,
-            data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {self._api_key}",
-            },
-            method="POST",
-        )
-        with urllib.request.urlopen(request, timeout=self._timeout_seconds) as response:
-            result = json.loads(response.read().decode("utf-8"))
+        if self._json_mode != "json_schema":
+            payload["messages"][0]["content"] += "\n只返回符合以下 schema 的 JSON 对象：\n" + json.dumps(schema, ensure_ascii=False)
+            if self._json_mode == "json_object":
+                payload["response_format"] = {"type": "json_object"}
+            else:
+                payload.pop("response_format")
+        result = request_json(url, self._api_key, self._timeout_seconds, payload)
         choices = result.get("choices", [])
         if not choices:
             raise RuntimeError("The evidence selector returned no choices")
