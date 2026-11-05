@@ -152,7 +152,11 @@ func _hide_llm_assistant_view() -> void:
 func _set_spacebox_worklist_visible(is_visible: bool) -> void:
 	var global_node := _get_global_node()
 	var spacebox_controller = global_node.get("spacebox_controller") if global_node != null else null
-	if spacebox_controller != null and spacebox_controller.has_method("set_worklist1_visible"):
+	if spacebox_controller != null \
+			and spacebox_controller.has_method("request_worklist_visibility"):
+		spacebox_controller.call("request_worklist_visibility", is_visible)
+	elif spacebox_controller != null \
+			and spacebox_controller.has_method("set_worklist1_visible"):
 		spacebox_controller.call("set_worklist1_visible", is_visible)
 
 func _set_global_canvas_visible(property_name: StringName, is_visible: bool) -> void:

@@ -237,8 +237,12 @@ func bind_item(item: WorkListInfoItem, infos: WorkListInfoData):
 	var global_node := _get_global_node()
 	var spacebox_controller = global_node.get("spacebox_controller") if global_node != null else null
 	if spacebox_controller:
-		spacebox_controller.play_step(infos.step)
-		spacebox_controller.show_only_work_info(infos.step)
+		if spacebox_controller.has_method("request_work_step"):
+			spacebox_controller.call("request_work_step", infos.step)
+		else:
+			spacebox_controller.call("set_worklist1_visible", true)
+			spacebox_controller.call("show_only_work_info", infos.step)
+			spacebox_controller.call("play_step", infos.step)
 	else:
 		if DEBUG_LOGS: print("❌ [DEBUG] Global.spacebox_controller 为空")
 
@@ -256,6 +260,9 @@ func replay_current_step_animation() -> void:
 		if DEBUG_LOGS: print("spacebox_controller is null, unable to replay step animation.")
 		return
 
+	if spacebox_controller.has_method("request_work_step"):
+		spacebox_controller.call("request_work_step", current_step.step)
+		return
 	if spacebox_controller.has_method("set_worklist1_visible"):
 		spacebox_controller.call("set_worklist1_visible", true)
 	if spacebox_controller.has_method("show_only_work_info"):

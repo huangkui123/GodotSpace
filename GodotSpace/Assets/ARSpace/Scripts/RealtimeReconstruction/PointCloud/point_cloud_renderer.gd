@@ -13,10 +13,9 @@ const MapStore := preload(
 const DEFAULT_POINTS_PER_BATCH: int = 10_000
 const POINT_SHADER_CODE: String = """
 shader_type spatial;
-render_mode unshaded, cull_disabled, depth_draw_opaque, blend_mix;
+render_mode unshaded, cull_disabled, depth_draw_opaque;
 
 uniform float point_size : hint_range(1.0, 16.0, 0.25) = 4.0;
-uniform float arspace_opacity : hint_range(0.0, 1.0, 0.01) = 1.0;
 
 void vertex() {
 	POINT_SIZE = point_size;
@@ -24,7 +23,6 @@ void vertex() {
 
 void fragment() {
 	ALBEDO = COLOR.rgb;
-	ALPHA = arspace_opacity;
 }
 """
 
@@ -70,11 +68,10 @@ func append_chunk(chunk: ReconstructionPointCloudChunk) -> bool:
 			var point_index := source_index + offset
 			batch_positions.append(chunk.positions[point_index])
 			var color_offset := point_index * 3
-			batch_colors.append(Color8(
+			batch_colors.append(srgb8_to_linear_color(
 				chunk.colors_rgb8[color_offset],
 				chunk.colors_rgb8[color_offset + 1],
-				chunk.colors_rgb8[color_offset + 2],
-				255
+				chunk.colors_rgb8[color_offset + 2]
 			))
 		_batch_positions[batch_index] = batch_positions
 		_batch_colors[batch_index] = batch_colors
@@ -127,6 +124,14 @@ func get_meshes_for_test() -> Array[ArrayMesh]:
 
 func get_last_error() -> String:
 	return _last_error
+
+
+static func srgb8_to_linear_color(red: int, green: int, blue: int) -> Color:
+	# PCCH stores camera/PLY colors as nonlinear sRGB8. Godot's Mobile 3D
+	# pipeline consumes ArrayMesh vertex colors as linear RGB, so convert once
+	# while building the persistent GPU batches instead of brightening them
+	# every frame in the point shader.
+	return Color8(red, green, blue, 255).srgb_to_linear()
 
 
 static func build_point_mesh(

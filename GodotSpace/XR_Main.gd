@@ -24,6 +24,9 @@ const SKY_BOUNDARY_SURFACE_NAMES: Array[StringName] = [
 ]
 const SKY_TRANSPARENCY_STATE_META: StringName = \
 	&"_arspace_sky_transparency_state"
+const SKY_TRANSPARENCY_EXEMPT_GROUPS: Array[StringName] = [
+	&"reconstruction_point_cloud_chunks",
+]
 
 var xr_interface: XRInterface
 var runtime_profile
@@ -168,6 +171,8 @@ func get_sky_opacity() -> Vector3:
 func _apply_sky_transparency_to_subtree(root: Node) -> void:
 	if not is_instance_valid(root):
 		return
+	if _is_sky_transparency_exempt(root):
+		return
 	if root is MeshInstance3D:
 		_apply_sky_mesh_transparency(root as MeshInstance3D)
 	elif root is Label3D:
@@ -176,6 +181,18 @@ func _apply_sky_transparency_to_subtree(root: Node) -> void:
 		_apply_sky_sprite_transparency(root as SpriteBase3D)
 	for child in root.get_children():
 		_apply_sky_transparency_to_subtree(child)
+
+
+func _is_sky_transparency_exempt(node: Node) -> bool:
+	var current := node
+	while current != null:
+		for group_name in SKY_TRANSPARENCY_EXEMPT_GROUPS:
+			if current.is_in_group(group_name):
+				return true
+		if current == self:
+			break
+		current = current.get_parent()
+	return false
 
 
 func _restore_geometry_transparency_in_subtree(root: Node) -> void:

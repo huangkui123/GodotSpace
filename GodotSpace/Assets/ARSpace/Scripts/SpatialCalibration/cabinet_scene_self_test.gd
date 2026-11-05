@@ -5,6 +5,10 @@ var failures: Array[String] = []
 
 
 func _initialize() -> void:
+	if OS.get_cmdline_user_args().has("--no-cabinet-receiver"):
+		node_added.connect(func(node: Node):
+			if node.name == "CabinetCalibration":
+				node.set("auto_start_receiver", false))
 	call_deferred("_run")
 
 
@@ -39,7 +43,7 @@ func _run() -> void:
 	var is_sky: bool = Profile.current().is_sky()
 	_expect((cabinet != null) == is_sky, "cabinet runtime exists only on Sky")
 	var fixed_cabinet := current_scene.get_node_or_null("SharedSpaceOrigin/CalibrationCabinet") as Node3D
-	_expect(fixed_cabinet != null and fixed_cabinet.visible, "scene contains fixed solid cabinet before calibration")
+	_expect(fixed_cabinet != null, "scene contains reusable solid cabinet")
 	if is_sky and cabinet != null:
 		_expect(cabinet.get("_cabinet") == fixed_cabinet, "calibration uses authored cabinet instead of spawning a duplicate")
 	if fixed_cabinet != null:
@@ -55,6 +59,14 @@ func _run() -> void:
 		_expect(panel != null and panel.visible, "Sky menu opens actual XR surface")
 		var content := cabinet.get("_ui") as Control
 		_expect(content != null and content.get_viewport() is SubViewport, "calibration content is inside VR viewport")
+		_expect(content.name == "CabinetVisualUI", "actual scene entry defaults to CAD recognition")
+		_expect(cabinet.call("_visual_frame") == current_scene.get_node("SpaceBox/SpaceBox/dashiyangui/dashiyangui/MeshRenderer"), "CAD aligns to real experimental cabinet anchor")
+		_expect(not fixed_cabinet.visible, "CAD mode hides the custom cuboid")
+		(content.get("_kind") as OptionButton).select(1)
+		content.call("_options_changed")
+		_expect(fixed_cabinet.visible, "custom mode displays the dimensioned cuboid")
+		_expect((fixed_cabinet.get("dimensions") as Vector3).is_equal_approx(Vector3(0.45, 1.21, 0.8)), "custom scene dimensions match cm defaults")
+		_expect(not (cabinet.call("_visual_target") as Node3D).visible, "custom mode hides the CAD cabinet")
 		current_scene.call("set_sky_opacity", Vector3.ZERO)
 		var mesh := panel.get_node("Screen") as MeshInstance3D
 		_expect(not mesh.has_meta(current_scene.SKY_TRANSPARENCY_STATE_META), "calibration UI remains readable when objects are faded")
@@ -67,8 +79,13 @@ func _run() -> void:
 	if OS.get_cmdline_user_args().has("--hold-server"):
 		print("[CabinetSceneTest] Server ready; no cabinet calibration controller or menu")
 		await create_timer(50.0).timeout
+	if OS.get_cmdline_user_args().has("--hold-client"):
+		await create_timer(10.0).timeout
 	var scene := current_scene
 	current_scene = null
+	# Match change_scene_to_file: detach immediately, then free deferred. A
+	# process_frame signal alone can precede the queued deletion flush.
+	root.remove_child(scene)
 	scene.queue_free()
 	await process_frame
 	_expect(get_first_node_in_group("cabinet_calibration") == null, "scene exit removes runtime and preview")

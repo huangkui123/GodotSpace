@@ -523,7 +523,11 @@ func _make_demo() -> void:
 		_dimensions[i].value = CabinetModel.DEFAULT_DIMENSIONS[i]
 	_updating = false
 	var k := Vector4(650, 650, 480, 360)
-	var pose := Transform3D(Basis(Vector3.UP, 0.22), Vector3(-0.2, -0.28, -1.4))
+	var size_m := dimensions()
+	var rotation := Basis(Vector3.UP, 0.22)
+	var center := Vector3(size_m.x * 0.5, size_m.y * 0.5, -size_m.z * 0.5)
+	var distance := maxf(size_m.x, maxf(size_m.y, size_m.z)) * 2.5
+	var pose := Transform3D(rotation, Vector3(0, 0, -distance) - rotation * center)
 	var wire := PackedVector2Array()
 	for point in Geometry.corners(dimensions()):
 		wire.append(Geometry.project(pose, point, k))

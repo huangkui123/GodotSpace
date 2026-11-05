@@ -50,6 +50,7 @@ func _run() -> void:
 	origin.add_child(camera)
 	camera.position.y = 1.6
 	var cabinet := TestCabinet.new()
+	cabinet.use_legacy_panel = true
 	cabinet.auto_start_receiver = false
 	cabinet.local_xr_origin_path = NodePath("../LocalOrigin")
 	host.add_child(cabinet)

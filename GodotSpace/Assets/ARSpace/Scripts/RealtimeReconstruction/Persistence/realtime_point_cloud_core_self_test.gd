@@ -227,6 +227,15 @@ func _test_renderer(store: ReconstructionPointCloudMapStore) -> void:
 	var renderer := Renderer.new()
 	renderer.max_points_per_batch = 2
 	root.add_child(renderer)
+	var srgb_color := Color8(120, 130, 140, 255)
+	var linear_color := Renderer.srgb8_to_linear_color(120, 130, 140)
+	_expect(
+		linear_color.is_equal_approx(srgb_color.srgb_to_linear()) \
+			and linear_color.r < srgb_color.r \
+			and linear_color.g < srgb_color.g \
+			and linear_color.b < srgb_color.b,
+		"renderer must convert PCCH sRGB8 colors to linear RGB exactly once"
+	)
 	var point_material := Renderer.make_point_material(4.0)
 	_expect(
 		point_material is ShaderMaterial and point_material.shader != null,
@@ -235,10 +244,9 @@ func _test_renderer(store: ReconstructionPointCloudMapStore) -> void:
 	if point_material is ShaderMaterial and point_material.shader != null:
 		_expect(
 			point_material.shader.code.contains("ALBEDO = COLOR.rgb") \
-				and point_material.shader.code.contains(
-					"ALPHA = arspace_opacity"
-				),
-			"point shader must preserve RGB vertex colors with adjustable alpha"
+				and not point_material.shader.code.contains("ALPHA") \
+				and not point_material.shader.code.contains("arspace_opacity"),
+			"point shader must preserve RGB vertex colors in the opaque pipeline"
 		)
 		_expect(
 			is_equal_approx(

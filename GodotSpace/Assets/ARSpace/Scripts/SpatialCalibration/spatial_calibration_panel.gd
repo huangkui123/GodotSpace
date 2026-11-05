@@ -3,6 +3,7 @@ extends Control
 const DEBUG_LOGS := false
 
 const FrameProtocol := preload("res://Assets/ARSpace/Scripts/SpatialCalibration/anchor_frame_protocol.gd")
+const CabinetCaptureWriter := preload("res://Assets/ARSpace/Scripts/SpatialCalibration/cabinet_capture_writer.gd")
 
 const FRAME_MAGIC_PSA2 := FrameProtocol.FRAME_MAGIC_PSA2
 const ACK_MAGIC_PAA1 := FrameProtocol.ACK_MAGIC_PAA1
@@ -36,6 +37,7 @@ var last_frame_jpeg_bytes: PackedByteArray = PackedByteArray()
 var stream_texture: ImageTexture
 var decode_image: Image = Image.new()
 var depth_prediction_request: HTTPRequest
+var cabinet_capture_status: Label
 
 @onready var address_label: Label = $MarginContainer/Layout/AddressLabel
 @onready var status_label: Label = $MarginContainer/Layout/StatusLabel
@@ -101,6 +103,7 @@ func _ready() -> void:
 
 	ack_buffer.resize(ACK_HEADER_SIZE)
 	_wire_static_ui()
+	_setup_cabinet_capture()
 	_load_depth_prediction_endpoint()
 	_setup_depth_prediction_client()
 	_reset_selection(false)
@@ -158,6 +161,34 @@ func _setup_depth_prediction_client() -> void:
 	depth_prediction_request.timeout = 90.0
 	add_child(depth_prediction_request)
 	depth_prediction_request.request_completed.connect(_on_depth_prediction_completed)
+
+
+func _setup_cabinet_capture() -> void:
+	var capture_button := Button.new()
+	capture_button.name = "CabinetVisualCaptureButton"
+	capture_button.text = "保存纯视觉验证帧"
+	capture_button.tooltip_text = "保存当前 PICO 原始图像及相机信息，供实验柜无标记识别验证"
+	capture_button.pressed.connect(_on_cabinet_capture_pressed)
+	$MarginContainer/Layout.add_child(capture_button)
+	cabinet_capture_status = Label.new()
+	cabinet_capture_status.name = "CabinetVisualCaptureStatus"
+	cabinet_capture_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	$MarginContainer/Layout.add_child(cabinet_capture_status)
+
+
+func _on_cabinet_capture_pressed() -> void:
+	var result := CabinetCaptureWriter.write_capture(
+		"user://cabinet_calibration/captures",
+		last_frame_id,
+		last_frame_timestamp_ns,
+		last_frame_size,
+		last_frame_metadata,
+		last_frame_jpeg_bytes,
+	)
+	if result.has("error"):
+		cabinet_capture_status.text = str(result["error"])
+	else:
+		cabinet_capture_status.text = "已保存：" + str(result["path"])
 
 
 func _load_depth_prediction_endpoint() -> void:

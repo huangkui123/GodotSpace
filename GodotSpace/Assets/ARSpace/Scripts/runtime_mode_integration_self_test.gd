@@ -159,6 +159,21 @@ func _test_role_specific_scene_transparency(
 	label.modulate = Color(0.6, 0.7, 0.8, 1.0)
 	label.outline_modulate = Color(0.1, 0.2, 0.3, 0.8)
 	xr_main.add_child(label)
+	var point_cloud_root := Node3D.new()
+	point_cloud_root.add_to_group(&"reconstruction_point_cloud_chunks")
+	xr_main.add_child(point_cloud_root)
+	var point_cloud_geometry := MeshInstance3D.new()
+	var point_cloud_material := ShaderMaterial.new()
+	var point_cloud_shader := Shader.new()
+	point_cloud_shader.code = """
+shader_type spatial;
+void fragment() {
+	ALBEDO = COLOR.rgb;
+}
+"""
+	point_cloud_material.shader = point_cloud_shader
+	point_cloud_geometry.material_override = point_cloud_material
+	point_cloud_root.add_child(point_cloud_geometry)
 
 	var sky_profile = RuntimeProfile.select_session_mode(
 		RuntimeProfile.Preset.SKY_XR_CLIENT,
@@ -223,6 +238,8 @@ func _test_role_specific_scene_transparency(
 	if not is_equal_approx(label.modulate.a, 0.5) \
 			or not is_equal_approx(label.outline_modulate.a, 0.4):
 		failures.append("Sky XR must make Label3D text and outlines transparent")
+	if point_cloud_geometry.material_override != point_cloud_material:
+		failures.append("Sky XR must keep reconstruction point clouds opaque")
 	var shader := Shader.new()
 	shader.code = """
 shader_type spatial;
@@ -260,6 +277,12 @@ void fragment() {
 	if sky_late_material == null \
 			or not is_equal_approx(sky_late_material.albedo_color.a, 0.5):
 		failures.append("Sky XR must make late-created geometry half transparent")
+	var late_point_geometry := MeshInstance3D.new()
+	late_point_geometry.material_override = point_cloud_material
+	point_cloud_root.add_child(late_point_geometry)
+	xr_main.call("_apply_sky_transparency_to_subtree", late_point_geometry)
+	if late_point_geometry.material_override != point_cloud_material:
+		failures.append("Sky XR must keep late-created reconstruction points opaque")
 
 	# Adjust repeatedly, including after late creation, and verify authored alpha
 	# and live viewport references survive every rebuild.

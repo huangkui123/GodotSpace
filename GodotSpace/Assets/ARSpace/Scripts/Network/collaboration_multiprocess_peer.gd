@@ -7,6 +7,9 @@ const WINDOW_STATE_MANAGER_SCRIPT: Script = preload("res://Assets/ARSpace/Script
 const WINDOW_DOCK_MANAGER_SCRIPT: Script = preload("res://Assets/ARSpace/Scripts/SpatialWindows/window_dock_manager.gd")
 const WINDOW_DOCK_SLOT_SCENE: PackedScene = preload("res://Assets/ARSpace/Scenes/SpatialWindows/WindowDockSlot3D.tscn")
 const MAIN_MENU_STATE_MANAGER_SCRIPT: Script = preload("res://Assets/ARSpace/Scripts/UI/shared_main_menu_state.gd")
+const WORK_STEP_STATE_MANAGER_SCRIPT: Script = preload(
+	"res://Assets/ARSpace/Scripts/WorkListCanvas/shared_work_step_state.gd"
+)
 const DRAWING_MANAGER_SCRIPT: Script = preload("res://Assets/ARSpace/Scripts/SpatialDrawing/spatial_drawing_manager.gd")
 const STROKE_RENDERER_SCRIPT: Script = preload("res://Assets/ARSpace/Scripts/SpatialDrawing/spatial_stroke_renderer.gd")
 const RECONSTRUCTION_SESSION_SCRIPT: Script = preload(
@@ -28,6 +31,8 @@ const RECONNECTED_STROKE_POINT_COUNT: int = 96
 const SHARED_WINDOW_ID: StringName = &"collaboration_panel"
 const MAIN_MENU_MODE_LIFE: int = 0
 const MAIN_MENU_MODE_WORK: int = 1
+const GROUND_SELECTED_WORK_STEP: int = 6
+const SKY_SELECTED_WORK_STEP: int = 11
 const SHARED_WINDOW_INITIAL_TRANSFORM := Transform3D(
 	Basis.IDENTITY,
 	Vector3(0.0, 1.1, -1.2)
@@ -52,6 +57,7 @@ var _peer: ENetMultiplayerPeer
 var _annotation_manager: Node
 var _window_manager: Node
 var _main_menu_state_manager: Node
+var _work_step_state_manager: Node
 var _drawing_manager: Node
 var _reconstruction_session: Node
 var _failures: Array[String] = []
@@ -190,6 +196,10 @@ func _run_server() -> void:
 		await _wait_for_main_menu_mode(MAIN_MENU_MODE_WORK),
 		"server should accept the Ground VR MainMenu WORK mode"
 	)
+	_check(
+		await _wait_for_work_step(GROUND_SELECTED_WORK_STEP),
+		"server should accept the Ground VR work-step selection"
+	)
 	_check(await _wait_for_drawing_count(1), "server should accept the Ground VR spatial stroke")
 	_check(
 		_drawing_creator(GROUND_STROKE_POINT_COUNT) == first_ground_peer_id,
@@ -229,6 +239,10 @@ func _run_server() -> void:
 	_check(
 		await _wait_for_main_menu_mode(MAIN_MENU_MODE_LIFE),
 		"server should accept the Sky MainMenu LIFE mode"
+	)
+	_check(
+		await _wait_for_work_step(SKY_SELECTED_WORK_STEP),
+		"server should accept the Sky work-step selection"
 	)
 	_check(
 		await _wait_for_window_slot(&"slot_b"),
@@ -313,6 +327,17 @@ func _run_ground_client() -> void:
 		await _wait_for_main_menu_mode(MAIN_MENU_MODE_WORK),
 		"Ground VR should receive the Server-confirmed MainMenu WORK mode"
 	)
+	_check(
+		bool(_work_step_state_manager.call(
+			"request_work_step",
+			GROUND_SELECTED_WORK_STEP
+		)),
+		"Ground VR should submit its work-step selection"
+	)
+	_check(
+		await _wait_for_work_step(GROUND_SELECTED_WORK_STEP),
+		"Ground VR should receive its Server-confirmed work step"
+	)
 	var ground_submit: PackedInt32Array = _drawing_manager.call(
 		"submit_drafts",
 		[_make_stroke_draft(101, GROUND_STROKE_POINT_COUNT, 0.2, Color.RED)]
@@ -328,6 +353,10 @@ func _run_ground_client() -> void:
 	_check(
 		await _wait_for_main_menu_mode(MAIN_MENU_MODE_LIFE),
 		"Ground VR should receive Sky's MainMenu LIFE mode"
+	)
+	_check(
+		await _wait_for_work_step(SKY_SELECTED_WORK_STEP),
+		"Ground VR should receive Sky's work-step selection"
 	)
 	_check(
 		await _wait_for_window_slot(&"slot_b"),
@@ -353,6 +382,10 @@ func _run_ground_client() -> void:
 	_check(
 		await _wait_for_main_menu_mode(MAIN_MENU_MODE_LIFE),
 		"reconnected Ground VR should restore the MainMenu mode snapshot"
+	)
+	_check(
+		await _wait_for_work_step(SKY_SELECTED_WORK_STEP),
+		"reconnected Ground VR should restore the work-step snapshot"
 	)
 	_check(_annotation_text_count(FIRST_ANNOTATION_TEXT) == 1, "reconnect snapshot should contain no duplicate annotation")
 	_check(await _wait_for_player_roles(), "reconnected Ground VR replicas should match roles before control")
@@ -419,6 +452,10 @@ func _run_sky_client() -> void:
 		"late Sky should receive the current MainMenu WORK snapshot"
 	)
 	_check(
+		await _wait_for_work_step(GROUND_SELECTED_WORK_STEP),
+		"late Sky should receive the Ground VR work-step snapshot"
+	)
+	_check(
 		bool(_main_menu_state_manager.call(
 			"request_active_mode",
 			MAIN_MENU_MODE_LIFE
@@ -428,6 +465,17 @@ func _run_sky_client() -> void:
 	_check(
 		await _wait_for_main_menu_mode(MAIN_MENU_MODE_LIFE),
 		"Sky should receive the Server-confirmed MainMenu LIFE mode"
+	)
+	_check(
+		bool(_work_step_state_manager.call(
+			"request_work_step",
+			SKY_SELECTED_WORK_STEP
+		)),
+		"registered Sky should submit a work-step selection"
+	)
+	_check(
+		await _wait_for_work_step(SKY_SELECTED_WORK_STEP),
+		"Sky should receive its Server-confirmed work step"
 	)
 	_check(
 		int(_annotation_manager.call("create_annotation", _make_draft("Sky local annotation", Vector3.ZERO))) == -1,
@@ -600,6 +648,14 @@ func _create_world(_world_name: String) -> Node3D:
 	_main_menu_state_manager.set("peer_authority_path", NodePath("/root/NetworkHandler"))
 	_main_menu_state_manager.set("warn_on_rejection", false)
 	spatial_windows.add_child(_main_menu_state_manager)
+	_work_step_state_manager = WORK_STEP_STATE_MANAGER_SCRIPT.new()
+	_work_step_state_manager.name = "WorkStepState"
+	_work_step_state_manager.set(
+		"peer_authority_path",
+		NodePath("/root/NetworkHandler")
+	)
+	_work_step_state_manager.set("warn_on_rejection", false)
+	spatial_windows.add_child(_work_step_state_manager)
 	_reconstruction_session = RECONSTRUCTION_SESSION_SCRIPT.new()
 	_reconstruction_session.name = "ReconstructionSession"
 	_reconstruction_session.set("peer_authority_path", NodePath("/root/NetworkHandler"))
@@ -634,6 +690,7 @@ func _disconnect_and_free_world() -> void:
 	_annotation_manager = null
 	_window_manager = null
 	_main_menu_state_manager = null
+	_work_step_state_manager = null
 	_drawing_manager = null
 	_reconstruction_session = null
 	var old_peer := _peer
@@ -891,6 +948,20 @@ func _wait_for_main_menu_mode(expected_mode: int) -> bool:
 		if _main_menu_state_manager != null \
 				and int(_main_menu_state_manager.call("get_active_mode")) == expected_mode:
 			return true
+		await get_tree().process_frame
+	return false
+
+
+func _wait_for_work_step(expected_step: int) -> bool:
+	var deadline := Time.get_ticks_msec() + STAGE_TIMEOUT_MSEC
+	while Time.get_ticks_msec() < deadline:
+		if _work_step_state_manager != null:
+			var state := _work_step_state_manager.call(
+				"get_current_state"
+			) as Dictionary
+			if bool(state.get("is_visible", false)) \
+					and int(state.get("active_step", 0)) == expected_step:
+				return true
 		await get_tree().process_frame
 	return false
 

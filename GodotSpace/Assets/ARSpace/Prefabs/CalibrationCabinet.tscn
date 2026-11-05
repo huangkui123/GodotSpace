@@ -8,19 +8,19 @@ roughness = 0.85
 
 [sub_resource type="BoxMesh" id="BoxMesh_body"]
 resource_local_to_scene = true
-size = Vector3(0.4, 0.56, 0.5)
+size = Vector3(0.45, 1.21, 0.8)
 
 [node name="CalibrationCabinet" type="Node3D" groups=["calibration_cabinet"]]
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0.2, 0, 2)
 script = ExtResource("1_script")
 
 [node name="Body" type="MeshInstance3D" parent="."]
-position = Vector3(0.2, 0.28, -0.25)
+position = Vector3(0.225, 0.605, -0.4)
 mesh = SubResource("BoxMesh_body")
 material_override = SubResource("StandardMaterial3D_body")
 
 [node name="Status" type="Label3D" parent="."]
-position = Vector3(0.2, 0.66, 0)
+position = Vector3(0.225, 1.31, 0)
 modulate = Color(0.65, 0.85, 1, 1)
 text = "虚拟柜体 · 待标定"
 font_size = 40
