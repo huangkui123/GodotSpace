@@ -104,6 +104,7 @@ func open_panel(parent_panel: Node = null) -> void:
 		_panel.set_script(load(LOCAL_VIEWPORT_PATH))
 		_panel.get_node("StaticBody3D").set_script(LocalViewportBody)
 		_panel.name = "CabinetCalibrationPanel"
+		_panel.visibility_changed.connect(_on_panel_visibility_changed)
 		_panel.add_to_group("sky_always_visible_ui")
 		_panel.set("viewport_size", Vector2(1280, 900))
 		_panel.set("screen_size", Vector2(1.28, 0.9))
@@ -129,6 +130,7 @@ func open_panel(parent_panel: Node = null) -> void:
 	# Reopening a closed panel preserves where the user dragged it.
 	var parent_window := PanelWindowZoom._get_spatial_window_controller(parent_panel)
 	_window.call("open_window", parent_window, created)
+	_render_state()
 
 
 func close_panel() -> void:
@@ -136,6 +138,19 @@ func close_panel() -> void:
 		_ui.call("suspend")
 	if is_instance_valid(_window):
 		_window.call("close_window")
+	_on_panel_visibility_changed()
+
+
+func _on_panel_visibility_changed() -> void:
+	# The overlay is a calibration aid, not part of the aligned scene content.
+	# Also handle window-manager closure or an ancestor being hidden.
+	if is_instance_valid(_model):
+		_render_state()
+
+
+func _show_calibration_overlay() -> bool:
+	return is_instance_valid(_panel) and _panel.is_visible_in_tree() \
+		and state.get("status") in ["preview", "confirmed"]
 
 
 func toggle_panel_zoom() -> void:
@@ -559,7 +574,7 @@ func _render_state() -> void:
 		_render_visual_state()
 		return
 	_render_cabinet()
-	_model.visible = str(state.get("status")) in ["preview", "confirmed"]
+	_model.visible = _show_calibration_overlay()
 	if not _model.visible:
 		return
 	var pose: Variant = Geometry.decode_transform(state.get("pose"))
@@ -602,7 +617,7 @@ func _render_state() -> void:
 func _render_visual_state() -> void:
 	# Hide the old cuboid only while showing CAD; align the real scene model.
 	_cabinet.visible = false
-	_model.visible = state.get("status") in ["preview", "confirmed"]
+	_model.visible = _show_calibration_overlay()
 	if not _model.visible or DisplayServer.get_name() == "headless":
 		return
 	var confirmed: bool = state.get("status") == "confirmed"

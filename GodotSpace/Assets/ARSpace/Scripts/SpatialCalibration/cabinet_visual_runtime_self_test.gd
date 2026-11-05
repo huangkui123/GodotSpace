@@ -87,6 +87,8 @@ func _run() -> void:
 	var original_head := camera.transform
 	var measured := Transform3D(Basis(Vector3.UP, -0.5), Vector3(-0.4, 0, -2))
 	var points: Array = [[0, 0, 0], [0.2, 1, 0.2], [-0.2, 0.4, 0.1]]
+	cabinet.open_panel()
+	await process_frame
 	_expect(cabinet.show_visual_preview(measured, 1, points, false, cabinet.capture_epoch), "CAD live preview")
 	_expect(target.global_transform.is_equal_approx(original_target), "preview never moves target")
 	_expect(origin.transform == Transform3D.IDENTITY, "preview never moves origin")
@@ -96,6 +98,21 @@ func _run() -> void:
 	_expect(target.global_transform.is_equal_approx(original_target), "1:1 preserves target geometry")
 	_expect(camera.transform == original_head, "local head tracking remains unchanged")
 	_expect(not cabinet.confirm_preview(), "duplicate confirmation cannot apply twice")
+	cabinet.open_panel()
+	await process_frame
+	var calibration_overlay: Node3D = cabinet.get("_model")
+	_expect(calibration_overlay.visible, "opening calibration displays its confirmed diagnostic overlay")
+	cabinet.close_panel()
+	_expect(not calibration_overlay.visible, "closing calibration hides the point cloud")
+	_expect(cabinet.state.status == "confirmed" and origin.global_transform.is_equal_approx(expected),
+		"closing calibration preserves the confirmed world alignment")
+	cabinet.call("_render_state")
+	_expect(not calibration_overlay.visible, "state refresh while closed cannot restore the point cloud")
+	cabinet.open_panel()
+	_expect(calibration_overlay.visible, "reopening calibration restores its diagnostic overlay")
+	(cabinet.get("_panel") as Node3D).hide()
+	_expect(not calibration_overlay.visible, "window visibility changes also hide the point cloud")
+	cabinet.open_panel()
 	cabinet.clear_cabinet()
 	_expect(origin.global_transform.is_equal_approx(expected), "clear preserves applied mapping")
 	_expect(cabinet.show_visual_preview(measured, 1.0 / 3.0, points, false, cabinet.capture_epoch), "scaled preview")
@@ -251,6 +268,10 @@ func _run() -> void:
 		if not argument.begins_with("--multiview-fixture="):
 			continue
 		var fixture: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(argument.trim_prefix("--multiview-fixture=")))
+		var fixture_is_cad := str(fixture.get("model_kind", "cuboid")) == "cad"
+		(ui.get("_kind") as OptionButton).select(0 if fixture_is_cad else 1)
+		(ui.get("_scale") as OptionButton).select(0 if float(fixture.get("physical_scale", 1.0)) > 0.5 else 1)
+		ui.call("_options_changed")
 		(ui.get("_dimensions")[0] as SpinBox).value = 45
 		(ui.get("_dimensions")[1] as SpinBox).value = 121
 		(ui.get("_source") as OptionButton).select(0)
@@ -273,12 +294,32 @@ func _run() -> void:
 				"jpeg": Marshalls.base64_to_raw(frame.jpeg_base64), "epoch": cabinet.capture_epoch})
 		ui.call("_begin")
 		var joint_end := Time.get_ticks_msec() + 150_000
+		var progressive_preview := false
+		var replay_started := Time.get_ticks_msec()
 		while bool(ui.get("_busy")) and Time.get_ticks_msec() < joint_end:
 			await create_timer(0.05).timeout
-		_expect(not (ui.get("_apply") as Button).disabled,
+			if fixture_is_cad and bool(ui.get("_busy")) and not (ui.get("_apply") as Button).disabled:
+				if not progressive_preview:
+					print("[ProgressiveTest] first applicable preview seconds=", (Time.get_ticks_msec() - replay_started) / 1000.0)
+				progressive_preview = true
+				if OS.get_cmdline_user_args().has("--early-apply"):
+					ui.call("_confirm")
+					_expect(not bool(ui.get("_busy")) and int(ui.get("_job").get("_pid")) == -1,
+						"early application stops the owned worker")
+					_expect(cabinet.state.get("status") == "confirmed", "early application confirms the current preview")
+					var early_origin: Transform3D = origin.global_transform
+					await create_timer(0.5).timeout
+					_expect(origin.global_transform == early_origin, "stopped worker cannot change applied alignment")
+					break
+		_expect(cabinet.state.get("status") == "confirmed" or not (ui.get("_apply") as Button).disabled,
 			"recorded moving-view JPEGs pass worker and local pose validation: " + str((ui.get("_status") as Label).text))
-		_expect((ui.get("_result") as Dictionary).get("multiview_fit", {}).get("status") == "candidate",
-			"partial-face joint fit reaches VR preview through actual process")
+		if fixture_is_cad:
+			_expect(progressive_preview, "CAD preview can be applied before the full batch finishes")
+			_expect((ui.get("_result") as Dictionary).get("frames", []).size() >= 3,
+				"recorded CAD images reach preview through independent multi-view pose validation")
+		else:
+			_expect((ui.get("_result") as Dictionary).get("multiview_fit", {}).get("status") == "candidate",
+				"partial-face joint fit reaches VR preview through actual process")
 		if OS.get_cmdline_user_args().has("--capture-ui") and DisplayServer.get_name() != "headless":
 			await _capture_ui(ui, "cabinet-multiview-ui.png")
 		ui.call("_reset")

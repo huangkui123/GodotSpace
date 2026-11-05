@@ -1,0 +1,441 @@
+{
+  "schema_version": 1,
+  "backend": "experimental_synthetic_sift_pnp",
+  "model_sha256": "26c0229ca854ea029c84ceda003ed992d222e6f1937340d1f7d9dc88fa395bc0",
+  "model_units": "meters",
+  "real_camera_validated": false,
+  "templates": [
+    {
+      "file": "view_000_00.npz",
+      "yaw": 0,
+      "elevation": 0,
+      "features": 46
+    },
+    {
+      "file": "view_015_00.npz",
+      "yaw": 15,
+      "elevation": 0,
+      "features": 316
+    },
+    {
+      "file": "view_030_00.npz",
+      "yaw": 30,
+      "elevation": 0,
+      "features": 547
+    },
+    {
+      "file": "view_045_00.npz",
+      "yaw": 45,
+      "elevation": 0,
+      "features": 588
+    },
+    {
+      "file": "view_060_00.npz",
+      "yaw": 60,
+      "elevation": 0,
+      "features": 414
+    },
+    {
+      "file": "view_075_00.npz",
+      "yaw": 75,
+      "elevation": 0,
+      "features": 487
+    },
+    {
+      "file": "view_090_00.npz",
+      "yaw": 90,
+      "elevation": 0,
+      "features": 493
+    },
+    {
+      "file": "view_105_00.npz",
+      "yaw": 105,
+      "elevation": 0,
+      "features": 634
+    },
+    {
+      "file": "view_120_00.npz",
+      "yaw": 120,
+      "elevation": 0,
+      "features": 699
+    },
+    {
+      "file": "view_135_00.npz",
+      "yaw": 135,
+      "elevation": 0,
+      "features": 498
+    },
+    {
+      "file": "view_150_00.npz",
+      "yaw": 150,
+      "elevation": 0,
+      "features": 231
+    },
+    {
+      "file": "view_165_00.npz",
+      "yaw": 165,
+      "elevation": 0,
+      "features": 189
+    },
+    {
+      "file": "view_180_00.npz",
+      "yaw": 180,
+      "elevation": 0,
+      "features": 52
+    },
+    {
+      "file": "view_195_00.npz",
+      "yaw": 195,
+      "elevation": 0,
+      "features": 70
+    },
+    {
+      "file": "view_210_00.npz",
+      "yaw": 210,
+      "elevation": 0,
+      "features": 61
+    },
+    {
+      "file": "view_225_00.npz",
+      "yaw": 225,
+      "elevation": 0,
+      "features": 68
+    },
+    {
+      "file": "view_240_00.npz",
+      "yaw": 240,
+      "elevation": 0,
+      "features": 112
+    },
+    {
+      "file": "view_255_00.npz",
+      "yaw": 255,
+      "elevation": 0,
+      "features": 70
+    },
+    {
+      "file": "view_270_00.npz",
+      "yaw": 270,
+      "elevation": 0,
+      "features": 23
+    },
+    {
+      "file": "view_285_00.npz",
+      "yaw": 285,
+      "elevation": 0,
+      "features": 40
+    },
+    {
+      "file": "view_300_00.npz",
+      "yaw": 300,
+      "elevation": 0,
+      "features": 123
+    },
+    {
+      "file": "view_315_00.npz",
+      "yaw": 315,
+      "elevation": 0,
+      "features": 77
+    },
+    {
+      "file": "view_330_00.npz",
+      "yaw": 330,
+      "elevation": 0,
+      "features": 70
+    },
+    {
+      "file": "view_345_00.npz",
+      "yaw": 345,
+      "elevation": 0,
+      "features": 71
+    },
+    {
+      "file": "view_000_15.npz",
+      "yaw": 0,
+      "elevation": 15,
+      "features": 39
+    },
+    {
+      "file": "view_015_15.npz",
+      "yaw": 15,
+      "elevation": 15,
+      "features": 275
+    },
+    {
+      "file": "view_030_15.npz",
+      "yaw": 30,
+      "elevation": 15,
+      "features": 566
+    },
+    {
+      "file": "view_045_15.npz",
+      "yaw": 45,
+      "elevation": 15,
+      "features": 771
+    },
+    {
+      "file": "view_060_15.npz",
+      "yaw": 60,
+      "elevation": 15,
+      "features": 654
+    },
+    {
+      "file": "view_075_15.npz",
+      "yaw": 75,
+      "elevation": 15,
+      "features": 476
+    },
+    {
+      "file": "view_090_15.npz",
+      "yaw": 90,
+      "elevation": 15,
+      "features": 452
+    },
+    {
+      "file": "view_105_15.npz",
+      "yaw": 105,
+      "elevation": 15,
+      "features": 510
+    },
+    {
+      "file": "view_120_15.npz",
+      "yaw": 120,
+      "elevation": 15,
+      "features": 608
+    },
+    {
+      "file": "view_135_15.npz",
+      "yaw": 135,
+      "elevation": 15,
+      "features": 548
+    },
+    {
+      "file": "view_150_15.npz",
+      "yaw": 150,
+      "elevation": 15,
+      "features": 283
+    },
+    {
+      "file": "view_165_15.npz",
+      "yaw": 165,
+      "elevation": 15,
+      "features": 178
+    },
+    {
+      "file": "view_180_15.npz",
+      "yaw": 180,
+      "elevation": 15,
+      "features": 43
+    },
+    {
+      "file": "view_195_15.npz",
+      "yaw": 195,
+      "elevation": 15,
+      "features": 61
+    },
+    {
+      "file": "view_210_15.npz",
+      "yaw": 210,
+      "elevation": 15,
+      "features": 77
+    },
+    {
+      "file": "view_225_15.npz",
+      "yaw": 225,
+      "elevation": 15,
+      "features": 87
+    },
+    {
+      "file": "view_240_15.npz",
+      "yaw": 240,
+      "elevation": 15,
+      "features": 77
+    },
+    {
+      "file": "view_255_15.npz",
+      "yaw": 255,
+      "elevation": 15,
+      "features": 60
+    },
+    {
+      "file": "view_270_15.npz",
+      "yaw": 270,
+      "elevation": 15,
+      "features": 51
+    },
+    {
+      "file": "view_285_15.npz",
+      "yaw": 285,
+      "elevation": 15,
+      "features": 58
+    },
+    {
+      "file": "view_300_15.npz",
+      "yaw": 300,
+      "elevation": 15,
+      "features": 87
+    },
+    {
+      "file": "view_315_15.npz",
+      "yaw": 315,
+      "elevation": 15,
+      "features": 83
+    },
+    {
+      "file": "view_330_15.npz",
+      "yaw": 330,
+      "elevation": 15,
+      "features": 99
+    },
+    {
+      "file": "view_345_15.npz",
+      "yaw": 345,
+      "elevation": 15,
+      "features": 77
+    },
+    {
+      "file": "view_000_30.npz",
+      "yaw": 0,
+      "elevation": 30,
+      "features": 81
+    },
+    {
+      "file": "view_015_30.npz",
+      "yaw": 15,
+      "elevation": 30,
+      "features": 302
+    },
+    {
+      "file": "view_030_30.npz",
+      "yaw": 30,
+      "elevation": 30,
+      "features": 496
+    },
+    {
+      "file": "view_045_30.npz",
+      "yaw": 45,
+      "elevation": 30,
+      "features": 747
+    },
+    {
+      "file": "view_060_30.npz",
+      "yaw": 60,
+      "elevation": 30,
+      "features": 828
+    },
+    {
+      "file": "view_075_30.npz",
+      "yaw": 75,
+      "elevation": 30,
+      "features": 664
+    },
+    {
+      "file": "view_090_30.npz",
+      "yaw": 90,
+      "elevation": 30,
+      "features": 561
+    },
+    {
+      "file": "view_105_30.npz",
+      "yaw": 105,
+      "elevation": 30,
+      "features": 615
+    },
+    {
+      "file": "view_120_30.npz",
+      "yaw": 120,
+      "elevation": 30,
+      "features": 656
+    },
+    {
+      "file": "view_135_30.npz",
+      "yaw": 135,
+      "elevation": 30,
+      "features": 514
+    },
+    {
+      "file": "view_150_30.npz",
+      "yaw": 150,
+      "elevation": 30,
+      "features": 397
+    },
+    {
+      "file": "view_165_30.npz",
+      "yaw": 165,
+      "elevation": 30,
+      "features": 227
+    },
+    {
+      "file": "view_180_30.npz",
+      "yaw": 180,
+      "elevation": 30,
+      "features": 68
+    },
+    {
+      "file": "view_195_30.npz",
+      "yaw": 195,
+      "elevation": 30,
+      "features": 75
+    },
+    {
+      "file": "view_210_30.npz",
+      "yaw": 210,
+      "elevation": 30,
+      "features": 76
+    },
+    {
+      "file": "view_225_30.npz",
+      "yaw": 225,
+      "elevation": 30,
+      "features": 76
+    },
+    {
+      "file": "view_240_30.npz",
+      "yaw": 240,
+      "elevation": 30,
+      "features": 75
+    },
+    {
+      "file": "view_255_30.npz",
+      "yaw": 255,
+      "elevation": 30,
+      "features": 85
+    },
+    {
+      "file": "view_270_30.npz",
+      "yaw": 270,
+      "elevation": 30,
+      "features": 38
+    },
+    {
+      "file": "view_285_30.npz",
+      "yaw": 285,
+      "elevation": 30,
+      "features": 103
+    },
+    {
+      "file": "view_300_30.npz",
+      "yaw": 300,
+      "elevation": 30,
+      "features": 96
+    },
+    {
+      "file": "view_315_30.npz",
+      "yaw": 315,
+      "elevation": 30,
+      "features": 74
+    },
+    {
+      "file": "view_330_30.npz",
+      "yaw": 330,
+      "elevation": 30,
+      "features": 96
+    },
+    {
+      "file": "view_345_30.npz",
+      "yaw": 345,
+      "elevation": 30,
+      "features": 52
+    }
+  ]
+}

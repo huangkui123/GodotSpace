@@ -21,6 +21,22 @@ def frame(identifier="1"):
 
 
 class VisualWorkerTests(TestCase):
+    def test_progress_is_an_independent_processed_prefix(self):
+        mesh = trimesh.creation.box()
+        request = dict(schema_version=1, request_id='progress', mode='live',
+                       model_kind='cad', physical_scale=1, frames=[frame(str(i)) for i in range(4)])
+        snapshots = []
+        prediction = dict(status='candidate', candidates=[dict(camera_from_model=np.eye(4).tolist())])
+        with mock.patch.object(worker, 'load_assets', return_value=(
+                dict(backend='test', model_sha256='test'), dict(print_scale=1, coordinate_system='test'), mesh)), \
+                mock.patch.object(worker, 'estimate', return_value=prediction):
+            result = worker.run_job(request, Path('unused'), lambda value: snapshots.append(deepcopy(value)))
+        self.assertEqual([len(s['frames']) for s in snapshots], [1, 2, 3, 4])
+        self.assertEqual([s['status'] for s in snapshots], ['rejected', 'rejected', 'candidate', 'candidate'])
+        self.assertTrue(all(s['partial'] and s['total_frames'] == 4 for s in snapshots))
+        self.assertNotIn('partial', result)
+        self.assertEqual(result['frames'], snapshots[-1]['frames'])
+
     def test_noisy_preview_is_bounded_for_a_full_sequence(self):
         image = np.random.default_rng(3).integers(0, 256, (2048, 2048, 3), dtype=np.uint8)
         encoded = worker.overlay(image, np.empty((0, 3)), np.eye(4), np.eye(3))
@@ -66,6 +82,8 @@ class VisualWorkerTests(TestCase):
                                  "dimensions_m": [.45, 1.21, .80]}, Path("missing-cad-assets"))
         self.assertEqual(result["status"], "candidate")
         self.assertEqual(result["model_kind"], "cuboid")
+        self.assertGreaterEqual(result['timings_seconds']['job_seconds'], result['timings_seconds']['assets_seconds'])
+        self.assertTrue(all(np.isfinite(value) and value >= 0 for value in result['timings_seconds'].values()))
         self.assertEqual(result["dimensions_m"], [.45, 1.21, .80])
         self.assertFalse(result["automatic_application_allowed"])
         self.assertTrue(result["overlay_jpeg_base64"])

@@ -6,6 +6,10 @@ var failures: PackedStringArray = []
 
 
 func _initialize() -> void:
+	call_deferred("_run")
+
+
+func _run() -> void:
 	_expect(Alignment.HEAD_TRACKER_PATH == &"head", "Godot 4.4 head tracker name should be 'head'")
 	_expect(ProjectSettings.get_setting("xr/openxr/reference_space") == 1,
 		"PICO streaming must request native Stage floor space, not emulated Local Floor")
@@ -13,6 +17,7 @@ func _initialize() -> void:
 	_test_horizontal_position_and_yaw_alignment()
 	_test_physical_height_preserved()
 	_test_tracking_readiness()
+	_test_runtime_recenter_waits_for_tracking()
 	if failures.is_empty():
 		print("Shared-space alignment self-test passed")
 		quit(0)
@@ -91,3 +96,16 @@ func _test_tracking_readiness() -> void:
 func _expect(condition: bool, message: String) -> void:
 	if not condition:
 		failures.append(message)
+
+
+func _test_runtime_recenter_waits_for_tracking() -> void:
+	var alignment := Alignment.new()
+	root.add_child(alignment)
+	alignment._is_aligned = true
+	alignment._retry_seconds = 10.0
+	alignment._on_runtime_recentered()
+	_expect(not alignment.is_aligned(), "runtime reset must invalidate the old origin alignment")
+	_expect(alignment.is_processing(), "runtime reset must schedule realignment")
+	_expect(alignment._retry_seconds == 0.0, "runtime reset must wait for fresh camera tracking")
+	_expect(not alignment.recenter(), "reset must not invent a pose when tracking is unavailable")
+	alignment.free()

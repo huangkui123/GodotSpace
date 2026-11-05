@@ -15,6 +15,7 @@ var controller: Node
 var _job: Node
 var _source: OptionButton
 var _scale: OptionButton
+var _scan_started_msec: int = 0
 var _kind: OptionButton
 var _dimension_row: HBoxContainer
 var _scale_caption: Label
@@ -134,6 +135,7 @@ func _ready() -> void:
 	_label(column, "缓慢横移，尽量露出正面和侧面；多视角标定仍需现场检查贴合。")
 	_job = Job.new()
 	_job.connect("completed", _on_completed)
+	_job.connect("progressed", _on_progress)
 	add_child(_job)
 	controller.connect("state_changed", _on_state_changed)
 	_options_changed()
@@ -192,6 +194,7 @@ func _begin() -> void:
 		button.disabled = true
 	_epoch = int(controller.get("capture_epoch"))
 	_request_id = "%d_%d" % [OS.get_process_id(), Time.get_ticks_usec()]
+	_scan_started_msec = Time.get_ticks_msec()
 	if _source.selected == 1:
 		var head: Dictionary = controller.call("get_head_sample")
 		_captures.append({"capture_id": "demo", "camera_world": head.get("transform", Transform3D.IDENTITY)})
@@ -302,6 +305,7 @@ func _launch() -> void:
 	_status.text = "%s：已采集 %d 个视角，正在检查画面与头姿的对应关系并联合识别…" % [_kind.get_item_text(_kind.selected), _captures.size()]
 	var size_m := dimensions_m()
 	var error: String = _job.call("start", {"schema_version": 1, "request_id": _request_id,
+		"capture_elapsed_seconds": (Time.get_ticks_msec() - _scan_started_msec) / 1000.0,
 		"pose_timing": "interpolated_arrival_estimate",
 		"model_kind": model_kind(), "dimensions_m": [size_m.x, size_m.y, size_m.z],
 		"mode": "live" if _source.selected == 0 else "demo", "multiview": _source.selected == 0,
@@ -309,6 +313,36 @@ func _launch() -> void:
 	_frames.clear()
 	if not error.is_empty():
 		_fail(error)
+
+
+func _on_progress(result: Dictionary) -> void:
+	if not _busy or _collecting or _source.selected != 0 or result.get("request_id") != _request_id:
+		return
+	if _epoch != int(controller.get("capture_epoch")):
+		_fail("识别期间跟踪空间已变化，请重新识别。")
+		return
+	var count := int(result.get("processed_frames", 0))
+	if count < 1 or count > _captures.size() or result.get("total_frames") != _captures.size():
+		return
+	_status.text = "已匹配 %d / %d 张照片，正在验证位置…" % [count, _captures.size()]
+	if count < 3:
+		return
+	var solved := VisualGeometry.validate_batch(result, _captures.slice(0, count), physical_scale(), model_kind(), dimensions_m())
+	if solved.has("error"):
+		_result.clear()
+		_apply.disabled = true
+		controller.call("clear_cabinet")
+		_image.texture = null
+		_status.text += "\n当前视角尚未通过一致性检查，继续分析后续照片。"
+		return
+	if not controller.call("show_visual_preview", solved.pose, physical_scale(), result.get("model_points", []), false, _epoch):
+		_fail("无法创建柜体预览，请重新识别。")
+		return
+	_result = result
+	_apply.disabled = false
+	var representative: Dictionary = result.frames[solved.representative_index]
+	_display(Marshalls.base64_to_raw(str(representative.get("overlay_jpeg_base64", ""))))
+	_status.text += "\n%d 个视角支持当前预览。可现在应用并停止识别，或等待更多照片验证。" % solved.support_count
 
 
 func _on_completed(result: Dictionary) -> void:
@@ -353,7 +387,8 @@ func _on_completed(result: Dictionary) -> void:
 	var extents: Array = result.get("model_extents_m", [])
 	if extents.size() == 3:
 		_model_info.text = "识别模型（宽 / 高 / 深）：%.1f / %.1f / %.1f cm" % [extents[0] * 100, extents[1] * 100, extents[2] * 100]
-	_status.text = "识别成功：绿色图像点为模型投影，空间中显示柜体预览。"
+	_status.text = "识别成功：识别用时 %.1f 秒，含采集共 %.1f 秒。" % [
+		float(result.get("worker_elapsed_seconds", 0.0)), (Time.get_ticks_msec() - _scan_started_msec) / 1000.0]
 	_status.text += "\n合成演练不可应用现场对齐。" if solved.offline else \
 		"\n%d / %d 个视角共同支持该位置。请从多个方向检查贴合后再应用。" % [
 			solved.support_count, _captures.size()]
@@ -364,6 +399,8 @@ func _confirm() -> void:
 		_fail("当前结果不能应用，请重新识别。")
 		return
 	if controller.call("confirm_preview"):
+		_job.call("cancel")
+		_set_idle()
 		_apply.disabled = true
 		_status.text = "已按视觉识别结果对齐整个场景。请移动观察柜体是否贴合；系统重新定位后需重新识别。"
 	else:

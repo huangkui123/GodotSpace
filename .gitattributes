@@ -3,3 +3,5 @@
 Model/scripts/bootstrap_local_tts.sh text eol=lf
 Model/scripts/start_local_tts.sh text eol=lf
 GodotSpace/addons/ffmpeg/pico_cast_bundle/godot_ffmpeg_pico_cast.patch -whitespace
+GodotSpace/tools/cabinet_calibration/artifacts/assembly/printed_assembly.ply filter=lfs diff=lfs merge=lfs -text
+GodotSpace/tools/cabinet_calibration/artifacts/templates/*.npz filter=lfs diff=lfs merge=lfs -text

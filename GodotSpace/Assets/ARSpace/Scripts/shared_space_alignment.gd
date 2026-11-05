@@ -34,6 +34,9 @@ func _ready() -> void:
 	if not _runtime_profile.is_valid() or not _runtime_profile.uses_xr():
 		set_process(false)
 		return
+	var xr := XRServer.find_interface("OpenXR")
+	if xr != null and not xr.is_connected("pose_recentered", _on_runtime_recentered):
+		xr.connect("pose_recentered", _on_runtime_recentered)
 	if show_recenter_controls and DisplayServer.get_name() != "headless":
 		_build_recenter_controls()
 	set_process(auto_recenter)
@@ -116,6 +119,16 @@ func request_recenter(force: bool = false) -> void:
 	_is_aligned = false
 	_set_status("共享空间：正在重新对齐…")
 	set_process(true)
+
+
+func _on_runtime_recentered() -> void:
+	# Stage-space resets change the tracking frame. Invalidating cabinet data
+	# alone leaves the previous origin transform applied to the new frame.
+	# Use the same floor-preserving alignment as explicit application recenter.
+	print("[SharedSpaceAlignment] OpenXR reference-space reset received; waiting for updated tracking")
+	request_recenter()
+	# Do not read the camera synchronously in the runtime's reset callback.
+	_retry_seconds = 0.0
 
 
 func is_aligned() -> bool:

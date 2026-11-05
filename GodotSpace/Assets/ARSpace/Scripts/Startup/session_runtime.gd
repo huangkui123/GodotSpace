@@ -39,6 +39,9 @@ var _retry_seconds := 2
 var _controller_lock := TCPServer.new()
 var _discovery := PacketPeerUDP.new()
 var _discovery_server := PacketPeerUDP.new()
+var _discovery_targets: Array[String] = []
+var _discovery_retries := 0
+var _discovery_next_send := 0
 var _cast_receiver: Node
 var _cast_token := ""
 var _cast_owner := 0
@@ -187,6 +190,8 @@ func _apply_feature_settings() -> void:
 
 func _process(_delta: float) -> void:
 	_poll_discovery()
+	if _discovery_retries > 0 and Time.get_ticks_msec() >= _discovery_next_send:
+		_send_discovery()
 	if not active or _stopping or Time.get_ticks_msec() < _next_tick:
 		return
 	_next_tick = Time.get_ticks_msec() + 1000
@@ -529,9 +534,28 @@ func _create_overlay() -> void:
 
 func discover_servers() -> void:
 	discovered_servers.clear()
-	_discovery.set_dest_address("255.255.255.255", DISCOVERY_PORT)
-	_discovery.put_packet("GODOTSPACE_DISCOVER_1".to_utf8_buffer())
+	_discovery_targets.assign(["127.0.0.1", "255.255.255.255"])
+	if OS.get_name() == "Windows":
+		var output: Array = []
+		var code := OS.execute("powershell.exe", PackedStringArray(["-NoProfile", "-NonInteractive",
+			"-ExecutionPolicy", "Bypass", "-File", ProjectSettings.globalize_path("res://tools/startup/discovery_targets.ps1")]), output)
+		if code == 0 and not output.is_empty():
+			var targets: Variant = JSON.parse_string(str(output[0]).strip_edges())
+			if targets is Array:
+				for target in targets:
+					if target is String and target.is_valid_ip_address() and not _discovery_targets.has(target):
+						_discovery_targets.append(target)
+	_discovery_retries = 3
+	_send_discovery()
 	servers_changed.emit(discovered_servers)
+
+
+func _send_discovery() -> void:
+	_discovery_retries -= 1
+	_discovery_next_send = Time.get_ticks_msec() + 1000
+	for target in _discovery_targets:
+		if _discovery.set_dest_address(target, DISCOVERY_PORT) == OK:
+			_discovery.put_packet("GODOTSPACE_DISCOVER_1".to_utf8_buffer())
 
 
 func _poll_discovery() -> void:

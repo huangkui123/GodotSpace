@@ -123,6 +123,7 @@ def fit_correspondences(points: np.ndarray, pixels: np.ndarray, matrix: np.ndarr
     transform[:3, 3] = tvec.ravel()
     return {"camera_from_model": transform.tolist(), "inliers": len(indices),
             "matches": len(points), "reprojection_rms_px": rms,
+            "inlier_object_span_m": np.ptp(points[indices], axis=0).tolist(),
             "image_hull_area_px2": hull_area,
             "score": float(len(indices) / (1 + rms))}
 

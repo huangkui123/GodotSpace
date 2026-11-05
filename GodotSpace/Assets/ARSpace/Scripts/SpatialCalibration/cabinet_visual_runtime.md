@@ -28,9 +28,11 @@
 
 ## 本机环境
 
-识别按需创建独立 Python 子进程，没有常驻 HTTP 服务，没有远程上传。两种模式都需按 `tools/cabinet_calibration/README.md` 安装 Python 依赖。只有真实 CAD 模式还需要解码模型、执行装配配准及构建模板；自定义模式直接由尺寸生成模型，不检查 CAD artifacts。模型与模板不随 Git 提交。
+识别按需创建独立 Python 子进程，没有常驻 HTTP 服务，没有远程上传。两种模式都需按 `tools/cabinet_calibration/README.md` 安装 Python 依赖。只有真实 CAD 模式还需要解码模型、执行装配配准及构建模板；自定义模式直接由尺寸生成模型，不检查 CAD artifacts。运行所需的配准模型与模板 NPZ 由 Git LFS 管理，配准报告与模板清单由普通 Git 管理；克隆后运行 `git lfs pull`。原始制造资料、预览图与中间文件仅保留本机。
 
 默认 Python：`%LOCALAPPDATA%/GodotSpace/cabinet-calibration-venv/Scripts/python.exe`。
+
+真实 CAD 识别现在包含本地 LoFTR 备用匹配，用于传统 SIFT 无法跨越合成渲染与实拍外观差异的帧。更新环境后运行 `tools/cabinet_calibration/setup_cad_matcher.py` 安装并校验官方权重，具体版本、离线配置及限制见工具 README。只有通过时序校验的实拍 CAD 帧会使用它；几何误差、歧义及多视角一致性门槛仍保留。相机照片不上传，也不嵌入特征库。
 
 可在启动 Godot 前设置：
 

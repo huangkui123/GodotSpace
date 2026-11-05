@@ -62,6 +62,13 @@ function Find-Adb([string]$Configured) {
     foreach ($sdk in @($env:ANDROID_HOME, $env:ANDROID_SDK_ROOT, (Join-Path $env:LOCALAPPDATA 'Android/Sdk'))) {
         if ($sdk) { $candidates += Join-Path $sdk 'platform-tools/adb.exe' }
     }
+    # PICO Business Streaming includes ADB even when Android SDK is not installed.
+    foreach ($root in @($env:ProgramFiles, ${env:ProgramFiles(x86)}, (Join-Path $env:LOCALAPPDATA 'Programs'))) {
+        if ($root) {
+            $candidates += Join-Path $root 'Business Streaming/adb.exe'
+            $candidates += Join-Path $root 'BusinessStreaming/adb.exe'
+        }
+    }
     foreach ($candidate in $candidates) {
         if ($candidate -and (Test-Path -LiteralPath $candidate -PathType Leaf)) { return $candidate }
     }

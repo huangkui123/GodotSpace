@@ -1,0 +1,171 @@
+{
+  "schema_version": 1,
+  "status": "candidate_not_a_verified_physical_calibration",
+  "source_sha256": "408f7812cd6c7730656b0f1549d898504c66fa492fcfdef7c8477c1c4691323c",
+  "print_scale": 0.333333333333333,
+  "physical_scale_verified": false,
+  "coordinate_system": "godot_frame_mesh_local_right_handed_y_up",
+  "units": "meters_at_assumed_print_scale",
+  "candidates": [
+    {
+      "source_m_to_reference_m": [
+        [
+          -0.00012328288508513125,
+          -0.009407913473132187,
+          0.999955737003111,
+          -0.08602226752218466
+        ],
+        [
+          -0.0016258640495935136,
+          0.9999544248284843,
+          0.009407700677677319,
+          0.2944759937939744
+        ],
+        [
+          -0.9999986706828277,
+          -0.0016246322754985153,
+          -0.00013857325474547094,
+          -0.13425969001808238
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "quality": {
+        "trimmed_rms_m": 0.004900005210599451,
+        "full_rms_m": 0.008541629709287995,
+        "p50_m": 0.00513467384852397,
+        "p95_m": 0.013899288239166533,
+        "source_overlap": 0.6353888888888889,
+        "target_overlap": 0.4025,
+        "overlap_tolerance_m": 0.005,
+        "measurement": "bidirectional_sampled_surface_distance_not_device_accuracy"
+      }
+    },
+    {
+      "source_m_to_reference_m": [
+        [
+          -0.01036202318514069,
+          0.03189281957012412,
+          -0.9994375801096153,
+          0.06024228039004736
+        ],
+        [
+          0.0005397320902870569,
+          0.9994912727888648,
+          0.03188893708103334,
+          0.29149393827996134
+        ],
+        [
+          0.9999461671334021,
+          -0.0002089946288413444,
+          -0.010373965320156038,
+          0.13352557096899006
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "quality": {
+        "trimmed_rms_m": 0.007772416325631471,
+        "full_rms_m": 0.016259255699840405,
+        "p50_m": 0.007511254570321618,
+        "p95_m": 0.03809625683426355,
+        "source_overlap": 0.3938333333333333,
+        "target_overlap": 0.23908333333333334,
+        "overlap_tolerance_m": 0.005,
+        "measurement": "bidirectional_sampled_surface_distance_not_device_accuracy"
+      }
+    },
+    {
+      "source_m_to_reference_m": [
+        [
+          -0.004146137778006439,
+          0.038650179631339064,
+          0.9992442009619179,
+          -0.08400152311244882
+        ],
+        [
+          -0.0038680857860076507,
+          -0.9992459340626483,
+          0.03863419691967037,
+          0.2814866866087251
+        ],
+        [
+          0.9999839235977189,
+          -0.003704979587118894,
+          0.004292513527195882,
+          0.13326133634872214
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "quality": {
+        "trimmed_rms_m": 0.009775648387903343,
+        "full_rms_m": 0.024839917570532923,
+        "p50_m": 0.008606429688721478,
+        "p95_m": 0.0606850448453987,
+        "source_overlap": 0.3253888888888889,
+        "target_overlap": 0.21219444444444444,
+        "overlap_tolerance_m": 0.005,
+        "measurement": "bidirectional_sampled_surface_distance_not_device_accuracy"
+      }
+    },
+    {
+      "source_m_to_reference_m": [
+        [
+          0.0003844246843866569,
+          0.0167086862859155,
+          -0.9998603262557544,
+          0.06158043458315912
+        ],
+        [
+          -0.0015385846813754903,
+          -0.9998592067968726,
+          -0.016709259131170467,
+          0.296676316392701
+        ],
+        [
+          -0.9999987424866305,
+          0.0015447932331588785,
+          -0.0003586628312391429,
+          -0.13378115281885694
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "quality": {
+        "trimmed_rms_m": 0.009804113550738701,
+        "full_rms_m": 0.024082738565911876,
+        "p50_m": 0.009522155223848887,
+        "p95_m": 0.05598876344961283,
+        "source_overlap": 0.272,
+        "target_overlap": 0.16694444444444445,
+        "overlap_tolerance_m": 0.005,
+        "measurement": "bidirectional_sampled_surface_distance_not_device_accuracy"
+      }
+    }
+  ],
+  "model_file": "printed_assembly.ply",
+  "model_sha256": "26c0229ca854ea029c84ceda003ed992d222e6f1937340d1f7d9dc88fa395bc0",
+  "geometry_alignment_verified": false,
+  "limitations": [
+    "Raw Magics mesh placement only; encrypted metadata not interpreted.",
+    "Reference includes authored rest pose; printed moving parts may have another pose.",
+    "Sampled mesh distances are not real-camera pose accuracy."
+  ]
+}

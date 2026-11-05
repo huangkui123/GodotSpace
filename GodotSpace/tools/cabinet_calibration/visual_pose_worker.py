@@ -12,6 +12,9 @@ import hashlib
 import os
 from pathlib import Path
 import sys
+import time
+
+PROCESS_STARTED = time.perf_counter()
 
 import cv2
 import numpy as np
@@ -102,7 +105,10 @@ def overlay(image, points, pose, k):
     return base64.b64encode(data).decode("ascii")
 
 
-def run_job(request: dict, artifacts: Path) -> dict:
+def run_job(request: dict, artifacts: Path, progress=None) -> dict:
+    job_started = time.perf_counter()
+    timings = {'assets_seconds': 0., 'camera_timing_seconds': 0., 'sift_seconds': 0.,
+               'learned_init_seconds': 0., 'learned_match_seconds': 0.}
     if request.get("schema_version") != 1 or not isinstance(request.get("request_id"), str):
         raise ValueError("Invalid job schema")
     mode = request.get("mode")
@@ -137,6 +143,8 @@ def run_job(request: dict, artifacts: Path) -> dict:
               "model_points": points.tolist(), "model_extents_m": (mesh.extents * ratio).tolist(), "frames": []}
     if kind == "cuboid":
         result["dimensions_m"] = size.tolist()
+    timings['assets_seconds'] = time.perf_counter() - job_started
+    result['timings_seconds'] = timings
     multiview = mode == 'live' and request.get('multiview') is True
     result['multiview'] = multiview
     result['pose_timing'] = request.get('pose_timing', 'unspecified')
@@ -168,21 +176,51 @@ def run_job(request: dict, artifacts: Path) -> dict:
         if len(set(identifiers)) != len(frames):
             raise ValueError("Repeated camera frames cannot establish consistency")
         if multiview and request.get('pose_timing') == 'interpolated_arrival_estimate':
+            phase_started = time.perf_counter()
             timing, corrected_cameras = camera_timing.check(frames, decode_frame)
+            timings['camera_timing_seconds'] = time.perf_counter() - phase_started
             result['camera_timing'] = timing
         # Decode one frame at a time: a sequence must not retain 16 full images.
         inputs = ((identifier, *decode_frame(frame), frame.get("camera_up"))
                   for identifier, frame in zip(identifiers, frames))
+    learned = None
+    learned_checked = False
     for frame_index, (identifier, image, k, distortion, camera_up) in enumerate(inputs):
         if timing is not None and timing['status'] == 'verified':
             camera_up = corrected_cameras[frame_index][:3, :3].T @ np.array([0., 1., 0.])
+        phase_started = time.perf_counter()
         prediction = (cuboid_pose.estimate_cuboid(image, k, size, camera_up) if kind == "cuboid"
                       else estimate(image, k, distortion, artifacts / "templates"))
+        if kind == 'cad':
+            timings['sift_seconds'] += time.perf_counter() - phase_started
+        if (kind == 'cad' and mode == 'live' and prediction['status'] == 'not_found'
+                and timing is not None and timing['status'] == 'verified'
+                and frame_index in timing['support_indices']
+                and os.environ.get('GODOTSPACE_CABINET_LEARNED', '1') != '0'):
+            from cad_learned_matcher import CadLearnedMatcher, weight_path
+            if not learned_checked:
+                learned_checked = True
+                if weight_path().is_file():
+                    phase_started = time.perf_counter()
+                    learned = CadLearnedMatcher(mesh)
+                    timings['learned_init_seconds'] = time.perf_counter() - phase_started
+                else:
+                    result['learned_matcher'] = 'weights_missing_run_setup_cad_matcher'
+            if learned is not None:
+                phase_started = time.perf_counter()
+                prediction = learned.estimate(image, k, distortion)
+                timings['learned_match_seconds'] += time.perf_counter() - phase_started
+                result['learned_timing_seconds'] = learned.timings.copy()
+                result['backend'] = 'experimental_sift_loftr_pnp'
         if timing is not None and (timing['status'] != 'verified' or frame_index not in timing['support_indices']):
             # Older clients also consume per-frame CAD poses. Never leave an
             # unverified frame marked candidate merely because its pixels fit.
             prediction = {'status': 'not_found', 'candidates': []}
         row = {"capture_id": identifier, "status": prediction["status"]}
+        if 'diagnostics' in prediction:
+            row['matching_diagnostics'] = prediction['diagnostics']
+        if 'reason' in prediction:
+            row['reason'] = prediction['reason']
         if prediction["status"] == "candidate":
             candidate = prediction["candidates"][0].copy()
             pose = np.asarray(candidate["camera_from_model"], dtype=float)
@@ -191,6 +229,14 @@ def run_job(request: dict, artifacts: Path) -> dict:
             row.update(candidate)
             row["overlay_jpeg_base64"] = overlay(image, points, pose, k)
         result["frames"].append(row)
+        if progress is not None and kind == 'cad' and mode == 'live':
+            snapshot = dict(result, frames=list(result['frames']), partial=True,
+                            processed_frames=frame_index + 1, total_frames=len(frames))
+            snapshot['status'] = 'candidate' if sum(r['status'] == 'candidate' for r in snapshot['frames']) >= 3 else 'rejected'
+            if timing is not None:
+                snapshot['camera_timing'] = dict(timing, support_indices=[
+                    i for i in timing.get('support_indices', []) if i <= frame_index])
+            progress(snapshot)
         if multiview and kind == 'cuboid':
             proposals = face_proposals(image)
             hypotheses = pose_seeds(image, k, size, camera_up, proposals)
@@ -220,6 +266,7 @@ def run_job(request: dict, artifacts: Path) -> dict:
     if timing is not None and timing['status'] != 'verified':
         result['status'] = 'rejected'
         result['multiview_fit'] = {'status': 'rejected', 'reason': timing['reason']}
+        timings['job_seconds'] = time.perf_counter() - job_started
         return result
     if multiview and kind == 'cuboid':
         fitted = cuboid_multiview.fit(views, seeds, size)
@@ -233,6 +280,7 @@ def run_job(request: dict, artifacts: Path) -> dict:
                 image, k, _ = decode_frame(frames[index])
                 pose = np.linalg.inv(views[view_indices.index(index)]['camera']) @ world_pose
                 result['frames'][index]['overlay_jpeg_base64'] = overlay(image, points, pose, k)
+    timings['job_seconds'] = time.perf_counter() - job_started
     return result
 
 
@@ -242,6 +290,7 @@ def main():
     inputs.add_argument("--request", type=Path)
     inputs.add_argument("--replay", type=Path, help="Replay a locally saved scan without recapturing")
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--progress", type=Path, help="Atomic per-image preview snapshots")
     parser.add_argument("--artifacts", type=Path, required=True)
     parser.add_argument("--diagnostic", type=Path, help="Replace the last local live scan (includes images)")
     args = parser.parse_args()
@@ -260,10 +309,26 @@ def main():
         # Capture before recognition too, so a timeout still leaves the inputs.
         if not args.replay:
             save_case(args.diagnostic, request, {'status': 'processing', 'request_id': request.get('request_id')})
-        result = run_job(request, args.artifacts)
+        def publish(snapshot):
+            temporary = args.progress.with_suffix('.tmp')
+            temporary.write_text(json.dumps(snapshot, allow_nan=False), encoding='utf-8')
+            # Windows readers briefly deny replacement while the file is open.
+            # Progress is optional; never fail recognition over a busy reader.
+            for attempt in range(10):
+                try:
+                    os.replace(temporary, args.progress)
+                    break
+                except PermissionError:
+                    time.sleep(.02)
+        result = run_job(request, args.artifacts, publish if args.progress else None)
     except Exception as error:
         result = {"schema_version": 1, "request_id": request.get("request_id", ""),
                   "status": "error", "error": str(error)[:500]}
+    result.setdefault('timings_seconds', {})['process_seconds'] = time.perf_counter() - PROCESS_STARTED
+    capture_elapsed = request.get('capture_elapsed_seconds')
+    if isinstance(capture_elapsed, (int, float)) and np.isfinite(capture_elapsed) and 0 <= capture_elapsed <= 120:
+        result['timings_seconds']['capture_seconds'] = capture_elapsed
+        result['timings_seconds']['capture_and_process_seconds'] = capture_elapsed + result['timings_seconds']['process_seconds']
     if args.diagnostic and not args.replay and request.get('mode') == 'live':
         saved = save_case(args.diagnostic, request, result)
         result['diagnostic_path'] = saved

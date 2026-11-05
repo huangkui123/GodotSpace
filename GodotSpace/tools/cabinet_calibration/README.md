@@ -46,7 +46,7 @@ VR「柜体标定」现在还可选择 **自定义长方体柜体**：宽、高�
 
 STL 不声明单位，`.magics` 的加密 `header.xml` 未解码。其内部单位解释参考 [SlicerHeart 对同类 Materialise 容器的格式记录](https://github.com/SlicerHeart/SlicerHeart/blob/master/Docs/ImportMimics.md)，并与本文件几何和 STL 缩比交叉核对；没有把格式文档中的医疗坐标约定套用到柜体上。物理打印的最终缩放仍须验收确认。
 
-对薄壁模型的激进减面会破坏面板，所以最终工具保留完整打印几何，用编译后的 CPU 光栅化加速。**这些 PLY 是离线参考，不能直接把数百万三角面的模型挂到 XR 场景中。** 原件不修改，所有大型派生数据在 `artifacts/`，由 Git 和 Godot 导入器共同忽略。
+对薄壁模型的激进减面会破坏面板，所以最终工具保留完整打印几何，用编译后的 CPU 光栅化加速。**这些 PLY 是离线参考，不能直接把数百万三角面的模型挂到 XR 场景中。** 原件不修改，原始制造资料整理在本地 `source_materials/`，不纳入 Git。派生数据位于 `artifacts/` 并由 Godot 导入器忽略；其中运行必需的 `assembly/printed_assembly.ply` 和 `templates/*.npz` 使用 Git LFS，`assembly/assembly_report.json` 和 `templates/templates.json` 使用普通 Git，其余预览图、日志和中间文件仍忽略。克隆后先执行 `git lfs pull`，无需原始资料即可使用已准备的 CAD 识别库。
 
 ## 复现
 
@@ -61,6 +61,7 @@ $Python = Join-Path $env:LOCALAPPDATA 'GodotSpace/cabinet-calibration-venv/Scrip
 # 尚未创建环境时，先使用可用的 Python 3.12 执行：
 # python -m venv "$env:LOCALAPPDATA/GodotSpace/cabinet-calibration-venv"
 & $Python -m pip install -r "$Tools/requirements.txt"
+& $Python -B "$Tools/setup_cad_matcher.py"
 
 & $Godot --headless --path $Project --script 'res://tools/cabinet_calibration/export_cabinet.gd' -- "--output=$Artifacts/virtual"
 & $Python "$Tools/magics_mesh.py" 'F:/材料/引擎材料/Merge_of_储存版-白色哑光_w2.magics' --output "$Artifacts/magics"
@@ -76,6 +77,14 @@ $Python = Join-Path $env:LOCALAPPDATA 'GodotSpace/cabinet-calibration-venv/Scrip
 - `assembly/printed_assembly.ply`：完整打印模型在候选参考坐标中的几何。
 - `synthetic_validation/validation.json`：逐张实验结果，失败视角也保留。
 - `synthetic_validation/overlay_*.png`：黄色投影点叠加。
+
+### 实拍 CAD 匹配
+
+`cad_learned_matcher.py` 为通过图像/头姿时序检查、但 SIFT 未找到位姿的真实 CAD 帧提供本地 LoFTR 备用匹配。它实时渲染已校验的 CAD 模型，从渲染坐标缓冲取得三维点，再对照片匹配并执行原有 PnP/RANSAC。额外要求至少 20 个内点、图像覆盖至少 2%、模型高度覆盖至少 35%，避免仅靠重复小零件识别整柜。保留歧义拒绝及 Godot 的多视角 3 cm / 5° 一致性验证，不自动应用对齐。
+
+依赖为固定版本 Torch / Kornia；`setup_cad_matcher.py` 下载 [Kornia 官方 LoFTR 权重](https://huggingface.co/kornia/loftr)，固定 revision 并校验 SHA-256。默认存放 `%LOCALAPPDATA%/GodotSpace/cabinet-calibration-models/loftr_outdoor.ckpt`，不加入 Git/LFS。推理不下载、不上传照片；可用 `GODOTSPACE_CABINET_MATCHER_WEIGHTS` 指向同一校验和的离线文件。缺权重时保留旧 SIFT 路径并在诊断中标注；`GODOTSPACE_CABINET_LEARNED=0` 可显式关闭备用匹配。特征图缓存最多六个视角，每个任务最多 36 次匹配、75 秒匹配预算，避免无限搜索占住客户端。
+
+2026-11-05 本机两轮实拍记录：原 SIFT 为 0/9、0/3；新增路径为 9/9、3/3，各轮位姿均满足原有一致性门槛。用户报告实柜约 185 cm，对应 1:1 模型，离线回放按该比例运行；原始记录未改写。照片不写入源码，不作为预置图像坐标或运行时参考图片。该结果是已有数据回放验证，不等同于现场物理精度验收。
 
 需要单独审计 `789.rar` 时，先解压到 `artifacts/print` 或仓库外目录，不要把零件导入 Godot：
 
@@ -128,6 +137,10 @@ world_from_tracking =
 运行时现已加入限时采样序列在世界空间的稳定组筛选与姿态融合、本地空间映射、recenter/断连旧结果拒绝及合成结果隔离。尚未验收实柜 RGB 定位覆盖率、测量精度及真实设备失跟恢复；不支持连续追踪或失跟后自动重新定位。Depth Pro、点云重建与角色锚点继续使用原有流程。
 
 ## 验证命令
+
+CAD 实拍识别逐张发布进度。至少三个已处理视角通过原有的时间、移动距离和空间一致性检查后，即显示可应用的初步预览；剩余照片继续验证并更新位置。点击“应用对齐”会停止剩余识别并固定当前结果。若新增照片未通过一致性检查，撤回初步预览并继续分析，不自动应用或承诺精度单调提高。采集阶段仍为原来的准备与扫描时长。
+
+关闭标定窗口隐藏绿色点云，保留已应用的空间对齐；重新打开可再次查看。完成状态显示识别与含采集总耗时，本机扫描记录中的 `timings_seconds` 保存阶段耗时。
 
 ```powershell
 & $Python -m unittest discover -s $Tools -p 'test_*.py' -v

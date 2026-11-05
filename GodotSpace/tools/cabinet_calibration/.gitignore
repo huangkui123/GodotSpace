@@ -1,4 +1,13 @@
+source_materials/
 artifacts/*
 !artifacts/.gdignore
+!artifacts/assembly/
+artifacts/assembly/*
+!artifacts/assembly/printed_assembly.ply
+!artifacts/assembly/assembly_report.json
+!artifacts/templates/
+artifacts/templates/*
+!artifacts/templates/templates.json
+!artifacts/templates/*.npz
 __pycache__/
 .venv/

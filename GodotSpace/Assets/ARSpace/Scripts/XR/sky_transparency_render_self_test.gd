@@ -154,6 +154,21 @@ func _test_pico_encoded_color(
 			print("PICO encoded alpha=%.2f pixel=%s expected=%s" % [opacity, pixel, expected])
 			_expect(error <= 3.0 / 255.0,
 				"PICO encoded premultiplication must preserve color/alpha/endpoints: %s vs %s" % [pixel, expected])
+	# Inspect entire dark surfaces and the empty background, not just a center
+	# pixel. Zero/near-zero alpha must not create colored speckles before encoding.
+	var black_source := source.duplicate(false) as BaseMaterial3D
+	black_source.albedo_color = Color.BLACK
+	for opacity in [0.0, 0.00001, 0.001, 0.01, 0.1, 1.0]:
+		foreground.material_override = xr_main.call("_get_sky_transparent_material", black_source, opacity)
+		await _center_pixel()
+		var image := viewport.get_texture().get_image()
+		var max_rgb := 0.0
+		for y in range(image.get_height()):
+			for x in range(image.get_width()):
+				var pixel := image.get_pixel(x, y)
+				max_rgb = maxf(max_rgb, maxf(pixel.r, maxf(pixel.g, pixel.b)))
+		print("PICO black/background alpha=%.5f max_rgb=%.8f" % [opacity, max_rgb])
+		_expect(max_rgb == 0.0, "black and empty background must remain exactly black before streaming")
 	camera.compositor = null
 	# Reattaching a new instance must release the old GPU resources and work.
 	compositor.compositor_effects = [load("res://Assets/ARSpace/Scripts/XR/pico_streaming_alpha_effect.gd").new()]
