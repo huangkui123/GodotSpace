@@ -23,6 +23,7 @@ func _run() -> void:
 	get_tree().root.add_child(ground_player)
 	await get_tree().process_frame
 	_check_player_scene_contract(ground_player)
+	_check_locomotion_profiles(ground_player)
 	var ground_label := ground_player.get_node_or_null("NetworkHead/PresenceLabel") as Label3D
 	_check(ground_label != null and ground_label.text.contains("地面端 PC"), "peer 1 should use PC Ground label")
 
@@ -136,6 +137,32 @@ func _check_server_spawns_local_player() -> void:
 	await get_tree().process_frame
 	peer.close()
 	get_tree().root.multiplayer.multiplayer_peer = null
+
+func _check_locomotion_profiles(player: Node) -> void:
+	var profiles := load("res://Assets/ARSpace/Scripts/runtime_profile.gd")
+	var original_profile: Variant = player.get("_runtime_profile")
+	for args in [
+		["--voice-role=client", "--xr-client"],
+		["--voice-role=client", "--ground-vr-client"],
+		["--voice-role=server", "--ground-vr"],
+		["--voice-role=server"],
+		["--voice-role=client", "--testmode"],
+	]:
+		var profile = profiles.from_args([], args)
+		player.set("_runtime_profile", profile)
+		player.call("_configure_local_xr_nodes", true)
+		for path in ["XROrigin3D/RightHand/MovementDirect", "XROrigin3D/LeftHand/MovementTurn", "XROrigin3D/PlayerBody"]:
+			_check(bool(player.get_node(path).get("enabled")) == profile.uses_xr(),
+				"%s must enable locomotion only for local XR presentation: %s" % [profile.get_mode_label(), path])
+	# A remote Sky replica must still lose the entire local XR input branch.
+	var remote := PLAYER_SCENE.instantiate()
+	remote.set("_runtime_profile", profiles.from_args([], ["--voice-role=client", "--xr-client"]))
+	remote.call("_configure_local_xr_nodes", false)
+	_check(remote.get_node_or_null("XROrigin3D") == null, "remote Sky must not retain stick movement providers")
+	remote.free()
+	player.set("_runtime_profile", original_profile)
+	player.call("_configure_local_xr_nodes", true)
+
 
 func _check_player_scene_contract(player: Node) -> void:
 	for path in [

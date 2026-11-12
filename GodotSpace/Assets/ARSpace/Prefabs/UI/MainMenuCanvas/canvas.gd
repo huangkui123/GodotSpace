@@ -110,8 +110,7 @@ func _on_work_list_pressed():
 	_hide_sky_display_settings()
 	_hide_llm_assistant_view()
 	work_list_view.visible = true
-	# Global.work_list_view.refresh_work_list()
-	_set_spacebox_worklist_visible(true)
+	# Browsing the catalog must not reveal guidance; opening a task selects its step.
 
 func _on_back_button_pressed():
 	work_list_view.visible = false

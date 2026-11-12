@@ -170,6 +170,8 @@ func next_click():
 	bind_page(page_index)
 
 func sample_data_init():
+	# Audited against Unity WorkListManager.RefreshData and the actual images.
+	# Unity's editor-only WorkListUIView sample had shifted/missing image names.
 	var info_data_result = WorkListInfoDataResult.new()
 	info_data_result.title = "无容器样品实验流程"
 	info_data_result.list.append(WorkListInfoData.new(1, 1, "step1.png",
@@ -184,7 +186,7 @@ func sample_data_init():
 		"3.操作准备",
 		"航天员至A区Ⅲ象限，将手环转接件安装到无容器材料实验柜的接地点上，插入防静电手环，并佩戴。"
 	))
-	info_data_result.list.append(WorkListInfoData.new(4, 2, "Demo1.mp4",
+	info_data_result.list.append(WorkListInfoData.new(4, 0, "",
 		"4.天地通话",
 		"天地通话，经地面确认无容器断电后，宇航员进行后续操作。注：在测控区执行该项操作。"
 	))
@@ -196,7 +198,7 @@ func sample_data_init():
 		"6.解锁螺钉",
 		"用棘轮扳手、150mm长杆和M5套头解锁科学实验操作盖上51-58号8个M5松不脱螺钉。"
 	))
-	info_data_result.list.append(WorkListInfoData.new(7, 2, "Demo1.mp4",
+	info_data_result.list.append(WorkListInfoData.new(7, 3, "",
 		"7.拆除操作盖",
 		"抓住科学实验操作盖上的把手，拆除科学实验操作盖，使用3M胶带将操作盖临时固定在柜体附近。"
 	))
@@ -212,43 +214,43 @@ func sample_data_init():
 		"10.解锁轴心机构",
 		"螺钉解锁后，顺时针旋转锁紧机构齿扣至“开”。"
 	))
-	info_data_result.list.append(WorkListInfoData.new(11, 2, "Demo1.mp4",
+	info_data_result.list.append(WorkListInfoData.new(11, 3, "",
 		"11.抽出轴心机构",
 		"握住把手，抽出轴心机构。"
 	))
-	info_data_result.list.append(WorkListInfoData.new(12, 1, "step11.png",
+	info_data_result.list.append(WorkListInfoData.new(12, 1, "step12.png",
 		"12.取出旧样品盒",
 		"需要两名航天员配合操作。一名航天员用双手固定轴心机构，另一名航天员一只手按住样品盒两侧的按钮，然后向上提拉，取出样品盒。将取出样品盒放入无容器样品下行包装袋中，临时固定于高微柜附近，固定位置拍照发给地面，后续将随载人船下行。"
 	))
-	info_data_result.list.append(WorkListInfoData.new(13, 1, "step12.png",
+	info_data_result.list.append(WorkListInfoData.new(13, 1, "step13.png",
 		"13.识别新样品盒安装位置",
 		"取下无容器柜体附近临时固定的样品盒备件（代号为Z03-1），剪开包装袋，按住样品盒两侧的按钮，识别样品盒对位标识。"
 	))
-	info_data_result.list.append(WorkListInfoData.new(14, 2, "Demo1.mp4",
+	info_data_result.list.append(WorkListInfoData.new(14, 3, "",
 		"14.安装新样品盒",
 		"将样品盒插入安装口。"
 	))
-	info_data_result.list.append(WorkListInfoData.new(15, 2, "Demo1.mp4",
+	info_data_result.list.append(WorkListInfoData.new(15, 3, "",
 		"15.插入轴心机构",
 		"将轴心机构插入到腔体内部"
 	))
-	info_data_result.list.append(WorkListInfoData.new(16, 1, "step15.png",
+	info_data_result.list.append(WorkListInfoData.new(16, 1, "step16.png",
 		"16.锁紧轴心机构",
 		"插入过程中，注意使定位凸耳（银白色）与外腔定位槽（银白色）方向一致。旋动锁紧机构至“关”"
 	))
-	info_data_result.list.append(WorkListInfoData.new(17, 1, "step16.png",
+	info_data_result.list.append(WorkListInfoData.new(17, 1, "step17.png",
 		"17.固定机构",
 		"使用M6内六角套头+150mm加长杆+力矩扳手1（必须使用），使用2.5N·m的力矩锁紧6颗螺钉（依照对角线原则操作）。对6个M6螺钉第二遍逐个打力矩检查。"
 	))
-	info_data_result.list.append(WorkListInfoData.new(18, 1, "step17.png",
+	info_data_result.list.append(WorkListInfoData.new(18, 1, "step18.png",
 		"18.安装连接器",
 		"插上轴心机构连接器X01和X02。"
 	))
-	info_data_result.list.append(WorkListInfoData.new(19, 1, "step18.png",
+	info_data_result.list.append(WorkListInfoData.new(19, 1, "step19.png",
 		"19.安装科学实验操作盖",
 		"使用力矩扳手1、150mm长杆和M5螺钉套头锁紧科学实验操作盖51-58号M5松不脱螺钉，力矩2.5N.m。"
 	))
-	info_data_result.list.append(WorkListInfoData.new(20, 1, "step19.png",
+	info_data_result.list.append(WorkListInfoData.new(20, 1, "step20.png",
 		"20.撤收工具至舱内工具包",
 		"将棘轮组合工具（棘轮扳手、M5套头、M6套头、150mm加长杆）、内六角拐脖（M3、M5）、斜口钳、力矩扳手1、3M胶带、剪刀放回舱内工具包1a/b中，货包放至核心舱后端通道Ⅲ偏Ⅳ象限安装板。防静电手环、手环转接件，视情回收。"
 	))

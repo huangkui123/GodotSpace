@@ -1,4 +1,7 @@
-[gd_scene load_steps=35 format=3]
+[gd_scene load_steps=37 format=3]
+
+[ext_resource type="Script" path="res://Assets/ARSpace/Scripts/UI/cabinet_opacity.gd" id="32_opacity"]
+[ext_resource type="Script" path="res://Assets/ARSpace/Prefabs/UI/MaterialCanvas/Ani_Play.gd" id="33_steps"]
 
 [ext_resource type="AnimationLibrary" path="res://Assets/ARSpace/Scripts/WorkListCanvas/Containerless/dashiyangui.library.res" id="1_a1wh0"]
 [ext_resource type="AnimationNodeBlendTree" path="res://Assets/ARSpace/Scripts/WorkListCanvas/Containerless/dashiyangui.controller.res" id="2_5g274"]
@@ -42,6 +45,7 @@ resource_name = "Default-Line"
 
 [node name="dashiyangui" type="Node3D"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.1)
+script = ExtResource("33_steps")
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="."]
 libraries = {
@@ -270,6 +274,9 @@ shape = SubResource("SphereShape3D_5r6n8")
 
 [node name="Canvas" parent="." instance=ExtResource("31_to3rt")]
 transform = Transform3D(0, 0, 0.005, 0, 0.005, 0, -0.005, 0, 0, 0, 0, 6.02)
+
+[node name="CabinetOpacity" type="Node3D" parent="."]
+script = ExtResource("32_opacity")
 
 [editable path="zhouxinjigou/zhouxinjigou_a/xiaoshiyangui_d/OldTips"]
 [editable path="zhouxinjigou/zhouxinjigou_a/xiaoshiyangui_d_new/NewTips"]

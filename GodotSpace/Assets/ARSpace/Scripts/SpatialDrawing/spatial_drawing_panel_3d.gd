@@ -8,11 +8,11 @@ const PANEL_SURFACE_SCENE_PATH: String = \
 
 @export var controller_local_offset: Vector3 = Vector3(0.08, 0.12, -0.16)
 @export var position_smoothing: float = 18.0
-@export var initially_visible: bool = true
+@export var initially_visible: bool = false
 
 var _left_controller: XRController3D
 var _panel_surface: Node3D
-var _panel_requested_visible: bool = true
+var _panel_requested_visible: bool = false
 var _last_left_trigger_pressed: bool = false
 
 

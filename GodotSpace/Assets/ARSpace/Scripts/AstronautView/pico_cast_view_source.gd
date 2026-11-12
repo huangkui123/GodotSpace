@@ -206,6 +206,7 @@ func _update_metadata(force: bool = false) -> void:
 		"audio_enabled": false,
 		"timestamp_msec": now_msec,
 		"transport": str(_session_metadata.get("transport", "rtmp")),
+		"rectified": _session_metadata.get("rectified", false) == true,
 	})
 
 

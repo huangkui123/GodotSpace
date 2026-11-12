@@ -2,7 +2,10 @@
 extends Node3D
 
 const DEBUG_LOGS := false
-const SKY_MR_VISIBLE_NODE_PATHS: Array[NodePath] = [
+# White translucent cabin surfaces obscure the real room in Sky MR.
+# Hide their drawing locally; keep collision nodes and other roles intact.
+const SKY_MR_HIDDEN_NODE_PATHS: Array[NodePath] = [
+	NodePath("SpaceBox/UpPlane"),
 	NodePath("SpaceBox/DownPlane"),
 	NodePath("SpaceBox/BackDor"),
 ]
@@ -21,6 +24,7 @@ func _ready():
 	if global_node != null:
 		global_node.set("spacebox_controller", self)
 	worklist1.visible = false  # 默认隐藏
+	show_only_work_info(0)
 	call_deferred("_bind_shared_work_step_state")
 	if DEBUG_LOGS: print("✅ SpaceBox 控制器已注册到 Global 单例")
 
@@ -43,10 +47,10 @@ func _exit_tree() -> void:
 
 
 func configure_for_runtime_profile(profile) -> void:
-	_set_sky_mr_surfaces_visible(_should_show_sky_mr_surfaces(profile))
+	_set_sky_mr_surfaces_hidden(_should_hide_sky_mr_surfaces(profile))
 
 
-func _should_show_sky_mr_surfaces(profile) -> bool:
+func _should_hide_sky_mr_surfaces(profile) -> bool:
 	return bool(
 		profile != null
 		and profile.is_valid()
@@ -55,8 +59,8 @@ func _should_show_sky_mr_surfaces(profile) -> bool:
 	)
 
 
-func _set_sky_mr_surfaces_visible(enabled: bool) -> void:
-	for node_path in SKY_MR_VISIBLE_NODE_PATHS:
+func _set_sky_mr_surfaces_hidden(enabled: bool) -> void:
+	for node_path in SKY_MR_HIDDEN_NODE_PATHS:
 		var surface := get_node_or_null(node_path) as Node3D
 		if surface == null:
 			push_warning("天上端舱体显示配置缺少节点：%s" % node_path)
@@ -64,13 +68,15 @@ func _set_sky_mr_surfaces_visible(enabled: bool) -> void:
 		if not _original_sky_surface_visibility.has(node_path):
 			_original_sky_surface_visibility[node_path] = surface.visible
 		surface.visible = (
-			true
+			false
 			if enabled
 			else bool(_original_sky_surface_visibility[node_path])
 		)
 
 
 func set_worklist1_visible(visible: bool):
+	if not visible and is_instance_valid(dashiyangui) and dashiyangui.has_method("clear_step"):
+		dashiyangui.call("clear_step")
 	if worklist1 and is_instance_valid(worklist1):
 		worklist1.visible = visible
 		if DEBUG_LOGS: print("✅ 设置 WorkList1 可见性为: ", visible)
@@ -91,8 +97,7 @@ func request_worklist_visibility(is_visible: bool) -> bool:
 
 
 func show_only_work_info(step_index: int):
-	if step_index < 1 or step_index > 20:
-		return
+	# Zero means no selected step: hide every authored guidance branch.
 	var work_info_root := $SpaceBox/WorkEffect/WorkList1
 	for i in range(1, 21):
 		var info_node := work_info_root.get_node_or_null("WorkInfo%d" % i)
@@ -108,11 +113,13 @@ func set_environment_visible(visible: bool) -> void:
 	else:
 		printerr("❌ environment_node 无效，无法设置可见性")
 
-func play_dashiyangui_animation():
-	if dashiyangui and dashiyangui.has_method("play_from_ui"):
-		dashiyangui.play_from_ui()
-	else:
-		printerr("❌ dashiyangui 上找不到 play_from_ui 方法")
+func play_dashiyangui_animation() -> void:
+	# Legacy main-menu entry uses the same authoritative step path as replay.
+	var state := _get_shared_work_step_state()
+	var step := 1
+	if state != null:
+		step = clampi(int(state.call("get_current_state").get("active_step", 1)), 1, 20)
+	request_work_step(step)
 		
 # ✅ 新增：让 Global.spacebox_controller.play_step(x) 成立
 func play_step(step_index: int):
@@ -128,8 +135,8 @@ func request_work_step(step_index: int) -> bool:
 		return bool(shared_state.call("request_work_step", step_index))
 	if step_index < 1 or step_index > 20:
 		return false
-	set_worklist1_visible(true)
 	show_only_work_info(step_index)
+	set_worklist1_visible(true)
 	play_step(step_index)
 	return true
 
@@ -168,9 +175,10 @@ func _on_shared_work_step_state_changed(
 	active_step: int,
 	replay_animation: bool
 ) -> void:
-	set_worklist1_visible(is_visible)
-	if not is_visible or active_step < 1 or active_step > 20:
+	var has_step := active_step >= 1 and active_step <= 20
+	show_only_work_info(active_step if has_step else 0)
+	set_worklist1_visible(is_visible and has_step)
+	if not is_visible or not has_step:
 		return
-	show_only_work_info(active_step)
-	if replay_animation:
+	if replay_animation or (dashiyangui.has_method("get_active_step") and int(dashiyangui.call("get_active_step")) != active_step):
 		play_step(active_step)

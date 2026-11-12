@@ -3,6 +3,7 @@ extends Node3D
 const RuntimeProfile = preload("res://Assets/ARSpace/Scripts/runtime_profile.gd")
 const SkyViewPreferences := preload("res://Assets/ARSpace/Scripts/XR/sky_view_preferences.gd")
 const PicoStreamingAlphaEffect := preload("res://Assets/ARSpace/Scripts/XR/pico_streaming_alpha_effect.gd")
+const PassthroughProbe := preload("res://Assets/ARSpace/Scripts/XR/mr_passthrough_probe.gd")
 const CabinetCalibration := preload("res://Assets/ARSpace/Scripts/SpatialCalibration/cabinet_calibration.gd")
 const TEST_PLAYER_SCENE: PackedScene = preload("res://Assets/ARSpace/Scenes/Player.tscn")
 const TEST_PLAYER_DEFAULT_ID: int = 1
@@ -26,6 +27,11 @@ const SKY_TRANSPARENCY_STATE_META: StringName = \
 	&"_arspace_sky_transparency_state"
 const SKY_TRANSPARENCY_EXEMPT_GROUPS: Array[StringName] = [
 	&"reconstruction_point_cloud_chunks",
+	&"independent_cabinet_visuals",
+	&"cabinet_guidance",
+	&"virtual_annotation_marker",
+	&"remote_annotation_marker",
+	&"spatial_calibration_preview_marker",
 ]
 
 var xr_interface: XRInterface
@@ -56,11 +62,17 @@ var _sky_boundary_surface_opacity: float = SKY_BOUNDARY_SURFACE_OPACITY
 var _pico_alpha_camera: Camera3D
 var _pico_alpha_original_compositor: Compositor
 var _pico_alpha_compositor: Compositor
+var _passthrough_probe: Node
 
 
 func _enter_tree() -> void:
 	runtime_profile = RuntimeProfile.current()
 	_configure_virtual_annotation_system()
+	for path in ["SpaceBox/SpaceBox/WorkEffect", "SpaceBox/SpaceBox/SpaceObject/WorkTips",
+			"SharedSpaceOrigin/VirtualAnnotations", "GroupUI/WorkListInfoCanvas"]:
+		var guidance := get_node_or_null(NodePath(path))
+		if guidance != null:
+			guidance.add_to_group("cabinet_guidance")
 
 func _ready() -> void:
 	xr_interface = XRServer.find_interface("OpenXR")
@@ -90,6 +102,8 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
+	if is_instance_valid(_passthrough_probe):
+		_passthrough_probe.finish()
 	_set_sky_geometry_transparency(false)
 	if get_tree().node_added.is_connected(_on_scene_node_added):
 		get_tree().node_added.disconnect(_on_scene_node_added)
@@ -742,6 +756,18 @@ func _remove_pico_alpha_compositor() -> void:
 	_pico_alpha_camera = null
 	_pico_alpha_original_compositor = null
 	_pico_alpha_compositor = null
+
+
+func start_passthrough_probe(mode: int = PassthroughProbe.Mode.BLANK) -> bool:
+	if not runtime_profile.is_sky() or not runtime_profile.uses_xr() or not xr_runtime_active:
+		return false
+	if is_instance_valid(_passthrough_probe) and _passthrough_probe.active:
+		return false
+	if not is_instance_valid(_passthrough_probe):
+		_passthrough_probe = PassthroughProbe.new()
+		add_child(_passthrough_probe)
+	print("MR blank-frame blend_mode=", xr_interface.environment_blend_mode)
+	return _passthrough_probe.start(self, mode)
 
 
 func _configure_passthrough_background(use_alpha: bool) -> void:

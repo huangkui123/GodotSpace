@@ -39,6 +39,24 @@ func _run() -> void:
 		quit(1)
 		return
 	await process_frame
+	var display_cabinet := current_scene.get_node("SpaceBox/SpaceBox/dashiyangui")
+	var opacity_controller := display_cabinet.get_node("CabinetOpacity")
+	_expect(display_cabinet.has_method("play_step"), "existing operation animation controller remains attached")
+	display_cabinet.call("play_step", 15)
+	(display_cabinet.get_node("AnimationPlayer") as AnimationPlayer).advance(1.0)
+	display_cabinet.call("play_step", 16)
+	_expect((display_cabinet.get_node("zhouxinjigou/zhouxinjigou_a") as Node3D).position.is_equal_approx(Vector3(-0.976, 0, 0)),
+		"actual scene settles the core when insertion is interrupted")
+	display_cabinet.call("clear_step")
+	_expect(not display_cabinet.get_node("xiaoshiyangui/xiaoshiyangui_b").visible,
+		"idle scene hides the animated cover")
+	_expect(opacity_controller.has_method("set_opacity"), "actual CAD cabinet owns independent opacity")
+	_expect(opacity_controller.get_node_or_null("CabinetOpacityPanel/StaticBody3D") != null,
+		"cabinet slider has an interactive surface in the actual scene")
+	opacity_controller.call("set_opacity", 0.0)
+	_expect(float(display_cabinet.get_node("dashiyangui/MeshRenderer").get_active_material(0).get_shader_parameter("cabinet_opacity")) == 0.0,
+		"actual scene supports fully hidden cabinet")
+	opacity_controller.call("set_opacity", 1.0)
 	var cabinet := current_scene.get_node_or_null("CabinetCalibration")
 	var is_sky: bool = Profile.current().is_sky()
 	_expect((cabinet != null) == is_sky, "cabinet runtime exists only on Sky")

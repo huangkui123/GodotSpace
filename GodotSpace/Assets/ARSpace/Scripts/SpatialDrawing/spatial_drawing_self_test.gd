@@ -103,10 +103,22 @@ func _test_panel_visibility_toggle() -> void:
 	host.add_child(panel_controller)
 	await process_frame
 	_check(
-		bool(panel_controller.call("is_panel_visible")),
-		"drawing panel should preserve its initially visible behavior"
+		not bool(panel_controller.call("is_panel_visible")),
+		"drawing panel must start hidden"
 	)
-	panel_controller.call("set_panel_visible", false)
+	var tracker := XRControllerTracker.new()
+	tracker.name = &"left_hand"
+	XRServer.add_tracker(tracker)
+	tracker.set_input(&"trigger", 1.0)
+	panel_controller.call("_poll_left_trigger")
+	_check(bool(panel_controller.call("is_panel_visible")), "first left trigger press opens the panel")
+	panel_controller.call("_poll_left_trigger")
+	_check(bool(panel_controller.call("is_panel_visible")), "holding trigger must not toggle repeatedly")
+	tracker.set_input(&"trigger", 0.0)
+	panel_controller.call("_poll_left_trigger")
+	_check(bool(panel_controller.call("is_panel_visible")), "releasing trigger leaves the panel open")
+	tracker.set_input(&"trigger", 1.0)
+	panel_controller.call("_poll_left_trigger")
 	_check(
 		not bool(panel_controller.call("is_panel_visible")),
 		"drawing panel should support hiding from the left-trigger toggle"
@@ -116,6 +128,7 @@ func _test_panel_visibility_toggle() -> void:
 		bool(panel_controller.call("is_panel_visible")),
 		"drawing panel should support showing again from the left-trigger toggle"
 	)
+	XRServer.remove_tracker(tracker)
 	host.queue_free()
 	await process_frame
 

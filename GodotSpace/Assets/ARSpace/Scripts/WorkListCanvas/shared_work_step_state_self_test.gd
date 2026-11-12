@@ -12,9 +12,15 @@ var _failures: PackedStringArray = []
 
 class MockAnimationController extends Node3D:
 	var played_steps: Array[int] = []
+	var active_step: int = 0
 
 	func play_step(step_index: int) -> void:
 		played_steps.append(step_index)
+		active_step = step_index
+	func clear_step() -> void:
+		active_step = 0
+	func get_active_step() -> int:
+		return active_step
 
 
 func _initialize() -> void:
@@ -30,6 +36,17 @@ func _run() -> void:
 		not bool(shared_state.call("get_current_state").get("is_visible", true)),
 		"shared work-step state must default to hidden"
 	)
+	var initial_controller := _make_spacebox_controller()
+	root.add_child(initial_controller)
+	await process_frame
+	initial_controller.call("request_worklist_visibility", true)
+	var initial_guidance := initial_controller.get_node("SpaceBox/WorkEffect/WorkList1") as Node3D
+	_expect(not initial_guidance.visible, "opening without a selected step must keep guidance hidden")
+	for branch: Node3D in initial_guidance.get_children():
+		_expect(not branch.visible, "unselected step branches must start hidden")
+	_expect(initial_controller.get_node("SpaceBox/dashiyangui").active_step == 0,
+		"opening without a step must not start an animation")
+	initial_controller.free()
 	_expect(
 		bool(shared_state.call("request_work_step", 4)),
 		"an authoritative step must be storable before the controller is ready"
@@ -105,6 +122,13 @@ func _run() -> void:
 		not controller.get_node("SpaceBox/WorkEffect/WorkList1").visible,
 		"authoritative close must hide WorkList1"
 	)
+	_expect(animation_controller.active_step == 0, "closing clears animated parts")
+	controller.call("request_worklist_visibility", true)
+	_expect(animation_controller.active_step == 6, "reopening restores the current step even without replay flag")
+	var legacy_count := animation_controller.played_steps.size()
+	controller.call("play_dashiyangui_animation")
+	_expect(animation_controller.played_steps.size() == legacy_count + 1 and animation_controller.active_step == 6,
+		"legacy main menu replays the selected step through shared state")
 
 	controller.queue_free()
 	shared_state.queue_free()

@@ -1,4 +1,6 @@
-[gd_scene load_steps=62 format=3]
+[gd_scene load_steps=63 format=3]
+
+[ext_resource type="Script" path="res://Assets/ARSpace/Scripts/UI/cabinet_guidance_materials.gd" id="6_guidance"]
 
 [ext_resource type="Material" path="res://Assets/Magic_Spline/Material/M_Particles_UniversalPremultiplitedFlipbookDistortion 1.material" id="1_05g3n"]
 [ext_resource type="Material" path="res://Assets/Magic_Spline/Material/M_Circle.material" id="2_nw30h"]
@@ -174,6 +176,9 @@ size = Vector3(0.6, 3, 0.5)
 size = Vector3(0.6, 3, 0.5)
 
 [node name="WorkEffect" type="Node3D"]
+
+[node name="GuidanceMaterials" type="Node3D" parent="."]
+script = ExtResource("6_guidance")
 
 [node name="WorkList1" type="Node3D" parent="."]
 

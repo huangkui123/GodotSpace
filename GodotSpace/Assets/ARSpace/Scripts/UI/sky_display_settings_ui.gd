@@ -3,6 +3,7 @@ extends PanelContainer
 const Style := preload("res://Assets/ARSpace/Scripts/UI/sky_panel_style.gd")
 
 const Preferences := preload("res://Assets/ARSpace/Scripts/XR/sky_view_preferences.gd")
+const Probe := preload("res://Assets/ARSpace/Scripts/XR/mr_passthrough_probe.gd")
 
 var _sliders: Array[HSlider] = []
 var _values: Array[Label] = []
@@ -69,6 +70,23 @@ func _ready() -> void:
 	_button(presets, "清晰模式", _set_opacity.bind(Vector3(1, 1, 0.25)), true)
 	_button(presets, "恢复默认", _set_opacity.bind(Preferences.DEFAULT_OPACITY), true)
 	Style.primary(_button(presets, "保存为默认", _save, true))
+	var choices := HBoxContainer.new()
+	choices.add_theme_constant_override("separation", 8)
+	column.add_child(choices)
+	choices.hide()
+	var probe_button := _button(presets, "透视检查", func():
+		presets.hide()
+		choices.show()
+		_status.text = "选择对照画面；5 秒后恢复，不修改透明度设置。", true)
+	probe_button.name = "PassthroughProbeButton"
+	probe_button.tooltip_text = "比较空画面、隐藏柜体组和仅显示柜体组，定位黑区来源。"
+	for mode in [Probe.Mode.BLANK, Probe.Mode.HIDE_CABINET, Probe.Mode.ONLY_CABINET]:
+		var choice := _button(choices, ["空画面", "隐藏柜体组", "仅柜体组"][mode], _probe_passthrough.bind(mode), true)
+		choice.name = "ProbeMode%d" % mode
+		choice.tooltip_text = "柜体组包含固定柜壳、拆装部件和柜上滑条；仅在检查期间改变显示。"
+	_button(choices, "返回", func():
+		choices.hide()
+		presets.show())
 	_status = _label(column, "仅本头显生效 · 主面板始终清晰")
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_status.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -140,6 +158,13 @@ func _set_opacity(value: Vector3) -> void:
 	_timer.stop()
 	_set_slider_values(value)
 	_apply_opacity()
+
+
+func _probe_passthrough(mode: int = Probe.Mode.BLANK) -> void:
+	if is_instance_valid(_scene) and _scene.has_method("start_passthrough_probe") and bool(_scene.call("start_passthrough_probe", mode)):
+		_status.text = "%s：5 秒后恢复；请观察原黑区。" % ["空画面", "隐藏柜体组", "仅柜体组"][mode]
+	else:
+		_status.text = "请在天上端 MR 运行时检查，勿连续点击。"
 
 
 func _save() -> void:

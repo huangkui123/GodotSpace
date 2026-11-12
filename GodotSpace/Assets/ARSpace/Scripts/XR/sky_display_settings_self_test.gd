@@ -5,6 +5,12 @@ const Preferences := preload("res://Assets/ARSpace/Scripts/XR/sky_view_preferenc
 
 class TestScene extends Node3D:
 	var calibration_parent: Node
+	var probe_requests: int = 0
+	var probe_mode: int = -1
+	func start_passthrough_probe(mode: int = 0) -> bool:
+		probe_requests += 1
+		probe_mode = mode
+		return true
 	func open_panel(parent_panel: Node) -> void:
 		calibration_parent = parent_panel
 	var opacity := Preferences.DEFAULT_OPACITY
@@ -58,6 +64,17 @@ func _run() -> void:
 		_expect(panel.size.x <= 446 and panel.size.y <= 348, "settings fit inside existing work area")
 		_expect(entry.get_global_rect().position.y > 97, "entry remains below title controls")
 		_expect(panel.is_visible_in_tree(), "headset button opens settings inside its existing panel")
+		var probe_button := panel.find_child("PassthroughProbeButton", true, false) as Button
+		_expect(probe_button != null, "MR blank-frame check is reachable from display settings")
+		probe_button.pressed.emit()
+		for mode in 3:
+			var choice := panel.find_child("ProbeMode%d" % mode, true, false) as Button
+			_expect(choice.is_visible_in_tree(), "comparison choices are visible inside the XR panel")
+			choice.pressed.emit()
+			_expect(host.probe_mode == mode, "button forwards the selected comparison")
+		_expect(host.probe_requests == 3, "all three comparisons are reachable")
+		await process_frame
+		_expect(panel.size.x <= 446 and panel.size.y <= 348, "comparison choices fit the work area")
 		panel.call("_set_opacity", Vector3.ONE)
 		_expect(host.opacity == Vector3.ONE, "local preset changes display")
 		panel.call("_step_opacity", 0, -5)

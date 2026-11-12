@@ -53,8 +53,9 @@ func _initialize() -> void:
 		"res://Assets/ARSpace/Scenes/SpaceBox.gd"
 	)
 	if not spacebox_source.contains("NodePath(\"SpaceBox/DownPlane\")") \
-			or not spacebox_source.contains("NodePath(\"SpaceBox/BackDor\")"):
-		failures.append("Sky XR must explicitly show DownPlane and BackDor")
+			or not spacebox_source.contains("NodePath(\"SpaceBox/BackDor\")") \
+			or not spacebox_source.contains("NodePath(\"SpaceBox/UpPlane\")"):
+		failures.append("Sky XR must explicitly configure the ceiling, floor and back wall")
 	_test_role_specific_scene_transparency(failures)
 	_test_pico_compositor_cleanup(failures)
 
@@ -366,19 +367,22 @@ void fragment() {
 	spacebox.add_child(shell_root)
 	var down_plane := Node3D.new()
 	down_plane.name = "DownPlane"
-	down_plane.visible = false
+	down_plane.visible = true
 	shell_root.add_child(down_plane)
 	var back_door := Node3D.new()
 	back_door.name = "BackDor"
 	back_door.visible = false
 	shell_root.add_child(back_door)
+	var up_plane := Node3D.new()
+	up_plane.name = "UpPlane"
+	shell_root.add_child(up_plane)
 	spacebox.call("configure_for_runtime_profile", sky_profile)
-	if not down_plane.visible or not back_door.visible:
-		failures.append("Sky XR must show DownPlane and BackDor")
+	if down_plane.visible or back_door.visible or up_plane.visible:
+		failures.append("Sky XR must hide the ceiling, floor and back wall")
 	spacebox.call("configure_for_runtime_profile", ground_profile)
-	if down_plane.visible or back_door.visible:
+	if not down_plane.visible or back_door.visible or not up_plane.visible:
 		failures.append(
-			"Ground VR must restore authored DownPlane and BackDor visibility"
+			"Ground VR must restore authored ceiling, floor and back wall visibility"
 		)
 
 	RuntimeProfile.clear_session_override()

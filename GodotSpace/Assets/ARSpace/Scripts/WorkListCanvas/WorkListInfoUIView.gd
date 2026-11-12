@@ -167,6 +167,7 @@ func close_task_guide() -> Dictionary:
 		return _tool_error("no_active_task", "No task guide is currently open.")
 	_stop_current_step_voice()
 	_hide_llm_assistant_view()
+	_hide_task_animation()
 	PanelWindowZoom.set_window_visible(self, false)
 	return _tool_success({"changed": true})
 
@@ -476,7 +477,15 @@ func _on_next_pressed():
 func _on_close_button_pressed():
 	_stop_current_step_voice()
 	_hide_llm_assistant_view()
+	_hide_task_animation()
 	self.visible = false
+
+
+func _hide_task_animation() -> void:
+	var global_node := _get_global_node()
+	var controller = global_node.get("spacebox_controller") if global_node != null else null
+	if is_instance_valid(controller) and controller.has_method("request_worklist_visibility"):
+		controller.call("request_worklist_visibility", false)
 
 
 func _on_llm_assistant_pressed() -> void:

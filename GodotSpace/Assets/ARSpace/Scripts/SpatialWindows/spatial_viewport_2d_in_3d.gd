@@ -8,6 +8,19 @@ signal spatial_pointer_event(event: XRToolsPointerEvent, controller: Node3D, gri
 signal content_visibility_changed(is_visible: bool)
 
 
+func _update_render() -> void:
+	super._update_render()
+	if _screen_material != null:
+		# UI contains its own colors. Cabinet shadows/lighting must not turn
+		# the viewport black. Keep depth TESTING so real 3D occlusion still works.
+		_screen_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_screen_material.disable_fog = true
+		_screen_material.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+	var screen := get_node_or_null("Screen") as MeshInstance3D
+	if screen != null:
+		screen.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+
 func _on_pointer_event(event: XRToolsPointerEvent) -> void:
 	var controller := _get_controller_from_pointer(event.pointer) as Node3D
 	var grip_value: float = 0.0

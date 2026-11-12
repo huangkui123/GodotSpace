@@ -244,17 +244,16 @@ func _configure_local_xr_nodes(is_local_authority: bool) -> void:
 		if local_node != null:
 			local_node.process_mode = local_process_mode
 
-	var ground_xr_locomotion_enabled: bool = is_local_authority \
-		and _uses_xr_presentation() \
-		and _runtime_profile != null \
-		and _runtime_profile.is_ground()
+	# Both Sky MR and Ground VR use the authored stick movement providers.
+	# Remote replicas and desktop/test players must never consume XR input.
+	var local_xr_locomotion_enabled: bool = is_local_authority and _uses_xr_presentation()
 	for movement_path in [
 		NodePath("XROrigin3D/LeftHand/MovementTurn"),
 		NodePath("XROrigin3D/RightHand/MovementDirect"),
 	]:
 		var movement := get_node_or_null(movement_path)
 		if movement != null:
-			movement.set("enabled", ground_xr_locomotion_enabled)
+			movement.set("enabled", local_xr_locomotion_enabled)
 
 	if player_body != null:
 		var player_body_enabled := is_local_authority and _uses_xr_presentation()
